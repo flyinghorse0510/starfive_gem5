@@ -85,24 +85,20 @@ if args.num_cpus > block_size:
 #
 # Currently ruby does not support atomic or uncacheable accesses
 #
-cpus = [ MemTest(max_loads = args.maxloads,
-                 percent_functional = args.functional,
-                 percent_uncacheable = 0,
-                 progress_interval = args.progress,
-                 suppress_func_errors = args.suppress_func_errors) \
-         for i in range(args.num_cpus) ]
+
+if args.num_cpus > 0 :
+    cpus = [ SeqMemTest(max_loads = args.maxloads,
+                     suppress_func_errors = args.suppress_func_errors) \
+             for i in range(args.num_cpus) ]
 
 system = System(cpu = cpus,
                 clk_domain = SrcClockDomain(clock = args.sys_clock),
                 mem_ranges = [AddrRange(args.mem_size)])
 
 if args.num_dmas > 0:
-    dmas = [ MemTest(max_loads = args.maxloads,
-                     percent_functional = 0,
-                     percent_uncacheable = 0,
+    dmas = [ SeqMemTest(max_loads = args.maxloads,
                      progress_interval = args.progress,
-                     suppress_func_errors =
-                                        not args.suppress_func_errors) \
+                     suppress_func_errors = not args.suppress_func_errors) \
              for i in range(args.num_dmas) ]
     system.dma_devices = dmas
 else:

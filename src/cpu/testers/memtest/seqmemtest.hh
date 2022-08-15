@@ -46,7 +46,7 @@
 
 #include "base/statistics.hh"
 #include "mem/port.hh"
-#include "params/MemTest.hh"
+#include "params/SeqMemTest.hh"
 #include "sim/clocked_object.hh"
 #include "sim/eventq.hh"
 #include "sim/stats.hh"
@@ -54,26 +54,34 @@
 namespace gem5
 {
 
+struct MemTestTxnAttr_t {
+  Tick reqStartTime;
+  uint64_t reqId;             /* Request Ordering. Also servers as the TxnId */
+  uint64_t respId;            /* Response Ordering */
+  Addr pAddr;                 /* physical (byte) address */
+  std::string readOrWrite;
+};
+
 /**
- * The MemTest class tests a cache coherent memory system by
- * generating false sharing and verifying the read data against a
- * reference updated on the completion of writes. Each tester reads
- * and writes a specific byte in a cache line, as determined by its
- * unique id. Thus, all requests issued by the MemTest instance are a
- * single byte and a specific address is only ever touched by a single
- * tester.
- *
+ * The SeqMemTest class tests a cache coherent memory system.
+ * 1. All requests issued by the SeqMemTest instance are a
+ *    single byte. 
+ * 2. The addresses are generated sequentially and the same
+ *    address is generated again, to remove the effects of cold
+ *    misses.
+ * 3. The address generation process is controlled to reason about
+ *    the performance of cache coherent memory system.
  * In addition to verifying the data, the tester also has timeouts for
  * both requests and responses, thus checking that the memory-system
  * is making progress.
  */
-class MemTest : public ClockedObject
+class SeqMemTest : public ClockedObject
 {
 
   public:
 
-    typedef MemTestParams Params;
-    MemTest(const Params &p);
+    typedef SeqMemTestParams Params;
+    SeqMemTest(const Params &p);
 
 
     Port &getPort(const std::string &if_name,
@@ -81,6 +89,7 @@ class MemTest : public ClockedObject
 
   protected:
 
+    uint64_t seqIdx;
     void tick();
 
     EventFunctionWrapper tickEvent;
@@ -95,12 +104,12 @@ class MemTest : public ClockedObject
 
     class CpuPort : public RequestPort
     {
-        MemTest &memtest;
+        SeqMemTest &seqmemtest;
 
       public:
 
-        CpuPort(const std::string &_name, MemTest &_memtest)
-            : RequestPort(_name, &_memtest), memtest(_memtest)
+        CpuPort(const std::string &_name, SeqMemTest &_memtest)
+            : RequestPort(_name, &_memtest), seqmemtest(_memtest)
         { }
 
       protected:
@@ -126,21 +135,23 @@ class MemTest : public ClockedObject
 
     const unsigned size;
 
-    const Cycles interval;
+    bool waitResponse;
 
-    const unsigned percentReads;
-    const unsigned percentFunctional;
-    const unsigned percentUncacheable;
+    const Cycles interval;
 
     /** Request id for all generated traffic */
     RequestorID requestorId;
 
     unsigned int id;
 
-    std::unordered_set<Addr> outstandingAddrs;
+    std::unordered_set<uint64_t> outstandingTxnIds;
 
     // store the expected value for the addresses we have touched
     std::unordered_map<Addr, uint8_t> referenceData;
+
+    // Some tracking info attached to each memory read/write request
+    std::unordered_map<uint64_t, MemTestTxnAttr_t> memTxnAttr;
+    uint64_t lastGenReqId, lastGenRespId;
 
     const unsigned blockSize;
 
@@ -160,15 +171,18 @@ class MemTest : public ClockedObject
     }
 
     const Addr baseAddr1;
-    const Addr baseAddr2;
-    const Addr uncacheAddr;
 
     const unsigned progressInterval;  // frequency of progress reports
     const Cycles progressCheck;
     Tick nextProgressMessage;   // access # for next progress report
 
+
+
     uint64_t numReads;
     uint64_t numWrites;
+    uint64_t maxLoads2;
+    bool isSequential;
+    uint64_t numIters;
     const uint64_t maxLoads;
 
     const bool atomic;

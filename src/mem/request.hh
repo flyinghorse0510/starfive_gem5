@@ -470,6 +470,8 @@ class Request
     /** The cause for HTM transaction abort */
     HtmFailureFaultCause _htmAbortCause = HtmFailureFaultCause::INVALID;
 
+    /** The transaction Id punched in by Memtester CPU */
+    uint64_t _memTestTxnId = 0;
   public:
 
     /**
@@ -486,6 +488,14 @@ class Request
      */
     Request(Addr paddr, unsigned size, Flags flags, RequestorID id) :
         _paddr(paddr), _size(size), _requestorId(id), _time(curTick())
+    {
+        _flags.set(flags);
+        privateFlags.set(VALID_PADDR|VALID_SIZE);
+        _byteEnable = std::vector<bool>(size, true);
+    }
+
+    Request(Addr paddr, unsigned memTestTxnId, unsigned size, Flags flags, RequestorID id) :
+        _paddr(paddr), _size(size), _requestorId(id), _time(curTick()), _memTestTxnId(memTestTxnId)
     {
         _flags.set(flags);
         privateFlags.set(VALID_PADDR|VALID_SIZE);
@@ -638,6 +648,10 @@ class Request
     {
         assert(hasPaddr());
         return _paddr;
+    }
+
+    uint64_t getMemTestTxnId() const {
+        return _memTestTxnId;
     }
 
     /**
