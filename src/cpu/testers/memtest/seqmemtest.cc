@@ -95,7 +95,6 @@ SeqMemTest::SeqMemTest(const Params &p)
       requestorId(p.system->getRequestorId(this)),
       blockSize(p.system->cacheLineSize()),
       blockAddrMask(blockSize - 1),
-      sizeBlocks(size / blockSize),
       baseAddr1(p.base_addr_1),
       progressInterval(p.progress_interval),
       progressCheck(p.progress_check),
@@ -139,14 +138,6 @@ SeqMemTest::completeRequest(PacketPtr pkt, bool functional)
     assert(req->getSize() == 1);
 
     // this address is no longer outstanding
-    auto remove_addr = outstandingAddrs.find(req->getPaddr());
-    assert(remove_addr != outstandingAddrs.end());
-    outstandingAddrs.erase(remove_addr);
-
-    DPRINTF(MemTest, "Completing %s at address %x (blk %x) %s\n",
-            pkt->isWrite() ? "write" : "read",
-            req->getPaddr(), blockAlign(req->getPaddr()),
-            pkt->isError() ? "error" : "success");
     uint64_t memTestTxnId = req->getMemTestTxnId();
     auto removeMemTestTxnId = outstandingTxnIds.find(memTestTxnId);
     assert(removeMemTestTxnId != outstandingTxnIds.end());
@@ -164,9 +155,9 @@ SeqMemTest::completeRequest(PacketPtr pkt, bool functional)
                         curTick(),
                         memTxnAttr[memTestTxnId].readOrWrite);
     memTxnAttr.erase(removeMemTestTxnId2);
->>>>>>> 5c5f1a2836... Added sequential memory tester for more controllable generation of memory traffic:src/cpu/testers/memtest/seqmemtest.cc
 
     const uint8_t *pkt_data = pkt->getConstPtr<uint8_t>();
+
 
     if (pkt->isError()) {
         if (!functional || !suppressFuncErrors)
@@ -212,7 +203,7 @@ SeqMemTest::completeRequest(PacketPtr pkt, bool functional)
         reschedule(noResponseEvent, clockEdge(progressCheck));
     else if (noResponseEvent.scheduled())
         deschedule(noResponseEvent);
-
+    
     // schedule the next tick
     if (waitResponse) {
         waitResponse = false;
@@ -232,7 +223,7 @@ SeqMemTest::MemTestStats::MemTestStats(statistics::Group *parent)
 void
 SeqMemTest::tick()
 {
-    // we should never tick if we are waiting for a retry or response
+    // we should never tick if we are waiting for a retry
     assert(!retryPkt);
     assert(!waitResponse);
 

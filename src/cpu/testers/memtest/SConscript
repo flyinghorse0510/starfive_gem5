@@ -29,7 +29,6 @@
 Import('*')
 
 
-
 SimObject('SeqMemTest.py', sim_objects=['SeqMemTest'])
 
 Source('seqmemtest.cc')
