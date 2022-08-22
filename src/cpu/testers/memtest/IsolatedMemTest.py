@@ -41,18 +41,18 @@ from m5.proxy import *
 
 from m5.objects.ClockedObject import ClockedObject
 
-class SeqMemTest(ClockedObject):
-    type = 'SeqMemTest'
-    cxx_header = "cpu/testers/memtest/seqmemtest.hh"
-    cxx_class = 'gem5::SeqMemTest'
+class IsolatedMemTest(ClockedObject):
+    type = 'IsolatedMemTest'
+    cxx_header = "cpu/testers/memtest/isolatedmemtest.hh"
+    cxx_class = 'gem5::IsolatedMemTest'
 
     # Interval of packet injection, the size of the memory range
     # touched, and an optional stop condition
-    interval = Param.Cycles(5, "Interval between request packets")
-    size = Param.Unsigned(4194304, "Size of memory region to use (bytes)")
-    base_addr_1 = Param.Addr(0x100000, "Start of the first testing region")
-    max_loads = Param.Counter(1, "Number of loads to execute before exiting")
-    num_iters = Param.Counter(10, "Number of iterations in sequential loads")
+    interval = Param.Cycles(500, "Interval between request packets")
+    size = Param.Unsigned(4194304, "Working set(bytes)")
+    base_addr_1 = Param.Addr(0x200000, "Start of the first testing region")
+    max_loads = Param.Counter(1, "Number of loads to unique address")
+    num_iters = Param.Counter(10, "Number of load iterations to each address")
 
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses

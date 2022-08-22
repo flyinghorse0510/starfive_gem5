@@ -38,13 +38,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "cpu/testers/memtest/seqmemtest.hh"
+#include "cpu/testers/memtest/isolatedmemtest.hh"
 
 #include "base/compiler.hh"
 #include "base/random.hh"
 #include "base/statistics.hh"
 #include "base/trace.hh"
-#include "debug/SeqMemTest.hh"
+#include "debug/IsolatedMemTest.hh"
 #include "debug/SeqMemLatTest.hh"
 #include "sim/sim_exit.hh"
 #include "sim/stats.hh"
@@ -57,20 +57,20 @@ namespace gem5
 static unsigned int TESTER_ALLOCATOR = 0;
 
 bool
-SeqMemTest::CpuPort::recvTimingResp(PacketPtr pkt)
+IsolatedMemTest::CpuPort::recvTimingResp(PacketPtr pkt)
 {
     seqmemtest.completeRequest(pkt);
     return true;
 }
 
 void
-SeqMemTest::CpuPort::recvReqRetry()
+IsolatedMemTest::CpuPort::recvReqRetry()
 {
     seqmemtest.recvRetry();
 }
 
 bool
-SeqMemTest::sendPkt(PacketPtr pkt) {
+IsolatedMemTest::sendPkt(PacketPtr pkt) {
     if (atomic) {
         port.sendAtomic(pkt);
         completeRequest(pkt);
@@ -83,7 +83,7 @@ SeqMemTest::sendPkt(PacketPtr pkt) {
     return true;
 }
 
-SeqMemTest::SeqMemTest(const Params &p)
+IsolatedMemTest::IsolatedMemTest(const Params &p)
     : ClockedObject(p),
       tickEvent([this]{ tick(); }, name()),
       noRequestEvent([this]{ noRequest(); }, name()),
@@ -124,7 +124,7 @@ SeqMemTest::SeqMemTest(const Params &p)
 }
 
 Port &
-SeqMemTest::getPort(const std::string &if_name, PortID idx)
+IsolatedMemTest::getPort(const std::string &if_name, PortID idx)
 {
     if (if_name == "port")
         return port;
@@ -133,7 +133,7 @@ SeqMemTest::getPort(const std::string &if_name, PortID idx)
 }
 
 void
-SeqMemTest::completeRequest(PacketPtr pkt, bool functional)
+IsolatedMemTest::completeRequest(PacketPtr pkt, bool functional)
 {
     const RequestPtr &req = pkt->req;
     assert(req->getSize() == 1);
@@ -211,7 +211,7 @@ SeqMemTest::completeRequest(PacketPtr pkt, bool functional)
         schedule(tickEvent, clockEdge(interval));
     }
 }
-SeqMemTest::MemTestStats::MemTestStats(statistics::Group *parent)
+IsolatedMemTest::MemTestStats::MemTestStats(statistics::Group *parent)
       : statistics::Group(parent),
       ADD_STAT(numReads, statistics::units::Count::get(),
                "number of read accesses completed"),
@@ -222,7 +222,7 @@ SeqMemTest::MemTestStats::MemTestStats(statistics::Group *parent)
 }
 
 void
-SeqMemTest::tick()
+IsolatedMemTest::tick()
 {
     // we should never tick if we are waiting for a retry
     assert(!retryPkt);
@@ -240,7 +240,7 @@ SeqMemTest::tick()
         paddr = baseAddr1 + offset;
     } else {
         waitResponse = true;
-        DPRINTF(SeqMemTest, "Waiting for completion of outstanding requests\n");
+        DPRINTF(IsolatedMemTest, "Waiting for completion of outstanding requests\n");
         return; // Do not schedule or generate anything
     }
     
@@ -259,7 +259,7 @@ SeqMemTest::tick()
     } else {
         ref_data = ref->second;
     }
-    DPRINTF(SeqMemTest,
+    DPRINTF(IsolatedMemTest,
             "TxnId@%d: Initiating read at addr %x\n",
             req->getMemTestTxnId(), req->getPaddr());
     pkt = new Packet(req, MemCmd::ReadReq);
@@ -279,7 +279,7 @@ SeqMemTest::tick()
         // as we have successfully sent a packet
         reschedule(noRequestEvent, clockEdge(progressCheck), true);
     } else {
-        DPRINTF(SeqMemTest, "Waiting for retry\n");
+        DPRINTF(IsolatedMemTest, "Waiting for retry\n");
     }
 
     // Schedule noResponseEvent now if we are not expecting a response
@@ -288,23 +288,23 @@ SeqMemTest::tick()
 }
 
 void
-SeqMemTest::noRequest()
+IsolatedMemTest::noRequest()
 {
     panic("%s did not send a request for %d cycles", name(), progressCheck);
 }
 
 void
-SeqMemTest::noResponse()
+IsolatedMemTest::noResponse()
 {
     panic("%s did not see a response for %d cycles", name(), progressCheck);
 }
 
 void
-SeqMemTest::recvRetry()
+IsolatedMemTest::recvRetry()
 {
     assert(retryPkt);
     if (port.sendTimingReq(retryPkt)) {
-        DPRINTF(SeqMemTest, "Proceeding after successful retry\n");
+        DPRINTF(IsolatedMemTest, "Proceeding after successful retry\n");
 
         retryPkt = nullptr;
         // kick things into action again

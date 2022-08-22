@@ -30,8 +30,12 @@ Import('*')
 
 
 SimObject('SeqMemTest.py', sim_objects=['SeqMemTest'])
+SimObject('IsolatedMemTest.py', sim_objects=['IsolatedMemTest'])
 
 Source('seqmemtest.cc')
+Source('isolatedmemtest.cc')
 
 DebugFlag('SeqMemTest')
+DebugFlag('IsolatedMemTest')
 DebugFlag('SeqMemLatTest')
+DebugFlag('IsolatedMemLatTest')

@@ -38,15 +38,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __CPU_MEMTEST_MEMTEST_HH__
-#define __CPU_MEMTEST_MEMTEST_HH__
+#ifndef __CPU_ISO_MEMTEST_HH__
+#define __CPU_ISO_MEMTEST_HH__
 
 #include <unordered_map>
 #include <unordered_set>
 
 #include "base/statistics.hh"
 #include "mem/port.hh"
-#include "params/SeqMemTest.hh"
+#include "params/IsolatedMemTest.hh"
 #include "sim/clocked_object.hh"
 #include "sim/eventq.hh"
 #include "sim/stats.hh"
@@ -56,9 +56,10 @@ namespace gem5
 {
 
 
+
 /**
- * The SeqMemTest class tests a cache coherent memory system.
- * 1. All requests issued by the SeqMemTest instance are a
+ * The IsolatedMemTest class tests a cache coherent memory system.
+ * 1. All requests issued by the IsolatedMemTest instance are a
  *    single byte. 
  * 2. The addresses are generated sequentially and the same
  *    address is generated again, to remove the effects of cold
@@ -69,13 +70,13 @@ namespace gem5
  * both requests and responses, thus checking that the memory-system
  * is making progress.
  */
-class SeqMemTest : public ClockedObject
+class IsolatedMemTest : public ClockedObject
 {
 
   public:
 
-    typedef SeqMemTestParams Params;
-    SeqMemTest(const Params &p);
+    typedef IsolatedMemTestParams Params;
+    IsolatedMemTest(const Params &p);
 
 
     Port &getPort(const std::string &if_name,
@@ -98,11 +99,11 @@ class SeqMemTest : public ClockedObject
 
     class CpuPort : public RequestPort
     {
-        SeqMemTest &seqmemtest;
+        IsolatedMemTest &seqmemtest;
 
       public:
 
-        CpuPort(const std::string &_name, SeqMemTest &_memtest)
+        CpuPort(const std::string &_name, IsolatedMemTest &_memtest)
             : RequestPort(_name, &_memtest), seqmemtest(_memtest)
         { }
 
@@ -200,4 +201,4 @@ class SeqMemTest : public ClockedObject
 
 } // namespace gem5
 
-#endif // __CPU_MEMTEST_MEMTEST_HH__
+#endif // __CPU_ISO_MEMTEST_HH__

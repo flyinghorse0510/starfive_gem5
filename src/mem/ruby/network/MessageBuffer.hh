@@ -104,7 +104,7 @@ class MessageBuffer : public SimObject
     void setPriority(int rank) { m_priority_rank = rank; }
     void setConsumer(Consumer* consumer)
     {
-        DPRINTF(RubyQueue, "Setting consumer: %s\n", *consumer);
+        DPRINTF(RubyQueue, "Setting consumer: %s, randomization_enabled: %d\n", *consumer, MessageRandomizationStrings[static_cast<int>(m_randomization)]);
         if (m_consumer != NULL) {
             fatal("Trying to connect %s to MessageBuffer %s. \
                   \n%s already connected. Check the cntrl_id's.\n",

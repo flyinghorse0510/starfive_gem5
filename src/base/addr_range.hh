@@ -360,7 +360,7 @@ class AddrRange
     to_string() const
     {
         if (interleaved()) {
-            std::string str;
+            std::string str = "";
             for (unsigned int i = 0; i < masks.size(); i++) {
                 str += " ";
                 Addr mask = masks[i];
@@ -369,7 +369,7 @@ class AddrRange
                     mask &= ~(1ULL << bit);
                     str += csprintf("a[%d]^", bit);
                 }
-                str += csprintf("\b=%d", bits(intlvMatch, i));
+                str += csprintf("%d", bits(intlvMatch, i));
             }
             return csprintf("[%#llx:%#llx]%s", _start, _end, str);
         } else {
