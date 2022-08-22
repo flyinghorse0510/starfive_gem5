@@ -87,7 +87,7 @@ if args.num_cpus > block_size:
 #
 
 if args.num_cpus > 0 :
-    cpus = [ SeqMemTest(max_loads = args.maxloads,
+    cpus = [ IsolatedMemTest(max_loads = args.maxloads,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
 
@@ -96,7 +96,7 @@ system = System(cpu = cpus,
                 mem_ranges = [AddrRange(args.mem_size)])
 
 if args.num_dmas > 0:
-    dmas = [ SeqMemTest(max_loads = args.maxloads,
+    dmas = [ IsolatedMemTest(max_loads = args.maxloads,
                      progress_interval = args.progress,
                      suppress_func_errors = not args.suppress_func_errors) \
              for i in range(args.num_dmas) ]
@@ -121,7 +121,7 @@ system.ruby.clk_domain = SrcClockDomain(clock = args.ruby_clock,
 # The tester is most effective when randomization is turned on and
 # artifical delay is randomly inserted on messages
 #
-system.ruby.randomization = True
+system.ruby.randomization = False
 
 assert(len(cpus) == len(system.ruby._cpu_ports))
 

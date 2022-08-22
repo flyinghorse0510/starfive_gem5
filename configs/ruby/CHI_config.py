@@ -529,6 +529,7 @@ class CHI_HNF(CHI_Node):
     _addr_ranges = {}
     @classmethod
     def createAddrRanges(cls, sys_mem_ranges, cache_line_size, hnfs):
+        import pprint as pp
         # Create the HNFs interleaved addr ranges
         block_size_bits = int(math.log(cache_line_size, 2))
         llc_bits = int(math.log(len(hnfs), 2))
@@ -542,6 +543,7 @@ class CHI_HNF(CHI_Node):
                                         intlvMatch = i)
                 ranges.append(addr_range)
             cls._addr_ranges[hnf] = (ranges, numa_bit)
+            pp.pprint(f'{i}@HNF_{hnf} ranges : {ranges}')
 
     @classmethod
     def getAddrRanges(cls, hnf_idx):
