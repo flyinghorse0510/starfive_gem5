@@ -542,8 +542,9 @@ class CHI_HNF(CHI_Node):
                                         intlvBits = llc_bits,
                                         intlvMatch = i)
                 ranges.append(addr_range)
+                print(f'{i}@HNF_{hnf} ranges : {addr_range}')
             cls._addr_ranges[hnf] = (ranges, numa_bit)
-            pp.pprint(f'{i}@HNF_{hnf} ranges : {ranges}')
+            
 
     @classmethod
     def getAddrRanges(cls, hnf_idx):

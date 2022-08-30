@@ -110,7 +110,8 @@ AbstractController::init()
             /* Star5 print */
             // std::stringstream addrMapStr;
             // addrMapStr << addr_range
-            DPRINTF(RubyCHITrace,"AbstCntrl AddrRange=%s, MachinedId=%s\n",addr_range.to_string(),MachineIDToString(mid));
+            if (mid.getType() == MachineType_L2Cache)
+                DPRINTF(RubyCHITrace,"AbstCntrl AddrRange=%s, MachinedId=%s\n",addr_range.to_string(),MachineIDToString(mid));
         }
         downstreamDestinations.add(mid);
     }
