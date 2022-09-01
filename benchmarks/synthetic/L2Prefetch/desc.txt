@@ -1,0 +1,3 @@
+Cache resident Linked List Traversal in L2
+100% prefetch coverage
+Significant performance increase IPC - 0.025 to 0.064

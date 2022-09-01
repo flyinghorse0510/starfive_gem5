@@ -1,0 +1,4 @@
+Cache resident Linked List Traversal in L2
+Ability to alter the offset - can handle negative offsets
+Coverage ~90% (theoretical expectation - 100%)
+Offset can be of any length

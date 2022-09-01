@@ -1,0 +1,2 @@
+make -B PORT_DIR=linux64 CC=riscv64-unknown-elf-gcc LFLAGS_END= USE_CLOCK=1 ITERATIONS=10 XCFLAGS="-march=rv64ima -mabi=lp64"
+/home/kimura/riscv32-default/bin/spike /home/kimura/riscv32-default/riscv64-unknown-elf/bin/pk coremark.exe

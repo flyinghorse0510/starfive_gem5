@@ -1,0 +1,1373 @@
+
+bench.RISCV_GEM5:     file format elf64-littleriscv
+
+
+Disassembly of section .text:
+
+00000000000100b0 <main>:
+   100b0:	1141                	addi	sp,sp,-16
+   100b2:	4581                	li	a1,0
+   100b4:	4501                	li	a0,0
+   100b6:	e406                	sd	ra,8(sp)
+   100b8:	01b000ef          	jal	ra,108d2 <m5_dump_reset_stats>
+   100bc:	3e800513          	li	a0,1000
+   100c0:	0b4000ef          	jal	ra,10174 <loop>
+   100c4:	4501                	li	a0,0
+   100c6:	4581                	li	a1,0
+   100c8:	00b000ef          	jal	ra,108d2 <m5_dump_reset_stats>
+   100cc:	60a2                	ld	ra,8(sp)
+   100ce:	4501                	li	a0,0
+   100d0:	0141                	addi	sp,sp,16
+   100d2:	8082                	ret
+
+00000000000100d4 <register_fini>:
+   100d4:	00000793          	li	a5,0
+   100d8:	c791                	beqz	a5,100e4 <register_fini+0x10>
+   100da:	6545                	lui	a0,0x11
+   100dc:	b1c50513          	addi	a0,a0,-1252 # 10b1c <__libc_fini_array>
+   100e0:	2330006f          	j	10b12 <atexit>
+   100e4:	8082                	ret
+
+00000000000100e6 <_start>:
+   100e6:	00003197          	auipc	gp,0x3
+   100ea:	a7218193          	addi	gp,gp,-1422 # 12b58 <__global_pointer$>
+   100ee:	81818513          	addi	a0,gp,-2024 # 12370 <completed.1>
+   100f2:	00022617          	auipc	a2,0x22
+   100f6:	cb660613          	addi	a2,a2,-842 # 31da8 <__BSS_END__>
+   100fa:	8e09                	sub	a2,a2,a0
+   100fc:	4581                	li	a1,0
+   100fe:	0a7000ef          	jal	ra,109a4 <memset>
+   10102:	00001517          	auipc	a0,0x1
+   10106:	a1050513          	addi	a0,a0,-1520 # 10b12 <atexit>
+   1010a:	c519                	beqz	a0,10118 <_start+0x32>
+   1010c:	00001517          	auipc	a0,0x1
+   10110:	a1050513          	addi	a0,a0,-1520 # 10b1c <__libc_fini_array>
+   10114:	1ff000ef          	jal	ra,10b12 <atexit>
+   10118:	023000ef          	jal	ra,1093a <__libc_init_array>
+   1011c:	4502                	lw	a0,0(sp)
+   1011e:	002c                	addi	a1,sp,8
+   10120:	4601                	li	a2,0
+   10122:	f8fff0ef          	jal	ra,100b0 <main>
+   10126:	7f40006f          	j	1091a <exit>
+
+000000000001012a <__do_global_dtors_aux>:
+   1012a:	1141                	addi	sp,sp,-16
+   1012c:	e022                	sd	s0,0(sp)
+   1012e:	8181c783          	lbu	a5,-2024(gp) # 12370 <completed.1>
+   10132:	e406                	sd	ra,8(sp)
+   10134:	ef91                	bnez	a5,10150 <__do_global_dtors_aux+0x26>
+   10136:	00000793          	li	a5,0
+   1013a:	cb81                	beqz	a5,1014a <__do_global_dtors_aux+0x20>
+   1013c:	6549                	lui	a0,0x12
+   1013e:	bf050513          	addi	a0,a0,-1040 # 11bf0 <__FRAME_END__>
+   10142:	00000097          	auipc	ra,0x0
+   10146:	000000e7          	jalr	zero # 0 <main-0x100b0>
+   1014a:	4785                	li	a5,1
+   1014c:	80f18c23          	sb	a5,-2024(gp) # 12370 <completed.1>
+   10150:	60a2                	ld	ra,8(sp)
+   10152:	6402                	ld	s0,0(sp)
+   10154:	0141                	addi	sp,sp,16
+   10156:	8082                	ret
+
+0000000000010158 <frame_dummy>:
+   10158:	00000793          	li	a5,0
+   1015c:	cb99                	beqz	a5,10172 <frame_dummy+0x1a>
+   1015e:	65c9                	lui	a1,0x12
+   10160:	6549                	lui	a0,0x12
+   10162:	37858593          	addi	a1,a1,888 # 12378 <object.0>
+   10166:	bf050513          	addi	a0,a0,-1040 # 11bf0 <__FRAME_END__>
+   1016a:	00000317          	auipc	t1,0x0
+   1016e:	00000067          	jr	zero # 0 <main-0x100b0>
+   10172:	8082                	ret
+
+0000000000010174 <loop>:
+   10174:	0705                	addi	a4,a4,1
+   10176:	0805                	addi	a6,a6,1
+   10178:	0285                	addi	t0,t0,1
+   1017a:	0305                	addi	t1,t1,1
+   1017c:	0385                	addi	t2,t2,1
+   1017e:	0e05                	addi	t3,t3,1
+   10180:	0e85                	addi	t4,t4,1
+   10182:	0e85                	addi	t4,t4,1
+   10184:	0f05                	addi	t5,t5,1
+   10186:	0f85                	addi	t6,t6,1
+   10188:	0705                	addi	a4,a4,1
+   1018a:	0705                	addi	a4,a4,1
+   1018c:	0705                	addi	a4,a4,1
+   1018e:	0705                	addi	a4,a4,1
+   10190:	0705                	addi	a4,a4,1
+   10192:	0705                	addi	a4,a4,1
+   10194:	0705                	addi	a4,a4,1
+   10196:	0705                	addi	a4,a4,1
+   10198:	0705                	addi	a4,a4,1
+   1019a:	0705                	addi	a4,a4,1
+   1019c:	0705                	addi	a4,a4,1
+   1019e:	0705                	addi	a4,a4,1
+   101a0:	0705                	addi	a4,a4,1
+   101a2:	0705                	addi	a4,a4,1
+   101a4:	0705                	addi	a4,a4,1
+   101a6:	0705                	addi	a4,a4,1
+   101a8:	0705                	addi	a4,a4,1
+   101aa:	0705                	addi	a4,a4,1
+   101ac:	0705                	addi	a4,a4,1
+   101ae:	0705                	addi	a4,a4,1
+   101b0:	0705                	addi	a4,a4,1
+   101b2:	0705                	addi	a4,a4,1
+   101b4:	0705                	addi	a4,a4,1
+   101b6:	0705                	addi	a4,a4,1
+   101b8:	0705                	addi	a4,a4,1
+   101ba:	0705                	addi	a4,a4,1
+   101bc:	0705                	addi	a4,a4,1
+   101be:	0705                	addi	a4,a4,1
+   101c0:	0705                	addi	a4,a4,1
+   101c2:	0705                	addi	a4,a4,1
+   101c4:	0705                	addi	a4,a4,1
+   101c6:	0705                	addi	a4,a4,1
+   101c8:	0705                	addi	a4,a4,1
+   101ca:	0705                	addi	a4,a4,1
+   101cc:	0705                	addi	a4,a4,1
+   101ce:	0705                	addi	a4,a4,1
+   101d0:	0705                	addi	a4,a4,1
+   101d2:	0705                	addi	a4,a4,1
+   101d4:	0705                	addi	a4,a4,1
+   101d6:	0705                	addi	a4,a4,1
+   101d8:	0705                	addi	a4,a4,1
+   101da:	0705                	addi	a4,a4,1
+   101dc:	0705                	addi	a4,a4,1
+   101de:	0705                	addi	a4,a4,1
+   101e0:	0705                	addi	a4,a4,1
+   101e2:	0705                	addi	a4,a4,1
+   101e4:	0705                	addi	a4,a4,1
+   101e6:	0705                	addi	a4,a4,1
+   101e8:	0705                	addi	a4,a4,1
+   101ea:	0705                	addi	a4,a4,1
+   101ec:	0705                	addi	a4,a4,1
+   101ee:	0705                	addi	a4,a4,1
+   101f0:	0705                	addi	a4,a4,1
+   101f2:	0705                	addi	a4,a4,1
+   101f4:	0705                	addi	a4,a4,1
+   101f6:	0705                	addi	a4,a4,1
+   101f8:	0705                	addi	a4,a4,1
+   101fa:	0705                	addi	a4,a4,1
+   101fc:	0705                	addi	a4,a4,1
+   101fe:	0705                	addi	a4,a4,1
+   10200:	0705                	addi	a4,a4,1
+   10202:	0705                	addi	a4,a4,1
+   10204:	0705                	addi	a4,a4,1
+   10206:	0705                	addi	a4,a4,1
+   10208:	0705                	addi	a4,a4,1
+   1020a:	0705                	addi	a4,a4,1
+   1020c:	0705                	addi	a4,a4,1
+   1020e:	0705                	addi	a4,a4,1
+   10210:	0705                	addi	a4,a4,1
+   10212:	0705                	addi	a4,a4,1
+   10214:	0705                	addi	a4,a4,1
+   10216:	0705                	addi	a4,a4,1
+   10218:	0705                	addi	a4,a4,1
+   1021a:	0705                	addi	a4,a4,1
+   1021c:	0705                	addi	a4,a4,1
+   1021e:	0705                	addi	a4,a4,1
+   10220:	0705                	addi	a4,a4,1
+   10222:	0705                	addi	a4,a4,1
+   10224:	0705                	addi	a4,a4,1
+   10226:	0705                	addi	a4,a4,1
+   10228:	0705                	addi	a4,a4,1
+   1022a:	0705                	addi	a4,a4,1
+   1022c:	0705                	addi	a4,a4,1
+   1022e:	0705                	addi	a4,a4,1
+   10230:	0705                	addi	a4,a4,1
+   10232:	0705                	addi	a4,a4,1
+   10234:	0705                	addi	a4,a4,1
+   10236:	0705                	addi	a4,a4,1
+   10238:	0705                	addi	a4,a4,1
+   1023a:	0805                	addi	a6,a6,1
+   1023c:	0285                	addi	t0,t0,1
+   1023e:	0305                	addi	t1,t1,1
+   10240:	0385                	addi	t2,t2,1
+   10242:	0e05                	addi	t3,t3,1
+   10244:	0e85                	addi	t4,t4,1
+   10246:	0e85                	addi	t4,t4,1
+   10248:	0f05                	addi	t5,t5,1
+   1024a:	0f85                	addi	t6,t6,1
+   1024c:	0805                	addi	a6,a6,1
+   1024e:	0285                	addi	t0,t0,1
+   10250:	0305                	addi	t1,t1,1
+   10252:	0385                	addi	t2,t2,1
+   10254:	0e05                	addi	t3,t3,1
+   10256:	0e85                	addi	t4,t4,1
+   10258:	0e85                	addi	t4,t4,1
+   1025a:	0f05                	addi	t5,t5,1
+   1025c:	0f85                	addi	t6,t6,1
+   1025e:	0805                	addi	a6,a6,1
+   10260:	0285                	addi	t0,t0,1
+   10262:	0305                	addi	t1,t1,1
+   10264:	0385                	addi	t2,t2,1
+   10266:	0e05                	addi	t3,t3,1
+   10268:	0e85                	addi	t4,t4,1
+   1026a:	0e85                	addi	t4,t4,1
+   1026c:	0f05                	addi	t5,t5,1
+   1026e:	0f85                	addi	t6,t6,1
+   10270:	0805                	addi	a6,a6,1
+   10272:	0285                	addi	t0,t0,1
+   10274:	0305                	addi	t1,t1,1
+   10276:	0385                	addi	t2,t2,1
+   10278:	0e05                	addi	t3,t3,1
+   1027a:	0e85                	addi	t4,t4,1
+   1027c:	0e85                	addi	t4,t4,1
+   1027e:	0f05                	addi	t5,t5,1
+   10280:	0f85                	addi	t6,t6,1
+   10282:	0805                	addi	a6,a6,1
+   10284:	0285                	addi	t0,t0,1
+   10286:	0305                	addi	t1,t1,1
+   10288:	0385                	addi	t2,t2,1
+   1028a:	0e05                	addi	t3,t3,1
+   1028c:	0e85                	addi	t4,t4,1
+   1028e:	0e85                	addi	t4,t4,1
+   10290:	0f05                	addi	t5,t5,1
+   10292:	0f85                	addi	t6,t6,1
+   10294:	0805                	addi	a6,a6,1
+   10296:	0285                	addi	t0,t0,1
+   10298:	0305                	addi	t1,t1,1
+   1029a:	0385                	addi	t2,t2,1
+   1029c:	0e05                	addi	t3,t3,1
+   1029e:	0e85                	addi	t4,t4,1
+   102a0:	0e85                	addi	t4,t4,1
+   102a2:	0f05                	addi	t5,t5,1
+   102a4:	0f85                	addi	t6,t6,1
+   102a6:	0805                	addi	a6,a6,1
+   102a8:	0285                	addi	t0,t0,1
+   102aa:	0305                	addi	t1,t1,1
+   102ac:	0385                	addi	t2,t2,1
+   102ae:	0e05                	addi	t3,t3,1
+   102b0:	0e85                	addi	t4,t4,1
+   102b2:	0e85                	addi	t4,t4,1
+   102b4:	0f05                	addi	t5,t5,1
+   102b6:	0f85                	addi	t6,t6,1
+   102b8:	0805                	addi	a6,a6,1
+   102ba:	0285                	addi	t0,t0,1
+   102bc:	0305                	addi	t1,t1,1
+   102be:	0385                	addi	t2,t2,1
+   102c0:	0e05                	addi	t3,t3,1
+   102c2:	0e85                	addi	t4,t4,1
+   102c4:	0e85                	addi	t4,t4,1
+   102c6:	0f05                	addi	t5,t5,1
+   102c8:	0f85                	addi	t6,t6,1
+   102ca:	0805                	addi	a6,a6,1
+   102cc:	0285                	addi	t0,t0,1
+   102ce:	0305                	addi	t1,t1,1
+   102d0:	0385                	addi	t2,t2,1
+   102d2:	0e05                	addi	t3,t3,1
+   102d4:	0e85                	addi	t4,t4,1
+   102d6:	0e85                	addi	t4,t4,1
+   102d8:	0f05                	addi	t5,t5,1
+   102da:	0f85                	addi	t6,t6,1
+   102dc:	0805                	addi	a6,a6,1
+   102de:	0285                	addi	t0,t0,1
+   102e0:	0305                	addi	t1,t1,1
+   102e2:	0385                	addi	t2,t2,1
+   102e4:	0e05                	addi	t3,t3,1
+   102e6:	0e85                	addi	t4,t4,1
+   102e8:	0e85                	addi	t4,t4,1
+   102ea:	0f05                	addi	t5,t5,1
+   102ec:	0f85                	addi	t6,t6,1
+   102ee:	0805                	addi	a6,a6,1
+   102f0:	0285                	addi	t0,t0,1
+   102f2:	0305                	addi	t1,t1,1
+   102f4:	0385                	addi	t2,t2,1
+   102f6:	0e05                	addi	t3,t3,1
+   102f8:	0e85                	addi	t4,t4,1
+   102fa:	0e85                	addi	t4,t4,1
+   102fc:	0f05                	addi	t5,t5,1
+   102fe:	0f85                	addi	t6,t6,1
+   10300:	0805                	addi	a6,a6,1
+   10302:	0285                	addi	t0,t0,1
+   10304:	0305                	addi	t1,t1,1
+   10306:	0385                	addi	t2,t2,1
+   10308:	0e05                	addi	t3,t3,1
+   1030a:	0e85                	addi	t4,t4,1
+   1030c:	0e85                	addi	t4,t4,1
+   1030e:	0f05                	addi	t5,t5,1
+   10310:	0f85                	addi	t6,t6,1
+   10312:	0805                	addi	a6,a6,1
+   10314:	0285                	addi	t0,t0,1
+   10316:	0305                	addi	t1,t1,1
+   10318:	0385                	addi	t2,t2,1
+   1031a:	0e05                	addi	t3,t3,1
+   1031c:	0e85                	addi	t4,t4,1
+   1031e:	0e85                	addi	t4,t4,1
+   10320:	0f05                	addi	t5,t5,1
+   10322:	0f85                	addi	t6,t6,1
+   10324:	0805                	addi	a6,a6,1
+   10326:	0285                	addi	t0,t0,1
+   10328:	0305                	addi	t1,t1,1
+   1032a:	0385                	addi	t2,t2,1
+   1032c:	0e05                	addi	t3,t3,1
+   1032e:	0e85                	addi	t4,t4,1
+   10330:	0e85                	addi	t4,t4,1
+   10332:	0f05                	addi	t5,t5,1
+   10334:	0f85                	addi	t6,t6,1
+   10336:	0805                	addi	a6,a6,1
+   10338:	0285                	addi	t0,t0,1
+   1033a:	0305                	addi	t1,t1,1
+   1033c:	0385                	addi	t2,t2,1
+   1033e:	0e05                	addi	t3,t3,1
+   10340:	0e85                	addi	t4,t4,1
+   10342:	0e85                	addi	t4,t4,1
+   10344:	0f05                	addi	t5,t5,1
+   10346:	0f85                	addi	t6,t6,1
+   10348:	0805                	addi	a6,a6,1
+   1034a:	0285                	addi	t0,t0,1
+   1034c:	0305                	addi	t1,t1,1
+   1034e:	0385                	addi	t2,t2,1
+   10350:	0e05                	addi	t3,t3,1
+   10352:	0e85                	addi	t4,t4,1
+   10354:	0e85                	addi	t4,t4,1
+   10356:	0f05                	addi	t5,t5,1
+   10358:	0f85                	addi	t6,t6,1
+   1035a:	0805                	addi	a6,a6,1
+   1035c:	0285                	addi	t0,t0,1
+   1035e:	0305                	addi	t1,t1,1
+   10360:	0385                	addi	t2,t2,1
+   10362:	0e05                	addi	t3,t3,1
+   10364:	0e85                	addi	t4,t4,1
+   10366:	0e85                	addi	t4,t4,1
+   10368:	0f05                	addi	t5,t5,1
+   1036a:	0f85                	addi	t6,t6,1
+   1036c:	0805                	addi	a6,a6,1
+   1036e:	0285                	addi	t0,t0,1
+   10370:	0305                	addi	t1,t1,1
+   10372:	0385                	addi	t2,t2,1
+   10374:	0e05                	addi	t3,t3,1
+   10376:	0e85                	addi	t4,t4,1
+   10378:	0e85                	addi	t4,t4,1
+   1037a:	0f05                	addi	t5,t5,1
+   1037c:	0f85                	addi	t6,t6,1
+   1037e:	0805                	addi	a6,a6,1
+   10380:	0285                	addi	t0,t0,1
+   10382:	0305                	addi	t1,t1,1
+   10384:	0385                	addi	t2,t2,1
+   10386:	0e05                	addi	t3,t3,1
+   10388:	0e85                	addi	t4,t4,1
+   1038a:	0e85                	addi	t4,t4,1
+   1038c:	0f05                	addi	t5,t5,1
+   1038e:	0f85                	addi	t6,t6,1
+   10390:	0805                	addi	a6,a6,1
+   10392:	0285                	addi	t0,t0,1
+   10394:	0305                	addi	t1,t1,1
+   10396:	0385                	addi	t2,t2,1
+   10398:	0e05                	addi	t3,t3,1
+   1039a:	0e85                	addi	t4,t4,1
+   1039c:	0e85                	addi	t4,t4,1
+   1039e:	0f05                	addi	t5,t5,1
+   103a0:	0f85                	addi	t6,t6,1
+   103a2:	0805                	addi	a6,a6,1
+   103a4:	0285                	addi	t0,t0,1
+   103a6:	0305                	addi	t1,t1,1
+   103a8:	0385                	addi	t2,t2,1
+   103aa:	0e05                	addi	t3,t3,1
+   103ac:	0e85                	addi	t4,t4,1
+   103ae:	0e85                	addi	t4,t4,1
+   103b0:	0f05                	addi	t5,t5,1
+   103b2:	0f85                	addi	t6,t6,1
+   103b4:	0805                	addi	a6,a6,1
+   103b6:	0285                	addi	t0,t0,1
+   103b8:	0305                	addi	t1,t1,1
+   103ba:	0385                	addi	t2,t2,1
+   103bc:	0e05                	addi	t3,t3,1
+   103be:	0e85                	addi	t4,t4,1
+   103c0:	0e85                	addi	t4,t4,1
+   103c2:	0f05                	addi	t5,t5,1
+   103c4:	0f85                	addi	t6,t6,1
+   103c6:	0805                	addi	a6,a6,1
+   103c8:	0285                	addi	t0,t0,1
+   103ca:	0305                	addi	t1,t1,1
+   103cc:	0385                	addi	t2,t2,1
+   103ce:	0e05                	addi	t3,t3,1
+   103d0:	0e85                	addi	t4,t4,1
+   103d2:	0e85                	addi	t4,t4,1
+   103d4:	0f05                	addi	t5,t5,1
+   103d6:	0f85                	addi	t6,t6,1
+   103d8:	0805                	addi	a6,a6,1
+   103da:	0285                	addi	t0,t0,1
+   103dc:	0305                	addi	t1,t1,1
+   103de:	0385                	addi	t2,t2,1
+   103e0:	0e05                	addi	t3,t3,1
+   103e2:	0e85                	addi	t4,t4,1
+   103e4:	0e85                	addi	t4,t4,1
+   103e6:	0f05                	addi	t5,t5,1
+   103e8:	0f85                	addi	t6,t6,1
+   103ea:	0805                	addi	a6,a6,1
+   103ec:	0285                	addi	t0,t0,1
+   103ee:	0305                	addi	t1,t1,1
+   103f0:	0385                	addi	t2,t2,1
+   103f2:	0e05                	addi	t3,t3,1
+   103f4:	0e85                	addi	t4,t4,1
+   103f6:	0e85                	addi	t4,t4,1
+   103f8:	0f05                	addi	t5,t5,1
+   103fa:	0f85                	addi	t6,t6,1
+   103fc:	0805                	addi	a6,a6,1
+   103fe:	0285                	addi	t0,t0,1
+   10400:	0305                	addi	t1,t1,1
+   10402:	0385                	addi	t2,t2,1
+   10404:	0e05                	addi	t3,t3,1
+   10406:	0e85                	addi	t4,t4,1
+   10408:	0e85                	addi	t4,t4,1
+   1040a:	0f05                	addi	t5,t5,1
+   1040c:	0f85                	addi	t6,t6,1
+   1040e:	0805                	addi	a6,a6,1
+   10410:	0285                	addi	t0,t0,1
+   10412:	0305                	addi	t1,t1,1
+   10414:	0385                	addi	t2,t2,1
+   10416:	0e05                	addi	t3,t3,1
+   10418:	0e85                	addi	t4,t4,1
+   1041a:	0e85                	addi	t4,t4,1
+   1041c:	0f05                	addi	t5,t5,1
+   1041e:	0f85                	addi	t6,t6,1
+   10420:	0805                	addi	a6,a6,1
+   10422:	0285                	addi	t0,t0,1
+   10424:	0305                	addi	t1,t1,1
+   10426:	0385                	addi	t2,t2,1
+   10428:	0e05                	addi	t3,t3,1
+   1042a:	0e85                	addi	t4,t4,1
+   1042c:	0e85                	addi	t4,t4,1
+   1042e:	0f05                	addi	t5,t5,1
+   10430:	0f85                	addi	t6,t6,1
+   10432:	0805                	addi	a6,a6,1
+   10434:	0285                	addi	t0,t0,1
+   10436:	0305                	addi	t1,t1,1
+   10438:	0385                	addi	t2,t2,1
+   1043a:	0e05                	addi	t3,t3,1
+   1043c:	0e85                	addi	t4,t4,1
+   1043e:	0e85                	addi	t4,t4,1
+   10440:	0f05                	addi	t5,t5,1
+   10442:	0f85                	addi	t6,t6,1
+   10444:	0805                	addi	a6,a6,1
+   10446:	0285                	addi	t0,t0,1
+   10448:	0305                	addi	t1,t1,1
+   1044a:	0385                	addi	t2,t2,1
+   1044c:	0e05                	addi	t3,t3,1
+   1044e:	0e85                	addi	t4,t4,1
+   10450:	0e85                	addi	t4,t4,1
+   10452:	0f05                	addi	t5,t5,1
+   10454:	0f85                	addi	t6,t6,1
+   10456:	0805                	addi	a6,a6,1
+   10458:	0285                	addi	t0,t0,1
+   1045a:	0305                	addi	t1,t1,1
+   1045c:	0385                	addi	t2,t2,1
+   1045e:	0e05                	addi	t3,t3,1
+   10460:	0e85                	addi	t4,t4,1
+   10462:	0e85                	addi	t4,t4,1
+   10464:	0f05                	addi	t5,t5,1
+   10466:	0f85                	addi	t6,t6,1
+   10468:	0805                	addi	a6,a6,1
+   1046a:	0285                	addi	t0,t0,1
+   1046c:	0305                	addi	t1,t1,1
+   1046e:	0385                	addi	t2,t2,1
+   10470:	0e05                	addi	t3,t3,1
+   10472:	0e85                	addi	t4,t4,1
+   10474:	0e85                	addi	t4,t4,1
+   10476:	0f05                	addi	t5,t5,1
+   10478:	0f85                	addi	t6,t6,1
+   1047a:	0805                	addi	a6,a6,1
+   1047c:	0285                	addi	t0,t0,1
+   1047e:	0305                	addi	t1,t1,1
+   10480:	0385                	addi	t2,t2,1
+   10482:	0e05                	addi	t3,t3,1
+   10484:	0e85                	addi	t4,t4,1
+   10486:	0e85                	addi	t4,t4,1
+   10488:	0f05                	addi	t5,t5,1
+   1048a:	0f85                	addi	t6,t6,1
+   1048c:	0805                	addi	a6,a6,1
+   1048e:	0285                	addi	t0,t0,1
+   10490:	0305                	addi	t1,t1,1
+   10492:	0385                	addi	t2,t2,1
+   10494:	0e05                	addi	t3,t3,1
+   10496:	0e85                	addi	t4,t4,1
+   10498:	0e85                	addi	t4,t4,1
+   1049a:	0f05                	addi	t5,t5,1
+   1049c:	0f85                	addi	t6,t6,1
+   1049e:	0805                	addi	a6,a6,1
+   104a0:	0285                	addi	t0,t0,1
+   104a2:	0305                	addi	t1,t1,1
+   104a4:	0385                	addi	t2,t2,1
+   104a6:	0e05                	addi	t3,t3,1
+   104a8:	0e85                	addi	t4,t4,1
+   104aa:	0e85                	addi	t4,t4,1
+   104ac:	0f05                	addi	t5,t5,1
+   104ae:	0f85                	addi	t6,t6,1
+   104b0:	0805                	addi	a6,a6,1
+   104b2:	0285                	addi	t0,t0,1
+   104b4:	0305                	addi	t1,t1,1
+   104b6:	0385                	addi	t2,t2,1
+   104b8:	0e05                	addi	t3,t3,1
+   104ba:	0e85                	addi	t4,t4,1
+   104bc:	0e85                	addi	t4,t4,1
+   104be:	0f05                	addi	t5,t5,1
+   104c0:	0f85                	addi	t6,t6,1
+   104c2:	0805                	addi	a6,a6,1
+   104c4:	0285                	addi	t0,t0,1
+   104c6:	0305                	addi	t1,t1,1
+   104c8:	0385                	addi	t2,t2,1
+   104ca:	0e05                	addi	t3,t3,1
+   104cc:	0e85                	addi	t4,t4,1
+   104ce:	0e85                	addi	t4,t4,1
+   104d0:	0f05                	addi	t5,t5,1
+   104d2:	0f85                	addi	t6,t6,1
+   104d4:	0805                	addi	a6,a6,1
+   104d6:	0285                	addi	t0,t0,1
+   104d8:	0305                	addi	t1,t1,1
+   104da:	0385                	addi	t2,t2,1
+   104dc:	0e05                	addi	t3,t3,1
+   104de:	0e85                	addi	t4,t4,1
+   104e0:	0e85                	addi	t4,t4,1
+   104e2:	0f05                	addi	t5,t5,1
+   104e4:	0f85                	addi	t6,t6,1
+   104e6:	0805                	addi	a6,a6,1
+   104e8:	0285                	addi	t0,t0,1
+   104ea:	0305                	addi	t1,t1,1
+   104ec:	0385                	addi	t2,t2,1
+   104ee:	0e05                	addi	t3,t3,1
+   104f0:	0e85                	addi	t4,t4,1
+   104f2:	0e85                	addi	t4,t4,1
+   104f4:	0f05                	addi	t5,t5,1
+   104f6:	0f85                	addi	t6,t6,1
+   104f8:	0805                	addi	a6,a6,1
+   104fa:	0285                	addi	t0,t0,1
+   104fc:	0305                	addi	t1,t1,1
+   104fe:	0385                	addi	t2,t2,1
+   10500:	0e05                	addi	t3,t3,1
+   10502:	0e85                	addi	t4,t4,1
+   10504:	0e85                	addi	t4,t4,1
+   10506:	0f05                	addi	t5,t5,1
+   10508:	0f85                	addi	t6,t6,1
+   1050a:	0805                	addi	a6,a6,1
+   1050c:	0285                	addi	t0,t0,1
+   1050e:	0305                	addi	t1,t1,1
+   10510:	0385                	addi	t2,t2,1
+   10512:	0e05                	addi	t3,t3,1
+   10514:	0e85                	addi	t4,t4,1
+   10516:	0e85                	addi	t4,t4,1
+   10518:	0f05                	addi	t5,t5,1
+   1051a:	0f85                	addi	t6,t6,1
+   1051c:	0805                	addi	a6,a6,1
+   1051e:	0285                	addi	t0,t0,1
+   10520:	0305                	addi	t1,t1,1
+   10522:	0385                	addi	t2,t2,1
+   10524:	0e05                	addi	t3,t3,1
+   10526:	0e85                	addi	t4,t4,1
+   10528:	0e85                	addi	t4,t4,1
+   1052a:	0f05                	addi	t5,t5,1
+   1052c:	0f85                	addi	t6,t6,1
+   1052e:	0805                	addi	a6,a6,1
+   10530:	0285                	addi	t0,t0,1
+   10532:	0305                	addi	t1,t1,1
+   10534:	0385                	addi	t2,t2,1
+   10536:	0e05                	addi	t3,t3,1
+   10538:	0e85                	addi	t4,t4,1
+   1053a:	0e85                	addi	t4,t4,1
+   1053c:	0f05                	addi	t5,t5,1
+   1053e:	0f85                	addi	t6,t6,1
+   10540:	0805                	addi	a6,a6,1
+   10542:	0285                	addi	t0,t0,1
+   10544:	0305                	addi	t1,t1,1
+   10546:	0385                	addi	t2,t2,1
+   10548:	0e05                	addi	t3,t3,1
+   1054a:	0e85                	addi	t4,t4,1
+   1054c:	0e85                	addi	t4,t4,1
+   1054e:	0f05                	addi	t5,t5,1
+   10550:	0f85                	addi	t6,t6,1
+   10552:	0805                	addi	a6,a6,1
+   10554:	0285                	addi	t0,t0,1
+   10556:	0305                	addi	t1,t1,1
+   10558:	0385                	addi	t2,t2,1
+   1055a:	0e05                	addi	t3,t3,1
+   1055c:	0e85                	addi	t4,t4,1
+   1055e:	0e85                	addi	t4,t4,1
+   10560:	0f05                	addi	t5,t5,1
+   10562:	0f85                	addi	t6,t6,1
+   10564:	0805                	addi	a6,a6,1
+   10566:	0285                	addi	t0,t0,1
+   10568:	0305                	addi	t1,t1,1
+   1056a:	0385                	addi	t2,t2,1
+   1056c:	0e05                	addi	t3,t3,1
+   1056e:	0e85                	addi	t4,t4,1
+   10570:	0e85                	addi	t4,t4,1
+   10572:	0f05                	addi	t5,t5,1
+   10574:	0f85                	addi	t6,t6,1
+   10576:	0805                	addi	a6,a6,1
+   10578:	0285                	addi	t0,t0,1
+   1057a:	0305                	addi	t1,t1,1
+   1057c:	0385                	addi	t2,t2,1
+   1057e:	0e05                	addi	t3,t3,1
+   10580:	0e85                	addi	t4,t4,1
+   10582:	0e85                	addi	t4,t4,1
+   10584:	0f05                	addi	t5,t5,1
+   10586:	0f85                	addi	t6,t6,1
+   10588:	0805                	addi	a6,a6,1
+   1058a:	0285                	addi	t0,t0,1
+   1058c:	0305                	addi	t1,t1,1
+   1058e:	0385                	addi	t2,t2,1
+   10590:	0e05                	addi	t3,t3,1
+   10592:	0e85                	addi	t4,t4,1
+   10594:	0e85                	addi	t4,t4,1
+   10596:	0f05                	addi	t5,t5,1
+   10598:	0f85                	addi	t6,t6,1
+   1059a:	0805                	addi	a6,a6,1
+   1059c:	0285                	addi	t0,t0,1
+   1059e:	0305                	addi	t1,t1,1
+   105a0:	0385                	addi	t2,t2,1
+   105a2:	0e05                	addi	t3,t3,1
+   105a4:	0e85                	addi	t4,t4,1
+   105a6:	0e85                	addi	t4,t4,1
+   105a8:	0f05                	addi	t5,t5,1
+   105aa:	0f85                	addi	t6,t6,1
+   105ac:	0805                	addi	a6,a6,1
+   105ae:	0285                	addi	t0,t0,1
+   105b0:	0305                	addi	t1,t1,1
+   105b2:	0385                	addi	t2,t2,1
+   105b4:	0e05                	addi	t3,t3,1
+   105b6:	0e85                	addi	t4,t4,1
+   105b8:	0e85                	addi	t4,t4,1
+   105ba:	0f05                	addi	t5,t5,1
+   105bc:	0f85                	addi	t6,t6,1
+   105be:	0805                	addi	a6,a6,1
+   105c0:	0285                	addi	t0,t0,1
+   105c2:	0305                	addi	t1,t1,1
+   105c4:	0385                	addi	t2,t2,1
+   105c6:	0e05                	addi	t3,t3,1
+   105c8:	0e85                	addi	t4,t4,1
+   105ca:	0e85                	addi	t4,t4,1
+   105cc:	0f05                	addi	t5,t5,1
+   105ce:	0f85                	addi	t6,t6,1
+   105d0:	0805                	addi	a6,a6,1
+   105d2:	0285                	addi	t0,t0,1
+   105d4:	0305                	addi	t1,t1,1
+   105d6:	0385                	addi	t2,t2,1
+   105d8:	0e05                	addi	t3,t3,1
+   105da:	0e85                	addi	t4,t4,1
+   105dc:	0e85                	addi	t4,t4,1
+   105de:	0f05                	addi	t5,t5,1
+   105e0:	0f85                	addi	t6,t6,1
+   105e2:	0805                	addi	a6,a6,1
+   105e4:	0285                	addi	t0,t0,1
+   105e6:	0305                	addi	t1,t1,1
+   105e8:	0385                	addi	t2,t2,1
+   105ea:	0e05                	addi	t3,t3,1
+   105ec:	0e85                	addi	t4,t4,1
+   105ee:	0e85                	addi	t4,t4,1
+   105f0:	0f05                	addi	t5,t5,1
+   105f2:	0f85                	addi	t6,t6,1
+   105f4:	0805                	addi	a6,a6,1
+   105f6:	0285                	addi	t0,t0,1
+   105f8:	0305                	addi	t1,t1,1
+   105fa:	0385                	addi	t2,t2,1
+   105fc:	0e05                	addi	t3,t3,1
+   105fe:	0e85                	addi	t4,t4,1
+   10600:	0e85                	addi	t4,t4,1
+   10602:	0f05                	addi	t5,t5,1
+   10604:	0f85                	addi	t6,t6,1
+   10606:	0805                	addi	a6,a6,1
+   10608:	0285                	addi	t0,t0,1
+   1060a:	0305                	addi	t1,t1,1
+   1060c:	0385                	addi	t2,t2,1
+   1060e:	0e05                	addi	t3,t3,1
+   10610:	0e85                	addi	t4,t4,1
+   10612:	0e85                	addi	t4,t4,1
+   10614:	0f05                	addi	t5,t5,1
+   10616:	0f85                	addi	t6,t6,1
+   10618:	0805                	addi	a6,a6,1
+   1061a:	0285                	addi	t0,t0,1
+   1061c:	0305                	addi	t1,t1,1
+   1061e:	0385                	addi	t2,t2,1
+   10620:	0e05                	addi	t3,t3,1
+   10622:	0e85                	addi	t4,t4,1
+   10624:	0e85                	addi	t4,t4,1
+   10626:	0f05                	addi	t5,t5,1
+   10628:	0f85                	addi	t6,t6,1
+   1062a:	0805                	addi	a6,a6,1
+   1062c:	0285                	addi	t0,t0,1
+   1062e:	0305                	addi	t1,t1,1
+   10630:	0385                	addi	t2,t2,1
+   10632:	0e05                	addi	t3,t3,1
+   10634:	0e85                	addi	t4,t4,1
+   10636:	0e85                	addi	t4,t4,1
+   10638:	0f05                	addi	t5,t5,1
+   1063a:	0f85                	addi	t6,t6,1
+   1063c:	0805                	addi	a6,a6,1
+   1063e:	0285                	addi	t0,t0,1
+   10640:	0305                	addi	t1,t1,1
+   10642:	0385                	addi	t2,t2,1
+   10644:	0e05                	addi	t3,t3,1
+   10646:	0e85                	addi	t4,t4,1
+   10648:	0e85                	addi	t4,t4,1
+   1064a:	0f05                	addi	t5,t5,1
+   1064c:	0f85                	addi	t6,t6,1
+   1064e:	0805                	addi	a6,a6,1
+   10650:	0285                	addi	t0,t0,1
+   10652:	0305                	addi	t1,t1,1
+   10654:	0385                	addi	t2,t2,1
+   10656:	0e05                	addi	t3,t3,1
+   10658:	0e85                	addi	t4,t4,1
+   1065a:	0e85                	addi	t4,t4,1
+   1065c:	0f05                	addi	t5,t5,1
+   1065e:	0f85                	addi	t6,t6,1
+   10660:	0805                	addi	a6,a6,1
+   10662:	0285                	addi	t0,t0,1
+   10664:	0305                	addi	t1,t1,1
+   10666:	0385                	addi	t2,t2,1
+   10668:	0e05                	addi	t3,t3,1
+   1066a:	0e85                	addi	t4,t4,1
+   1066c:	0e85                	addi	t4,t4,1
+   1066e:	0f05                	addi	t5,t5,1
+   10670:	0f85                	addi	t6,t6,1
+   10672:	0805                	addi	a6,a6,1
+   10674:	0285                	addi	t0,t0,1
+   10676:	0305                	addi	t1,t1,1
+   10678:	0385                	addi	t2,t2,1
+   1067a:	0e05                	addi	t3,t3,1
+   1067c:	0e85                	addi	t4,t4,1
+   1067e:	0e85                	addi	t4,t4,1
+   10680:	0f05                	addi	t5,t5,1
+   10682:	0f85                	addi	t6,t6,1
+   10684:	0805                	addi	a6,a6,1
+   10686:	0285                	addi	t0,t0,1
+   10688:	0305                	addi	t1,t1,1
+   1068a:	0385                	addi	t2,t2,1
+   1068c:	0e05                	addi	t3,t3,1
+   1068e:	0e85                	addi	t4,t4,1
+   10690:	0e85                	addi	t4,t4,1
+   10692:	0f05                	addi	t5,t5,1
+   10694:	0f85                	addi	t6,t6,1
+   10696:	0805                	addi	a6,a6,1
+   10698:	0285                	addi	t0,t0,1
+   1069a:	0305                	addi	t1,t1,1
+   1069c:	0385                	addi	t2,t2,1
+   1069e:	0e05                	addi	t3,t3,1
+   106a0:	0e85                	addi	t4,t4,1
+   106a2:	0e85                	addi	t4,t4,1
+   106a4:	0f05                	addi	t5,t5,1
+   106a6:	0f85                	addi	t6,t6,1
+   106a8:	0805                	addi	a6,a6,1
+   106aa:	0285                	addi	t0,t0,1
+   106ac:	0305                	addi	t1,t1,1
+   106ae:	0385                	addi	t2,t2,1
+   106b0:	0e05                	addi	t3,t3,1
+   106b2:	0e85                	addi	t4,t4,1
+   106b4:	0e85                	addi	t4,t4,1
+   106b6:	0f05                	addi	t5,t5,1
+   106b8:	0f85                	addi	t6,t6,1
+   106ba:	0805                	addi	a6,a6,1
+   106bc:	0285                	addi	t0,t0,1
+   106be:	0305                	addi	t1,t1,1
+   106c0:	0385                	addi	t2,t2,1
+   106c2:	0e05                	addi	t3,t3,1
+   106c4:	0e85                	addi	t4,t4,1
+   106c6:	0e85                	addi	t4,t4,1
+   106c8:	0f05                	addi	t5,t5,1
+   106ca:	0f85                	addi	t6,t6,1
+   106cc:	0805                	addi	a6,a6,1
+   106ce:	0285                	addi	t0,t0,1
+   106d0:	0305                	addi	t1,t1,1
+   106d2:	0385                	addi	t2,t2,1
+   106d4:	0e05                	addi	t3,t3,1
+   106d6:	0e85                	addi	t4,t4,1
+   106d8:	0e85                	addi	t4,t4,1
+   106da:	0f05                	addi	t5,t5,1
+   106dc:	0f85                	addi	t6,t6,1
+   106de:	0805                	addi	a6,a6,1
+   106e0:	0285                	addi	t0,t0,1
+   106e2:	0305                	addi	t1,t1,1
+   106e4:	0385                	addi	t2,t2,1
+   106e6:	0e05                	addi	t3,t3,1
+   106e8:	0e85                	addi	t4,t4,1
+   106ea:	0e85                	addi	t4,t4,1
+   106ec:	0f05                	addi	t5,t5,1
+   106ee:	0f85                	addi	t6,t6,1
+   106f0:	0805                	addi	a6,a6,1
+   106f2:	0285                	addi	t0,t0,1
+   106f4:	0305                	addi	t1,t1,1
+   106f6:	0385                	addi	t2,t2,1
+   106f8:	0e05                	addi	t3,t3,1
+   106fa:	0e85                	addi	t4,t4,1
+   106fc:	0e85                	addi	t4,t4,1
+   106fe:	0f05                	addi	t5,t5,1
+   10700:	0f85                	addi	t6,t6,1
+   10702:	0805                	addi	a6,a6,1
+   10704:	0285                	addi	t0,t0,1
+   10706:	0305                	addi	t1,t1,1
+   10708:	0385                	addi	t2,t2,1
+   1070a:	0e05                	addi	t3,t3,1
+   1070c:	0e85                	addi	t4,t4,1
+   1070e:	0e85                	addi	t4,t4,1
+   10710:	0f05                	addi	t5,t5,1
+   10712:	0f85                	addi	t6,t6,1
+   10714:	0805                	addi	a6,a6,1
+   10716:	0285                	addi	t0,t0,1
+   10718:	0305                	addi	t1,t1,1
+   1071a:	0385                	addi	t2,t2,1
+   1071c:	0e05                	addi	t3,t3,1
+   1071e:	0e85                	addi	t4,t4,1
+   10720:	0e85                	addi	t4,t4,1
+   10722:	0f05                	addi	t5,t5,1
+   10724:	0f85                	addi	t6,t6,1
+   10726:	0805                	addi	a6,a6,1
+   10728:	0285                	addi	t0,t0,1
+   1072a:	0305                	addi	t1,t1,1
+   1072c:	0385                	addi	t2,t2,1
+   1072e:	0e05                	addi	t3,t3,1
+   10730:	0e85                	addi	t4,t4,1
+   10732:	0e85                	addi	t4,t4,1
+   10734:	0f05                	addi	t5,t5,1
+   10736:	0f85                	addi	t6,t6,1
+   10738:	0805                	addi	a6,a6,1
+   1073a:	0285                	addi	t0,t0,1
+   1073c:	0305                	addi	t1,t1,1
+   1073e:	0385                	addi	t2,t2,1
+   10740:	0e05                	addi	t3,t3,1
+   10742:	0e85                	addi	t4,t4,1
+   10744:	0e85                	addi	t4,t4,1
+   10746:	0f05                	addi	t5,t5,1
+   10748:	0f85                	addi	t6,t6,1
+   1074a:	0805                	addi	a6,a6,1
+   1074c:	0285                	addi	t0,t0,1
+   1074e:	0305                	addi	t1,t1,1
+   10750:	0385                	addi	t2,t2,1
+   10752:	0e05                	addi	t3,t3,1
+   10754:	0e85                	addi	t4,t4,1
+   10756:	0e85                	addi	t4,t4,1
+   10758:	0f05                	addi	t5,t5,1
+   1075a:	0f85                	addi	t6,t6,1
+   1075c:	0805                	addi	a6,a6,1
+   1075e:	0285                	addi	t0,t0,1
+   10760:	0305                	addi	t1,t1,1
+   10762:	0385                	addi	t2,t2,1
+   10764:	0e05                	addi	t3,t3,1
+   10766:	0e85                	addi	t4,t4,1
+   10768:	0e85                	addi	t4,t4,1
+   1076a:	0f05                	addi	t5,t5,1
+   1076c:	0f85                	addi	t6,t6,1
+   1076e:	0805                	addi	a6,a6,1
+   10770:	0285                	addi	t0,t0,1
+   10772:	0305                	addi	t1,t1,1
+   10774:	0385                	addi	t2,t2,1
+   10776:	0e05                	addi	t3,t3,1
+   10778:	0e85                	addi	t4,t4,1
+   1077a:	0e85                	addi	t4,t4,1
+   1077c:	0f05                	addi	t5,t5,1
+   1077e:	0f85                	addi	t6,t6,1
+   10780:	0805                	addi	a6,a6,1
+   10782:	0285                	addi	t0,t0,1
+   10784:	0305                	addi	t1,t1,1
+   10786:	0385                	addi	t2,t2,1
+   10788:	0e05                	addi	t3,t3,1
+   1078a:	0e85                	addi	t4,t4,1
+   1078c:	0e85                	addi	t4,t4,1
+   1078e:	0f05                	addi	t5,t5,1
+   10790:	0f85                	addi	t6,t6,1
+   10792:	0805                	addi	a6,a6,1
+   10794:	0285                	addi	t0,t0,1
+   10796:	0305                	addi	t1,t1,1
+   10798:	0385                	addi	t2,t2,1
+   1079a:	0e05                	addi	t3,t3,1
+   1079c:	0e85                	addi	t4,t4,1
+   1079e:	0e85                	addi	t4,t4,1
+   107a0:	0f05                	addi	t5,t5,1
+   107a2:	0f85                	addi	t6,t6,1
+   107a4:	0805                	addi	a6,a6,1
+   107a6:	0285                	addi	t0,t0,1
+   107a8:	0305                	addi	t1,t1,1
+   107aa:	0385                	addi	t2,t2,1
+   107ac:	0e05                	addi	t3,t3,1
+   107ae:	0e85                	addi	t4,t4,1
+   107b0:	0e85                	addi	t4,t4,1
+   107b2:	0f05                	addi	t5,t5,1
+   107b4:	0f85                	addi	t6,t6,1
+   107b6:	0805                	addi	a6,a6,1
+   107b8:	0285                	addi	t0,t0,1
+   107ba:	0305                	addi	t1,t1,1
+   107bc:	0385                	addi	t2,t2,1
+   107be:	0e05                	addi	t3,t3,1
+   107c0:	0e85                	addi	t4,t4,1
+   107c2:	0e85                	addi	t4,t4,1
+   107c4:	0f05                	addi	t5,t5,1
+   107c6:	0f85                	addi	t6,t6,1
+   107c8:	0805                	addi	a6,a6,1
+   107ca:	0285                	addi	t0,t0,1
+   107cc:	0305                	addi	t1,t1,1
+   107ce:	0385                	addi	t2,t2,1
+   107d0:	0e05                	addi	t3,t3,1
+   107d2:	0e85                	addi	t4,t4,1
+   107d4:	0e85                	addi	t4,t4,1
+   107d6:	0f05                	addi	t5,t5,1
+   107d8:	0f85                	addi	t6,t6,1
+   107da:	0805                	addi	a6,a6,1
+   107dc:	0285                	addi	t0,t0,1
+   107de:	0305                	addi	t1,t1,1
+   107e0:	0385                	addi	t2,t2,1
+   107e2:	0e05                	addi	t3,t3,1
+   107e4:	0e85                	addi	t4,t4,1
+   107e6:	0e85                	addi	t4,t4,1
+   107e8:	0f05                	addi	t5,t5,1
+   107ea:	0f85                	addi	t6,t6,1
+   107ec:	0805                	addi	a6,a6,1
+   107ee:	0285                	addi	t0,t0,1
+   107f0:	0305                	addi	t1,t1,1
+   107f2:	0385                	addi	t2,t2,1
+   107f4:	0e05                	addi	t3,t3,1
+   107f6:	0e85                	addi	t4,t4,1
+   107f8:	0e85                	addi	t4,t4,1
+   107fa:	0f05                	addi	t5,t5,1
+   107fc:	0f85                	addi	t6,t6,1
+   107fe:	0805                	addi	a6,a6,1
+   10800:	0285                	addi	t0,t0,1
+   10802:	0305                	addi	t1,t1,1
+   10804:	0385                	addi	t2,t2,1
+   10806:	0e05                	addi	t3,t3,1
+   10808:	0e85                	addi	t4,t4,1
+   1080a:	0e85                	addi	t4,t4,1
+   1080c:	0f05                	addi	t5,t5,1
+   1080e:	0f85                	addi	t6,t6,1
+   10810:	0805                	addi	a6,a6,1
+   10812:	0285                	addi	t0,t0,1
+   10814:	0305                	addi	t1,t1,1
+   10816:	0385                	addi	t2,t2,1
+   10818:	0e05                	addi	t3,t3,1
+   1081a:	0e85                	addi	t4,t4,1
+   1081c:	0e85                	addi	t4,t4,1
+   1081e:	0f05                	addi	t5,t5,1
+   10820:	0f85                	addi	t6,t6,1
+   10822:	0805                	addi	a6,a6,1
+   10824:	0285                	addi	t0,t0,1
+   10826:	0305                	addi	t1,t1,1
+   10828:	0385                	addi	t2,t2,1
+   1082a:	0e05                	addi	t3,t3,1
+   1082c:	0e85                	addi	t4,t4,1
+   1082e:	0e85                	addi	t4,t4,1
+   10830:	0f05                	addi	t5,t5,1
+   10832:	0f85                	addi	t6,t6,1
+   10834:	0805                	addi	a6,a6,1
+   10836:	0285                	addi	t0,t0,1
+   10838:	0305                	addi	t1,t1,1
+   1083a:	0385                	addi	t2,t2,1
+   1083c:	0e05                	addi	t3,t3,1
+   1083e:	0e85                	addi	t4,t4,1
+   10840:	0e85                	addi	t4,t4,1
+   10842:	0f05                	addi	t5,t5,1
+   10844:	0f85                	addi	t6,t6,1
+   10846:	0805                	addi	a6,a6,1
+   10848:	0285                	addi	t0,t0,1
+   1084a:	0305                	addi	t1,t1,1
+   1084c:	0385                	addi	t2,t2,1
+   1084e:	0e05                	addi	t3,t3,1
+   10850:	0e85                	addi	t4,t4,1
+   10852:	0e85                	addi	t4,t4,1
+   10854:	0f05                	addi	t5,t5,1
+   10856:	0f85                	addi	t6,t6,1
+   10858:	0805                	addi	a6,a6,1
+   1085a:	0285                	addi	t0,t0,1
+   1085c:	0305                	addi	t1,t1,1
+   1085e:	0385                	addi	t2,t2,1
+   10860:	0e05                	addi	t3,t3,1
+   10862:	0e85                	addi	t4,t4,1
+   10864:	0e85                	addi	t4,t4,1
+   10866:	0f05                	addi	t5,t5,1
+   10868:	0f85                	addi	t6,t6,1
+   1086a:	0805                	addi	a6,a6,1
+   1086c:	0285                	addi	t0,t0,1
+   1086e:	0305                	addi	t1,t1,1
+   10870:	0385                	addi	t2,t2,1
+   10872:	0e05                	addi	t3,t3,1
+   10874:	0e85                	addi	t4,t4,1
+   10876:	0e85                	addi	t4,t4,1
+   10878:	0f05                	addi	t5,t5,1
+   1087a:	0f85                	addi	t6,t6,1
+   1087c:	8082                	ret
+
+000000000001087e <m5_arm>:
+   1087e:	0000007b          	0x7b
+   10882:	8082                	ret
+
+0000000000010884 <m5_quiesce>:
+   10884:	0200007b          	0x200007b
+   10888:	8082                	ret
+
+000000000001088a <m5_quiesce_ns>:
+   1088a:	0400007b          	0x400007b
+   1088e:	8082                	ret
+
+0000000000010890 <m5_quiesce_cycle>:
+   10890:	0600007b          	0x600007b
+   10894:	8082                	ret
+
+0000000000010896 <m5_quiesce_time>:
+   10896:	0800007b          	0x800007b
+   1089a:	8082                	ret
+
+000000000001089c <m5_rpns>:
+   1089c:	0e00007b          	0xe00007b
+   108a0:	8082                	ret
+
+00000000000108a2 <m5_wake_cpu>:
+   108a2:	1200007b          	0x1200007b
+   108a6:	8082                	ret
+
+00000000000108a8 <m5_exit>:
+   108a8:	4200007b          	0x4200007b
+   108ac:	8082                	ret
+
+00000000000108ae <m5_fail>:
+   108ae:	4400007b          	0x4400007b
+   108b2:	8082                	ret
+
+00000000000108b4 <m5_sum>:
+   108b4:	4600007b          	0x4600007b
+   108b8:	8082                	ret
+
+00000000000108ba <m5_init_param>:
+   108ba:	6000007b          	0x6000007b
+   108be:	8082                	ret
+
+00000000000108c0 <m5_load_symbol>:
+   108c0:	6200007b          	0x6200007b
+   108c4:	8082                	ret
+
+00000000000108c6 <m5_reset_stats>:
+   108c6:	8000007b          	0x8000007b
+   108ca:	8082                	ret
+
+00000000000108cc <m5_dump_stats>:
+   108cc:	8200007b          	0x8200007b
+   108d0:	8082                	ret
+
+00000000000108d2 <m5_dump_reset_stats>:
+   108d2:	8400007b          	0x8400007b
+   108d6:	8082                	ret
+
+00000000000108d8 <m5_checkpoint>:
+   108d8:	8600007b          	0x8600007b
+   108dc:	8082                	ret
+
+00000000000108de <m5_write_file>:
+   108de:	9e00007b          	0x9e00007b
+   108e2:	8082                	ret
+
+00000000000108e4 <m5_read_file>:
+   108e4:	a000007b          	0xa000007b
+   108e8:	8082                	ret
+
+00000000000108ea <m5_debug_break>:
+   108ea:	a200007b          	0xa200007b
+   108ee:	8082                	ret
+
+00000000000108f0 <m5_switch_cpu>:
+   108f0:	a400007b          	0xa400007b
+   108f4:	8082                	ret
+
+00000000000108f6 <m5_add_symbol>:
+   108f6:	a600007b          	0xa600007b
+   108fa:	8082                	ret
+
+00000000000108fc <m5_panic>:
+   108fc:	a800007b          	0xa800007b
+   10900:	8082                	ret
+
+0000000000010902 <m5_work_begin>:
+   10902:	b400007b          	0xb400007b
+   10906:	8082                	ret
+
+0000000000010908 <m5_work_end>:
+   10908:	b600007b          	0xb600007b
+   1090c:	8082                	ret
+
+000000000001090e <m5_dist_toggle_sync>:
+   1090e:	c400007b          	0xc400007b
+   10912:	8082                	ret
+
+0000000000010914 <m5_workload>:
+   10914:	e000007b          	0xe000007b
+   10918:	8082                	ret
+
+000000000001091a <exit>:
+   1091a:	1141                	addi	sp,sp,-16
+   1091c:	4581                	li	a1,0
+   1091e:	e022                	sd	s0,0(sp)
+   10920:	e406                	sd	ra,8(sp)
+   10922:	842a                	mv	s0,a0
+   10924:	12a000ef          	jal	ra,10a4e <__call_exitprocs>
+   10928:	67c9                	lui	a5,0x12
+   1092a:	3587b503          	ld	a0,856(a5) # 12358 <_global_impure_ptr>
+   1092e:	6d3c                	ld	a5,88(a0)
+   10930:	c391                	beqz	a5,10934 <exit+0x1a>
+   10932:	9782                	jalr	a5
+   10934:	8522                	mv	a0,s0
+   10936:	292000ef          	jal	ra,10bc8 <_exit>
+
+000000000001093a <__libc_init_array>:
+   1093a:	1101                	addi	sp,sp,-32
+   1093c:	e822                	sd	s0,16(sp)
+   1093e:	e04a                	sd	s2,0(sp)
+   10940:	6449                	lui	s0,0x12
+   10942:	6949                	lui	s2,0x12
+   10944:	bf440793          	addi	a5,s0,-1036 # 11bf4 <__preinit_array_end>
+   10948:	bf490913          	addi	s2,s2,-1036 # 11bf4 <__preinit_array_end>
+   1094c:	40f90933          	sub	s2,s2,a5
+   10950:	ec06                	sd	ra,24(sp)
+   10952:	e426                	sd	s1,8(sp)
+   10954:	40395913          	srai	s2,s2,0x3
+   10958:	00090b63          	beqz	s2,1096e <__libc_init_array+0x34>
+   1095c:	bf440413          	addi	s0,s0,-1036
+   10960:	4481                	li	s1,0
+   10962:	601c                	ld	a5,0(s0)
+   10964:	0485                	addi	s1,s1,1
+   10966:	0421                	addi	s0,s0,8
+   10968:	9782                	jalr	a5
+   1096a:	fe991ce3          	bne	s2,s1,10962 <__libc_init_array+0x28>
+   1096e:	6449                	lui	s0,0x12
+   10970:	6949                	lui	s2,0x12
+   10972:	bf840793          	addi	a5,s0,-1032 # 11bf8 <__init_array_start>
+   10976:	c0890913          	addi	s2,s2,-1016 # 11c08 <__do_global_dtors_aux_fini_array_entry>
+   1097a:	40f90933          	sub	s2,s2,a5
+   1097e:	40395913          	srai	s2,s2,0x3
+   10982:	00090b63          	beqz	s2,10998 <__libc_init_array+0x5e>
+   10986:	bf840413          	addi	s0,s0,-1032
+   1098a:	4481                	li	s1,0
+   1098c:	601c                	ld	a5,0(s0)
+   1098e:	0485                	addi	s1,s1,1
+   10990:	0421                	addi	s0,s0,8
+   10992:	9782                	jalr	a5
+   10994:	fe991ce3          	bne	s2,s1,1098c <__libc_init_array+0x52>
+   10998:	60e2                	ld	ra,24(sp)
+   1099a:	6442                	ld	s0,16(sp)
+   1099c:	64a2                	ld	s1,8(sp)
+   1099e:	6902                	ld	s2,0(sp)
+   109a0:	6105                	addi	sp,sp,32
+   109a2:	8082                	ret
+
+00000000000109a4 <memset>:
+   109a4:	433d                	li	t1,15
+   109a6:	872a                	mv	a4,a0
+   109a8:	02c37163          	bgeu	t1,a2,109ca <memset+0x26>
+   109ac:	00f77793          	andi	a5,a4,15
+   109b0:	e3c1                	bnez	a5,10a30 <memset+0x8c>
+   109b2:	e1bd                	bnez	a1,10a18 <memset+0x74>
+   109b4:	ff067693          	andi	a3,a2,-16
+   109b8:	8a3d                	andi	a2,a2,15
+   109ba:	96ba                	add	a3,a3,a4
+   109bc:	e30c                	sd	a1,0(a4)
+   109be:	e70c                	sd	a1,8(a4)
+   109c0:	0741                	addi	a4,a4,16
+   109c2:	fed76de3          	bltu	a4,a3,109bc <memset+0x18>
+   109c6:	e211                	bnez	a2,109ca <memset+0x26>
+   109c8:	8082                	ret
+   109ca:	40c306b3          	sub	a3,t1,a2
+   109ce:	068a                	slli	a3,a3,0x2
+   109d0:	00000297          	auipc	t0,0x0
+   109d4:	9696                	add	a3,a3,t0
+   109d6:	00a68067          	jr	10(a3)
+   109da:	00b70723          	sb	a1,14(a4)
+   109de:	00b706a3          	sb	a1,13(a4)
+   109e2:	00b70623          	sb	a1,12(a4)
+   109e6:	00b705a3          	sb	a1,11(a4)
+   109ea:	00b70523          	sb	a1,10(a4)
+   109ee:	00b704a3          	sb	a1,9(a4)
+   109f2:	00b70423          	sb	a1,8(a4)
+   109f6:	00b703a3          	sb	a1,7(a4)
+   109fa:	00b70323          	sb	a1,6(a4)
+   109fe:	00b702a3          	sb	a1,5(a4)
+   10a02:	00b70223          	sb	a1,4(a4)
+   10a06:	00b701a3          	sb	a1,3(a4)
+   10a0a:	00b70123          	sb	a1,2(a4)
+   10a0e:	00b700a3          	sb	a1,1(a4)
+   10a12:	00b70023          	sb	a1,0(a4)
+   10a16:	8082                	ret
+   10a18:	0ff5f593          	zext.b	a1,a1
+   10a1c:	00859693          	slli	a3,a1,0x8
+   10a20:	8dd5                	or	a1,a1,a3
+   10a22:	01059693          	slli	a3,a1,0x10
+   10a26:	8dd5                	or	a1,a1,a3
+   10a28:	02059693          	slli	a3,a1,0x20
+   10a2c:	8dd5                	or	a1,a1,a3
+   10a2e:	b759                	j	109b4 <memset+0x10>
+   10a30:	00279693          	slli	a3,a5,0x2
+   10a34:	00000297          	auipc	t0,0x0
+   10a38:	9696                	add	a3,a3,t0
+   10a3a:	8286                	mv	t0,ra
+   10a3c:	fa2680e7          	jalr	-94(a3)
+   10a40:	8096                	mv	ra,t0
+   10a42:	17c1                	addi	a5,a5,-16
+   10a44:	8f1d                	sub	a4,a4,a5
+   10a46:	963e                	add	a2,a2,a5
+   10a48:	f8c371e3          	bgeu	t1,a2,109ca <memset+0x26>
+   10a4c:	b79d                	j	109b2 <memset+0xe>
+
+0000000000010a4e <__call_exitprocs>:
+   10a4e:	715d                	addi	sp,sp,-80
+   10a50:	67c9                	lui	a5,0x12
+   10a52:	f052                	sd	s4,32(sp)
+   10a54:	3587ba03          	ld	s4,856(a5) # 12358 <_global_impure_ptr>
+   10a58:	f84a                	sd	s2,48(sp)
+   10a5a:	e486                	sd	ra,72(sp)
+   10a5c:	1f8a3903          	ld	s2,504(s4)
+   10a60:	e0a2                	sd	s0,64(sp)
+   10a62:	fc26                	sd	s1,56(sp)
+   10a64:	f44e                	sd	s3,40(sp)
+   10a66:	ec56                	sd	s5,24(sp)
+   10a68:	e85a                	sd	s6,16(sp)
+   10a6a:	e45e                	sd	s7,8(sp)
+   10a6c:	e062                	sd	s8,0(sp)
+   10a6e:	02090863          	beqz	s2,10a9e <__call_exitprocs+0x50>
+   10a72:	8b2a                	mv	s6,a0
+   10a74:	8bae                	mv	s7,a1
+   10a76:	4a85                	li	s5,1
+   10a78:	59fd                	li	s3,-1
+   10a7a:	00892483          	lw	s1,8(s2)
+   10a7e:	fff4841b          	addiw	s0,s1,-1
+   10a82:	00044e63          	bltz	s0,10a9e <__call_exitprocs+0x50>
+   10a86:	048e                	slli	s1,s1,0x3
+   10a88:	94ca                	add	s1,s1,s2
+   10a8a:	020b8663          	beqz	s7,10ab6 <__call_exitprocs+0x68>
+   10a8e:	2084b783          	ld	a5,520(s1)
+   10a92:	03778263          	beq	a5,s7,10ab6 <__call_exitprocs+0x68>
+   10a96:	347d                	addiw	s0,s0,-1
+   10a98:	14e1                	addi	s1,s1,-8
+   10a9a:	ff3418e3          	bne	s0,s3,10a8a <__call_exitprocs+0x3c>
+   10a9e:	60a6                	ld	ra,72(sp)
+   10aa0:	6406                	ld	s0,64(sp)
+   10aa2:	74e2                	ld	s1,56(sp)
+   10aa4:	7942                	ld	s2,48(sp)
+   10aa6:	79a2                	ld	s3,40(sp)
+   10aa8:	7a02                	ld	s4,32(sp)
+   10aaa:	6ae2                	ld	s5,24(sp)
+   10aac:	6b42                	ld	s6,16(sp)
+   10aae:	6ba2                	ld	s7,8(sp)
+   10ab0:	6c02                	ld	s8,0(sp)
+   10ab2:	6161                	addi	sp,sp,80
+   10ab4:	8082                	ret
+   10ab6:	00892783          	lw	a5,8(s2)
+   10aba:	6498                	ld	a4,8(s1)
+   10abc:	37fd                	addiw	a5,a5,-1
+   10abe:	04878463          	beq	a5,s0,10b06 <__call_exitprocs+0xb8>
+   10ac2:	0004b423          	sd	zero,8(s1)
+   10ac6:	db61                	beqz	a4,10a96 <__call_exitprocs+0x48>
+   10ac8:	31092783          	lw	a5,784(s2)
+   10acc:	008a96bb          	sllw	a3,s5,s0
+   10ad0:	00892c03          	lw	s8,8(s2)
+   10ad4:	8ff5                	and	a5,a5,a3
+   10ad6:	2781                	sext.w	a5,a5
+   10ad8:	ef89                	bnez	a5,10af2 <__call_exitprocs+0xa4>
+   10ada:	9702                	jalr	a4
+   10adc:	00892703          	lw	a4,8(s2)
+   10ae0:	1f8a3783          	ld	a5,504(s4)
+   10ae4:	01871463          	bne	a4,s8,10aec <__call_exitprocs+0x9e>
+   10ae8:	fb2787e3          	beq	a5,s2,10a96 <__call_exitprocs+0x48>
+   10aec:	dbcd                	beqz	a5,10a9e <__call_exitprocs+0x50>
+   10aee:	893e                	mv	s2,a5
+   10af0:	b769                	j	10a7a <__call_exitprocs+0x2c>
+   10af2:	31492783          	lw	a5,788(s2)
+   10af6:	1084b583          	ld	a1,264(s1)
+   10afa:	8ff5                	and	a5,a5,a3
+   10afc:	2781                	sext.w	a5,a5
+   10afe:	e799                	bnez	a5,10b0c <__call_exitprocs+0xbe>
+   10b00:	855a                	mv	a0,s6
+   10b02:	9702                	jalr	a4
+   10b04:	bfe1                	j	10adc <__call_exitprocs+0x8e>
+   10b06:	00892423          	sw	s0,8(s2)
+   10b0a:	bf75                	j	10ac6 <__call_exitprocs+0x78>
+   10b0c:	852e                	mv	a0,a1
+   10b0e:	9702                	jalr	a4
+   10b10:	b7f1                	j	10adc <__call_exitprocs+0x8e>
+
+0000000000010b12 <atexit>:
+   10b12:	85aa                	mv	a1,a0
+   10b14:	4681                	li	a3,0
+   10b16:	4601                	li	a2,0
+   10b18:	4501                	li	a0,0
+   10b1a:	a81d                	j	10b50 <__register_exitproc>
+
+0000000000010b1c <__libc_fini_array>:
+   10b1c:	1101                	addi	sp,sp,-32
+   10b1e:	e822                	sd	s0,16(sp)
+   10b20:	67c9                	lui	a5,0x12
+   10b22:	6449                	lui	s0,0x12
+   10b24:	c0878793          	addi	a5,a5,-1016 # 11c08 <__do_global_dtors_aux_fini_array_entry>
+   10b28:	c1040413          	addi	s0,s0,-1008 # 11c10 <impure_data>
+   10b2c:	8c1d                	sub	s0,s0,a5
+   10b2e:	e426                	sd	s1,8(sp)
+   10b30:	ec06                	sd	ra,24(sp)
+   10b32:	40345493          	srai	s1,s0,0x3
+   10b36:	c881                	beqz	s1,10b46 <__libc_fini_array+0x2a>
+   10b38:	1461                	addi	s0,s0,-8
+   10b3a:	943e                	add	s0,s0,a5
+   10b3c:	601c                	ld	a5,0(s0)
+   10b3e:	14fd                	addi	s1,s1,-1
+   10b40:	1461                	addi	s0,s0,-8
+   10b42:	9782                	jalr	a5
+   10b44:	fce5                	bnez	s1,10b3c <__libc_fini_array+0x20>
+   10b46:	60e2                	ld	ra,24(sp)
+   10b48:	6442                	ld	s0,16(sp)
+   10b4a:	64a2                	ld	s1,8(sp)
+   10b4c:	6105                	addi	sp,sp,32
+   10b4e:	8082                	ret
+
+0000000000010b50 <__register_exitproc>:
+   10b50:	67c9                	lui	a5,0x12
+   10b52:	3587b703          	ld	a4,856(a5) # 12358 <_global_impure_ptr>
+   10b56:	1f873783          	ld	a5,504(a4)
+   10b5a:	c3b1                	beqz	a5,10b9e <__register_exitproc+0x4e>
+   10b5c:	4798                	lw	a4,8(a5)
+   10b5e:	487d                	li	a6,31
+   10b60:	06e84263          	blt	a6,a4,10bc4 <__register_exitproc+0x74>
+   10b64:	c505                	beqz	a0,10b8c <__register_exitproc+0x3c>
+   10b66:	00371813          	slli	a6,a4,0x3
+   10b6a:	983e                	add	a6,a6,a5
+   10b6c:	10c83823          	sd	a2,272(a6)
+   10b70:	3107a883          	lw	a7,784(a5)
+   10b74:	4605                	li	a2,1
+   10b76:	00e6163b          	sllw	a2,a2,a4
+   10b7a:	00c8e8b3          	or	a7,a7,a2
+   10b7e:	3117a823          	sw	a7,784(a5)
+   10b82:	20d83823          	sd	a3,528(a6)
+   10b86:	4689                	li	a3,2
+   10b88:	02d50063          	beq	a0,a3,10ba8 <__register_exitproc+0x58>
+   10b8c:	00270693          	addi	a3,a4,2
+   10b90:	068e                	slli	a3,a3,0x3
+   10b92:	2705                	addiw	a4,a4,1
+   10b94:	c798                	sw	a4,8(a5)
+   10b96:	97b6                	add	a5,a5,a3
+   10b98:	e38c                	sd	a1,0(a5)
+   10b9a:	4501                	li	a0,0
+   10b9c:	8082                	ret
+   10b9e:	20070793          	addi	a5,a4,512
+   10ba2:	1ef73c23          	sd	a5,504(a4)
+   10ba6:	bf5d                	j	10b5c <__register_exitproc+0xc>
+   10ba8:	3147a683          	lw	a3,788(a5)
+   10bac:	4501                	li	a0,0
+   10bae:	8ed1                	or	a3,a3,a2
+   10bb0:	30d7aa23          	sw	a3,788(a5)
+   10bb4:	00270693          	addi	a3,a4,2
+   10bb8:	068e                	slli	a3,a3,0x3
+   10bba:	2705                	addiw	a4,a4,1
+   10bbc:	c798                	sw	a4,8(a5)
+   10bbe:	97b6                	add	a5,a5,a3
+   10bc0:	e38c                	sd	a1,0(a5)
+   10bc2:	8082                	ret
+   10bc4:	557d                	li	a0,-1
+   10bc6:	8082                	ret
+
+0000000000010bc8 <_exit>:
+   10bc8:	05d00893          	li	a7,93
+   10bcc:	00000073          	ecall
+   10bd0:	00054363          	bltz	a0,10bd6 <_exit+0xe>
+   10bd4:	a001                	j	10bd4 <_exit+0xc>
+   10bd6:	1141                	addi	sp,sp,-16
+   10bd8:	e022                	sd	s0,0(sp)
+   10bda:	842a                	mv	s0,a0
+   10bdc:	e406                	sd	ra,8(sp)
+   10bde:	4080043b          	negw	s0,s0
+   10be2:	008000ef          	jal	ra,10bea <__errno>
+   10be6:	c100                	sw	s0,0(a0)
+   10be8:	a001                	j	10be8 <_exit+0x20>
+
+0000000000010bea <__errno>:
+   10bea:	8101b503          	ld	a0,-2032(gp) # 12368 <_impure_ptr>
+   10bee:	8082                	ret

@@ -1,0 +1,48 @@
+include ../make.config
+
+CC_X86?=gcc
+CC_ARM?=arm-linux-gnueabi-gcc
+CC_RISCV?=riscv64-unknown-elf-gcc
+OPT?=-O2
+
+#-fno-tree-vectorize 
+CFLAGS+=${OPT} -I../ -I${GEM5_HOME}/include
+
+default: benchX86
+
+all: benchX86 benchARM benchRISCV
+
+X86: benchX86
+
+ARM: benchARM
+
+RISCV_GEM5: benchRISCV_GEM5
+
+RISCV_RTL: benchRISCV_RTL
+
+ifneq ("$(wildcard rand_arr_args.txt)","")
+args := $(shell cat rand_arr_args.txt)
+
+randArr.h: rand_arr_args.txt
+	${PY} ../rand_c_arr.py $(args)
+
+pre_req: randArr.h
+else
+pre_req:
+endif
+
+benchX86: bench.c pre_req
+	${CC_X86} ${CFLAGS} -DMAGIC bench.c --static --std=c99  -lm -o bench.X86
+
+benchARM: bench.c pre_req
+	${CC_ARM} ${CFLAGS} bench.c --static --std=c99 -lm -o bench.ARM
+
+benchRISCV_GEM5: bench.c pre_req
+	${CC_RISCV} ${CFLAGS} bench.c -DENABLE_GEM5 --static --std=gnu99 -march=rv64imafdc -mabi=lp64d -mcmodel=medany -fno-common -fno-builtin-printf -Wno-implicit -fno-inline-small-functions -lm -o bench.RISCV_GEM5 ${GEM5_HOME}/util/m5/src/abi/riscv/m5op.S
+
+
+benchRISCV_RTL: bench.c pre_req
+	${CC_RISCV} ${CFLAGS} bench.c --static --std=gnu99  -march=rv64imafdc -mabi=lp64d -mcmodel=medany -fno-common -fno-builtin-printf -Wno-implicit -fno-inline-small-functions -lm -o bench.RISCV_RTL
+
+clean:
+	rm -f bench.X86 bench.ARM bench.RISCV_GEM5 bench.RISCV_RTL
