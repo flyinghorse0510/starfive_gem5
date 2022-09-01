@@ -1,21 +1,16 @@
 
-## Export these for bash
+## Export these for bash. Change as per your convenience
 ```
-export GEM5_DIR=/home/arka.maity/Desktop/gem5_starlink2.0 && \
-export OUTPUT_DIR=/home/arka.maity/Desktop/04_gem5Dump/DMACHI/SimpleRuby && \
+export WORKSPACE=${HOME}/Desktop
+export GEM5_DIR=${WORKSPACE}/gem5_starlink2.0 && \
+export OUTPUT_DIR=${WORKSPACE}/04_gem5Dump/DMACHI/SimpleRuby && \
 export ISA=RISCV
 ```
 
-
 ## Building gem5 (PROTOCOL: CHI/MSI/MESI/MOESI)
-
 ```
 scons RUBY=TRUE PROTOCOL=CHI build/RISCV/gem5.opt -j`nproc`
 ```
-
-## Running a system config (Ruby+MemTest.py)
-1. `num-l3caches`: Number of CHI_HNFs
-2. `num-dirs`: Number of CHI_SNFs
 
 ## Running SE mode
 build/RISCV/gem5.opt \
