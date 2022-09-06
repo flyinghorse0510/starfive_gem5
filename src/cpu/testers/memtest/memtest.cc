@@ -145,11 +145,8 @@ MemTest::completeRequest(PacketPtr pkt, bool functional)
     auto remove_addr = outstandingAddrs.find(req->getPaddr());
     assert(remove_addr != outstandingAddrs.end());
     outstandingAddrs.erase(remove_addr);
-
-    DPRINTF(MemTest, "Completing %s at address %x (blk %x) %s\n",
-            pkt->isWrite() ? "write" : "read",
-            req->getPaddr(), blockAlign(req->getPaddr()),
-            pkt->isError() ? "error" : "success");
+    
+    DPRINTF(MemTest, "Address: %x AccType: %s Status: Completed\n", blockAlign(req->getPaddr()), pkt->isWrite() ? "W" : "R");
 
     const uint8_t *pkt_data = pkt->getConstPtr<uint8_t>();
 
@@ -265,17 +262,13 @@ MemTest::tick()
             ref_data = ref->second;
         }
 
-        DPRINTF(MemTest,
-                "Initiating %sread at addr %x (blk %x) expecting %x\n",
-                do_functional ? "functional " : "", req->getPaddr(),
-                blockAlign(req->getPaddr()), ref_data);
+        DPRINTF(MemTest, "Address: %x AccType: %s Status: Initiated\n", blockAlign(req->getPaddr()), "R");
 
         pkt = new Packet(req, MemCmd::ReadReq);
         pkt->dataDynamic(pkt_data);
     } else {
-        DPRINTF(MemTest, "Initiating %swrite at addr %x (blk %x) value %x\n",
-                do_functional ? "functional " : "", req->getPaddr(),
-                blockAlign(req->getPaddr()), data);
+
+        DPRINTF(MemTest, "Address: %x AccType: %s Status: Initiated\n", blockAlign(req->getPaddr()), "W");
 
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
