@@ -76,12 +76,13 @@ parser.add_argument("--maxloads", metavar="N", default=0,
 parser.add_argument("--progress", type=int, default=1000,
                     metavar="NLOADS",
                     help="Progress message interval ")
+parser.add_argument("--workingset-size", type=int, default=65536, help="Working set size in bytes")
 
 args = parser.parse_args()
 
-cpus = [MemTest(max_loads = args.maxloads)]
+cpus = [MemRandomTest(max_loads = args.maxloads, size=args.workingset_size)]
 if args.num_cpus > 0 :
-    cpus = [ MemTest(max_loads = args.maxloads) for _ in range(args.num_cpus) ]
+    cpus = [ MemRandomTest(max_loads = args.maxloads, size=args.workingset_size) for _ in range(args.num_cpus) ]
 
 system = System(cpu = cpus,
                 clk_domain = SrcClockDomain(clock = args.sys_clock),
@@ -97,14 +98,17 @@ system.clk_domain = SrcClockDomain(clock =  args.sys_clock,
 
 if args.ruby:
     # Set the Cache size
-    args.l1d_size="256B"
-    args.l1i_size="256B"
-    args.l2_size="512B"
-    args.l3_size="1kB"
-    args.l1d_assoc=2
-    args.l1i_assoc=2
-    args.l2_assoc=2
-    args.l3_assoc=2
+    args.l1d_size="1kB"
+    args.l1i_size="1kB"
+    args.l2_size="32kB"
+    args.l3_size="1MB"
+    args.l1d_assoc=4
+    args.l1i_assoc=4
+    args.l2_assoc=8
+    args.l3_assoc=16
+    args.l1repl = "RandomRP"
+    args.l2repl = "RandomRP"
+    args.l3repl = "RandomRP"
 
     Ruby.create_system(args, False, system)
     assert(args.num_cpus == len(system.ruby._cpu_ports))

@@ -178,6 +178,17 @@ def addNoISAOptions(parser):
         "sets max_insts_all_threads for cpus 0, 1, 3, 5 and 7 "
         "Direct parameters of the root object are not accessible, "
         "only parameters of its children.")
+    parser.add_argument("--l1repl", default="LRURP", 
+                         choices=ObjectList.rp_list.get_names(),
+                         help="type of l1 replacement")
+    parser.add_argument("--l2repl", default="LRURP", 
+                         choices=ObjectList.rp_list.get_names(),
+                         help="type of l2 replacement")
+    parser.add_argument("--l3repl", default="LRURP", 
+                         choices=ObjectList.rp_list.get_names(),
+                         help="type of l2 replacement")
+
+
 
 # Add common options that assume a non-NULL ISA.
 

@@ -31,12 +31,9 @@ from m5.objects import *
 from m5.defines import buildEnv
 from .Ruby import create_topology, create_directories
 from .Ruby import send_evicts
+from common import ObjectList
 
-#
-# Declare caches used by the protocol
-#
-class L1Cache(RubyCache): pass
-class L2Cache(RubyCache): pass
+
 
 def define_options(parser):
     return
@@ -64,6 +61,21 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     #
     l2_bits = int(math.log(options.num_l2caches, 2))
     block_size_bits = int(math.log(options.cacheline_size, 2))
+
+    #
+    # Declare caches used by the protocol
+    #
+    class L1Cache(RubyCache):
+        dataAccessLatency = 1
+        tagAccessLatency = 1
+        replacement_policy = ObjectList.rp_list.get(options.l1repl)()
+
+    class L2Cache(RubyCache):
+        dataAccessLatency = 2
+        tagAccessLatency = 1
+        size = options.l2_size
+        assoc = options.l2_assoc
+        replacement_policy = ObjectList.rp_list.get(options.l2repl)()
 
     for i in range(options.num_cpus):
         #

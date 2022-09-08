@@ -49,6 +49,7 @@
 #include "debug/RubyCacheTrace.hh"
 #include "debug/RubyResourceStalls.hh"
 #include "debug/RubyStats.hh"
+#include "debug/RubyCacheCalibSTR5.hh"
 #include "mem/cache/replacement_policies/weighted_lru_rp.hh"
 #include "mem/ruby/protocol/AccessPermission.hh"
 #include "mem/ruby/system/RubySystem.hh"
@@ -299,7 +300,8 @@ CacheMemory::allocate(Addr address, AbstractCacheEntry *entry)
             // Call reset function here to set initial value for different
             // replacement policies.
             m_replacementPolicy_ptr->reset(entry->replacementData);
-
+            DPRINTF(RubyCacheCalibSTR5,"RubyCache_Alloc,addr:%#x,set:%d,way:%d\n",
+            address,cacheSet,i);
             return entry;
         }
     }
@@ -317,6 +319,8 @@ CacheMemory::deallocate(Addr address)
     uint32_t way = entry->getWay();
     delete entry;
     m_cache[cache_set][way] = NULL;
+    DPRINTF(RubyCacheCalibSTR5,"RubyCache_Dealloc,addr:%#x,set:%d,way:%d\n",
+    address,cache_set,way);
     m_tag_index.erase(address);
 }
 

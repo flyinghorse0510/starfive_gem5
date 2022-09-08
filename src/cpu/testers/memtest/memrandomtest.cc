@@ -38,13 +38,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "cpu/testers/memtest/memtest.hh"
+#include "cpu/testers/memtest/memrandomtest.hh"
 
 #include "base/compiler.hh"
 #include "base/random.hh"
 #include "base/statistics.hh"
 #include "base/trace.hh"
-#include "debug/MemTest.hh"
+#include "debug/MemRandomTest.hh"
+#include "debug/MemRandomLatTest.hh"
 #include "sim/sim_exit.hh"
 #include "sim/stats.hh"
 #include "sim/system.hh"
@@ -55,20 +56,20 @@ namespace gem5
 static unsigned int TESTER_ALLOCATOR = 0;
 
 bool
-MemTest::CpuPort::recvTimingResp(PacketPtr pkt)
+MemRandomTest::CpuPort::recvTimingResp(PacketPtr pkt)
 {
     memtest.completeRequest(pkt);
     return true;
 }
 
 void
-MemTest::CpuPort::recvReqRetry()
+MemRandomTest::CpuPort::recvReqRetry()
 {
     memtest.recvRetry();
 }
 
 bool
-MemTest::sendPkt(PacketPtr pkt) {
+MemRandomTest::sendPkt(PacketPtr pkt) {
     if (atomic) {
         port.sendAtomic(pkt);
         completeRequest(pkt);
@@ -81,7 +82,7 @@ MemTest::sendPkt(PacketPtr pkt) {
     return true;
 }
 
-MemTest::MemTest(const Params &p)
+MemRandomTest::MemRandomTest(const Params &p)
     : ClockedObject(p),
       tickEvent([this]{ tick(); }, name()),
       noRequestEvent([this]{ noRequest(); }, name()),
@@ -92,19 +93,15 @@ MemTest::MemTest(const Params &p)
       size(p.size),
       interval(p.interval),
       percentReads(p.percent_reads),
-      percentFunctional(p.percent_functional),
-      percentUncacheable(p.percent_uncacheable),
       requestorId(p.system->getRequestorId(this)),
       blockSize(p.system->cacheLineSize()),
       blockAddrMask(blockSize - 1),
       sizeBlocks(size / blockSize),
-      baseAddr1(p.base_addr_1),
-      baseAddr2(p.base_addr_2),
-      uncacheAddr(p.uncacheable_base_addr),
       progressInterval(p.progress_interval),
       progressCheck(p.progress_check),
       nextProgressMessage(p.progress_interval),
       maxLoads(p.max_loads),
+      baseAddr1(p.base_addr_1),
       atomic(p.system->isAtomicMode()),
       suppressFuncErrors(p.suppress_func_errors), stats(this)
 {
@@ -122,7 +119,7 @@ MemTest::MemTest(const Params &p)
 }
 
 Port &
-MemTest::getPort(const std::string &if_name, PortID idx)
+MemRandomTest::getPort(const std::string &if_name, PortID idx)
 {
     if (if_name == "port")
         return port;
@@ -131,7 +128,7 @@ MemTest::getPort(const std::string &if_name, PortID idx)
 }
 
 void
-MemTest::completeRequest(PacketPtr pkt, bool functional)
+MemRandomTest::completeRequest(PacketPtr pkt, bool functional)
 {
     const RequestPtr &req = pkt->req;
     assert(req->getSize() == 1);
@@ -141,11 +138,7 @@ MemTest::completeRequest(PacketPtr pkt, bool functional)
     assert(remove_addr != outstandingAddrs.end());
     outstandingAddrs.erase(remove_addr);
 
-    DPRINTF(MemTest, "Completing %s at address %x (blk %x) %s\n",
-            pkt->isWrite() ? "write" : "read",
-            req->getPaddr(), blockAlign(req->getPaddr()),
-            pkt->isError() ? "error" : "success");
-
+    DPRINTF(MemRandomLatTest, "Address:%x,AccType:%s,Status:Completed\n", blockAlign(req->getPaddr()), pkt->isWrite() ? "W" : "R");
     const uint8_t *pkt_data = pkt->getConstPtr<uint8_t>();
 
     if (pkt->isError()) {
@@ -200,7 +193,7 @@ MemTest::completeRequest(PacketPtr pkt, bool functional)
         schedule(tickEvent, clockEdge(interval));
     }
 }
-MemTest::MemTestStats::MemTestStats(statistics::Group *parent)
+MemRandomTest::MemTestStats::MemTestStats(statistics::Group *parent)
       : statistics::Group(parent),
       ADD_STAT(numReads, statistics::units::Count::get(),
                "number of read accesses completed"),
@@ -211,7 +204,7 @@ MemTest::MemTestStats::MemTestStats(statistics::Group *parent)
 }
 
 void
-MemTest::tick()
+MemRandomTest::tick()
 {
     // we should never tick if we are waiting for a retry or response
     assert(!retryPkt);
@@ -220,8 +213,6 @@ MemTest::tick()
     // create a new request
     unsigned cmd = random_mt.random(0, 100);
     uint8_t data = random_mt.random<uint8_t>();
-    bool uncacheable = random_mt.random(0, 100) < percentUncacheable;
-    unsigned base = random_mt.random(0, 1);
     Request::Flags flags;
     Addr paddr;
 
@@ -240,16 +231,9 @@ MemTest::tick()
         offset = blockAlign(offset);
         offset += id;
 
-        if (uncacheable) {
-            flags.set(Request::UNCACHEABLE);
-            paddr = uncacheAddr + offset;
-        } else  {
-            paddr = ((base) ? baseAddr1 : baseAddr2) + offset;
-        }
+        paddr = baseAddr1 + offset;
     } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
 
-    bool do_functional = (random_mt.random(0, 100) < percentFunctional) &&
-        !uncacheable;
     RequestPtr req = std::make_shared<Request>(paddr, 1, flags, requestorId);
     req->setContext(id);
 
@@ -273,32 +257,19 @@ MemTest::tick()
             ref_data = ref->second;
         }
 
-        DPRINTF(MemTest,
-                "Initiating %sread at addr %x (blk %x) expecting %x\n",
-                do_functional ? "functional " : "", req->getPaddr(),
-                blockAlign(req->getPaddr()), ref_data);
-
+        DPRINTF(MemRandomLatTest, "Address:%x,AccType:%s,Status:Initiated\n", blockAlign(req->getPaddr()), "R");
         pkt = new Packet(req, MemCmd::ReadReq);
         pkt->dataDynamic(pkt_data);
     } else {
-        DPRINTF(MemTest, "Initiating %swrite at addr %x (blk %x) value %x\n",
-                do_functional ? "functional " : "", req->getPaddr(),
-                blockAlign(req->getPaddr()), data);
 
+        DPRINTF(MemRandomLatTest, "Address:%x,AccType:%s,Status:Initiated\n", blockAlign(req->getPaddr()), "w");
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
         pkt_data[0] = data;
     }
 
     // there is no point in ticking if we are waiting for a retry
-    bool keep_ticking = true;
-    if (do_functional) {
-        pkt->setSuppressFuncError();
-        port.sendFunctional(pkt);
-        completeRequest(pkt, true);
-    } else {
-        keep_ticking = sendPkt(pkt);
-    }
+    bool keep_ticking = sendPkt(pkt);
 
     if (keep_ticking) {
         // schedule the next tick
@@ -308,7 +279,7 @@ MemTest::tick()
         // as we have successfully sent a packet
         reschedule(noRequestEvent, clockEdge(progressCheck), true);
     } else {
-        DPRINTF(MemTest, "Waiting for retry\n");
+        DPRINTF(MemRandomTest, "Waiting for retry\n");
     }
 
     // Schedule noResponseEvent now if we are expecting a response
@@ -317,23 +288,23 @@ MemTest::tick()
 }
 
 void
-MemTest::noRequest()
+MemRandomTest::noRequest()
 {
     panic("%s did not send a request for %d cycles", name(), progressCheck);
 }
 
 void
-MemTest::noResponse()
+MemRandomTest::noResponse()
 {
     panic("%s did not see a response for %d cycles", name(), progressCheck);
 }
 
 void
-MemTest::recvRetry()
+MemRandomTest::recvRetry()
 {
     assert(retryPkt);
     if (port.sendTimingReq(retryPkt)) {
-        DPRINTF(MemTest, "Proceeding after successful retry\n");
+        DPRINTF(MemRandomTest, "Proceeding after successful retry\n");
 
         retryPkt = nullptr;
         // kick things into action again

@@ -46,7 +46,7 @@
 
 #include "base/statistics.hh"
 #include "mem/port.hh"
-#include "params/MemTest.hh"
+#include "params/ReplayMemTest.hh"
 #include "sim/clocked_object.hh"
 #include "sim/eventq.hh"
 #include "sim/stats.hh"
@@ -55,25 +55,17 @@ namespace gem5
 {
 
 /**
- * The MemTest class tests a cache coherent memory system by
- * generating false sharing and verifying the read data against a
- * reference updated on the completion of writes. Each tester reads
- * and writes a specific byte in a cache line, as determined by its
- * unique id. Thus, all requests issued by the MemTest instance are a
- * single byte and a specific address is only ever touched by a single
- * tester.
- *
- * In addition to verifying the data, the tester also has timeouts for
- * both requests and responses, thus checking that the memory-system
- * is making progress.
+ * The ReplayMemTest replays 
+ * memory access obtained from 
+ * a file and creates memory traces
  */
-class MemTest : public ClockedObject
+class ReplayMemTest : public ClockedObject
 {
 
   public:
 
-    typedef MemTestParams Params;
-    MemTest(const Params &p);
+    typedef ReplayMemTestParams Params;
+    ReplayMemTest(const Params &p);
 
 
     Port &getPort(const std::string &if_name,
@@ -95,11 +87,11 @@ class MemTest : public ClockedObject
 
     class CpuPort : public RequestPort
     {
-        MemTest &memtest;
+        ReplayMemTest &memtest;
 
       public:
 
-        CpuPort(const std::string &_name, MemTest &_memtest)
+        CpuPort(const std::string &_name, ReplayMemTest &_memtest)
             : RequestPort(_name, &_memtest), memtest(_memtest)
         { }
 
@@ -124,13 +116,10 @@ class MemTest : public ClockedObject
     // Won't tick until a response is received.
     bool waitResponse;
 
-    const unsigned size;
-
     const Cycles interval;
 
     const unsigned percentReads;
-    const unsigned percentFunctional;
-    const unsigned percentUncacheable;
+    std::vector<Addr> reqAddrSet;
 
     /** Request id for all generated traffic */
     RequestorID requestorId;
@@ -146,8 +135,6 @@ class MemTest : public ClockedObject
 
     const Addr blockAddrMask;
 
-    const unsigned sizeBlocks;
-
     /**
      * Get the block aligned address.
      *
@@ -158,10 +145,6 @@ class MemTest : public ClockedObject
     {
         return (addr & ~blockAddrMask);
     }
-
-    const Addr baseAddr1;
-    const Addr baseAddr2;
-    const Addr uncacheAddr;
 
     const unsigned progressInterval;  // frequency of progress reports
     const Cycles progressCheck;

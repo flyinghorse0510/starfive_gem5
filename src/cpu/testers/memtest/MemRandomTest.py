@@ -41,27 +41,21 @@ from m5.proxy import *
 
 from m5.objects.ClockedObject import ClockedObject
 
-class MemTest(ClockedObject):
-    type = 'MemTest'
-    cxx_header = "cpu/testers/memtest/memtest.hh"
-    cxx_class = 'gem5::MemTest'
+class MemRandomTest(ClockedObject):
+    type = 'MemRandomTest'
+    cxx_header = "cpu/testers/memtest/memrandomtest.hh"
+    cxx_class = 'gem5::MemRandomTest'
 
     # Interval of packet injection, the size of the memory range
     # touched, and an optional stop condition
-    interval = Param.Cycles(1, "Interval between request packets")
+    interval = Param.Cycles(5, "Interval between request packets")
     size = Param.Unsigned(65536, "Size of memory region to use (bytes)")
-    base_addr_1 = Param.Addr(0x100000, "Start of the first testing region")
-    base_addr_2 = Param.Addr(0x400000, "Start of the second testing region")
-    uncacheable_base_addr = Param.Addr(
-        0x800000, "Start of the uncacheable testing region")
+    base_addr_1 = Param.Addr(0x40000, "Start of the first testing region")
     max_loads = Param.Counter(0, "Number of loads to execute before exiting")
 
     # Control the mix of packets and if functional accesses are part of
     # the mix or not
     percent_reads = Param.Percent(65, "Percentage reads")
-    percent_functional = Param.Percent(50, "Percentage functional accesses")
-    percent_uncacheable = Param.Percent(10, "Percentage uncacheable")
-
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses
     progress_interval = Param.Counter(1000000,
