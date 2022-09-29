@@ -1,8 +1,6 @@
 import re
 import argparse
 
-TESTLINE='1: system.cpu0.l1d: [Cache_Controller 1], Time: 1, state: I, event: AllocSeqRequest, addr: 0x404900'
-
 class AddrTxnFlow(object):
     def __init__(self, cacheTranInfoDict):
         self.addr = cacheTranInfoDict['addr']

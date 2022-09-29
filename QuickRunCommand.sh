@@ -1,24 +1,57 @@
 #!/bin/bash
 
-GEM5_DIR="/home/arka.maity/Desktop/gem5_jh8100_starlink2.0"
-OUTPUT_DIR="/home/arka.maity/Desktop/04_gem5Dump/DMACHI/9CPUs_8L3_ControlledMemAccess"
+Help()
+{
+   # Display Help
+   echo "Run gem5 Starlink2.0 configurations."
+   echo
+   echo "Syntax: scriptTemplate [-b|r|h]"
+   echo "options:"
+   echo "h     Print this Help."
+   echo "b     Build."
+   echo "r     Run."
+   echo
+}
+
+BUILD=""
+RUN=""
+while getopts "hbr" options; do
+    case $options in
+        h) Help
+           exit;;
+        b) BUILD="yes"
+            ;;
+        r) RUN="yes"
+    esac
+done
+
+WORKSPACE="${HOME}/Desktop"
+GEM5_DIR="${WORKSPACE}/gem5_starlink2.0"
+OUTPUT_DIR="${WORKSPACE}/04_gem5Dump/Starlink2.0_gem5_ubench"
 ISA="RISCV"
+CCPROT="CHI"
+mkdir -p ${OUTPUT_DIR}
 
-$GEM5_DIR/build/$ISA/gem5.opt \
-    --debug-flags=RubyCHITrace,RubyGenerated,MemTest --debug-file=debug.trace \
-    -d $OUTPUT_DIR \
-    ${GEM5_DIR}/configs/example/ruby_mem_test.py \
-    --num-dirs=1 \
-    --num-l3caches=8 \
-    --network=simple \
-    --topology=CustomMesh \
-    --chi-config=${GEM5_DIR}/configs/example/noc_config/4x4.py \
-    --ruby \
-    --mem-size="4GB" \
-    --num-dmas=0 \
-    --num-cpus=9 \
-    --progress=1000000 \
-    --maxloads=1000
+if [ "$BUILD" != "" ]; then
+    echo "Start building"
+    scons build/${ISA}_${CCPROT}/gem5.opt --default=RISCV PROTOCOL=${CCPROT} -j`nproc`
+fi
 
-echo "Parsing the address trace"
-python3 ProcessCHIDebugTrace.py --dump-dir ${OUTPUT_DIR}
+
+if [ "$RUN" != "" ]; then
+    echo "Start running"
+    $GEM5_DIR/build/${ISA}_${CCPROT}/gem5.opt \
+        -d $OUTPUT_DIR \
+        ${GEM5_DIR}/configs/example/Starlink2.0_4x4intradie.py \
+        --num-dirs=1 \
+        --num-l3caches=16 \
+        --network=simple \
+        --topology=CustomMesh \
+        --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
+        --ruby \
+        --mem-size="4GB" \
+        --num-cpus=16
+fi
+
+# echo "Parsing the address trace"
+# python3 ProcessCHIDebugTrace.py --dump-dir ${OUTPUT_DIR}
