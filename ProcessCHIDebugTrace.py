@@ -2,10 +2,21 @@ import re
 import argparse
 
 class AddrTxnFlow(object):
+    # Suppress tracking dumps for instruction addresses
+    # We assume instruction address and data address do 
+    # not overlap
+    instAddressMap=set()
+    
     def __init__(self, cacheTranInfoDict):
         self.addr = cacheTranInfoDict['addr']
         self.flowEvents = []
         self.txnEvents = []
+        self.suppressPrinting = False
+        if cacheTranInfoDict['agent'].endswith('l1i') :
+            self.suppressPrinting = True
+            AddrTxnFlow.instAddressMap.add(self.addr)
+        elif self.addr in AddrTxnFlow.instAddressMap :
+            self.suppressPrinting = True
         self.addFlowEvent(cacheTranInfoDict)
     
     def addFlowEvent(self,cacheTranInfoDict):
@@ -16,6 +27,7 @@ class AddrTxnFlow(object):
             'state': cacheTranInfoDict['state'],
             'event': cacheTranInfoDict['event'],
         })
+        
     
     def addAditionalFlowEvent(self,additionalTranInfoLines):
         for line in additionalTranInfoLines :
@@ -26,18 +38,19 @@ class AddrTxnFlow(object):
                     
     
     def dump(self,hdrSeq,dumpFd):
-        for flowEvt in self.flowEvents:
-            printStr=f''
-            for i,k in enumerate(hdrSeq) :
-                if k == 'addr' :
-                    printStr+=f'{self.addr},'
-                else :
-                    val=flowEvt.get(k,'NA')
-                    if i == len(hdrSeq)-1 :
-                        printStr+=f'{val}'
+        if not self.suppressPrinting :
+            for flowEvt in self.flowEvents:
+                printStr=f''
+                for i,k in enumerate(hdrSeq) :
+                    if k == 'addr' :
+                        printStr+=f'{self.addr},'
                     else :
-                        printStr+=f'{val},'
-            print(f'{printStr}',file=dumpFd) 
+                        val=flowEvt.get(k,'NA')
+                        if i == len(hdrSeq)-1 :
+                            printStr+=f'{val}'
+                        else :
+                            printStr+=f'{val},'
+                print(f'{printStr}',file=dumpFd) 
 
 def processCacheTranLine(cacheTranLine):
     """

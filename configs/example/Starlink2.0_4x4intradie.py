@@ -18,27 +18,25 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 Options.addNoISAOptions(parser)
 
-
-
 #
 # Add the ruby specific and protocol specific options
 #
 Ruby.define_options(parser)
-
+parser.add_argument("--size",help="size of array in working set")
 args = parser.parse_args()
 
 #
 # Set the default cache size and associativity to be very small to encourage
 # races between requests and writebacks.
 #
-args.l1d_size="256B"
-args.l1i_size="256B"
-args.l2_size="512B"
-args.l3_size="1kB"
-args.l1d_assoc=2
-args.l1i_assoc=2
-args.l2_assoc=2
-args.l3_assoc=2
+args.l1d_size="32KiB"
+args.l1i_size="32KiB"
+args.l2_size="128KiB"
+args.l3_size="2MiB"
+args.l1d_assoc=4
+args.l1i_assoc=4
+args.l2_assoc=4
+args.l3_assoc=4
 
 block_size = 64
 
@@ -85,15 +83,15 @@ for (i, cpu) in enumerate(cpus):
     system.ruby._cpu_ports[i].connectCpuPorts(cpu)
     system.ruby._cpu_ports[i].deadlock_threshold = 5000000
 
-# Obtain the binary executable
 isa = str(m5.defines.buildEnv['TARGET_ISA']).lower()
-GEM5DIR = '/home/arka.maity/Desktop/gem5_starlink2.0'
-binary = f'{GEM5DIR}/tests/test-progs/hello/bin/{isa}/linux/hello'
+# GEM5DIR = '/home/arka.maity/Desktop/gem5_starlink2.0'
+# binary = f'{GEM5DIR}/tests/test-progs/hello/bin/{isa}/linux/hello'
+binary = '/home/lester.leong/Desktop/gem5_starlink2.0/benchmarks/starlink2/caches.GEM5_RV64'
 # Create a process for a simple "multi-threaded" application
 process = Process()
 # Set the command
 # cmd is a list which begins with the executable (like argv)
-process.cmd = [binary]
+process.cmd = [binary,args.size,'10000','16'] #workingset, numiters, stride size
 # Set the cpu to use the process as its workload and create thread contexts
 for cpu in system.cpu:
     cpu.workload = process
@@ -111,7 +109,7 @@ root = Root( full_system = False, system = system )
 
 
 # Not much point in this being higher than the L1 latency
-# m5.ticks.setGlobalFrequency('1ns')
+m5.ticks.setGlobalFrequency('1ns')
 
 # instantiate configuration
 m5.instantiate()
