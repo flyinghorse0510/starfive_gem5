@@ -86,12 +86,13 @@ for (i, cpu) in enumerate(cpus):
 isa = str(m5.defines.buildEnv['TARGET_ISA']).lower()
 # GEM5DIR = '/home/arka.maity/Desktop/gem5_starlink2.0'
 # binary = f'{GEM5DIR}/tests/test-progs/hello/bin/{isa}/linux/hello'
-binary = '/home/lester.leong/Desktop/gem5_starlink2.0/benchmarks/starlink2/caches.GEM5_RV64'
+binary = f'/home/lester.leong/Desktop/gem5_starlink2.0/benchmarks/starlink2/build/caches2.{args.size}.GEM5_RV64'
 # Create a process for a simple "multi-threaded" application
 process = Process()
 # Set the command
 # cmd is a list which begins with the executable (like argv)
-process.cmd = [binary,args.size,'10000','16'] #workingset, numiters, stride size
+# process.cmd = [binary,args.size,'10000','16'] #workingset, numiters, stride size
+process.cmd = [binary]
 # Set the cpu to use the process as its workload and create thread contexts
 for cpu in system.cpu:
     cpu.workload = process
