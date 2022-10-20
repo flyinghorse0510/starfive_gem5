@@ -91,7 +91,8 @@ binary = f'/home/arka.maity/Desktop/benchmarks/ccbench/caches/build/caches2.{arg
 process = Process()
 # Set the command
 # cmd is a list which begins with the executable (like argv)
-process.cmd = [binary] #workingset, numiters, stride size
+# process.cmd = [binary,args.size,'10000','16'] #workingset, numiters, stride size
+process.cmd = [binary]
 # Set the cpu to use the process as its workload and create thread contexts
 for cpu in system.cpu:
     cpu.workload = process
