@@ -40,7 +40,6 @@
 
 #include <sstream>
 #include "mem/ruby/slicc_interface/AbstractController.hh"
-#include "debug/RubyCHITrace.hh"
 #include "debug/RubyQueue.hh"
 #include "mem/ruby/network/Network.hh"
 #include "mem/ruby/protocol/MemoryMsg.hh"
@@ -106,12 +105,6 @@ AbstractController::init()
                      "%s: %s mapped to multiple machines of the same type\n",
                      name(), addr_range.to_string());
             entry[mid.getType()] = mid;
-
-            /* Star5 print */
-            // std::stringstream addrMapStr;
-            // addrMapStr << addr_range
-            if (mid.getType() == MachineType_L2Cache)
-                DPRINTF(RubyCHITrace,"AbstCntrl AddrRange=%s, MachinedId=%s\n",addr_range.to_string(),MachineIDToString(mid));
         }
         downstreamDestinations.add(mid);
     }

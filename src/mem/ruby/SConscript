@@ -68,9 +68,7 @@ DebugFlag('RubyTester')
 DebugFlag('RubyStats')
 DebugFlag('RubyResourceStalls')
 DebugFlag('RubyProtocol')
-DebugFlag('RubyCHITrace')
 DebugFlag('RubyCHIDebugStr5')
-DebugFlag('RubyCacheCalibSTR5')
 
 CompoundFlag('Ruby', [ 'RubyQueue', 'RubyNetwork', 'RubyTester',
     'RubyGenerated', 'RubySlicc', 'RubySystem', 'RubyCache',

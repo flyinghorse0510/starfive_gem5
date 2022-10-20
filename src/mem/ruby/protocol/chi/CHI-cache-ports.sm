@@ -474,7 +474,6 @@ void processNextState(Addr address, TBE tbe, CacheEntry cache_entry) {
       tbe.actions.pop();
     }
     assert(tbe.pendAction != Event:null);
-    DPRINTF(RubyCHITrace,"Triggering Latency=%d\n",trigger_latency);
     enqueue(triggerOutPort, TriggerMsg, trigger_latency) {
       out_msg.addr := tbe.addr;
       // TODO - put usesTxnId on the TBE?

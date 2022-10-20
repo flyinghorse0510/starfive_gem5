@@ -3054,15 +3054,9 @@ action(Profile_Miss, desc="") {
   bool is_remote_can_notify := tbe.is_remote_pf && upstream_prefetch_trains_prefetcher;
   if (is_demand) {
     cache.profileDemandMiss();
-    if (is_HN) {
-      DPRINTF(RubyCHIDebugStr5, "HN Demand Miss Address = %#x\n",tbe.addr);
-    }
   } else {
     assert(use_prefetcher || tbe.is_remote_pf);
     cache.profilePrefetchMiss();
-    if (is_HN) {
-      DPRINTF(RubyCHIDebugStr5, "HN Prefetch Miss Address = %#x\n",tbe.addr);
-    }
   }
   // notify prefetcher about this demand miss
   if (use_prefetcher && tbe.isSeqReqValid && (is_demand || is_remote_can_notify)) {
@@ -3087,15 +3081,9 @@ action(Profile_Hit, desc="") {
   bool is_remote_can_notify := tbe.is_remote_pf && upstream_prefetch_trains_prefetcher;
   if (is_demand) {
     cache.profileDemandHit();
-    if (is_HN) {
-      DPRINTF(RubyCHIDebugStr5, "HN Demand Hit Address = %#x\n",tbe.addr);
-    }
   } else {
     assert(use_prefetcher || tbe.is_remote_pf);
     cache.profilePrefetchHit();
-    if (is_HN) {
-      DPRINTF(RubyCHIDebugStr5, "HN Prefetch Hit Address = %#x\n",tbe.addr);
-    }
   }
   // notify prefetcher about this demand hit
   if (use_prefetcher && tbe.isSeqReqValid && (is_demand || is_remote_can_notify)) {
