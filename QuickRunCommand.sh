@@ -25,8 +25,10 @@ while getopts "hbr" options; do
     esac
 done
 
-WORKSPACE="${HOME}/Desktop"
-GEM5_DIR="${WORKSPACE}/gem5_starlink2.0"
+#/home/zhiguo.ge/ChipServer/Modeling/gem5_starlink2
+
+WORKSPACE="${HOME}/ChipServer/Modeling"
+GEM5_DIR="${WORKSPACE}/gem5_starlink2"
 OUTPUT_DIR="${WORKSPACE}/04_gem5Dump/Starlink2.0_gem5_ubench"
 ISA="RISCV"
 CCPROT="CHI"
