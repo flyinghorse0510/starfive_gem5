@@ -49,7 +49,7 @@ if args.num_cpus < 1 :
 #
 
 if args.num_cpus > 0 :
-    cpus = [ TimingSimpleCPU(cpu_id=i) for i in range(args.num_cpus) ]
+    cpus = [ DerivO3CPU(cpu_id=i) for i in range(args.num_cpus) ]
 
 system = System(cpu = cpus,
                 clk_domain = SrcClockDomain(clock = args.sys_clock),
