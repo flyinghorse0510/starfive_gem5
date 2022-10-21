@@ -226,9 +226,6 @@ def create_system(options, full_system, system, dma_ports, bootmem,
         network_cntrls.extend(ruby_system.io_rni.getNetworkSideControllers())
         all_cntrls.extend(ruby_system.io_rni.getAllControllers())
 
-    for i,n in enumerate(network_nodes):
-        print(f'Node@{i} typ:{type(n)}')
-
     # Assign downstream destinations
     for rnf in ruby_system.rnf:
         rnf.setDownstream(hnf_dests)
