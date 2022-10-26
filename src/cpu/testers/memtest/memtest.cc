@@ -116,6 +116,8 @@ MemTest::MemTest(const Params &p)
     numReads = 0;
     numWrites = 0;
 
+    curOffset = 0;
+
     // kick things into action
     schedule(tickEvent, curTick());
     schedule(noRequestEvent, clockEdge(progressCheck));
@@ -210,12 +212,18 @@ MemTest::MemTestStats::MemTestStats(statistics::Group *parent)
 
 }
 
+enum AddrPattern{CONSEC, RANDOM};
+
+
 void
 MemTest::tick()
 {
     // we should never tick if we are waiting for a retry or response
     assert(!retryPkt);
     assert(!waitResponse);
+
+    if(id != 0) //Only CPU 0 send packet
+        return;
 
     // create a new request
     unsigned cmd = random_mt.random(0, 100);
@@ -225,12 +233,18 @@ MemTest::tick()
     Request::Flags flags;
     Addr paddr;
 
+    enum AddrPattern addr_pattern = CONSEC;
+    cmd = 0; // all are read request
+
     // halt until we clear outstanding requests, otherwise it won't be able to
     // find a new unique address
     if (outstandingAddrs.size() >= sizeBlocks) {
         waitResponse = true;
         return;
     }
+
+   if (addr_pattern == RANDOM) {
+    assert(false);
 
     // generate a unique address
     do {
@@ -247,6 +261,15 @@ MemTest::tick()
             paddr = ((base) ? baseAddr1 : baseAddr2) + offset;
         }
     } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
+   }
+   else if (addr_pattern == CONSEC) {
+       curOffset = curOffset + 64;
+   } else {
+    assert(false);
+   }   
+
+   paddr = curOffset;
+   DPRINTF(MemTest, "Gen paddr:%#x \n", paddr);
 
     bool do_functional = (random_mt.random(0, 100) < percentFunctional) &&
         !uncacheable;

@@ -163,6 +163,8 @@ class MemTest : public ClockedObject
     const Addr baseAddr2;
     const Addr uncacheAddr;
 
+    Addr curOffset;
+
     const unsigned progressInterval;  // frequency of progress reports
     const Cycles progressCheck;
     Tick nextProgressMessage;   // access # for next progress report
