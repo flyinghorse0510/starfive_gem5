@@ -103,26 +103,26 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     # dataAccessLatency may be set to 0 if one wants to consider parallel
     # data and tag lookups
     class L1ICache(RubyCache):
-        dataAccessLatency = 1
-        tagAccessLatency = 1
+        dataAccessLatency = 0
+        tagAccessLatency = 4
         size = options.l1i_size
         assoc = options.l1i_assoc
 
     class L1DCache(RubyCache):
-        dataAccessLatency = 2
-        tagAccessLatency = 1
+        dataAccessLatency = 0
+        tagAccessLatency = 4
         size = options.l1d_size
         assoc = options.l1d_assoc
 
     class L2Cache(RubyCache):
-        dataAccessLatency = 6
-        tagAccessLatency = 2
+        dataAccessLatency = 0
+        tagAccessLatency = 16
         size = options.l2_size
         assoc = options.l2_assoc
 
     class HNFCache(RubyCache):
-        dataAccessLatency = 10
-        tagAccessLatency = 2
+        dataAccessLatency = 0
+        tagAccessLatency = 50
         size = options.l3_size
         assoc = options.l3_assoc
 

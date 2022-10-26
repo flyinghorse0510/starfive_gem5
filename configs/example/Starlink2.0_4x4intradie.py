@@ -35,8 +35,8 @@ args.l2_size="128KiB"
 args.l3_size="2MiB"
 args.l1d_assoc=4
 args.l1i_assoc=4
-args.l2_assoc=4
-args.l3_assoc=4
+args.l2_assoc=8
+args.l3_assoc=16
 
 block_size = 64
 
