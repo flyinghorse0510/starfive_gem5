@@ -1,21 +1,14 @@
 import re 
 import os
-import sys
-from time import sleep
 from tqdm import tqdm
 
-WORKINGDIR = "/home/lester.leong/Desktop/04_gem5dump/FixedStride_"
+USER = "arka.maity"
+WORKINGDIR = f"/home/{USER}/Desktop/04_gem5dump/FixedStrideINTELConfig_"
 
-NUM_ITER = 10000
+NUM_ITER = 1
 
-# allSetFront=[4,16,32,64,512,1024,1600,2048,2196,2362,2500,2800,3060,3400,3800,4192,5000,6000,7000, 8192,9000, 9500,\
-#         10000,10500,11000,12000,14000,16384,18000,20000,22000, 24576,29696, 32768, 35840,37000, 40000, 45000, 50100,55000, 60000, 62000,65536,68000,  70000, 72000,  75100,\
-#         78000, 80000,83000,85000,88000,90000,93000,95000,98000,100000, 110000, 120000,\
-#             131072,160100,190100,229376,262144,300100,400100,450000,500100,524287,524288,524289,600100, 670000,750100, 786432,850000, 917504,\
-#          996148, 1048576, 1101004 ,1572864, 1966080 ,2097152, 2228224 ,2400000, 2621440,3145728]
 
-# allSetBack = [13000000,16777216,20000000,25000000,33554432,40000000,45000000,50000000,67108864]
-allSet=[64, 256, 512, 1024, 1536, 2048, 2560, 3840, 4096, 8192, 10240, 32768, 65536, 131072, 163840]
+allSet=[64, 128, 256, 512, 640, 704, 1024, 1280, 1408, 1536, 1600, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216]
 lower, upper = (4000000, 13000000)
 
 # length = 50
@@ -65,13 +58,19 @@ def main():
             elif suffix == hnfSuffix[2]:
                 l3Access[hnfPrefix+str(value)+suffix] = 0
 
-    data = {"simTicks":0,"NumElements":0,"system.cpu0.numCycles":0,"system.cpu0.l1d.cache.m_demand_hits":0,"system.cpu0.l1d.cache.m_demand_misses":0,"system.cpu0.l1d.cache.m_demand_accesses":0,\
-        "system.cpu0.l1i.cache.m_demand_hits":0,"system.cpu0.l1i.cache.m_demand_misses":0,"system.cpu0.l1i.cache.m_demand_accesses":0,\
-   "system.cpu0.l2.cache.m_demand_hits":0,"system.cpu0.l2.cache.m_demand_misses":0,"system.cpu0.l2.cache.m_demand_accesses":0 }
+    data = {
+                "simTicks":0,
+                "WorkingSet":0,
+                "system.cpu0.numCycles":0,
+                "system.cpu0.l1d.cache.m_demand_misses":0,
+                "system.cpu0.l1d.cache.m_demand_accesses":0,
+                "system.cpu0.l2.cache.m_demand_misses":0,
+                "system.cpu0.l2.cache.m_demand_accesses":0 
+            }
 
     print(f"\nstart parse for {len(allSet)} experiments...\n")
     with open(logFile,'w') as lf:
-        print(f"simTicks,NumElements,NumCycles,L1DCacheHits,L1DCacheMisses,L1DCacheAccesses,L1ICacheHits,L1ICacheMisses,L1ICacheAccesses,L2CacheHits,L2CacheMisses,L2CacheAccesses,L3CacheHits,L3CacheMisses,L3CacheAccesses",file = lf)
+        print(f"simTicks,WorkingSet,NumCycles,L1DCacheMisses,L1DCacheAccesses,L2CacheMisses,L2CacheAccesses,L3CacheMisses,L3CacheAccesses",file = lf)
         for value in tqdm(allSet):
             try:
                 with open(WORKINGDIR+str(value)+"/stats.txt") as f:
@@ -86,9 +85,7 @@ def main():
                         l3Miss = constructDict(line, l3Miss)
                         l3Access = constructDict(line, l3Access)
 
-                    data["NumElements"] = value
-                    #get L3 numbers
-                    data["l3HitVal"] = sumDictionary(l3Hit)
+                    data["WorkingSet"] = (value*64)/1024 # Each element is cache line size aligned
                     data["l3MissVal"] = sumDictionary(l3Miss)
                     data["l3CacheVal"] = sumDictionary(l3Access)
                     combined = ','.join(map(str,data.values()))

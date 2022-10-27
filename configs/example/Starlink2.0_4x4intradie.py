@@ -87,6 +87,7 @@ isa = str(m5.defines.buildEnv['TARGET_ISA']).lower()
 # GEM5DIR = '/home/arka.maity/Desktop/gem5_starlink2.0'
 
 binary = f'/home/arka.maity/Desktop/benchmarks/ccbench/caches/build/caches2.{args.size_ws}.GEM5_RV64'
+
 # Create a process for a simple "multi-threaded" application
 process = Process()
 # Set the command

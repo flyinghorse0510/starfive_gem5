@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# workingset=(64 256 512 1024 1536 2048 2560 3840 4096 8192 10240 32768 65536 131072 163840)
-workingset=(256)
-# workingset=(11200000 11380000 11560000 11740000 11920000 12100000 12280000 12460000 12640000 12820000)
-#workingset=(4000000 4180000 4360000 4540000 4720000 4900000 5080000 5260000 5440000 5620000 5800000 5980000 6160000 6340000 6520000 6700000 6880000 7060000 7240000 7420000 7600000 7780000 7960000 8140000 8320000 8500000 8680000 8860000 9040000 9220000 9400000 9580000 9760000 9940000 10120000 10300000 10480000 10660000 10840000 11020000 11200000 11380000 11560000 11740000 11920000 12100000 12280000 12460000 12640000 12820000)
+workingset=(64 128 256 512 640 704 1024 1280 1408 1536 1600 1664 1792 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304 8388608 16777216)
+# workingset=(64 128)
+
+
 Help()
 {
    # Display Help
@@ -31,7 +31,7 @@ done
 
 WORKSPACE="${HOME}/Desktop"
 GEM5_DIR="${WORKSPACE}/gem5_starlink2.0"
-OUTPUT_DIR="${WORKSPACE}/04_gem5dump/FixedStride_"
+OUTPUT_DIR="${WORKSPACE}/04_gem5dump/FixedStrideINTELConfig_"
 ISA="RISCV"
 CCPROT="CHI"
 
@@ -46,7 +46,6 @@ if [ "$RUN" != "" ]; then
         mkdir -p ${OUTPUT_DIR}$i
         echo "Start running with $i working set size"
         $GEM5_DIR/build/${ISA}_${CCPROT}/gem5.opt \
-            --debug-flags=RubyCHIDebugStr5,RubyGenerated  --debug-file=debug.trace \
             -d $OUTPUT_DIR$i \
             ${GEM5_DIR}/configs/example/Starlink2.0_4x4intradie.py \
             --size-ws=$i \
@@ -61,5 +60,4 @@ if [ "$RUN" != "" ]; then
     done
 fi
 
-# echo "Parsing the address trace"
-# python3 ProcessCHIDebugTrace.py --dump-dir ${OUTPUT_DIR}
+# --debug-flags=RubyCHIDebugStr5,RubyGenerated  --debug-file=debug.trace 
