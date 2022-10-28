@@ -17,12 +17,12 @@ config_root = os.path.dirname(config_path)
 parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 Options.addNoISAOptions(parser)
-
+parser.add_argument("--size-ws",help="size of array in working set")
+parser.add_argument("--rate-style", action="store_true", default=False,help="""Replicate a workload across multiple CPUs""")
 #
 # Add the ruby specific and protocol specific options
 #
 Ruby.define_options(parser)
-parser.add_argument("--size-ws",help="size of array in working set")
 args = parser.parse_args()
 
 #
@@ -44,16 +44,35 @@ if args.num_cpus < 1 :
      print(f'Requires atleast 1 CPU')
      sys.exit(1)
 
-#
-# Currently ruby does not support atomic or uncacheable accesses
-#
+# Create Workload (Process) list
+binaryImg=f'/home/arka.maity/Desktop/benchmarks/ccbench/band_stream/build/stream.{args.size_ws}_0.GEM5_RV64'
+multiProcess=[]
+numThreads=1
+if args.rate_style :
+    for i in range(args.num_cpus):
+        process = Process(pid = 100 + i)
+        process.executable = binaryImg
+        process.cwd = os.getcwd()
+        process.cmd = [binaryImg, f'{i}', f'{args.num_cpus}']
+        multiProcess.append(process)
+else :
+    process = Process(pid = 100)
+    process.executable = binaryImg
+    process.cwd = os.getcwd()
+    process.cmd = [binaryImg, 0, 1]
+    multiProcess.append(process)
 
+CPUClass=DerivO3CPU
+CPUClass.numThreads = numThreads
 if args.num_cpus > 0 :
-    cpus = [ DerivO3CPU(cpu_id=i) for i in range(args.num_cpus) ]
+    cpus = [ CPUClass(cpu_id=i) for i in range(args.num_cpus) ]
 
 system = System(cpu = cpus,
                 clk_domain = SrcClockDomain(clock = args.sys_clock),
                 mem_ranges = [AddrRange(args.mem_size)])
+
+if numThreads > 1:
+    system.multi_thread = True
 
 system.mem_mode = 'timing'
 
@@ -84,22 +103,16 @@ for (i, cpu) in enumerate(cpus):
     system.ruby._cpu_ports[i].deadlock_threshold = 5000000
 
 isa = str(m5.defines.buildEnv['TARGET_ISA']).lower()
-# GEM5DIR = '/home/arka.maity/Desktop/gem5_starlink2.0'
 
-binary = f'/home/arka.maity/Desktop/benchmarks/ccbench/caches/build/caches2.{args.size_ws}.GEM5_RV64'
+# Assign workloads to CPUs
+for i in range(args.num_cpus) :
+    if len(multiProcess) == 1:
+        system.cpu[i].workload = multiProcess[0]
+    else :
+        system.cpu[i].workload = multiProcess[i]
+    system.cpu[i].createThreads()
 
-# Create a process for a simple "multi-threaded" application
-process = Process()
-# Set the command
-# cmd is a list which begins with the executable (like argv)
-# process.cmd = [binary,args.size,'10000','16'] #workingset, numiters, stride size
-process.cmd = [binary]
-# Set the cpu to use the process as its workload and create thread contexts
-for cpu in system.cpu:
-    cpu.workload = process
-    cpu.createThreads()
-
-system.workload = SEWorkload.init_compatible(binary)
+system.workload = SEWorkload.init_compatible(binaryImg)
 
 # Set up the pseudo file system for the threads function above
 config_filesystem(system)
@@ -107,8 +120,7 @@ config_filesystem(system)
 # -----------------------
 # run simulation
 # -----------------------
-root = Root( full_system = False, system = system )
-
+root = Root(full_system = False, system = system)
 
 # Not much point in this being higher than the L1 latency
 m5.ticks.setGlobalFrequency('1ns')
