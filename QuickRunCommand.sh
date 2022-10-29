@@ -36,7 +36,7 @@ mkdir -p ${OUTPUT_DIR}
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
-    scons build/${ISA}_${CCPROT}/gem5.opt --default=RISCV PROTOCOL=${CCPROT} -j`nproc`
+    scons build/${ISA}_${CCPROT}/gem5.debug --default=RISCV PROTOCOL=${CCPROT} -j`nproc`
 fi
 
 

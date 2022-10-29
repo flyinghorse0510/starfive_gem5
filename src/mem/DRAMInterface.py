@@ -537,7 +537,8 @@ class DDR4_2400_16x4(DRAMInterface):
     # CAS-to-CAS delay for bursts to the same bank group
     # tBURST is equivalent to tCCD_S; no explicit parameter required
     # for CAS-to-CAS delay for bursts to different bank groups
-    tCCD_L = '5ns';
+    #tCCD_L = '5ns';
+    tCCD_L = '2ns'; #ZHIGUO
 
     # DDR4-2400 17-17-17
     tRCD = '14.16ns'
