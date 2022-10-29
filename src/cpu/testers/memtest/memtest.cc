@@ -119,7 +119,10 @@ MemTest::MemTest(const Params &p)
     numReads = 0;
     numWrites = 0;
 
-    curOffset = 64000;
+    //curOffset = 64000;
+
+    curOffset = id*1048576 + 64000;
+
 
     ccprintf(std::cerr, "MemTest  %s: size %d sizeBlocks %d \n",
                          name(), size, sizeBlocks);
@@ -229,7 +232,8 @@ MemTest::tick()
     assert(!retryPkt);
     assert(!waitResponse);
 
-    if(id != 0) //Only CPU 0 send packet
+    //if(id != 0) //Only CPU 0 send packet
+    if(!(id == 0 || id ==15)) //Only CPU 0 send packet
         return;
 
     // create a new request
