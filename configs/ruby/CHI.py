@@ -116,13 +116,13 @@ def create_system(options, full_system, system, dma_ports, bootmem,
 
     class L2Cache(RubyCache):
         dataAccessLatency = 0
-        tagAccessLatency = 16
+        tagAccessLatency = 12
         size = options.l2_size
         assoc = options.l2_assoc
 
     class HNFCache(RubyCache):
         dataAccessLatency = 0
-        tagAccessLatency = 50
+        tagAccessLatency = 28
         size = options.l3_size
         assoc = options.l3_assoc
 

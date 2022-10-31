@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# workingset=(1024 2048 4096 5120 6144 8192 10240 12288 14336 16384 25600 49152 65536 98304 131072 147456 262144 327680 655360 1048576)
-workingset=(1024)
+workingset=(1024 2048 4096 5120 6144 8192 10240 12288 14336 16384 25600 49152 65536 98304 131072 147456 262144 327680 655360 1048576)
+# workingset=(4)
 
 Help()
 {
@@ -49,6 +49,7 @@ if [ "$RUN" != "" ]; then
             ${GEM5_DIR}/configs/example/Starlink2.0_4x4intradie.py \
             --size-ws=$i \
             --num-dirs=1 \
+            --rate-style \
             --num-l3caches=16 \
             --network=simple \
             --topology=CustomMesh \
