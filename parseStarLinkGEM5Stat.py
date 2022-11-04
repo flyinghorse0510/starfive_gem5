@@ -1,22 +1,18 @@
 import re 
 import os
+import pprint as pp
 from tqdm import tqdm
 
 USER = "arka.maity"
 WORKINGDIR = f"/home/{USER}/Desktop/04_gem5dump/FixedStrideINTELConfig_"
 
-NUM_ITER = 1
-
-
 allSet=[64, 128, 256, 512, 640, 704, 1024, 1280, 1408, 1536, 1600, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216]
 lower, upper = (4000000, 13000000)
-
-# length = 50
 
 def containsWord(s, w):
     return f' {w} ' in f' {s} '
 
-def getNumber(word):
+def getStat(word):
     try:
         return int(re.findall(r'\b\d+\b',word)[0])
     except:
@@ -31,12 +27,10 @@ def sumDictionary(dict):
 def constructDict(line, data):
     for phrase in data.keys():
         if containsWord(line,phrase):
-            data[phrase] = getNumber(line)
-            if containsWord(line, "simTicks"):
-                data[phrase]/=NUM_ITER
+            data[phrase] = getStat(line)
     return data
 
-def main():
+def getCacheAccLat():
     length = 50
     path=os.getcwd()
     logFile=f'{path}/CacheAccessStatFixedStride.csv'
@@ -97,6 +91,14 @@ def main():
     f.close()
     print("\nparse done!")
 
+
+def main():
+    flName=f'/home/arka.maity/Desktop/04_gem5dump/STREAM_1024/stats.txt'
+    inst_count_pat=re.compile(r'system\.cpu0+\.commit\.instsCommitted')
+    with open(flName) as statFD :
+        data=statFD.read()
+        matches=re.findall(inst_count_pat,data)
+        pp.pprint(matches)
 
 if __name__=="__main__":
     main()
