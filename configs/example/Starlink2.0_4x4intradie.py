@@ -18,7 +18,9 @@ parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 Options.addNoISAOptions(parser)
 parser.add_argument("--size-ws",help="size of array in working set")
-parser.add_argument("--rate-style", action="store_true", default=False,help="""Replicate a workload across multiple CPUs""")
+parser.add_argument("--rate-style", action="store_true", default=False,help="Replicate a workload across multiple CPUs")
+parser.add_argument("--num-iters",default=1000,help="How many iterations to run")
+parser.add_argument("--no-roi", action="store_true", default=False,help="Avoid ROI")
 #
 # Add the ruby specific and protocol specific options
 #
@@ -46,6 +48,8 @@ if args.num_cpus < 1 :
 
 # Create Workload (Process) list
 binaryImg=f'/home/arka.maity/Desktop/benchmarks/ccbench/band_stream/build/stream.{args.size_ws}_0.GEM5_RV64'
+if args.no_roi :
+    binaryImg=f'/home/arka.maity/Desktop/benchmarks/ccbench/band_stream/build_no_roi/stream.{args.size_ws}_0.GEM5_RV64'
 multiProcess=[]
 numThreads=1
 if args.rate_style :
@@ -53,13 +57,13 @@ if args.rate_style :
         process = Process(pid = 100 + i)
         process.executable = binaryImg
         process.cwd = os.getcwd()
-        process.cmd = [binaryImg, f'{i}', f'{args.num_cpus}']
+        process.cmd = [binaryImg, f'{i}', f'{args.num_cpus}', f'{args.num_iters}']
         multiProcess.append(process)
 else :
     process = Process(pid = 100)
     process.executable = binaryImg
     process.cwd = os.getcwd()
-    process.cmd = [binaryImg, 0, 1]
+    process.cmd = [binaryImg, 0, 1, f'{args.num_iters}']
     multiProcess.append(process)
 
 CPUClass=DerivO3CPU
