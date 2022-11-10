@@ -17,10 +17,11 @@ config_root = os.path.dirname(config_path)
 parser = argparse.ArgumentParser(
     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 Options.addNoISAOptions(parser)
-parser.add_argument("--size-ws",help="size of array in working set")
+parser.add_argument("--size-ws",default=False, help="size of array in working set")
 parser.add_argument("--rate-style", action="store_true", default=False,help="Replicate a workload across multiple CPUs")
 parser.add_argument("--num-iters",default=1000,help="How many iterations to run")
 parser.add_argument("--no-roi", action="store_true", default=False,help="Avoid ROI")
+parser.add_argument("--use-o3", action="store_true", default=False, help="Use gem5 O3 CPU")
 #
 # Add the ruby specific and protocol specific options
 #
@@ -66,7 +67,10 @@ else :
     process.cmd = [binaryImg, 0, 1, f'{args.num_iters}']
     multiProcess.append(process)
 
-CPUClass=DerivO3CPU
+CPUClass=TimingSimpleCPU
+if args.use_o3 :
+    CPUClass=DerivO3CPU
+
 CPUClass.numThreads = numThreads
 if args.num_cpus > 0 :
     cpus = [ CPUClass(cpu_id=i) for i in range(args.num_cpus) ]
