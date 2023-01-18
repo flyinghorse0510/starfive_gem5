@@ -1744,8 +1744,6 @@ action(UpdateDirState_FromReqDataResp, desc="") {
         tbe.dir_sharers.remove(in_msg.responder);
 
       } else if (in_msg.type == CHIDataType:CBWrData_UD_PD) {
-        DPRINTF(RubyCHIDebugStr5, "Modifiying the TBE data state\n");
-        printTBEStateStr5(tbe);
         assert(tbe.dir_ownerExists && tbe.dir_ownerIsExcl && (tbe.dir_owner == in_msg.responder));
         assert(tbe.dir_sharers.isElement(in_msg.responder));
         if (tbe.reqType != CHIRequestType:WriteCleanFull) {
