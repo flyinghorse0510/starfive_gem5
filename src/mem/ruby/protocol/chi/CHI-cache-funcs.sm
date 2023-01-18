@@ -789,6 +789,22 @@ void printTBEState(TBE tbe) {
   DPRINTF(RubySlicc, "dataBlkValid = %s\n", tbe.dataBlkValid);
 }
 
+void printTBEStateStr5(TBE tbe) {
+  if (is_valid(tbe)) {
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x reqTyp=%s\n",tbe.addr, tbe.reqType); 
+    DPRINTF(RubyCHIDebugStr5, "dataBlkValid.isFull=%d valid=%d unique=%d\n",tbe.dataBlkValid.isFull(), tbe.dataValid, tbe.dataUnique);
+    DPRINTF(RubyCHIDebugStr5, "dirty=%d mu_dirty=%d\n",tbe.dataDirty, tbe.dataMaybeDirtyUpstream);
+    DPRINTF(RubyCHIDebugStr5, "dir ownerExists=%d ownerExcl=%d, sharers=%d\n",tbe.dir_ownerExists,tbe.dir_ownerIsExcl,tbe.dir_sharers.count());
+    DPRINTF(RubyCHIDebugStr5, "tobe_I=%d tobe_SC=%d\n",tbe.dataToBeInvalid, tbe.dataToBeSharedClean);
+    DPRINTF(RubyCHIDebugStr5, "doFill=%d pendAction=%s, finalState=%s\n",tbe.doCacheFill,tbe.pendAction,tbe.finalState);
+    DPRINTF(RubyCHIDebugStr5, "expected_req_resp.hasReceivedData = %d\n",tbe.expected_req_resp.hasReceivedData());
+    DPRINTF(RubyCHIDebugStr5, "expected_snp_resp.hasReceivedData = %d\n",tbe.expected_snp_resp.hasReceivedData());
+  } else {
+    DPRINTF(RubyCHIDebugStr5,"TBE invalid");
+  }
+}
+
+
 void printDvmTBEState(TBE tbe) {
   DPRINTF(RubySlicc, "STATE: addr=%#x reqType=%d state=%d pendAction=%s isDvmTBE=%d isReplTBE=%d isReqTBE=%d isSnpTBE=%d\n",
                       tbe.addr, tbe.reqType, tbe.state, tbe.pendAction,

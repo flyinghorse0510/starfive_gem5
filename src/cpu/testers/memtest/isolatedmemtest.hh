@@ -135,18 +135,18 @@ class IsolatedMemTest : public ClockedObject
 
     unsigned int id;
 
-    std::unordered_set<uint64_t> outstandingTxnIds;
+    std::unordered_set<uint64_t> outstandingAddrs;
 
     // store the expected value for the addresses we have touched
     std::unordered_map<Addr, uint8_t> referenceData;
 
-    // Some tracking info attached to each memory read/write request
-    std::unordered_map<uint64_t, MemTestTxnAttr_t> memTxnAttr;
-    uint64_t lastGenReqId, lastGenRespId;
-
     const unsigned blockSize;
 
     const Addr blockAddrMask;
+
+    std::map<Addr,bool> readWriteMap;
+
+    std::vector<Addr> workingSet;
 
     /**
      * Get the block aligned address.

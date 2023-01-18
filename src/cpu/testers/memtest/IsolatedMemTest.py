@@ -48,9 +48,9 @@ class IsolatedMemTest(ClockedObject):
 
     # Interval of packet injection, the size of the memory range
     # touched, and an optional stop condition
-    interval = Param.Cycles(500, "Interval between request packets")
+    interval = Param.Cycles(5, "Interval between request packets")
     size = Param.Unsigned(4194304, "Working set(bytes)")
-    base_addr_1 = Param.Addr(0x200000, "Start of the first testing region")
+    base_addr_1 = Param.Addr(0x2000, "Start of the first testing region")
     max_loads = Param.Counter(1, "Number of loads to unique address")
     num_iters = Param.Counter(10, "Number of load iterations to each address")
 
@@ -58,7 +58,7 @@ class IsolatedMemTest(ClockedObject):
     # to use for checking progress of both requests and responses
     progress_interval = Param.Counter(1000000,
         "Progress report interval (in accesses)")
-    progress_check = Param.Cycles(5000000, "Cycles before exiting " \
+    progress_check = Param.Cycles(50000, "Cycles before exiting " \
                                       "due to lack of progress")
 
     port = RequestPort("Port to the memory system")
