@@ -32,7 +32,7 @@ export WORKSPACE="${HOME}/Desktop"
 export GEM5_DIR=$(pwd)
 export ISA="RISCV"
 export CCPROT="CHI"
-export NUMCPUS=1
+export NUMCPUS=2
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -40,10 +40,10 @@ if [ "$BUILD" != "" ]; then
 fi
 
 if [ "$RUN2" != "" ]; then
-    OUTPUT_DIR="${WORKSPACE}/04_gem5dump/ExpMEMTest"
+    OUTPUT_DIR="${WORKSPACE}/04_gem5dump/HAS0.5"
     mkdir -p $OUTPUT_DIR
     $GEM5_DIR/build/${ISA}_${CCPROT}/gem5.debug \
-        --debug-flags=IsolatedMemLatTest,RubyGenerated,RubyCHIDebugStr5  --debug-file=debug.trace \
+        --debug-flags=ProdConsMemLatTest --debug-file=debug.trace \
         -d ${OUTPUT_DIR} \
         ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
         --num-dirs=1 \
@@ -52,8 +52,9 @@ if [ "$RUN2" != "" ]; then
         --topology=CustomMesh \
         --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_2x2Mesh.py \
         --ruby \
-        --maxloads=30 \
+        --maxloads=3000 \
         --mem-size="4GB" \
         --num-cpus=${NUMCPUS}
-    grep -rwI -e 'system\.ruby\.hnf\.cntrl' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.hnf.trace
+    grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
+    grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
 fi

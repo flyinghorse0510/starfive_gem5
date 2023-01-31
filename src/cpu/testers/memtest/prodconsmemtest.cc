@@ -54,6 +54,9 @@ namespace gem5
 {
 
 static unsigned int TESTER_ALLOCATOR = 0;
+static bool TESTER_CONSUMER_FLG = false; // Flg to denote that the reader has finished reading a pass
+static bool TESTER_PRODUCER_FLG = false; // Flg to denote that the writer has finished generating a pass
+static unsigned int TESTER_PRODUCER_IDX = 0; // Pass Index of the writer. Only written by sole producer
 
 bool
 ProdConsMemTest::CpuPort::recvTimingResp(PacketPtr pkt)
@@ -112,7 +115,7 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     // set up counters
     numReads = 0;
     numWrites = 0;
-    writeSyncData_t writeSyncDataBase = 0x100a; // true: read, false: write
+    writeSyncData_t writeSyncDataBase = 0x1001; // true: read, false: write
     writeSyncData = { \
                     {0x40000, writeSyncDataBase}, \
                     {0x40040, writeSyncDataBase+1}, \
@@ -153,6 +156,11 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     }
 
     isProducer = (id == 0)?true:false;
+
+    // (Re)set the producer/consumer synchronization flags
+    TESTER_CONSUMER_FLG = false;
+    TESTER_PRODUCER_FLG = false;
+    TESTER_PRODUCER_IDX = 0;
 
     // kick things into action
     schedule(tickEvent, curTick());
@@ -210,6 +218,9 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
                             "%s: completed %d read, %d write accesses @%d\n",
                             name(), numReads, numWrites, curTick());
                     nextProgressMessage += progressInterval;
+                }
+                if (numReads >=  workingSet.size()) {
+                    TESTER_CONSUMER_FLG = true;
                 }
             }
         } else {
@@ -279,16 +290,41 @@ ProdConsMemTest::tick()
         }
     }
 
+    if (TESTER_PRODUCER_FLG && TESTER_CONSUMER_FLG) {
+        // Both producers and consumers have finished with the current pass over the workingSet
+        TESTER_PRODUCER_IDX++;
+        TESTER_PRODUCER_FLG=false;
+        TESTER_CONSUMER_FLG=false;
+    } else if (TESTER_PRODUCER_FLG && !TESTER_CONSUMER_FLG) {
+        // Producer has finished but consumer has't
+        schedule(tickEvent, clockEdge(interval)); // Wait for the producer
+        reschedule(noRequestEvent, clockEdge(progressCheck), true); // Shift this event
+        return;
+    } else if (!TESTER_PRODUCER_FLG && TESTER_CONSUMER_FLG) {
+        // Consumer is likely reading garbage data
+        panic("Consumer is likely reading garbage data\n");
+    }
+    // assert(!TESTER_CONSUMER_FLG);
+
     bool readOrWrite = (isProducer)?false:true;  // Only producer can write
+    uint64_t totalSeqIdx = seqIdx;
     do {
         paddr = workingSet.at(seqIdx);
-        seqIdx = (seqIdx+1)%(workingSet.size());
+        totalSeqIdx = seqIdx+1;
+        seqIdx = (totalSeqIdx)%(workingSet.size());
     } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
     
+    if ((totalSeqIdx > 0) && (totalSeqIdx%(workingSet.size()) == 0)) {
+        if (isProducer) {
+            TESTER_PRODUCER_FLG=true;
+        } else {
+            TESTER_CONSUMER_FLG=false;
+        }
+    }
     RequestPtr req = std::make_shared<Request>(paddr, 2, flags, requestorId);
     req->setContext(id);
     outstandingAddrs.insert(paddr);
-    writeSyncData_t data = writeSyncData[paddr];
+    writeSyncData_t data = (TESTER_PRODUCER_IDX << 8) + writeSyncData[paddr];
     
     PacketPtr pkt = nullptr;
     writeSyncData_t *pkt_data = new writeSyncData_t[1];
