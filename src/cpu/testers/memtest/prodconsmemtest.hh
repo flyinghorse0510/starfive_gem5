@@ -55,7 +55,7 @@
 namespace gem5
 {
 
-
+typedef uint16_t writeSyncData_t;
 
 /**
  * The ProdConsMemTest class tests a cache coherent memory system.
@@ -76,7 +76,7 @@ class ProdConsMemTest : public ClockedObject
   public:
 
     typedef ProdConsMemTestParams Params;
-    typedef uint16_t writeSyncData_t;
+    
     ProdConsMemTest(const Params &p);
 
 
