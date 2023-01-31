@@ -84,6 +84,10 @@ def define_options(parser):
         default=False,
         help="""SimpleNetwork links uses a separate physical
             channel for each virtual network""")
+    parser.add_argument("--simple-link-bw-factor", action="store", type=int, 
+        default=16,
+        help="""SimpleNetwork links bw factor""")
+
 
 def create_network(options, ruby):
 

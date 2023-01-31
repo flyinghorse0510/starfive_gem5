@@ -57,7 +57,7 @@ class CustomMesh(SimpleTopology):
     #--------------------------------------------------------------------------
 
     def _makeMesh(self, IntLink, link_latency, num_rows, num_columns,
-                  cross_links, cross_link_latency):
+                  cross_links, cross_link_latency, link_bw_factor):
 
         # East->West, West->East, North->South, South->North
         # XY routing weights
@@ -78,6 +78,7 @@ class CustomMesh(SimpleTopology):
                                         dst_node=self._routers[west_in],
                                         dst_inport="West",
                                         latency = llat,
+                                        bandwidth_factor = link_bw_factor,
                                         weight=link_weights[0]))
                     self._link_count += 1
 
@@ -96,6 +97,7 @@ class CustomMesh(SimpleTopology):
                                         dst_node=self._routers[east_in],
                                         dst_inport="East",
                                         latency = llat,
+                                        bandwidth_factor = link_bw_factor,
                                         weight=link_weights[1]))
                     self._link_count += 1
 
@@ -114,6 +116,7 @@ class CustomMesh(SimpleTopology):
                                         dst_node=self._routers[south_in],
                                         dst_inport="South",
                                         latency = llat,
+                                        bandwidth_factor = link_bw_factor,
                                         weight=link_weights[2]))
                     self._link_count += 1
 
@@ -132,6 +135,7 @@ class CustomMesh(SimpleTopology):
                                         dst_node=self._routers[north_in],
                                         dst_inport="North",
                                         latency = llat,
+                                        bandwidth_factor = link_bw_factor,
                                         weight=link_weights[3]))
                     self._link_count += 1
 
@@ -295,7 +299,7 @@ class CustomMesh(SimpleTopology):
 
         # Create all the mesh internal links.
         self._makeMesh(IntLink, self._router_link_latency, num_rows, num_cols,
-                       options.cross_links, options.cross_link_latency)
+                       options.cross_links, options.cross_link_latency, options.simple_link_bw_factor)
 
         # Place CHI_RNF on the mesh
         self.distributeNodes(rnf_params, rnf_nodes)

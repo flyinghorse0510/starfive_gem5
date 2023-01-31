@@ -70,10 +70,13 @@ MemTest::CpuPort::recvReqRetry()
 bool
 MemTest::sendPkt(PacketPtr pkt) {
     if (atomic) {
+        ccprintf(std::cerr, "MemTest atomic mode \n");
+
         port.sendAtomic(pkt);
         completeRequest(pkt);
     } else {
         if (!port.sendTimingReq(pkt)) {
+            DPRINTF(MemTest, "packet sending fail, need retry. addr:%#x\n", pkt->getAddr());
             retryPkt = pkt;
             return false;
         }
@@ -115,6 +118,15 @@ MemTest::MemTest(const Params &p)
     // set up counters
     numReads = 0;
     numWrites = 0;
+
+    //curOffset = 64000;
+
+    curOffset = id*1048576 + 64000;
+
+
+    ccprintf(std::cerr, "MemTest  %s: size %d sizeBlocks %d \n",
+                         name(), size, sizeBlocks);
+
 
     // kick things into action
     schedule(tickEvent, curTick());
@@ -210,12 +222,19 @@ MemTest::MemTestStats::MemTestStats(statistics::Group *parent)
 
 }
 
+enum AddrPattern{CONSEC, RANDOM};
+
+
 void
 MemTest::tick()
 {
     // we should never tick if we are waiting for a retry or response
     assert(!retryPkt);
     assert(!waitResponse);
+
+    //if(id != 0) //Only CPU 0 send packet
+    if(!(id == 0 || id ==15)) //Only CPU 0 send packet
+        return;
 
     // create a new request
     unsigned cmd = random_mt.random(0, 100);
@@ -225,12 +244,20 @@ MemTest::tick()
     Request::Flags flags;
     Addr paddr;
 
+    enum AddrPattern addr_pattern = CONSEC;
+    cmd = 0; // all are read request
+
     // halt until we clear outstanding requests, otherwise it won't be able to
     // find a new unique address
     if (outstandingAddrs.size() >= sizeBlocks) {
         waitResponse = true;
+        ccprintf(std::cerr, "MemTest  waitResponse set to true， %s: size %d sizeBlocks %d \n",
+                         name(), size, sizeBlocks);
         return;
     }
+
+   if (addr_pattern == RANDOM) {
+    assert(false);
 
     // generate a unique address
     do {
@@ -247,9 +274,20 @@ MemTest::tick()
             paddr = ((base) ? baseAddr1 : baseAddr2) + offset;
         }
     } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
+   }
+   else if (addr_pattern == CONSEC) {
+       curOffset = curOffset + 64;
+   } else {
+    assert(false);
+   }   
 
-    bool do_functional = (random_mt.random(0, 100) < percentFunctional) &&
-        !uncacheable;
+   paddr = curOffset;
+   DPRINTF(MemTest, "Gen paddr:%#x outstanding num:%d \n", paddr, outstandingAddrs.size() );
+
+   // bool do_functional = (random_mt.random(0, 100) < percentFunctional) && !uncacheable;
+
+    bool do_functional = false; //ZHIGUO
+
     RequestPtr req = std::make_shared<Request>(paddr, 1, flags, requestorId);
     req->setContext(id);
 
@@ -298,6 +336,7 @@ MemTest::tick()
         completeRequest(pkt, true);
     } else {
         keep_ticking = sendPkt(pkt);
+        DPRINTF(MemTest, "sendPkt, addr %#x keep_ticking:%d \n", pkt->getAddr(), keep_ticking);
     }
 
     if (keep_ticking) {

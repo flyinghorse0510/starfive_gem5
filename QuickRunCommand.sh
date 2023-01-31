@@ -29,15 +29,17 @@ while getopts "hbr" options; do
     esac
 done
 
-WORKSPACE="${HOME}/Desktop"
-GEM5_DIR="${WORKSPACE}/gem5_starlink2.0"
-OUTPUT_DIR="${WORKSPACE}/04_gem5dump/STREAM_"
+#/home/zhiguo.ge/ChipServer/Modeling/gem5_starlink2
+
+WORKSPACE="${HOME}/ChipServer/Modeling"
+GEM5_DIR="${WORKSPACE}/gem5_starlink2"
+OUTPUT_DIR="${WORKSPACE}/04_gem5Dump/Starlink2.0_gem5_ubench"
 ISA="RISCV"
 CCPROT="CHI"
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
-    scons build/${ISA}_${CCPROT}/gem5.opt --default=RISCV PROTOCOL=${CCPROT} -j`nproc`
+    scons build/${ISA}_${CCPROT}/gem5.debug --default=RISCV PROTOCOL=${CCPROT} -j`nproc`
 fi
 
 if [ "$RUN" != "" ]; then
@@ -52,17 +54,17 @@ if [ "$RUN" != "" ]; then
             --size-ws=$i \
             --num-dirs=1 \
             --num-l3caches=16 \
-            --num-iters=1000 \
+            --num-iters=10000 \
             --network=simple \
             --topology=CustomMesh \
             --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
             --ruby \
             --mem-size="4GB" \
-            --num-cpus=16
-    break
+            --num-cpus=16 &
     done
     wait
 fi
-            # --rate-style 
-            # --debug-flags=PseudoInst --debug-file=debug.trace 
-# --debug-flags=RubyCHIDebugStr5,RubyGenerated  --debug-file=debug.trace 
+
+
+# echo "Parsing the address trace"
+# python3 ProcessCHIDebugTrace.py --dump-dir ${OUTPUT_DIR}

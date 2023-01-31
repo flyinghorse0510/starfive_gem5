@@ -62,6 +62,8 @@ def create_mem_intf(intf, r, i, intlv_bits, intlv_size,
     # mapping and row-buffer size
     interface = intf()
 
+    print ("create mem intf", interface)
+
     # Only do this for DRAMs
     if issubclass(intf, m5.objects.DRAMInterface):
         # If the channel bits are appearing after the column
@@ -76,6 +78,7 @@ def create_mem_intf(intf, r, i, intlv_bits, intlv_size,
                 interface.devices_per_rank.value
 
             intlv_low_bit = int(math.log(rowbuffer_size, 2))
+        print ("belong to DRAMInterface")
 
     # Also adjust interleaving bits for NVM attached as memory
     # Will have separate range defined with unique interleaving
@@ -135,6 +138,10 @@ def config_mem(options, system):
     opt_mem_channels_intlv = getattr(options, "mem_channels_intlv", 128)
     opt_xor_low_bit = getattr(options, "xor_low_bit", 0)
 
+    print ("**** mem type: ")
+    print (opt_mem_type)
+ 
+
     if opt_mem_type == "HMC_2500_1x32":
         HMChost = HMC.config_hmc_host_ctrl(options, system)
         HMC.config_hmc_dev(options, system, HMChost.hmc_host)
@@ -171,6 +178,9 @@ def config_mem(options, system):
 
     if opt_mem_type:
         intf = ObjectList.mem_list.get(opt_mem_type)
+        print ("**** mem type: ")
+        #print (intf)
+
     if opt_nvm_type:
         n_intf = ObjectList.mem_list.get(opt_nvm_type)
 
