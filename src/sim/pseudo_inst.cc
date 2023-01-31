@@ -306,7 +306,12 @@ initParam(ThreadContext *tc, uint64_t key_str1, uint64_t key_str2)
 void
 resetstats(ThreadContext *tc, Tick delay, Tick period)
 {
-    DPRINTF(PseudoInst, "pseudo_inst::resetstats(%i, %i)\n", delay, period);
+    int cpuid = tc->getCpuPtr()->cpuId();
+    //int tid = tc->getCpuPtr()->threadId();
+    int pid = tc->getCpuPtr()->getPid();
+
+    //DPRINTF(PseudoInst, "pseudo_inst::resetstats(%i, %i)\n", delay, period);
+    DPRINTF(PseudoInst, "CPU:%i, pid:%i pseudo_inst::resetstats(%i, %i)\n", cpuid, pid, delay, period);
     if (!tc->getCpuPtr()->params().do_statistics_insts)
         return;
 
@@ -320,7 +325,12 @@ resetstats(ThreadContext *tc, Tick delay, Tick period)
 void
 dumpstats(ThreadContext *tc, Tick delay, Tick period)
 {
-    DPRINTF(PseudoInst, "pseudo_inst::dumpstats(%i, %i)\n", delay, period);
+    int cpuid = tc->getCpuPtr()->cpuId();
+    //int tid = tc->getCpuPtr()->threadId();
+    int pid = tc->getCpuPtr()->getPid();
+
+    //DPRINTF(PseudoInst, "pseudo_inst::dumpstats(%i, %i)\n", delay, period);
+    DPRINTF(PseudoInst, "CPU:%i, pid:%i pseudo_inst::dumpstats(%i, %i)\n",  cpuid, pid, delay, period);
     if (!tc->getCpuPtr()->params().do_statistics_insts)
         return;
 
