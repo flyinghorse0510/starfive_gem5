@@ -28,15 +28,17 @@ while getopts "hbr" options; do
     esac
 done
 
+#/home/zhiguo.ge/ChipServer/Modeling/gem5_starlink2
+
 WORKSPACE="${HOME}/Desktop"
-GEM5_DIR="${WORKSPACE}/gem5_starlink2.0"
-OUTPUT_DIR="${WORKSPACE}/04_gem5dump/STREAM_"
+GEM5_DIR="${WORKSPACE}/gem5_starlink2/memtest"
+OUTPUT_DIR="${WORKSPACE}/04_gem5Dump/HAS0.5"
 ISA="RISCV"
 CCPROT="CHI"
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
-    scons build/${ISA}_${CCPROT}/gem5.opt --default=RISCV PROTOCOL=${CCPROT} -j`nproc`
+    scons build/${ISA}_${CCPROT}/gem5.debug --default=RISCV PROTOCOL=${CCPROT} -j`nproc`
 fi
 
 if [ "$RUN" != "" ]; then
@@ -61,6 +63,6 @@ if [ "$RUN" != "" ]; then
     done
     wait
 fi
-            # --rate-style 
-            # --debug-flags=PseudoInst --debug-file=debug.trace 
-# --debug-flags=RubyCHIDebugStr5,RubyGenerated  --debug-file=debug.trace 
+
+# echo "Parsing the address trace"
+# python3 ProcessCHIDebugTrace.py --dump-dir ${OUTPUT_DIR}

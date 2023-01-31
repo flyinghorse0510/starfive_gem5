@@ -405,11 +405,15 @@ DRAMInterface::doBurstAccess(MemPacket* mem_pkt, Tick next_burst_at,
     else
         cmd_at = ctrl->verifySingleCmd(cmd_at, maxCommandsPerWindow, false);
 
+    DPRINTF(DRAM, "cmd_at value, cmd_at:%lld, col_allowed_at:%lld, next_burst_at:%lld  \n", 
+                        cmd_at, col_allowed_at, next_burst_at);
+
     // if we are interleaving bursts, ensure that
     // 1) we don't double interleave on next burst issue
     // 2) we are at an interleave boundary; if not, shift to next boundary
     Tick burst_gap = tBURST_MIN;
     if (burstInterleave) {
+        
         if (cmd_at == (rank_ref.lastBurstTick + tBURST_MIN)) {
             // already interleaving, push next command to end of full burst
             burst_gap = tBURST;
@@ -420,6 +424,9 @@ DRAMInterface::doBurstAccess(MemPacket* mem_pkt, Tick next_burst_at,
             // tBURST is less than tBURST_MAX
             cmd_at = rank_ref.lastBurstTick + tBURST;
         }
+        DPRINTF(DRAM, "Latency, burstInterleave cmd_at:%lld, lastBurstTick:%lld, tBURST_MIN:%lld,  \n", 
+                        cmd_at, rank_ref.lastBurstTick,  tBURST_MIN);
+
     }
     DPRINTF(DRAM, "Schedule RD/WR burst at tick %d\n", cmd_at);
 
@@ -431,6 +438,9 @@ DRAMInterface::doBurstAccess(MemPacket* mem_pkt, Tick next_burst_at,
     }
 
     rank_ref.lastBurstTick = cmd_at;
+
+    DPRINTF(DRAM, "Latency, cmd_at:%lld, tBURST:%lld, tRL:%lld, tWL:%lld, R/W:%s, readyTime:%lld Addr:%#x\n", 
+                             cmd_at, tBURST, tRL, tWL, mem_pkt->isRead()? "RD" : "WR", mem_pkt->readyTime, mem_pkt->addr);
 
     // update the time for the next read/write burst for each
     // bank (add a max with tCCD/tCCD_L/tCCD_L_WR here)
