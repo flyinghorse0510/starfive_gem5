@@ -101,7 +101,6 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
       nextProgressMessage(p.progress_interval),
       maxLoads(p.max_loads),
       atomic(p.system->isAtomicMode()),
-      numIters(p.num_iters),
       seqIdx(0),
       suppressFuncErrors(p.suppress_func_errors), stats(this)
 {
@@ -109,6 +108,7 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     fatal_if(id >= blockSize, "Too many testers, only %d allowed\n",
              blockSize - 1);
 
+    fatal_if(maxLoads <= 0, "Requires a minimum of 1 Load/Store");
     // set up counters
     numReads = 0;
     numWrites = 0;
@@ -221,8 +221,11 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
             numWrites++;
             stats.numWrites++;
         }
-        if (maxLoads != 0 && (numWrites+numReads) >= maxLoads)
-            exitSimLoop("maximum number of loads/stores reached");
+        if (!isProducer) {
+            if (numReads >= maxLoads) {
+                exitSimLoop("maximum number of loads/stores reached");
+            }
+        }
     }
 
     // the packet will delete the data
@@ -267,6 +270,13 @@ ProdConsMemTest::tick()
     if (outstandingAddrs.size() >= 1) {
         waitResponse = true;
         return;
+    }
+
+    // Also skip, if you are a producer and generated the max number of stores
+    if (isProducer) {
+        if (numWrites >= maxLoads) {
+            return;
+        }
     }
 
     bool readOrWrite = (isProducer)?false:true;  // Only producer can write

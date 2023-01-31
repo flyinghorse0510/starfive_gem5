@@ -172,9 +172,6 @@ class ProdConsMemTest : public ClockedObject
 
     uint64_t numReads;
     uint64_t numWrites;
-    uint64_t maxLoads2;
-    bool isSequential;
-    uint64_t numIters;
     const uint64_t maxLoads;
 
     const bool atomic;
