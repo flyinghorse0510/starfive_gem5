@@ -199,12 +199,11 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
         if (pkt->isRead()) {
             writeSyncData_t ref_data = referenceData[req->getPaddr()];
             if (pkt_data[0] != ref_data) {
-                // panic("%s: read of %x (blk %x) @ cycle %d "
-                //       "returns %x, expected %x\n", name(),
-                //       req->getPaddr(), blockAlign(req->getPaddr()), curTick(),
-                //       pkt_data[0], ref_data);
-
-                // put back the address because you haven't received the "correct" response
+                /**
+                 * Incorrect data read. 
+                 * Put back the address because 
+                 * you haven't received the "correct" response
+                 */
                 DPRINTF(ProdConsMemLatTest, "Read of %x returns %x, expected %x\n", remove_paddr,pkt_data[0], ref_data);
                 outstandingAddrs.insert(remove_paddr);
             } else {
@@ -219,18 +218,27 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
                             name(), numReads, numWrites, curTick());
                     nextProgressMessage += progressInterval;
                 }
-                if (numReads >=  workingSet.size()) {
+                if ((numReads > 0) && ((numReads%workingSet.size()) == 0)) {
                     TESTER_CONSUMER_FLG = true;
                 }
+
             }
         } else {
             assert(pkt->isWrite());
 
-             DPRINTF(ProdConsMemLatTest, "Completing write at address %x\n", req->getPaddr());
+            DPRINTF(ProdConsMemLatTest, "Completing write at address %x, data %x\n", req->getPaddr(),pkt_data[0]);
             // update the reference data
             referenceData[req->getPaddr()] = pkt_data[0];
             numWrites++;
             stats.numWrites++;
+
+             if (isProducer) {
+                if ((numWrites > 0) && (numWrites%(workingSet.size()) == 0)) {
+                    // Generating the last store request of the current workingSet pass
+                    TESTER_PRODUCER_FLG=true;
+                    TESTER_PRODUCER_IDX++;
+                }
+            }
         }
         if (!isProducer) {
             if (numReads >= maxLoads) {
@@ -277,50 +285,44 @@ ProdConsMemTest::tick()
     Request::Flags flags;
     Addr paddr = 0;
 
+    DPRINTF(ProdConsMemLatTest,"Prod/Cons=%s,TESTER_PRODUCER_FLG=%d,TESTER_CONSUMER_FLG=%d,outstandingAddrs=%d\n",isProducer,TESTER_PRODUCER_FLG,TESTER_CONSUMER_FLG,outstandingAddrs.size());
+
     // Skip if you have outstanding transactions
     if (outstandingAddrs.size() >= 1) {
         waitResponse = true;
         return;
     }
 
-    // Also skip, if you are a producer and generated the max number of stores
+    // Setting the producer consumer values
     if (isProducer) {
+        // Also skip, if you are a producer and generated the max number of stores
         if (numWrites >= maxLoads) {
             return;
         }
-    }
-
-    if (TESTER_PRODUCER_FLG && TESTER_CONSUMER_FLG) {
-        // Both producers and consumers have finished with the current pass over the workingSet
-        TESTER_PRODUCER_IDX++;
-        TESTER_PRODUCER_FLG=false;
-        TESTER_CONSUMER_FLG=false;
-    } else if (TESTER_PRODUCER_FLG && !TESTER_CONSUMER_FLG) {
-        // Producer has finished but consumer has't
-        schedule(tickEvent, clockEdge(interval)); // Wait for the producer
-        reschedule(noRequestEvent, clockEdge(progressCheck), true); // Shift this event
-        return;
-    } else if (!TESTER_PRODUCER_FLG && TESTER_CONSUMER_FLG) {
-        // Consumer is likely reading garbage data
-        panic("Consumer is likely reading garbage data\n");
-    }
-    // assert(!TESTER_CONSUMER_FLG);
-
-    bool readOrWrite = (isProducer)?false:true;  // Only producer can write
-    uint64_t totalSeqIdx = seqIdx;
-    do {
-        paddr = workingSet.at(seqIdx);
-        totalSeqIdx = seqIdx+1;
-        seqIdx = (totalSeqIdx)%(workingSet.size());
-    } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
-    
-    if ((totalSeqIdx > 0) && (totalSeqIdx%(workingSet.size()) == 0)) {
-        if (isProducer) {
-            TESTER_PRODUCER_FLG=true;
-        } else {
-            TESTER_CONSUMER_FLG=false;
+        // Suspend the generation of new write request
+        if (TESTER_PRODUCER_FLG && !TESTER_CONSUMER_FLG) {
+            // Producer has finished but consumer has't
+            schedule(tickEvent, clockEdge(interval)); // Wait for the producer
+            reschedule(noRequestEvent, clockEdge(progressCheck), true); // Shift this event
+            return;
+        } else if (!TESTER_PRODUCER_FLG && TESTER_CONSUMER_FLG) {
+            // Consumer is likely reading garbage data
+            panic("Consumer is likely reading garbage data\n");
+        } else if (TESTER_PRODUCER_FLG) {
+            TESTER_PRODUCER_FLG = false;
+        }
+    } else {
+        if (TESTER_CONSUMER_FLG) {
+            TESTER_CONSUMER_FLG = false;
         }
     }
+
+    bool readOrWrite = (isProducer)?false:true;  // Only producer can write
+    do {
+        paddr = workingSet.at(seqIdx);
+        seqIdx = (seqIdx+1)%(workingSet.size());
+    } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
+    
     RequestPtr req = std::make_shared<Request>(paddr, 2, flags, requestorId);
     req->setContext(id);
     outstandingAddrs.insert(paddr);
@@ -340,7 +342,7 @@ ProdConsMemTest::tick()
             ref_data = ref->second;
         }
 
-        DPRINTF(ProdConsMemLatTest,"Initiating at addr %x read\n",req->getPaddr());
+        DPRINTF(ProdConsMemLatTest,"Initiating at addr %x read, data %x\n",req->getPaddr(),data);
 
         pkt = new Packet(req, MemCmd::ReadReq);
         pkt->dataDynamic(pkt_data);
@@ -350,7 +352,7 @@ ProdConsMemTest::tick()
         pkt->dataDynamic(pkt_data);
         pkt_data[0] = data;
 
-        DPRINTF(ProdConsMemLatTest,"Initiating at addr %x write\n",req->getPaddr());
+        DPRINTF(ProdConsMemLatTest,"Initiating at addr %x write, data %x\n",req->getPaddr(),data);
     }
     
     // there is no point in ticking if we are waiting for a retry
