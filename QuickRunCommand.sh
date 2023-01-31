@@ -1,8 +1,12 @@
 #!/bin/bash
 
 # workingset=(1024 2048 4096 5120 6144 8192 10240 14336 16384 32768 65536 131072 262144 393216 10485766)
-workingset=(1048576 4194304 8388608 16777216 33554432 67108864)
-# workingset=(64)
+# workingset=(1048576 4194304 8388608 16777216 33554432 67108864)
+#workingset=(2048 8192 16384)
+#workingset=(2048)
+
+#workingset=(2048)
+
 
 Help()
 {
@@ -29,17 +33,37 @@ while getopts "hbr" options; do
     esac
 done
 
-#/home/zhiguo.ge/ChipServer/Modeling/gem5_starlink2
-
 WORKSPACE="${HOME}/ChipServer/Modeling"
 GEM5_DIR="${WORKSPACE}/gem5_starlink2"
-OUTPUT_DIR="${WORKSPACE}/04_gem5Dump/Starlink2.0_gem5_ubench"
+OUTPUT_DIR="${WORKSPACE}/04_gem5dump/STREAM_"
 ISA="RISCV"
 CCPROT="CHI"
 
+l1d_size="256KiB"
+l1i_size="32KiB"
+l2_size="512KiB"
+l3_size="2MiB"
+l1d_assoc=8
+l1i_assoc=8
+l2_assoc=8
+l3_assoc=16
+
+
+NUM_ITER=4 #16 #800  #32 #16
+NUM_CPU=1 #16
+NUM_LLC=16
+
+#WS=2048*${NUM_CPU}
+
+
+workingset=(32768) #
+prefix="PDCP_20230131"
+#prefix="MultiThread"
+
+
 if [ "$BUILD" != "" ]; then
     echo "Start building"
-    scons build/${ISA}_${CCPROT}/gem5.debug --default=RISCV PROTOCOL=${CCPROT} -j`nproc`
+    scons build/${ISA}_${CCPROT}/gem5.opt --default=RISCV PROTOCOL=${CCPROT} -j`nproc`
 fi
 
 if [ "$RUN" != "" ]; then
@@ -47,24 +71,31 @@ if [ "$RUN" != "" ]; then
         mkdir -p $OUTPUT_DIR$i
         echo "Start running with $i working set size"
         $GEM5_DIR/build/${ISA}_${CCPROT}/gem5.opt \
-            -d $OUTPUT_DIR$i \
-            ${GEM5_DIR}/configs/example/Starlink2.0_4x4intradie.py \
-            --no-roi \
+            --debug-flags=PseudoInst --debug-file=debug.trace \
+            -d "${OUTPUT_DIR}_${prefix}_Core${NUM_CPU}_Iter${NUM_ITER}_WS$i" \
+            ${GEM5_DIR}/configs/example/Starlink2.0_intradie.py \
             --rate-style \
             --size-ws=$i \
+            --l1d_size=${l1d_size}\
+            --l1i_size=${l1i_size}\
+            --l2_size=${l2_size}\
+            --l3_size=${l3_size}\
+            --l1d_assoc=${l1d_assoc}\
+            --l1i_assoc=${l1i_assoc}\
+            --l2_assoc=${l2_assoc}\
+            --l3_assoc=${l3_assoc}\
             --num-dirs=1 \
-            --num-l3caches=16 \
-            --num-iters=10000 \
+            --use-o3 \
+            --num-l3caches=${NUM_LLC} \
+            --num-iters=${NUM_ITER} \
             --network=simple \
             --topology=CustomMesh \
             --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
             --ruby \
             --mem-size="4GB" \
-            --num-cpus=16 &
+            --num-cpus=${NUM_CPU}
     done
-    wait
 fi
-
-
-# echo "Parsing the address trace"
-# python3 ProcessCHIDebugTrace.py --dump-dir ${OUTPUT_DIR}
+            # --rate-style 
+            # --debug-flags=PseudoInst --debug-file=debug.trace 
+# --debug-flags=RubyCHIDebugStr5,RubyGenerated  --debug-file=debug.trace 
