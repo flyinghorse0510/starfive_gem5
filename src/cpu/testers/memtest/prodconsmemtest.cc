@@ -280,7 +280,7 @@ ProdConsMemTest::tick()
     bool readOrWrite = (isProducer)?false:true;  // Only producer can write
 
     // Skip if you have outstanding transactions
-    if (outstandingAddrs.size() >= 1) {
+    if (outstandingAddrs.size() >= 100) {
         waitResponse = true;
         return;
     }
@@ -306,7 +306,7 @@ ProdConsMemTest::tick()
         } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
         data = (TESTER_PRODUCER_IDX << 8) + writeSyncData[workingSet.at(seqIdx)];
     }
-    /* paddr is awaiting to be consumed. Do not consume data */
+    /* paddr is awaiting to be consumed. Do not produce data in this tick */
     if (isProducer) {
         if (pendingReads.find(paddr) != pendingReads.end()) {
             DPRINTF(ProdConsMemLatTest,"%x has pending Read requests\n",paddr);
