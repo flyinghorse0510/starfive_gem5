@@ -43,3 +43,5 @@ Source('BasicRouter.cc')
 Source('MessageBuffer.cc')
 Source('Network.cc')
 Source('Topology.cc')
+
+DebugFlag('MsgBufDebug', "For Packet DataFlow Tracing.")

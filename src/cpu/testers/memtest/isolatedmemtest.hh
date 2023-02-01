@@ -172,6 +172,7 @@ class IsolatedMemTest : public ClockedObject
     uint64_t maxLoads2;
     bool isSequential;
     uint64_t numIters;
+    uint64_t txSeqNum; // zhiang: requestorID + txSeqNum should be the unique ID
     const uint64_t maxLoads;
 
     const bool atomic;
