@@ -32,7 +32,7 @@ export WORKSPACE="${HOME}/Desktop"
 export GEM5_DIR=$(pwd)
 export ISA="RISCV"
 export CCPROT="CHI"
-export NUMCPUS=2
+export NUMCPUS=4
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -40,17 +40,17 @@ if [ "$BUILD" != "" ]; then
 fi
 
 if [ "$RUN2" != "" ]; then
-    OUTPUT_DIR="${WORKSPACE}/04_gem5dump/HAS0.5"
+    OUTPUT_DIR="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_2DDR"
     mkdir -p $OUTPUT_DIR
     $GEM5_DIR/build/${ISA}_${CCPROT}/gem5.debug \
         --debug-flags=ProdConsMemLatTest --debug-file=debug.trace \
         -d ${OUTPUT_DIR} \
         ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
-        --num-dirs=1 \
-        --num-l3caches=1 \
+        --num-dirs=2 \
+        --num-l3caches=4 \
         --network=simple \
         --topology=CustomMesh \
-        --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_2x2Mesh.py \
+        --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
         --ruby \
         --maxloads=3000 \
         --mem-size="4GB" \
