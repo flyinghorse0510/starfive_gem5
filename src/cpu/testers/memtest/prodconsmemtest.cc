@@ -55,9 +55,7 @@
 namespace gem5
 {
 
-
 static unsigned int TESTER_ALLOCATOR = 0;
-static unsigned int TESTER_PRODUCER_IDX = 0; // Pass Index of the writer. Only written by sole producer
 static std::queue<std::pair<Addr,writeSyncData_t>> writeValsQ=std::queue<std::pair<Addr,writeSyncData_t>>();
 
 bool
@@ -117,6 +115,7 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     // set up counters
     numReads = 0;
     numWrites = 0;
+    tester_producer_idx = 0;
     writeSyncData_t writeSyncDataBase = 0x1001; // true: read, false: write
     writeSyncData = { \
                     {0x40000, writeSyncDataBase}, \
@@ -157,7 +156,7 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
         workingSet.push_back(p.first);
     }
 
-    isProducer = (id == 0)?true:false;
+    isProducer = (id == 1)?true:false;
 
     // kick things into action
     schedule(tickEvent, curTick());
@@ -225,7 +224,7 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
             stats.numWrites++;
             writeValsQ.push(std::make_pair(req->getPaddr(),pkt_data[0]));
             if (isProducer && (numWrites > 0) && (numWrites%workingSet.size()==0)) {
-                TESTER_PRODUCER_IDX++;
+                tester_producer_idx++;
             }
         }
         if (!isProducer) {
@@ -295,10 +294,10 @@ ProdConsMemTest::tick()
         writeValsQ.pop();
     } else {
         do {
-            paddr = workingSet.at(seqIdx);
+            paddr = (id << 24)+workingSet.at(seqIdx);
             seqIdx = (seqIdx+1)%(workingSet.size());
         } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
-        data = (TESTER_PRODUCER_IDX << 8) + writeSyncData[paddr];
+        data = (tester_producer_idx << 8) + writeSyncData[workingSet.at(seqIdx)];
     }
     outstandingAddrs.insert(paddr);
     RequestPtr req = std::make_shared<Request>(paddr, 2, flags, requestorId);

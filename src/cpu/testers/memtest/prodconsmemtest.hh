@@ -168,7 +168,7 @@ class ProdConsMemTest : public ClockedObject
     const Cycles progressCheck;
     Tick nextProgressMessage;   // access # for next progress report
 
-
+    unsigned int tester_producer_idx; // Pass Index of the writer. Only written by sole producer
 
     uint64_t numReads;
     uint64_t numWrites;
