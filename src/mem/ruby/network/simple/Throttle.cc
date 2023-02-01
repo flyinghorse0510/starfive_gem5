@@ -78,6 +78,7 @@ Throttle::Throttle(int sID, RubySystem *rs, NodeID node, Cycles link_latency,
     m_endpoint_bandwidth = endpoint_bandwidth;
 
     m_wakeups_wo_switch = 0;
+    //m_physical_vnets = true; //ZHIGUO
 }
 
 Throttle::Throttle(int sID, RubySystem *rs, NodeID node, Cycles link_latency,

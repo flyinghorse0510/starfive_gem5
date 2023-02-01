@@ -38,42 +38,46 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __CPU_MEMTEST_MEMTEST_HH__
-#define __CPU_MEMTEST_MEMTEST_HH__
+#ifndef __CPU_ISO_MEMTEST_HH__
+#define __CPU_ISO_MEMTEST_HH__
 
 #include <unordered_map>
 #include <unordered_set>
 
 #include "base/statistics.hh"
 #include "mem/port.hh"
-#include "params/MemTest.hh"
+#include "params/ProdConsMemTest.hh"
 #include "sim/clocked_object.hh"
 #include "sim/eventq.hh"
 #include "sim/stats.hh"
+#include "cpu/testers/memtest/common.hh"
 
 namespace gem5
 {
 
+typedef uint16_t writeSyncData_t;
+
 /**
- * The MemTest class tests a cache coherent memory system by
- * generating false sharing and verifying the read data against a
- * reference updated on the completion of writes. Each tester reads
- * and writes a specific byte in a cache line, as determined by its
- * unique id. Thus, all requests issued by the MemTest instance are a
- * single byte and a specific address is only ever touched by a single
- * tester.
- *
+ * The ProdConsMemTest class tests a cache coherent memory system.
+ * 1. All requests issued by the ProdConsMemTest instance are a
+ *    single byte. 
+ * 2. The addresses are generated sequentially and the same
+ *    address is generated again, to remove the effects of cold
+ *    misses.
+ * 3. The address generation process is controlled to reason about
+ *    the performance of cache coherent memory system.
  * In addition to verifying the data, the tester also has timeouts for
  * both requests and responses, thus checking that the memory-system
  * is making progress.
  */
-class MemTest : public ClockedObject
+class ProdConsMemTest : public ClockedObject
 {
 
   public:
 
-    typedef MemTestParams Params;
-    MemTest(const Params &p);
+    typedef ProdConsMemTestParams Params;
+    
+    ProdConsMemTest(const Params &p);
 
 
     Port &getPort(const std::string &if_name,
@@ -81,6 +85,7 @@ class MemTest : public ClockedObject
 
   protected:
 
+    uint64_t seqIdx;
     void tick();
 
     EventFunctionWrapper tickEvent;
@@ -95,12 +100,12 @@ class MemTest : public ClockedObject
 
     class CpuPort : public RequestPort
     {
-        MemTest &memtest;
+        ProdConsMemTest &seqmemtest;
 
       public:
 
-        CpuPort(const std::string &_name, MemTest &_memtest)
-            : RequestPort(_name, &_memtest), memtest(_memtest)
+        CpuPort(const std::string &_name, ProdConsMemTest &_memtest)
+            : RequestPort(_name, &_memtest), seqmemtest(_memtest)
         { }
 
       protected:
@@ -120,33 +125,31 @@ class MemTest : public ClockedObject
 
     PacketPtr retryPkt;
 
-    // Set if reached the maximum number of outstanding requests.
-    // Won't tick until a response is received.
-    bool waitResponse;
-
     const unsigned size;
 
-    const Cycles interval;
+    bool waitResponse;
 
-    const unsigned percentReads;
-    const unsigned percentFunctional;
-    const unsigned percentUncacheable;
+    const Cycles interval;
 
     /** Request id for all generated traffic */
     RequestorID requestorId;
 
     unsigned int id;
 
-    std::unordered_set<Addr> outstandingAddrs;
+    bool isProducer; // id==0 is the producer
+
+    std::unordered_set<uint64_t> outstandingAddrs;
 
     // store the expected value for the addresses we have touched
-    std::unordered_map<Addr, uint8_t> referenceData;
+    std::unordered_map<Addr, writeSyncData_t> referenceData;
 
     const unsigned blockSize;
 
     const Addr blockAddrMask;
 
-    const unsigned sizeBlocks;
+    std::map<Addr, writeSyncData_t> writeSyncData;
+
+    std::vector<Addr> workingSet;
 
     /**
      * Get the block aligned address.
@@ -160,14 +163,12 @@ class MemTest : public ClockedObject
     }
 
     const Addr baseAddr1;
-    const Addr baseAddr2;
-    const Addr uncacheAddr;
-
-    Addr curOffset;
 
     const unsigned progressInterval;  // frequency of progress reports
     const Cycles progressCheck;
     Tick nextProgressMessage;   // access # for next progress report
+
+
 
     uint64_t numReads;
     uint64_t numWrites;
@@ -200,4 +201,4 @@ class MemTest : public ClockedObject
 
 } // namespace gem5
 
-#endif // __CPU_MEMTEST_MEMTEST_HH__
+#endif // __CPU_ISO_MEMTEST_HH__

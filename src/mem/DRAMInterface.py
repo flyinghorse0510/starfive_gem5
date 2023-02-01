@@ -529,13 +529,16 @@ class DDR4_2400_16x4(DRAMInterface):
     # tBURST is equivalent to the CAS-to-CAS delay (tCCD)
     # With bank group architectures, tBURST represents the CAS-to-CAS
     # delay for bursts to different bank groups (tCCD_S)
-    tBURST = '3.332ns'
+    #tBURST = '3.332ns'
+    tBURST = '1ns' ##ZHIGUO
+
 
     # @2400 data rate, tCCD_L is 6 CK
     # CAS-to-CAS delay for bursts to the same bank group
     # tBURST is equivalent to tCCD_S; no explicit parameter required
     # for CAS-to-CAS delay for bursts to different bank groups
-    tCCD_L = '5ns';
+    #tCCD_L = '5ns';
+    tCCD_L = '2ns'; #ZHIGUO
 
     # DDR4-2400 17-17-17
     tRCD = '14.16ns'
@@ -1015,6 +1018,11 @@ class GDDR5_4000_2x32(DRAMInterface):
 
     # Assume 2 cycles
     tRTW = '2ns'
+
+    #Added by GZG, 2 CLK, 2GHz
+    tCS = '1ns'
+    #Added by GZG
+    tREFI = '3.9us'
 
 # A single HBM x128 interface (one command and address bus), with
 # default timings based on data publically released

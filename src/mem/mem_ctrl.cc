@@ -117,6 +117,7 @@ MemCtrl::startup()
         // start of simulation
         dram->nextBurstAt = curTick() + dram->commandOffset();
     }
+    DPRINTF(MemCtrl, "dram next burst at:%lld \n", dram->nextBurstAt);
 }
 
 Tick
@@ -262,6 +263,7 @@ MemCtrl::addToReadQueue(PacketPtr pkt,
             // Default readyTime to Max; will be reset once read is issued
             mem_pkt->readyTime = MaxTick;
             mem_pkt->burstHelper = burst_helper;
+        
 
             assert(!readQueueFull(1));
             stats.rdQLenPdf[totalReadQueueSize + respQueue.size()]++;
@@ -485,8 +487,10 @@ MemCtrl::processRespondEvent(MemInterface* mem_intr,
                         bool& retry_rd_req)
 {
 
-    DPRINTF(MemCtrl,
-            "processRespondEvent(): Some req has reached its readyTime\n");
+    //DPRINTF(MemCtrl,  "processRespondEvent(): Some req has reached its readyTime");
+            
+    DPRINTF(MemCtrl,"processRespondEvent(): Some req has reached its readyTime, queue size: %d\n", queue.size());
+
 
     MemPacket* mem_pkt = queue.front();
 
@@ -515,11 +519,19 @@ MemCtrl::processRespondEvent(MemInterface* mem_intr,
     }
 
     queue.pop_front();
+    DPRINTF(MemCtrl,
+            "processRespondEvent(), queue pop, pkt_id:%d, addr:#%x, entryTime:%lld, readyTime:%lld, size:%d \n", 
+            mem_pkt->pkt->id, mem_pkt->addr, mem_pkt->entryTime, mem_pkt->readyTime,  mem_pkt->size);
+
 
     if (!queue.empty()) {
         assert(queue.front()->readyTime >= curTick());
         assert(!resp_event.scheduled());
         schedule(resp_event, queue.front()->readyTime);
+
+        DPRINTF(MemCtrl,
+            "processRespondEvent(): schedule respondEvent, queue not empty, pkt_id:%d, addr:#%x, entryTime:%lld, readyTime:%lld, nextToFire：%lld \n", 
+            mem_pkt->pkt->id, mem_pkt->addr, mem_pkt->entryTime, mem_pkt->readyTime, queue.front()->readyTime);
     } else {
         // if there is nothing left in any queue, signal a drain
         if (drainState() == DrainState::Draining &&
@@ -613,7 +625,7 @@ void
 MemCtrl::accessAndRespond(PacketPtr pkt, Tick static_latency,
                                                 MemInterface* mem_intr)
 {
-    DPRINTF(MemCtrl, "Responding to Address %#x.. \n", pkt->getAddr());
+    DPRINTF(MemCtrl, "Responding to Address,  %#x.. \n", pkt->getAddr());
 
     bool needsResponse = pkt->needsResponse();
     // do the actual memory access which also turns the packet into a
@@ -799,7 +811,7 @@ MemCtrl::doBurstAccess(MemPacket* mem_pkt, MemInterface* mem_intr)
     std::tie(cmd_at, mem_intr->nextBurstAt) =
             mem_intr->doBurstAccess(mem_pkt, mem_intr->nextBurstAt, queue);
 
-    DPRINTF(MemCtrl, "Access to %#x, ready at %lld next burst at %lld.\n",
+    DPRINTF(MemCtrl, "Access to %#x, readyTime:%lld next burst at %lld.\n",
             mem_pkt->addr, mem_pkt->readyTime, mem_intr->nextBurstAt);
 
     // Update the minimum timing between the requests, this is a

@@ -38,45 +38,48 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "cpu/testers/memtest/memtest.hh"
+#include "cpu/testers/memtest/prodconsmemtest.hh"
 
 #include "base/compiler.hh"
 #include "base/random.hh"
 #include "base/statistics.hh"
 #include "base/trace.hh"
-#include "debug/MemTest.hh"
+#include "debug/ProdConsMemLatTest.hh"
 #include "sim/sim_exit.hh"
 #include "sim/stats.hh"
 #include "sim/system.hh"
+#include "cpu/testers/memtest/common.hh"
+#include <queue>
+#include <utility>
 
 namespace gem5
 {
 
+
 static unsigned int TESTER_ALLOCATOR = 0;
+static unsigned int TESTER_PRODUCER_IDX = 0; // Pass Index of the writer. Only written by sole producer
+static std::queue<std::pair<Addr,writeSyncData_t>> writeValsQ=std::queue<std::pair<Addr,writeSyncData_t>>();
 
 bool
-MemTest::CpuPort::recvTimingResp(PacketPtr pkt)
+ProdConsMemTest::CpuPort::recvTimingResp(PacketPtr pkt)
 {
-    memtest.completeRequest(pkt);
+    seqmemtest.completeRequest(pkt);
     return true;
 }
 
 void
-MemTest::CpuPort::recvReqRetry()
+ProdConsMemTest::CpuPort::recvReqRetry()
 {
-    memtest.recvRetry();
+    seqmemtest.recvRetry();
 }
 
 bool
-MemTest::sendPkt(PacketPtr pkt) {
+ProdConsMemTest::sendPkt(PacketPtr pkt) {
     if (atomic) {
-        ccprintf(std::cerr, "MemTest atomic mode \n");
-
         port.sendAtomic(pkt);
         completeRequest(pkt);
     } else {
         if (!port.sendTimingReq(pkt)) {
-            DPRINTF(MemTest, "packet sending fail, need retry. addr:%#x\n", pkt->getAddr());
             retryPkt = pkt;
             return false;
         }
@@ -84,7 +87,7 @@ MemTest::sendPkt(PacketPtr pkt) {
     return true;
 }
 
-MemTest::MemTest(const Params &p)
+ProdConsMemTest::ProdConsMemTest(const Params &p)
     : ClockedObject(p),
       tickEvent([this]{ tick(); }, name()),
       noRequestEvent([this]{ noRequest(); }, name()),
@@ -94,39 +97,67 @@ MemTest::MemTest(const Params &p)
       waitResponse(false),
       size(p.size),
       interval(p.interval),
-      percentReads(p.percent_reads),
-      percentFunctional(p.percent_functional),
-      percentUncacheable(p.percent_uncacheable),
       requestorId(p.system->getRequestorId(this)),
       blockSize(p.system->cacheLineSize()),
       blockAddrMask(blockSize - 1),
-      sizeBlocks(size / blockSize),
       baseAddr1(p.base_addr_1),
-      baseAddr2(p.base_addr_2),
-      uncacheAddr(p.uncacheable_base_addr),
       progressInterval(p.progress_interval),
       progressCheck(p.progress_check),
       nextProgressMessage(p.progress_interval),
       maxLoads(p.max_loads),
       atomic(p.system->isAtomicMode()),
+      seqIdx(0),
       suppressFuncErrors(p.suppress_func_errors), stats(this)
 {
     id = TESTER_ALLOCATOR++;
     fatal_if(id >= blockSize, "Too many testers, only %d allowed\n",
              blockSize - 1);
 
+    fatal_if(maxLoads <= 0, "Requires a minimum of 1 Load/Store");
     // set up counters
     numReads = 0;
     numWrites = 0;
+    writeSyncData_t writeSyncDataBase = 0x1001; // true: read, false: write
+    writeSyncData = { \
+                    {0x40000, writeSyncDataBase}, \
+                    {0x40040, writeSyncDataBase+1}, \
+                    {0x40080, writeSyncDataBase+2}, \
+                    {0x400c0, writeSyncDataBase+3}, \
+                    {0x40140, writeSyncDataBase+4}, \
+                    {0x40180, writeSyncDataBase+5}, \
+                    {0x401c0, writeSyncDataBase+6}, \
+                    {0x40240, writeSyncDataBase+7}, \
+                    {0x40280, writeSyncDataBase+8}, \
+                    {0x402c0, writeSyncDataBase+9}, \
+                    {0x40340, writeSyncDataBase+10}, \
+                    {0x40380, writeSyncDataBase+11}, \
+                    {0x403c0, writeSyncDataBase+12}, \
+                    {0x40440, writeSyncDataBase+13}, \
+                    {0x40480, writeSyncDataBase+14}, \
+                    {0x404c0, writeSyncDataBase+15}, \
+                    {0x40540, writeSyncDataBase+16}, \
+                    {0x40580, writeSyncDataBase+17}, \
+                    {0x405c0, writeSyncDataBase+18}, \
+                    {0x40640, writeSyncDataBase+19}, \
+                    {0x40680, writeSyncDataBase+20}, \
+                    {0x406c0, writeSyncDataBase+21}, \
+                    {0x40740, writeSyncDataBase+22}, \
+                    {0x40780, writeSyncDataBase+23}, \
+                    {0x407c0, writeSyncDataBase+24}, \
+                    {0x40840, writeSyncDataBase+25}, \
+                    {0x40880, writeSyncDataBase+26}, \
+                    {0x408c0, writeSyncDataBase+27}, \
+                    {0x40940, writeSyncDataBase+28}, \
+                    {0x40980, writeSyncDataBase+29}, \
+                    {0x409c0, writeSyncDataBase+30}, \
+                    {0x40a40, writeSyncDataBase+31}, \
+                    {0x40a80, writeSyncDataBase+32}, \
+                    {0x40ac0, writeSyncDataBase+33}};
+    for (const auto &p : writeSyncData) {
+        workingSet.push_back(p.first);
+    }
 
-    //curOffset = 64000;
-
-    curOffset = id*1048576 + 64000;
-
-
-    ccprintf(std::cerr, "MemTest  %s: size %d sizeBlocks %d \n",
-                         name(), size, sizeBlocks);
-
+    isProducer = (id == 0)?true:false;
 
     // kick things into action
     schedule(tickEvent, curTick());
@@ -134,7 +165,7 @@ MemTest::MemTest(const Params &p)
 }
 
 Port &
-MemTest::getPort(const std::string &if_name, PortID idx)
+ProdConsMemTest::getPort(const std::string &if_name, PortID idx)
 {
     if (if_name == "port")
         return port;
@@ -143,22 +174,19 @@ MemTest::getPort(const std::string &if_name, PortID idx)
 }
 
 void
-MemTest::completeRequest(PacketPtr pkt, bool functional)
+ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
 {
     const RequestPtr &req = pkt->req;
-    assert(req->getSize() == 1);
+    assert(req->getSize() == 2);
 
     // this address is no longer outstanding
+    auto remove_paddr = req->getPaddr();
     auto remove_addr = outstandingAddrs.find(req->getPaddr());
     assert(remove_addr != outstandingAddrs.end());
     outstandingAddrs.erase(remove_addr);
 
-    DPRINTF(MemTest, "Completing %s at address %x (blk %x) %s\n",
-            pkt->isWrite() ? "write" : "read",
-            req->getPaddr(), blockAlign(req->getPaddr()),
-            pkt->isError() ? "error" : "success");
-
-    const uint8_t *pkt_data = pkt->getConstPtr<uint8_t>();
+    
+    const writeSyncData_t *pkt_data = pkt->getConstPtr<writeSyncData_t>();
 
     if (pkt->isError()) {
         if (!functional || !suppressFuncErrors)
@@ -166,33 +194,44 @@ MemTest::completeRequest(PacketPtr pkt, bool functional)
                 pkt->isWrite() ? "Write" : "Read", req->getPaddr());
     } else {
         if (pkt->isRead()) {
-            uint8_t ref_data = referenceData[req->getPaddr()];
+            writeSyncData_t ref_data = referenceData[req->getPaddr()];
             if (pkt_data[0] != ref_data) {
-                panic("%s: read of %x (blk %x) @ cycle %d "
-                      "returns %x, expected %x\n", name(),
-                      req->getPaddr(), blockAlign(req->getPaddr()), curTick(),
-                      pkt_data[0], ref_data);
+                /**
+                 * Incorrect data read. 
+                 * Put back the address because 
+                 * you haven't received the "correct" response
+                 */
+                panic("Read of %x returns %x, expected %x\n", remove_paddr,pkt_data[0], ref_data);
+            } else {
+                DPRINTF(ProdConsMemLatTest, "Completing read at address %x, data %x\n", req->getPaddr(),pkt_data[0]);
+                
+                numReads++;
+                stats.numReads++;
+
+                if (numReads == (uint64_t)nextProgressMessage) {
+                    ccprintf(std::cerr,
+                            "%s: completed %d read, %d write accesses @%d\n",
+                            name(), numReads, numWrites, curTick());
+                    nextProgressMessage += progressInterval;
+                }
             }
-
-            numReads++;
-            stats.numReads++;
-
-            if (numReads == (uint64_t)nextProgressMessage) {
-                ccprintf(std::cerr,
-                        "%s: completed %d read, %d write accesses @%d\n",
-                        name(), numReads, numWrites, curTick());
-                nextProgressMessage += progressInterval;
-            }
-
-            if (maxLoads != 0 && numReads >= maxLoads)
-                exitSimLoop("maximum number of loads reached");
         } else {
             assert(pkt->isWrite());
 
+            DPRINTF(ProdConsMemLatTest, "Completing write at address %x, data %x\n", req->getPaddr(),pkt_data[0]);
             // update the reference data
             referenceData[req->getPaddr()] = pkt_data[0];
             numWrites++;
             stats.numWrites++;
+            writeValsQ.push(std::make_pair(req->getPaddr(),pkt_data[0]));
+            if (isProducer && (numWrites > 0) && (numWrites%workingSet.size()==0)) {
+                TESTER_PRODUCER_IDX++;
+            }
+        }
+        if (!isProducer) {
+            if (numReads >= maxLoads) {
+                exitSimLoop("maximum number of loads/stores reached");
+            }
         }
     }
 
@@ -205,14 +244,14 @@ MemTest::completeRequest(PacketPtr pkt, bool functional)
         reschedule(noResponseEvent, clockEdge(progressCheck));
     else if (noResponseEvent.scheduled())
         deschedule(noResponseEvent);
-
+    
     // schedule the next tick
     if (waitResponse) {
         waitResponse = false;
         schedule(tickEvent, clockEdge(interval));
     }
 }
-MemTest::MemTestStats::MemTestStats(statistics::Group *parent)
+ProdConsMemTest::MemTestStats::MemTestStats(statistics::Group *parent)
       : statistics::Group(parent),
       ADD_STAT(numReads, statistics::units::Count::get(),
                "number of read accesses completed"),
@@ -222,123 +261,69 @@ MemTest::MemTestStats::MemTestStats(statistics::Group *parent)
 
 }
 
-enum AddrPattern{CONSEC, RANDOM};
-
-
 void
-MemTest::tick()
+ProdConsMemTest::tick()
 {
-    // we should never tick if we are waiting for a retry or response
+    // we should never tick if we are waiting for a retry
     assert(!retryPkt);
     assert(!waitResponse);
 
-    //if(id != 0) //Only CPU 0 send packet
-    if(!(id == 0 || id ==15)) //Only CPU 0 send packet
-        return;
-
     // create a new request
-    unsigned cmd = random_mt.random(0, 100);
-    uint8_t data = random_mt.random<uint8_t>();
-    bool uncacheable = random_mt.random(0, 100) < percentUncacheable;
-    unsigned base = random_mt.random(0, 1);
+    unsigned offset=0;
     Request::Flags flags;
-    Addr paddr;
+    Addr paddr = 0;
+    bool readOrWrite = (isProducer)?false:true;  // Only producer can write
 
-    enum AddrPattern addr_pattern = CONSEC;
-    cmd = 0; // all are read request
-
-    // halt until we clear outstanding requests, otherwise it won't be able to
-    // find a new unique address
-    if (outstandingAddrs.size() >= sizeBlocks) {
+    // Skip if you have outstanding transactions
+    if (outstandingAddrs.size() >= 1) {
         waitResponse = true;
-        ccprintf(std::cerr, "MemTest  waitResponse set to true， %s: size %d sizeBlocks %d \n",
-                         name(), size, sizeBlocks);
         return;
     }
 
-   if (addr_pattern == RANDOM) {
-    assert(false);
-
-    // generate a unique address
-    do {
-        unsigned offset = random_mt.random<unsigned>(0, size - 1);
-
-        // use the tester id as offset within the block for false sharing
-        offset = blockAlign(offset);
-        offset += id;
-
-        if (uncacheable) {
-            flags.set(Request::UNCACHEABLE);
-            paddr = uncacheAddr + offset;
-        } else  {
-            paddr = ((base) ? baseAddr1 : baseAddr2) + offset;
-        }
-    } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
-   }
-   else if (addr_pattern == CONSEC) {
-       curOffset = curOffset + 64;
-   } else {
-    assert(false);
-   }   
-
-   paddr = curOffset;
-   DPRINTF(MemTest, "Gen paddr:%#x outstanding num:%d \n", paddr, outstandingAddrs.size() );
-
-   // bool do_functional = (random_mt.random(0, 100) < percentFunctional) && !uncacheable;
-
-    bool do_functional = false; //ZHIGUO
-
-    RequestPtr req = std::make_shared<Request>(paddr, 1, flags, requestorId);
-    req->setContext(id);
-
-    outstandingAddrs.insert(paddr);
-
-    // sanity check
-    panic_if(outstandingAddrs.size() > 100,
-             "Tester %s has more than 100 outstanding requests\n", name());
-
-    PacketPtr pkt = nullptr;
-    uint8_t *pkt_data = new uint8_t[1];
-
-    if (cmd < percentReads) {
-        // start by ensuring there is a reference value if we have not
-        // seen this address before
-        [[maybe_unused]] uint8_t ref_data = 0;
-        auto ref = referenceData.find(req->getPaddr());
-        if (ref == referenceData.end()) {
-            referenceData[req->getPaddr()] = 0;
-        } else {
-            ref_data = ref->second;
-        }
-
-        DPRINTF(MemTest,
-                "Initiating %sread at addr %x (blk %x) expecting %x\n",
-                do_functional ? "functional " : "", req->getPaddr(),
-                blockAlign(req->getPaddr()), ref_data);
-
-        pkt = new Packet(req, MemCmd::ReadReq);
-        pkt->dataDynamic(pkt_data);
+    if (readOrWrite && writeValsQ.empty()) {
+        // There are no writes to the memory yet. Retry in the next interval 
+        schedule(tickEvent, clockEdge(interval));
+        return;
+    } 
+    
+    writeSyncData_t data;
+    if (readOrWrite) {
+        // Find an address to generate a Read request
+        auto storedAddr = writeValsQ.front();
+        paddr = storedAddr.first;
+        data = storedAddr.second;
+        writeValsQ.pop();
     } else {
-        DPRINTF(MemTest, "Initiating %swrite at addr %x (blk %x) value %x\n",
-                do_functional ? "functional " : "", req->getPaddr(),
-                blockAlign(req->getPaddr()), data);
+        do {
+            paddr = workingSet.at(seqIdx);
+            seqIdx = (seqIdx+1)%(workingSet.size());
+        } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
+        data = (TESTER_PRODUCER_IDX << 8) + writeSyncData[paddr];
+    }
+    outstandingAddrs.insert(paddr);
+    RequestPtr req = std::make_shared<Request>(paddr, 2, flags, requestorId);
+    req->setContext(id);
+    
+    PacketPtr pkt = nullptr;
+    writeSyncData_t *pkt_data = new writeSyncData_t[1];
 
+    if (readOrWrite) {
+        pkt = new Packet(req, MemCmd::ReadReq);
+        referenceData[req->getPaddr()] = data;
+        pkt->dataDynamic(pkt_data);
+
+        DPRINTF(ProdConsMemLatTest,"Initiating at addr %x read, data %x\n",req->getPaddr(),data);
+        
+    } else {
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
         pkt_data[0] = data;
-    }
 
+        DPRINTF(ProdConsMemLatTest,"Initiating at addr %x write, data %x\n",req->getPaddr(),data);
+    }
+    
     // there is no point in ticking if we are waiting for a retry
-    bool keep_ticking = true;
-    if (do_functional) {
-        pkt->setSuppressFuncError();
-        port.sendFunctional(pkt);
-        completeRequest(pkt, true);
-    } else {
-        keep_ticking = sendPkt(pkt);
-        DPRINTF(MemTest, "sendPkt, addr %#x keep_ticking:%d \n", pkt->getAddr(), keep_ticking);
-    }
-
+    bool keep_ticking = sendPkt(pkt);
     if (keep_ticking) {
         // schedule the next tick
         schedule(tickEvent, clockEdge(interval));
@@ -347,32 +332,32 @@ MemTest::tick()
         // as we have successfully sent a packet
         reschedule(noRequestEvent, clockEdge(progressCheck), true);
     } else {
-        DPRINTF(MemTest, "Waiting for retry\n");
+        DPRINTF(ProdConsMemLatTest, "Waiting for retry\n");
     }
 
-    // Schedule noResponseEvent now if we are expecting a response
+    // Schedule noResponseEvent now if we are not expecting a response
     if (!noResponseEvent.scheduled() && (outstandingAddrs.size() != 0))
         schedule(noResponseEvent, clockEdge(progressCheck));
 }
 
 void
-MemTest::noRequest()
+ProdConsMemTest::noRequest()
 {
     panic("%s did not send a request for %d cycles", name(), progressCheck);
 }
 
 void
-MemTest::noResponse()
+ProdConsMemTest::noResponse()
 {
     panic("%s did not see a response for %d cycles", name(), progressCheck);
 }
 
 void
-MemTest::recvRetry()
+ProdConsMemTest::recvRetry()
 {
     assert(retryPkt);
     if (port.sendTimingReq(retryPkt)) {
-        DPRINTF(MemTest, "Proceeding after successful retry\n");
+        DPRINTF(ProdConsMemLatTest, "Proceeding after successful retry\n");
 
         retryPkt = nullptr;
         // kick things into action again

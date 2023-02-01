@@ -294,8 +294,8 @@ MessageBuffer::enqueue(MsgPtr message, Tick current_time, Tick delta)
     assert((m_max_size == 0) ||
            ((m_prio_heap.size() + m_stall_map_size) <= m_max_size));
 
-    DPRINTF(RubyQueue, "Enqueue arrival_time: %lld, Message: %s\n",
-            arrival_time, *(message.get()));
+    DPRINTF(RubyQueue, "Enqueue arrival_time: %lld, delta:%lld, Message: %s\n",
+            arrival_time, delta, *(message.get()));
 
     // zhiang: we added txSeqNum to CHI protocol msgs so that can print txSeqNum
 
