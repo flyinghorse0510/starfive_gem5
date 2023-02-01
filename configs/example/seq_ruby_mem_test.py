@@ -67,10 +67,10 @@ args = parser.parse_args()
 # Set the default cache size and associativity to be very small to encourage
 # races between requests and writebacks.
 #
-args.l1d_size="256B"
-args.l1i_size="256B"
-args.l2_size="512B"
-args.l3_size="1kB"
+args.l1d_size="32kB"
+args.l1i_size="32kB"
+args.l2_size="256kB"
+args.l3_size="2048kB"
 args.l1d_assoc=2
 args.l1i_assoc=2
 args.l2_assoc=2

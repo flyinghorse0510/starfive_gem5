@@ -57,6 +57,9 @@ namespace gem5
 
 static unsigned int TESTER_ALLOCATOR = 0;
 static std::queue<std::pair<Addr,writeSyncData_t>> writeValsQ=std::queue<std::pair<Addr,writeSyncData_t>>();
+static std::unordered_set<Addr> pendingReads;  // Data has not been consumed for these address. Do not overwrite
+// static std::unordered_set<Addr> pendingWrites; // 
+static unsigned int TESTER_PRODUCER_IDX; // Pass Index of the writer. Only written by sole producer
 
 bool
 ProdConsMemTest::CpuPort::recvTimingResp(PacketPtr pkt)
@@ -115,7 +118,7 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     // set up counters
     numReads = 0;
     numWrites = 0;
-    tester_producer_idx = 0;
+    TESTER_PRODUCER_IDX = 0;
     writeSyncData_t writeSyncDataBase = 0x1001; // true: read, false: write
     writeSyncData = { \
                     {0x40000, writeSyncDataBase}, \
@@ -156,7 +159,10 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
         workingSet.push_back(p.first);
     }
 
-    isProducer = (id == 1)?true:false;
+    isProducer=true;
+    if (id==1) {
+        isProducer=false;
+    }
 
     // kick things into action
     schedule(tickEvent, curTick());
@@ -184,7 +190,6 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
     assert(remove_addr != outstandingAddrs.end());
     outstandingAddrs.erase(remove_addr);
 
-    
     const writeSyncData_t *pkt_data = pkt->getConstPtr<writeSyncData_t>();
 
     if (pkt->isError()) {
@@ -195,14 +200,10 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
         if (pkt->isRead()) {
             writeSyncData_t ref_data = referenceData[req->getPaddr()];
             if (pkt_data[0] != ref_data) {
-                /**
-                 * Incorrect data read. 
-                 * Put back the address because 
-                 * you haven't received the "correct" response
-                 */
+                // Incorrect data read. Probably due to unhandled race conditions
                 panic("Read of %x returns %x, expected %x\n", remove_paddr,pkt_data[0], ref_data);
             } else {
-                DPRINTF(ProdConsMemLatTest, "Completing read at address %x, data %x\n", req->getPaddr(),pkt_data[0]);
+                DPRINTF(ProdConsMemLatTest, "Complete,%x,R,%x\n", req->getPaddr(),pkt_data[0]);
                 
                 numReads++;
                 stats.numReads++;
@@ -214,17 +215,22 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
                     nextProgressMessage += progressInterval;
                 }
             }
+            
+            auto pendingAddrPtr=pendingReads.find(req->getPaddr());
+            assert(pendingAddrPtr != pendingReads.end());
+            pendingReads.erase(pendingAddrPtr);
         } else {
             assert(pkt->isWrite());
 
-            DPRINTF(ProdConsMemLatTest, "Completing write at address %x, data %x\n", req->getPaddr(),pkt_data[0]);
+            DPRINTF(ProdConsMemLatTest, "Complete,%x,W,%x\n", req->getPaddr(),pkt_data[0]);
             // update the reference data
             referenceData[req->getPaddr()] = pkt_data[0];
             numWrites++;
             stats.numWrites++;
+            // DPRINTF(ProdConsMemLatTest,"Pushing Value for W, %x, %x\n",req->getPaddr(),pkt_data[0]);
             writeValsQ.push(std::make_pair(req->getPaddr(),pkt_data[0]));
             if (isProducer && (numWrites > 0) && (numWrites%workingSet.size()==0)) {
-                tester_producer_idx++;
+                TESTER_PRODUCER_IDX++;
             }
         }
         if (!isProducer) {
@@ -292,13 +298,24 @@ ProdConsMemTest::tick()
         paddr = storedAddr.first;
         data = storedAddr.second;
         writeValsQ.pop();
+        DPRINTF(ProdConsMemLatTest,"Popping Value for R, %x, %x\n",paddr,data);
     } else {
         do {
             paddr = (id << 24)+workingSet.at(seqIdx);
             seqIdx = (seqIdx+1)%(workingSet.size());
         } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
-        data = (tester_producer_idx << 8) + writeSyncData[workingSet.at(seqIdx)];
+        data = (TESTER_PRODUCER_IDX << 8) + writeSyncData[workingSet.at(seqIdx)];
     }
+    /* paddr is awaiting to be consumed. Do not consume data */
+    if (isProducer) {
+        if (pendingReads.find(paddr) != pendingReads.end()) {
+            DPRINTF(ProdConsMemLatTest,"%x has pending Read requests\n",paddr);
+            schedule(tickEvent, clockEdge(interval));
+            return;
+        }
+        pendingReads.insert(paddr);
+    }
+
     outstandingAddrs.insert(paddr);
     RequestPtr req = std::make_shared<Request>(paddr, 2, flags, requestorId);
     req->setContext(id);
@@ -311,14 +328,14 @@ ProdConsMemTest::tick()
         referenceData[req->getPaddr()] = data;
         pkt->dataDynamic(pkt_data);
 
-        DPRINTF(ProdConsMemLatTest,"Initiating at addr %x read, data %x\n",req->getPaddr(),data);
+        DPRINTF(ProdConsMemLatTest,"Start,%x,R,%x\n",req->getPaddr(),data);
         
     } else {
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
         pkt_data[0] = data;
 
-        DPRINTF(ProdConsMemLatTest,"Initiating at addr %x write, data %x\n",req->getPaddr(),data);
+        DPRINTF(ProdConsMemLatTest,"Start,%x,W,%x\n",req->getPaddr(),data);
     }
     
     // there is no point in ticking if we are waiting for a retry
