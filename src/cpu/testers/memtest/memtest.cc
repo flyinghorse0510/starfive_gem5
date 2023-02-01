@@ -233,8 +233,8 @@ MemTest::tick()
     assert(!waitResponse);
 
     //if(id != 0) //Only CPU 0 send packet
-    if(!(id == 0 || id ==15)) //Only CPU 0 send packet
-        return;
+    //if(!(id == 0 || id ==15)) //Only CPU 0 send packet
+    //    return;
 
     // create a new request
     unsigned cmd = random_mt.random(0, 100);
