@@ -32,14 +32,16 @@ args = parser.parse_args()
 # Set the default cache size and associativity to be very small to encourage
 # races between requests and writebacks.
 #
-args.l1d_size="32KiB"
-args.l1i_size="32KiB"
-args.l2_size="128KiB"
-args.l3_size="2MiB"
-args.l1d_assoc=4
-args.l1i_assoc=4
-args.l2_assoc=8
-args.l3_assoc=16
+#args.l1d_size="32KiB"
+#args.l1i_size="32KiB"
+#args.l2_size="128KiB"
+#args.l3_size="2MiB"
+#args.l1d_assoc=4
+#args.l1i_assoc=4
+#args.l2_assoc=8
+#args.l3_assoc=16
+#args.num_iters = 8
+#args.size_ws = 32768 #2048 #4096
 
 block_size = 64
 
@@ -48,9 +50,12 @@ if args.num_cpus < 1 :
      sys.exit(1)
 
 # Create Workload (Process) list
-binaryImg=f'/home/arka.maity/Desktop/benchmarks/ccbench/band_stream/build/stream.{args.size_ws}_0.GEM5_RV64'
+binaryImg=f'/home/zhiguo.ge/ChipServer/Modeling/Benchmarks/ccbench/band_stream/build/stream.2048_0.GEM5_RV64'
 if args.no_roi :
-    binaryImg=f'/home/arka.maity/Desktop/benchmarks/ccbench/band_stream/build_no_roi/stream.{args.size_ws}_0.GEM5_RV64'
+    binaryImg=f'/home/zhiguo.ge/ChipServer/Modeling/Benchmarks/ccbench/band_stream/build_no_roi/stream.2048_0.GEM5_RV64'
+
+#binaryImg=f'/home/zhiguo.ge/ChipServer/Modeling/Benchmarks/ccbench/multi_threads/build/multiThread._.GEM5_RV64'
+
 multiProcess=[]
 numThreads=1
 if args.rate_style :
@@ -58,7 +63,7 @@ if args.rate_style :
         process = Process(pid = 100 + i)
         process.executable = binaryImg
         process.cwd = os.getcwd()
-        process.cmd = [binaryImg, f'{i}', f'{args.num_cpus}', f'{args.num_iters}']
+        process.cmd = [binaryImg, f'{i}', f'{args.num_cpus}', f'{args.num_iters}', f'{args.size_ws}']
         multiProcess.append(process)
 else :
     process = Process(pid = 100)

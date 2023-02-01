@@ -147,7 +147,7 @@ class CustomMesh(SimpleTopology):
         # Create a zero-latency router bridging node controllers
         # and the mesh router
         node_router = self._Router(router_id = len(self._routers),
-                                    latency = 0)
+                                    latency = 1)
         self._routers.append(node_router)
 
         # connect node_router <-> mesh router
