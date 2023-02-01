@@ -138,7 +138,7 @@ SeqMemTest::completeRequest(PacketPtr pkt, bool functional)
     const RequestPtr &req = pkt->req;
     assert(req->getSize() == 1);
 
-    // this address is no longer outstanding
+    // this memTxnId is no longer outstanding
     uint64_t memTestTxnId = req->getMemTestTxnId();
     auto removeMemTestTxnId = outstandingTxnIds.find(memTestTxnId);
     assert(removeMemTestTxnId != outstandingTxnIds.end());
