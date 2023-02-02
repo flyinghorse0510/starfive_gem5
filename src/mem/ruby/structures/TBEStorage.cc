@@ -44,7 +44,7 @@ namespace ruby
 {
 
 TBEStorage::TBEStorage(statistics::Group *parent, std::string tbeDesc, int number_of_TBEs)
-    : m_reserved(0), m_stats(parent)
+    : m_reserved(0), m_stats(parent, tbeDesc)
 {
     for (int i = 0; i < number_of_TBEs; ++i)
         m_slots_avail.push(i);
@@ -55,6 +55,14 @@ TBEStorage::TBEStorage(statistics::Group *parent, int number_of_TBEs)
 {
     for (int i = 0; i < number_of_TBEs; ++i)
         m_slots_avail.push(i);
+}
+
+TBEStorage::TBEStorageStats::TBEStorageStats(statistics::Group *parent, std::string tbeDesc)
+    : statistics::Group(parent),
+      ADD_STAT(avg_size, std::string("TBE "+tbeDesc+" Occupancy").c_str()),
+      ADD_STAT(avg_util, std::string("TBE "+tbeDesc+" Utilization").c_str()),
+      ADD_STAT(avg_reserved, std::string("TBE "+tbeDesc+" Reserved").c_str())
+{
 }
 
 TBEStorage::TBEStorageStats::TBEStorageStats(statistics::Group *parent)

@@ -129,6 +129,7 @@ class TBEStorage
     struct TBEStorageStats : public statistics::Group
     {
         TBEStorageStats(statistics::Group *parent);
+        TBEStorageStats(statistics::Group *parent, std::string tbeDesc);
 
         // Statistical variables
         statistics::Average avg_size;
