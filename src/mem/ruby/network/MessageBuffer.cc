@@ -53,6 +53,7 @@
 #include "mem/ruby/protocol/CHIRequestMsg.hh"
 #include "mem/ruby/protocol/CHIResponseMsg.hh"
 #include "mem/ruby/protocol/CHIDataMsg.hh"
+#include "mem/ruby/protocol/MemoryMsg.hh"
 #include "mem/ruby/slicc_interface/RubyRequest.hh"
 #include "debug/MsgBufDebug.hh"
 #include <set>
