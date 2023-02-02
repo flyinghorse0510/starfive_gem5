@@ -104,6 +104,7 @@ IsolatedMemTest::IsolatedMemTest(const Params &p)
       atomic(p.system->isAtomicMode()),
       numIters(p.num_iters),
       seqIdx(0),
+      txSeqNum((static_cast<uint64_t>(p.system->getRequestorId(this))) << 48), // zhiang: init txSeqNum to ReqId(16-bit)_0000_0000_0000
       suppressFuncErrors(p.suppress_func_errors), stats(this)
 {
     id = TESTER_ALLOCATOR++;
@@ -178,7 +179,8 @@ IsolatedMemTest::completeRequest(PacketPtr pkt, bool functional)
     assert(remove_addr != outstandingAddrs.end());
     outstandingAddrs.erase(remove_addr);
 
-    DPRINTF(IsolatedMemLatTest, "Completing %s at address %x (blk %x) %s\n",
+    DPRINTF(IsolatedMemLatTest, "TxSeqNum: %#018x, Completing %s at address %x (blk %x) %s\n",
+            pkt->req->getReqInstSeqNum(),
             pkt->isWrite() ? "write" : "read",
             req->getPaddr(), blockAlign(req->getPaddr()),
             pkt->isError() ? "error" : "success");
@@ -274,6 +276,8 @@ IsolatedMemTest::tick()
     
     RequestPtr req = std::make_shared<Request>(paddr, 1, flags, requestorId);
     req->setContext(id);
+    req->setReqInstSeqNum(txSeqNum); // zhiang: TODO: here we test InstSeqNum, maybe changed by controllers downstream, let's see
+
     outstandingAddrs.insert(paddr);
     
     PacketPtr pkt = nullptr;
@@ -290,7 +294,7 @@ IsolatedMemTest::tick()
             ref_data = ref->second;
         }
 
-        DPRINTF(IsolatedMemLatTest,"Initiating at addr %x read\n",req->getPaddr());
+        DPRINTF(IsolatedMemLatTest,"TxSeqNum: %#018x, Initiating at addr %x read\n", req->getReqInstSeqNum(), req->getPaddr());
 
         pkt = new Packet(req, MemCmd::ReadReq);
         pkt->dataDynamic(pkt_data);
@@ -300,9 +304,11 @@ IsolatedMemTest::tick()
         pkt->dataDynamic(pkt_data);
         pkt_data[0] = data;
 
-        DPRINTF(IsolatedMemLatTest,"Initiating at addr %x write\n",req->getPaddr());
+        DPRINTF(IsolatedMemLatTest,"TxSeqNum: %#018x, Initiating at addr %x write\n", req->getReqInstSeqNum(), req->getPaddr());
     }
     
+    txSeqNum++; // for each transaction, we increate 1 to generate a new txSeqNum
+
     // there is no point in ticking if we are waiting for a retry
     bool keep_ticking = sendPkt(pkt);
     if (keep_ticking) {

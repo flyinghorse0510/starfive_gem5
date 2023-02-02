@@ -61,6 +61,7 @@
 #include "mem/ruby/system/CacheRecorder.hh"
 #include "params/RubyController.hh"
 #include "sim/clocked_object.hh"
+#include "mem/request.hh"
 
 namespace gem5
 {
@@ -259,6 +260,12 @@ class AbstractController : public ClockedObject, public Consumer
         m_inTrans[addr] = {type, initialState, curTick()};
         if (retried)
           ++(*stats.inTransLatRetries[type]);
+    }
+
+    // zhiang: get TxSeqNum
+    uint64_t getTxSeqNum(RequestPtr req)
+    {
+      return req->getReqInstSeqNum();
     }
 
     /**

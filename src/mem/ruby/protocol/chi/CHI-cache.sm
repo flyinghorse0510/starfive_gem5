@@ -617,6 +617,9 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     RequestPtr seqReq,      default="nullptr", desc="Pointer to original request from CPU/sequencer";
     bool isSeqReqValid,     default="false",   desc="Set if seqReq is valid (not nullptr)";
 
+    // zhiang: add txSeqNum to TBE, we assign txSeqNum with -1
+    uint64_t txSeqNum, default="0xffffffffffffffff", desc="Store txSeqNum from CHIRequestMsg to CHIDataMsg and CHIResponseMsg";
+
     // Transaction state information
     State state,    desc="SLICC line state";
 

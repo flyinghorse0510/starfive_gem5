@@ -392,6 +392,13 @@ Sequencer::recordMissLatency(SequencerRequest* srequest, bool llscSuccess,
         total_lat = Cycles(0);
     }
 
+    // zhiang: print TxSeqNum as RubySequencer flag.
+    DPRINTF(RubySequencer, "TxSeqNum: %#018x, SeqRequest Done with %10s at addr %#x %d cycles\n", 
+            srequest->pkt->req->getReqInstSeqNum(), 
+            llscSuccess ? "SC_Success" : "SC_Failed",
+            printAddress(srequest->pkt->getAddr()),
+            total_lat);
+                
     DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %s %d cycles\n",
              curTick(), m_version, "Seq", llscSuccess ? "Done" : "SC_Failed",
              "", "", printAddress(srequest->pkt->getAddr()), total_lat);
@@ -914,6 +921,11 @@ Sequencer::issueRequest(PacketPtr pkt, RubyRequestType secondary_type)
                                             pkt->getSize(), pc, secondary_type,
                                             RubyAccessMode_Supervisor, pkt,
                                             PrefetchBit_No, proc_id, core_id);
+
+        // zhiang: print TxSeqNum as RubySequencer flag.
+        DPRINTF(RubySequencer, "TxSeqNum: %#018x, SeqRequest Begin at addr %#x\n", 
+                pkt->req->getReqInstSeqNum(),
+                printAddress(msg->getPhysicalAddress()));
 
         DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %#x %s\n",
                 curTick(), m_version, "Seq", "Begin", "", "",
