@@ -173,6 +173,8 @@ class ProdConsMemTest : public ClockedObject
     uint64_t numReads;
     uint64_t numWrites;
     const uint64_t maxLoads;
+    
+    uint64_t txSeqNum; // requestorID + txSeqNum should be the unique ID
 
     const bool atomic;
 

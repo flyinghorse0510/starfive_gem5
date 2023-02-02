@@ -52,7 +52,7 @@ if [ "$RUN2" != "" ]; then
         --topology=CustomMesh \
         --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_2x2Mesh.py \
         --ruby \
-        --maxloads=20 \
+        --maxloads=10 \
         --mem-size="4GB" \
         --num-cpus=${NUMCPUS}
     grep -rwI -e 'system\.ruby\.hnf\.cntrl' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.hnf.trace

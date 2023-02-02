@@ -51,6 +51,7 @@
 #include "cpu/testers/memtest/common.hh"
 #include <queue>
 #include <utility>
+#include "debug/MsgBufDebug.hh"
 
 namespace gem5
 {
@@ -107,6 +108,7 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
       maxLoads(p.max_loads),
       atomic(p.system->isAtomicMode()),
       seqIdx(0),
+      txSeqNum((static_cast<uint64_t>(p.system->getRequestorId(this))) << 48), // init txSeqNum as RequestorId(16-bit)_0000_0000_0000
       suppressFuncErrors(p.suppress_func_errors), stats(this)
 {
     id = TESTER_ALLOCATOR++;
@@ -185,7 +187,12 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
     assert(remove_addr != outstandingAddrs.end());
     outstandingAddrs.erase(remove_addr);
 
-    
+    DPRINTF(MsgBufDebug, "TxSeqNum: %#018x, Completing %s at address %x (blk %x) %s\n",
+            pkt->req->getReqInstSeqNum(),
+            pkt->isWrite() ? "write" : "read",
+            req->getPaddr(), blockAlign(req->getPaddr()),
+            pkt->isError() ? "error" : "success");
+
     const writeSyncData_t *pkt_data = pkt->getConstPtr<writeSyncData_t>();
 
     if (pkt->isError()) {
@@ -303,6 +310,7 @@ ProdConsMemTest::tick()
     outstandingAddrs.insert(paddr);
     RequestPtr req = std::make_shared<Request>(paddr, 2, flags, requestorId);
     req->setContext(id);
+    req->setReqInstSeqNum(txSeqNum);
     
     PacketPtr pkt = nullptr;
     writeSyncData_t *pkt_data = new writeSyncData_t[1];
@@ -313,14 +321,17 @@ ProdConsMemTest::tick()
         pkt->dataDynamic(pkt_data);
 
         DPRINTF(ProdConsMemLatTest,"Initiating at addr %x read, data %x\n",req->getPaddr(),data);
-        
+        DPRINTF(MsgBufDebug,"TxSeqNum: %#018x, Initiating at addr %x read\n", req->getReqInstSeqNum(), req->getPaddr());
     } else {
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
         pkt_data[0] = data;
 
         DPRINTF(ProdConsMemLatTest,"Initiating at addr %x write, data %x\n",req->getPaddr(),data);
+        DPRINTF(MsgBufDebug,"TxSeqNum: %#018x, Initiating at addr %x read\n", req->getReqInstSeqNum(), req->getPaddr());
     }
+
+    txSeqNum++; // for each transaction,increate 1 to generate a new txSeqNum
     
     // there is no point in ticking if we are waiting for a retry
     bool keep_ticking = sendPkt(pkt);
