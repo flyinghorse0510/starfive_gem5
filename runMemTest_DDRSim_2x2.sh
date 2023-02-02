@@ -32,7 +32,7 @@ WORKSPACE="${HOME}/Desktop"
 GEM5_DIR=$(pwd) 
 ISA="RISCV" 
 CCPROT="CHI" 
-NUMCPUS=1 
+NUMCPUS=4 
 NUMDIRS=1
 NUM_LLC_BANK=4 
 LLC_BANK_SIZE="1MiB"
@@ -44,7 +44,7 @@ if [ "$BUILD" != "" ]; then
 fi
 
 if [ "$RUN2" != "" ]; then
-    OUTPUT_DIR="${WORKSPACE}/DDRTest_memTest"
+    OUTPUT_DIR="${WORKSPACE}/DDRTest_memTest_${NUMCPUS}CPU"
     $GEM5_DIR/build/${ISA}_${CCPROT}/gem5.opt \
         -d ${OUTPUT_DIR} \
         ${GEM5_DIR}/configs/example/ruby_mem_test.py \

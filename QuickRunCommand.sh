@@ -33,20 +33,12 @@ while getopts "hbr" options; do
     esac
 done
 
-WORKSPACE="${HOME}/ChipServer/Modeling"
-GEM5_DIR="${WORKSPACE}/gem5_starlink2"
-OUTPUT_DIR="${WORKSPACE}/04_gem5dump/STREAM_"
+WORKSPACE="${HOME}/Desktop"
+GEM5_DIR=$(pwd)
+OUTPUT_DIR="${WORKSPACE}/04_gem5Dump/HAS0.5"
 ISA="RISCV"
 CCPROT="CHI"
 
-#l1d_size="32KiB"
-#l1i_size="32KiB"
-#l2_size="512KiB"
-#l3_size="1MiB"
-#l1d_assoc=8
-#l1i_assoc=8
-#l2_assoc=8
-#l3_assoc=16
 
 l1d_size="32KiB"
 l1i_size="32KiB"
@@ -107,3 +99,4 @@ fi
             # --rate-style 
             # --debug-flags=PseudoInst --debug-file=debug.trace 
 # --debug-flags=RubyCHIDebugStr5,RubyGenerated  --debug-file=debug.trace 
+>>>>>>>>> Temporary merge branch 2

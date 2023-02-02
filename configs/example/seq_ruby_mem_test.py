@@ -54,6 +54,7 @@ parser.add_argument("--functional", type=int, default=0,
                     help="percentage of accesses that should be functional")
 parser.add_argument("--suppress-func-errors", action="store_true",
                     help="suppress panic when functional accesses fail")
+parser.add_argument("--mem-test-type",type=str,default='bw_test',help="The type of Memtest stimulus generator to use")
 
 #
 # Add the ruby specific and protocol specific options
@@ -66,10 +67,10 @@ args = parser.parse_args()
 # Set the default cache size and associativity to be very small to encourage
 # races between requests and writebacks.
 #
-args.l1d_size="256B"
-args.l1i_size="256B"
-args.l2_size="512B"
-args.l3_size="1kB"
+args.l1d_size="32kB"
+args.l1i_size="32kB"
+args.l2_size="256kB"
+args.l3_size="2048kB"
 args.l1d_assoc=2
 args.l1i_assoc=2
 args.l2_assoc=2
@@ -86,8 +87,16 @@ if args.num_cpus > block_size:
 # Currently ruby does not support atomic or uncacheable accesses
 #
 
+MemTestClass=None
+if args.mem_test_type=='bw_test':
+    MemTestClass=SeqMemTest
+elif args.mem_test_type=='prod_cons_test':
+    MemTestClass=ProdConsMemTest
+elif args.mem_test_type=='random_test':
+    MemTestClass=MemRandomTest
+
 if args.num_cpus > 0 :
-    cpus = [ ProdConsMemTest(max_loads = args.maxloads,
+    cpus = [ MemTestClass(max_loads = args.maxloads,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
 
@@ -96,7 +105,7 @@ system = System(cpu = cpus,
                 mem_ranges = [AddrRange(args.mem_size)])
 
 if args.num_dmas > 0:
-    dmas = [ ProdConsMemTest(max_loads = args.maxloads,
+    dmas = [ MemTestClass(max_loads = args.maxloads,
                      progress_interval = args.progress,
                      suppress_func_errors = not args.suppress_func_errors) \
              for i in range(args.num_dmas) ]

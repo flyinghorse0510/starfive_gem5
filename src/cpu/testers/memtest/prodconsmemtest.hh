@@ -168,8 +168,6 @@ class ProdConsMemTest : public ClockedObject
     const Cycles progressCheck;
     Tick nextProgressMessage;   // access # for next progress report
 
-
-
     uint64_t numReads;
     uint64_t numWrites;
     const uint64_t maxLoads;

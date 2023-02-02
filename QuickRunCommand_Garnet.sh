@@ -33,7 +33,7 @@ while getopts "hbr" options; do
     esac
 done
 
-WORKSPACE="${HOME}/simulation"
+WORKSPACE="${HOME}/ChipServer/Modeling"
 GEM5_DIR="${WORKSPACE}/gem5_starlink2"
 OUTPUT_DIR="${WORKSPACE}/04_gem5dump/STREAM_"
 ISA="RISCV"
@@ -60,11 +60,11 @@ NUM_LLC=16
 
 
 NUM_ITER=4 #16 #800  #32 #16
-NUM_CPU=1 #4 #16
+NUM_CPU=4 #1 #4 #16
 
 #WS=2048*${NUM_CPU}
 
-workingset=(4096)  #(524288) #(32768) #
+workingset=(524288) #(4096)  #(524288) #(32768) #
 prefix="PDCP_20230201"
 #prefix="MultiThread"
 NETWORK="garnet" #"simple"

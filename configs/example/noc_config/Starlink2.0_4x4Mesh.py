@@ -32,7 +32,7 @@ class CHI_HNF(CHI_config.CHI_HNF):
 
 class CHI_SNF_MainMem(CHI_config.CHI_SNF_MainMem):
     class NoC_Params(CHI_config.CHI_SNF_MainMem.NoC_Params):
-        router_list = [14]
+        router_list = [12,14]
 
 class CHI_SNF_BootMem(CHI_config.CHI_SNF_BootMem):
     class NoC_Params(CHI_config.CHI_SNF_BootMem.NoC_Params):
