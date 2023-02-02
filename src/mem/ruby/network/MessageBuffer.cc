@@ -308,7 +308,7 @@ MessageBuffer::enqueue(MsgPtr message, Tick current_time, Tick delta)
         const RubyRequest* msg = dynamic_cast<RubyRequest*>(message.get());
         txSeqNum = msg->getRequestPtr()->getReqInstSeqNum();
         DPRINTF(MsgBufDebug, "TxSeqNum: %#018x, Enqueue arrival_time: %lld, Message: %s\n", txSeqNum, arrival_time, *msg);
-        assert(txSeqNum != -1 || txSeqNum != 0); // TxSeqNum should not be -1
+        assert(txSeqNum != -1 && txSeqNum != 0); // TxSeqNum should not be -1 and 0
         reqTxSeqNums.insert(txSeqNum);
     }
     else if(msg_type == typeid(CHIRequestMsg)){
