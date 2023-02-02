@@ -25,10 +25,11 @@ while getopts "hbrs" options; do
     esac
 done
 
-export WORKSPACE="${HOME}/Desktop"
+export WORKSPACE="$(pwd)/output"
 export GEM5_DIR=$(pwd)
 export ISA="RISCV"
 export CCPROT="CHI"
+export NUMCPUS=2
 export NUMCPUS=2
 
 l1d_size="32KiB"

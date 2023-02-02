@@ -51,6 +51,7 @@
 #include "cpu/testers/memtest/common.hh"
 #include <queue>
 #include <utility>
+#include "debug/MsgBufDebug.hh"
 
 namespace gem5
 {
@@ -109,6 +110,7 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
       atomic(p.system->isAtomicMode()),
       seqIdx(0),
       workingSetSize(workingSet/blockSize),
+      txSeqNum((static_cast<uint64_t>(p.system->getRequestorId(this))) << 48), // init txSeqNum as RequestorId(16-bit)_0000_0000_0000
       suppressFuncErrors(p.suppress_func_errors), stats(this)
 {
     id = TESTER_ALLOCATOR++;
@@ -291,6 +293,7 @@ ProdConsMemTest::tick()
     outstandingAddrs.insert(paddr);
     RequestPtr req = std::make_shared<Request>(paddr, 2, flags, requestorId);
     req->setContext(id);
+    req->setReqInstSeqNum(txSeqNum);
     
     PacketPtr pkt = nullptr;
     writeSyncData_t *pkt_data = new writeSyncData_t[1];
@@ -301,14 +304,15 @@ ProdConsMemTest::tick()
         pkt->dataDynamic(pkt_data);
 
         DPRINTF(ProdConsMemLatTest,"Start,%x,R,%x\n",req->getPaddr(),data);
-        
     } else {
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
         pkt_data[0] = data;
-
+        // req->getReqInstSeqNum(
         DPRINTF(ProdConsMemLatTest,"Start,%x,W,%x\n",req->getPaddr(),data);
     }
+
+    txSeqNum++; // for each transaction,increate 1 to generate a new txSeqNum
     
     // there is no point in ticking if we are waiting for a retry
     bool keep_ticking = sendPkt(pkt);
