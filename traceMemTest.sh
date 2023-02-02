@@ -43,7 +43,7 @@ if [ "$RUN2" != "" ]; then
     OUTPUT_DIR="${WORKSPACE}/04_gem5dump/ExpMEMTest"
     mkdir -p $OUTPUT_DIR
     $GEM5_DIR/build/${ISA}_${CCPROT}/gem5.debug \
-        --debug-flags=IsolatedMemLatTest,RubySequencer,RubySlicc,MsgBufDebug  --debug-file=debug.trace \
+        --debug-flags=IsolatedMemLatTest,RubySequencer,RubySlicc,MsgBufDebug,ProtocolTrace  --debug-file=debug.trace \
         -d ${OUTPUT_DIR} \
         ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
         --num-dirs=1 \
@@ -52,7 +52,7 @@ if [ "$RUN2" != "" ]; then
         --topology=CustomMesh \
         --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_2x2Mesh.py \
         --ruby \
-        --maxloads=20 \
+        --maxloads=10 \
         --mem-size="4GB" \
         --num-cpus=${NUMCPUS}
     grep -rwI -e 'system\.ruby\.hnf\.cntrl' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.hnf.trace

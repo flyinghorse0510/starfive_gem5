@@ -51,6 +51,7 @@
 #include "cpu/testers/memtest/common.hh"
 #include <queue>
 #include <utility>
+#include "debug/MsgBufDebug.hh"
 
 namespace gem5
 {
@@ -101,13 +102,15 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
       requestorId(p.system->getRequestorId(this)),
       blockSize(p.system->cacheLineSize()),
       blockAddrMask(blockSize - 1),
-      baseAddr1(p.base_addr_1),
+      workingSet(p.working_set),
       progressInterval(p.progress_interval),
       progressCheck(p.progress_check),
       nextProgressMessage(p.progress_interval),
       maxLoads(p.max_loads),
       atomic(p.system->isAtomicMode()),
       seqIdx(0),
+      workingSetSize(workingSet/blockSize),
+      txSeqNum((static_cast<uint64_t>(p.system->getRequestorId(this))) << 48), // init txSeqNum as RequestorId(16-bit)_0000_0000_0000
       suppressFuncErrors(p.suppress_func_errors), stats(this)
 {
     id = TESTER_ALLOCATOR++;
@@ -115,50 +118,14 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
              blockSize - 1);
 
     fatal_if(maxLoads <= 0, "Requires a minimum of 1 Load/Store");
+
+    fatal_if(workingSet%blockSize != 0, "Working set must be a multiple of cache line size");
     // set up counters
     numReads = 0;
     numWrites = 0;
     TESTER_PRODUCER_IDX = 0;
-    writeSyncData_t writeSyncDataBase = 0x1001; // true: read, false: write
-    writeSyncData = { \
-                    {0x40000, writeSyncDataBase}, \
-                    {0x40040, writeSyncDataBase+1}, \
-                    {0x40080, writeSyncDataBase+2}, \
-                    {0x400c0, writeSyncDataBase+3}, \
-                    {0x40140, writeSyncDataBase+4}, \
-                    {0x40180, writeSyncDataBase+5}, \
-                    {0x401c0, writeSyncDataBase+6}, \
-                    {0x40240, writeSyncDataBase+7}, \
-                    {0x40280, writeSyncDataBase+8}, \
-                    {0x402c0, writeSyncDataBase+9}, \
-                    {0x40340, writeSyncDataBase+10}, \
-                    {0x40380, writeSyncDataBase+11}, \
-                    {0x403c0, writeSyncDataBase+12}, \
-                    {0x40440, writeSyncDataBase+13}, \
-                    {0x40480, writeSyncDataBase+14}, \
-                    {0x404c0, writeSyncDataBase+15}, \
-                    {0x40540, writeSyncDataBase+16}, \
-                    {0x40580, writeSyncDataBase+17}, \
-                    {0x405c0, writeSyncDataBase+18}, \
-                    {0x40640, writeSyncDataBase+19}, \
-                    {0x40680, writeSyncDataBase+20}, \
-                    {0x406c0, writeSyncDataBase+21}, \
-                    {0x40740, writeSyncDataBase+22}, \
-                    {0x40780, writeSyncDataBase+23}, \
-                    {0x407c0, writeSyncDataBase+24}, \
-                    {0x40840, writeSyncDataBase+25}, \
-                    {0x40880, writeSyncDataBase+26}, \
-                    {0x408c0, writeSyncDataBase+27}, \
-                    {0x40940, writeSyncDataBase+28}, \
-                    {0x40980, writeSyncDataBase+29}, \
-                    {0x409c0, writeSyncDataBase+30}, \
-                    {0x40a40, writeSyncDataBase+31}, \
-                    {0x40a80, writeSyncDataBase+32}, \
-                    {0x40ac0, writeSyncDataBase+33}};
-    for (const auto &p : writeSyncData) {
-        workingSet.push_back(p.first);
-    }
-
+    // writeSyncData_t writeSyncDataBase = 0x1001; // true: read, false: write
+    
     isProducer=true;
     if (id==1) {
         isProducer=false;
@@ -229,7 +196,7 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
             stats.numWrites++;
             // DPRINTF(ProdConsMemLatTest,"Pushing Value for W, %x, %x\n",req->getPaddr(),pkt_data[0]);
             writeValsQ.push(std::make_pair(req->getPaddr(),pkt_data[0]));
-            if (isProducer && (numWrites > 0) && (numWrites%workingSet.size()==0)) {
+            if (isProducer && (numWrites > 0) && (numWrites%workingSetSize==0)) {
                 TESTER_PRODUCER_IDX++;
             }
         }
@@ -280,19 +247,19 @@ ProdConsMemTest::tick()
     bool readOrWrite = (isProducer)?false:true;  // Only producer can write
 
     // Skip if you have outstanding transactions
-    if (outstandingAddrs.size() >= 1) {
+    if (outstandingAddrs.size() >= 100) {
         waitResponse = true;
         return;
     }
 
-    if (readOrWrite && writeValsQ.empty()) {
+    if ((!isProducer) && writeValsQ.empty()) {
         // There are no writes to the memory yet. Retry in the next interval 
         schedule(tickEvent, clockEdge(interval));
         return;
     } 
     
     writeSyncData_t data;
-    if (readOrWrite) {
+    if (!isProducer) {
         // Find an address to generate a Read request
         auto storedAddr = writeValsQ.front();
         paddr = storedAddr.first;
@@ -300,15 +267,22 @@ ProdConsMemTest::tick()
         writeValsQ.pop();
         DPRINTF(ProdConsMemLatTest,"Popping Value for R, %x, %x\n",paddr,data);
     } else {
+        if (outstandingAddrs.size() >= workingSetSize) {
+            /* No free addresses to generate from this node. Quit */
+            DPRINTF(ProdConsMemLatTest,"%x All of WorkingSet is outstanding\n",paddr);
+            schedule(tickEvent, clockEdge(interval));
+            return;
+        }
+
+        /* Search for an address within the workingSetSize cacheline */
         do {
-            paddr = (id << 24)+workingSet.at(seqIdx);
-            seqIdx = (seqIdx+1)%(workingSet.size());
+            paddr = blockAlign((id << 24)+(seqIdx << 6));
+            seqIdx = (seqIdx+1)%(workingSetSize);
         } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
-        data = (TESTER_PRODUCER_IDX << 8) + writeSyncData[workingSet.at(seqIdx)];
-    }
-    /* paddr is awaiting to be consumed. Do not consume data */
-    if (isProducer) {
+        data = (TESTER_PRODUCER_IDX << 8) + (writeSyncDataBase++);
+
         if (pendingReads.find(paddr) != pendingReads.end()) {
+            /* This address has pending reads. Quit */
             DPRINTF(ProdConsMemLatTest,"%x has pending Read requests\n",paddr);
             schedule(tickEvent, clockEdge(interval));
             return;
@@ -319,6 +293,7 @@ ProdConsMemTest::tick()
     outstandingAddrs.insert(paddr);
     RequestPtr req = std::make_shared<Request>(paddr, 2, flags, requestorId);
     req->setContext(id);
+    req->setReqInstSeqNum(txSeqNum);
     
     PacketPtr pkt = nullptr;
     writeSyncData_t *pkt_data = new writeSyncData_t[1];
@@ -329,14 +304,15 @@ ProdConsMemTest::tick()
         pkt->dataDynamic(pkt_data);
 
         DPRINTF(ProdConsMemLatTest,"Start,%x,R,%x\n",req->getPaddr(),data);
-        
     } else {
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
         pkt_data[0] = data;
-
+        // req->getReqInstSeqNum(
         DPRINTF(ProdConsMemLatTest,"Start,%x,W,%x\n",req->getPaddr(),data);
     }
+
+    txSeqNum++; // for each transaction,increate 1 to generate a new txSeqNum
     
     // there is no point in ticking if we are waiting for a retry
     bool keep_ticking = sendPkt(pkt);

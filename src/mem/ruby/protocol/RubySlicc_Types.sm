@@ -250,3 +250,12 @@ structure (RubyPrefetcher, external = "yes") {
     void observePfHit(Addr);
     void observePfMiss(Addr);
 }
+
+// Definitions of the TBE tables
+enumeration(TBEType, desc="...") {
+  Request,   desc="Request TBE";
+  Repl,      desc="Replacement TBE";
+  Snp,       desc="Snp Request TBE";
+  Dvm,       desc="DVM Request TBE";
+  DvmSnp,    desc="DVM Snp request TBE";
+}
