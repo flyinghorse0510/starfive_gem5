@@ -32,7 +32,7 @@ export WORKSPACE="${HOME}/Desktop"
 export GEM5_DIR=$(pwd)
 export ISA="RISCV"
 export CCPROT="CHI"
-export NUMCPUS=4
+export NUMCPUS=2
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"

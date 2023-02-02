@@ -22,6 +22,9 @@ parser.add_argument("--rate-style", action="store_true", default=False,help="Rep
 parser.add_argument("--num-iters",default=1000,help="How many iterations to run")
 parser.add_argument("--no-roi", action="store_true", default=False,help="Avoid ROI")
 parser.add_argument("--use-o3", action="store_true", default=False, help="Use gem5 O3 CPU")
+
+parser.add_argument("--enable-DMT", default=False, help="enable DMT")
+
 #
 # Add the ruby specific and protocol specific options
 #

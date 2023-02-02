@@ -176,7 +176,7 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     hnf_list = [i for i in range(options.num_l3caches)]
     CHI_HNF.createAddrRanges(sysranges, system.cache_line_size.value,
                              hnf_list)
-    ruby_system.hnf = [ CHI_HNF(i, ruby_system, HNFCache, None)
+    ruby_system.hnf = [ CHI_HNF(options, i, ruby_system, HNFCache, None)
                         for i in range(options.num_l3caches) ]
 
     for hnf in ruby_system.hnf:
