@@ -32,7 +32,7 @@ export WORKSPACE="$(pwd)/output"
 export GEM5_DIR=$(pwd)
 export ISA="RISCV"
 export CCPROT="CHI"
-export NUMCPUS=2
+export NUMCPUS=1
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -43,9 +43,9 @@ if [ "$RUN2" != "" ]; then
     OUTPUT_DIR="${WORKSPACE}/04_gem5dump/ExpMEMTest"
     mkdir -p $OUTPUT_DIR
     $GEM5_DIR/build/${ISA}_${CCPROT}/gem5.debug \
-        --debug-flags=IsolatedMemLatTest,RubySequencer,RubySlicc,MsgBufDebug,ProtocolTrace  --debug-file=debug.trace \
+        --debug-flags=IsolatedMemLatTest,RubySequencer,RubySlicc,MsgBufDebug,ProtocolTrace,RubyPort  --debug-file=debug.trace \
         -d ${OUTPUT_DIR} \
-        ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
+        ${GEM5_DIR}/configs/example/isolated_ruby_mem_test.py \
         --num-dirs=1 \
         --num-l3caches=1 \
         --network=simple \
@@ -56,6 +56,6 @@ if [ "$RUN2" != "" ]; then
         --mem-size="4GB" \
         --num-cpus=${NUMCPUS}
     grep -rwI -e 'system\.ruby\.hnf\.cntrl' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.hnf.trace
-    sed -i '/triggerQueue/d' $OUTPUT_DIR/debug.trace
-    sed -i '/system.ruby.network/d' $OUTPUT_DIR/debug.trace
+    #sed -i '/triggerQueue/d' $OUTPUT_DIR/debug.trace
+    #sed -i '/system.ruby.network/d' $OUTPUT_DIR/debug.trace
 fi
