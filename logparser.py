@@ -302,11 +302,12 @@ if __name__ == '__main__':
     num_cpus = 2
     num_dirs = 1 # snf
     num_l3caches = 1 # hnf
-    filename= 'short.log'
+    filename= 'debug.trace'
 
     cache_to_idx, idx_to_cache, num_caches = gen_cache_table(num_cpus, num_l3caches)
 
-    logging.info("cache idx")
+    logging.info(f"num_cpus:{num_cpus}")
+    logging.info("cache idx:")
     for k,v in cache_to_idx.items():
         logging.info(f'{k}: {v}')
     logging.info(f"num_caches:{num_caches}")

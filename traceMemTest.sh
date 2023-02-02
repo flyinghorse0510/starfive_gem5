@@ -43,7 +43,7 @@ if [ "$RUN2" != "" ]; then
     OUTPUT_DIR="${WORKSPACE}/04_gem5dump/ExpMEMTest"
     mkdir -p $OUTPUT_DIR
     $GEM5_DIR/build/${ISA}_${CCPROT}/gem5.debug \
-        --debug-flags=IsolatedMemLatTest,RubySequencer,RubySlicc,MsgBufDebug  --debug-file=debug.trace \
+        --debug-flags=IsolatedMemLatTest,RubySequencer,RubySlicc,MsgBufDebug,ProtocolTrace  --debug-file=debug.trace \
         -d ${OUTPUT_DIR} \
         ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
         --num-dirs=1 \
