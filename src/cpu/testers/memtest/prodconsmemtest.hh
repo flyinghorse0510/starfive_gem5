@@ -136,7 +136,13 @@ class ProdConsMemTest : public ClockedObject
 
     unsigned int id;
 
-    bool isProducer; // id==0 is the producer
+    bool isProducer;
+
+    uint64_t num_cpus;
+
+    uint64_t num_producers;
+
+    uint64_t num_consumers;
 
     std::unordered_set<uint64_t> outstandingAddrs;
 
@@ -169,7 +175,9 @@ class ProdConsMemTest : public ClockedObject
     Tick nextProgressMessage;   // access # for next progress report
 
     uint64_t numReads;
+
     uint64_t numWrites;
+
     const uint64_t maxLoads;
     
     uint64_t txSeqNum; // requestorID + txSeqNum should be the unique ID

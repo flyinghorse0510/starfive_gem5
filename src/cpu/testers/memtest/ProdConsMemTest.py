@@ -49,9 +49,12 @@ class ProdConsMemTest(ClockedObject):
     # Interval of packet injection, the size of the memory range
     # touched, and an optional stop condition
     interval = Param.Cycles(5, "Interval between request packets")
-    size = Param.Unsigned(4194304, "Working set(bytes)")
+    size = Param.Unsigned(4194304, "Working set(bytes). Deprecated")
     working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
     max_loads = Param.Counter(1, "Number of loads to unique address")
+
+    num_cpus = Param.Counter(1, "Total number of CPUs")
+    num_producers = Param.Counter(1, "Number of producers")
 
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses

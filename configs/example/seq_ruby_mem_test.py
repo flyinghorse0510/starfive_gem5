@@ -56,6 +56,7 @@ parser.add_argument("--suppress-func-errors", action="store_true",
                     help="suppress panic when functional accesses fail")
 parser.add_argument("--mem-test-type",type=str,default='bw_test',help="The type of Memtest stimulus generator to use")
 parser.add_argument("--size-ws",type=int,default=1024,help='Working set size in bytes. Must be a multiple of Cacheline size')
+parser.add_argument("--num-producers",type=int,default=1,help='Number of producer')
 #
 # Add the ruby specific and protocol specific options
 #
@@ -98,6 +99,8 @@ elif args.mem_test_type=='random_test':
 if args.num_cpus > 0 :
     cpus = [ MemTestClass(max_loads = args.maxloads,
                      working_set = args.size_ws,
+                     num_producers = args.num_producers,
+                     num_cpus = args.num_cpus,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
 
@@ -109,6 +112,8 @@ if args.num_dmas > 0:
     dmas = [ MemTestClass(max_loads = args.maxloads,
                      progress_interval = args.progress,
                      working_set = args.size_ws,
+                     num_producers = args.num_producers,
+                     num_cpus = args.num_cpus,
                      suppress_func_errors = not args.suppress_func_errors) \
              for i in range(args.num_dmas) ]
     system.dma_devices = dmas

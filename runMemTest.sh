@@ -29,12 +29,12 @@ export WORKSPACE="$(pwd)/output"
 export GEM5_DIR=$(pwd)
 export ISA="RISCV"
 export CCPROT="CHI"
-export NUMCPUS=2
-export NUMCPUS=2
+export NUMCPUS=1
 
+buildType="gem5.opt"
 l1d_size="32KiB"
 l1i_size="32KiB"
-l2_size="256KiB"
+l2_size="128KiB"
 l3_size="1024KiB" #"256KiB"
 l1d_assoc=8
 l1i_assoc=8
@@ -45,13 +45,13 @@ NETWORK="garnet" #"simple"
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
-    scons build/${ISA}_${CCPROT}/gem5.debug --default=RISCV PROTOCOL=${CCPROT} -j`nproc`
+    scons build/${ISA}_${CCPROT}/${buildType} --default=RISCV PROTOCOL=${CCPROT} -j`nproc`
 fi
 
 if [ "$RUN1" != "" ]; then
     OUTPUT_DIR="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_2DDR"
     mkdir -p $OUTPUT_DIR
-    $GEM5_DIR/build/${ISA}_${CCPROT}/gem5.debug \
+    $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
         --debug-flags=ProdConsMemLatTest --debug-file=debug.trace \
         -d ${OUTPUT_DIR} \
         ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
@@ -69,11 +69,12 @@ if [ "$RUN1" != "" ]; then
         --topology=CustomMesh \
         --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
         --ruby \
-        --maxloads=3000 \
+        --maxloads=100 \
         --mem-size="4GB" \
-        --size-ws=1024 \
+        --size-ws=64 \
         --mem-test-type='prod_cons_test' \
-        --num-cpus=${NUMCPUS}
+        --num-cpus=${NUMCPUS} \
+        --num-producers=1
     grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
     grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
 fi
