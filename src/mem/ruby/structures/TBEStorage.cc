@@ -43,6 +43,13 @@ namespace gem5
 namespace ruby
 {
 
+TBEStorage::TBEStorage(statistics::Group *parent, std::string tbeDesc, int number_of_TBEs)
+    : m_reserved(0), m_stats(parent)
+{
+    for (int i = 0; i < number_of_TBEs; ++i)
+        m_slots_avail.push(i);
+}
+
 TBEStorage::TBEStorage(statistics::Group *parent, int number_of_TBEs)
     : m_reserved(0), m_stats(parent)
 {
