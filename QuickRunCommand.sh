@@ -50,10 +50,12 @@ l2_assoc=8
 l3_assoc=16
 NUM_LLC=16
 
-enable_DMT=False #True #False
+#enable_DMT=False #True #False
+DMT_Config=(True False)
+
 
 NUM_ITER=4 #16 #800  #32 #16
-NUM_CPU=4 #16
+NUM_CPU=1 #4 #16
 
 #WS=2048*${NUM_CPU}
 
@@ -71,9 +73,10 @@ if [ "$RUN" != "" ]; then
     for i in ${workingset[@]} ; do
         mkdir -p $OUTPUT_DIR$i
         echo "Start running with $i working set size"
+      for j in ${DMT_Config[@]}; do  
         $GEM5_DIR/build/${ISA}_${CCPROT}/gem5.opt \
             --debug-flags=PseudoInst --debug-file=debug.trace \
-            -d "${OUTPUT_DIR}_${prefix}_Core${NUM_CPU}_Iter${NUM_ITER}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DMT${enable_DMT}_WS${i}" \
+            -d "${OUTPUT_DIR}_${prefix}_Core${NUM_CPU}_Iter${NUM_ITER}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DMT${j}_WS${i}" \
             ${GEM5_DIR}/configs/example/Starlink2.0_intradie.py \
             --rate-style \
             --size-ws=$i \
@@ -85,7 +88,8 @@ if [ "$RUN" != "" ]; then
             --l1i_assoc=${l1i_assoc}\
             --l2_assoc=${l2_assoc}\
             --l3_assoc=${l3_assoc}\
-            --enable-DMT=${enable_DMT} \
+            --enable-DMT=${j} \
+            --num-HNF-TBE=16  \
             --num-dirs=1 \
             --use-o3 \
             --num-l3caches=${NUM_LLC} \
@@ -95,6 +99,8 @@ if [ "$RUN" != "" ]; then
             --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
             --ruby \
             --mem-size="4GB" \
-            --num-cpus=${NUM_CPU}
-    done
+            --mem-type=DDR4_2400_4x16 \
+            --num-cpus=${NUM_CPU} &
+      done
+   done
 fi

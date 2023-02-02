@@ -24,6 +24,8 @@ parser.add_argument("--no-roi", action="store_true", default=False,help="Avoid R
 parser.add_argument("--use-o3", action="store_true", default=False, help="Use gem5 O3 CPU")
 
 parser.add_argument("--enable-DMT", default=False, help="enable DMT")
+parser.add_argument("--num-HNF-TBE", default=16, help="number of oustanding in HN-F")
+parser.add_argument("--num_HNF_ReplTBE", default=16, help="number of replacement oustanding in HN-F")
 
 #
 # Add the ruby specific and protocol specific options

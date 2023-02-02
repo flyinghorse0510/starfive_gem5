@@ -322,8 +322,8 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.dealloc_backinv_unique = False
         self.dealloc_backinv_shared = False
         # Some reasonable default TBE params
-        self.number_of_TBEs = 2
-        self.number_of_repl_TBEs = 2
+        self.number_of_TBEs = options.num_HNF_TBE #2
+        self.number_of_repl_TBEs = options.num_HNF_ReplTBE #2
         self.number_of_snoop_TBEs = 1 # should not receive any snoop
         self.number_of_DVM_TBEs = 1 # should not receive any dvm
         self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
