@@ -56,7 +56,12 @@ if [ "$RUN2" != "" ]; then
         --chi-config=${GEM5_DIR}/configs/example/noc_config/2x2.py \
         --ruby \
         --maxloads=5000 \
-        --mem-size="4GB" \
-        --num-cpus=${NUMCPUS}
+        --mem-size="16GB" \
+        --num-cpus=${NUMCPUS} \
+        --mem-type=DDR4_3200_8x8 \
+        --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
+        --disable-gclk-set
+
+    #--debug-flags=WSWS --debug-file=memctrldebug.trace \ --disable-ref \
     #grep -rwI -e 'system\.ruby\.hnf\.cntrl' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.hnf.trace
 fi

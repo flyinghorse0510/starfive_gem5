@@ -133,6 +133,10 @@ def addNoISAOptions(parser):
                         help="Memory channels interleave")
 
     parser.add_argument("--memchecker", action="store_true")
+    parser.add_argument("--addr-mapping", default="RoRaBaCoCh",
+                        help="User address to memory address mapping")
+    parser.add_argument("--disable-ref", action="store_true")
+    parser.add_argument("--disable-gclk-set", action="store_true")
 
     # Cache Options
     parser.add_argument("--external-memory-system", type=str,
