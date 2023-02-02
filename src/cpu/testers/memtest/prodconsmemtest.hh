@@ -147,10 +147,6 @@ class ProdConsMemTest : public ClockedObject
 
     const Addr blockAddrMask;
 
-    std::map<Addr, writeSyncData_t> writeSyncData;
-
-    std::vector<Addr> workingSet;
-
     /**
      * Get the block aligned address.
      *
@@ -162,7 +158,11 @@ class ProdConsMemTest : public ClockedObject
         return (addr & ~blockAddrMask);
     }
 
-    const Addr baseAddr1;
+    writeSyncData_t writeSyncDataBase;
+
+    const uint64_t workingSet; // Working Set in bytes
+
+    const uint64_t workingSetSize; // Number of unique cache lines in thw Working set
 
     const unsigned progressInterval;  // frequency of progress reports
     const Cycles progressCheck;

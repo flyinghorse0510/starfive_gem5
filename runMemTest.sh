@@ -32,7 +32,7 @@ export WORKSPACE="${HOME}/Desktop"
 export GEM5_DIR=$(pwd)
 export ISA="RISCV"
 export CCPROT="CHI"
-export NUMCPUS=4
+export NUMCPUS=2
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -54,6 +54,7 @@ if [ "$RUN2" != "" ]; then
         --ruby \
         --maxloads=3000 \
         --mem-size="4GB" \
+        --working-set=1024 \
         --mem-test-type='prod_cons_test' \
         --num-cpus=${NUMCPUS}
     grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
