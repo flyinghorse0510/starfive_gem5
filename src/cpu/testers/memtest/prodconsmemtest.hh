@@ -46,7 +46,7 @@
 
 #include "base/statistics.hh"
 #include "mem/port.hh"
-#include "params/IsolatedMemTest.hh"
+#include "params/ProdConsMemTest.hh"
 #include "sim/clocked_object.hh"
 #include "sim/eventq.hh"
 #include "sim/stats.hh"
@@ -55,11 +55,11 @@
 namespace gem5
 {
 
-
+typedef uint16_t writeSyncData_t;
 
 /**
- * The IsolatedMemTest class tests a cache coherent memory system.
- * 1. All requests issued by the IsolatedMemTest instance are a
+ * The ProdConsMemTest class tests a cache coherent memory system.
+ * 1. All requests issued by the ProdConsMemTest instance are a
  *    single byte. 
  * 2. The addresses are generated sequentially and the same
  *    address is generated again, to remove the effects of cold
@@ -70,13 +70,14 @@ namespace gem5
  * both requests and responses, thus checking that the memory-system
  * is making progress.
  */
-class IsolatedMemTest : public ClockedObject
+class ProdConsMemTest : public ClockedObject
 {
 
   public:
 
-    typedef IsolatedMemTestParams Params;
-    IsolatedMemTest(const Params &p);
+    typedef ProdConsMemTestParams Params;
+    
+    ProdConsMemTest(const Params &p);
 
 
     Port &getPort(const std::string &if_name,
@@ -99,11 +100,11 @@ class IsolatedMemTest : public ClockedObject
 
     class CpuPort : public RequestPort
     {
-        IsolatedMemTest &seqmemtest;
+        ProdConsMemTest &seqmemtest;
 
       public:
 
-        CpuPort(const std::string &_name, IsolatedMemTest &_memtest)
+        CpuPort(const std::string &_name, ProdConsMemTest &_memtest)
             : RequestPort(_name, &_memtest), seqmemtest(_memtest)
         { }
 
@@ -135,16 +136,18 @@ class IsolatedMemTest : public ClockedObject
 
     unsigned int id;
 
+    bool isProducer; // id==0 is the producer
+
     std::unordered_set<uint64_t> outstandingAddrs;
 
     // store the expected value for the addresses we have touched
-    std::unordered_map<Addr, uint8_t> referenceData;
+    std::unordered_map<Addr, writeSyncData_t> referenceData;
 
     const unsigned blockSize;
 
     const Addr blockAddrMask;
 
-    std::map<Addr,bool> readWriteMap;
+    std::map<Addr, writeSyncData_t> writeSyncData;
 
     std::vector<Addr> workingSet;
 
@@ -169,10 +172,6 @@ class IsolatedMemTest : public ClockedObject
 
     uint64_t numReads;
     uint64_t numWrites;
-    uint64_t maxLoads2;
-    bool isSequential;
-    uint64_t numIters;
-    uint64_t txSeqNum; // zhiang: requestorID + txSeqNum should be the unique ID
     const uint64_t maxLoads;
 
     const bool atomic;

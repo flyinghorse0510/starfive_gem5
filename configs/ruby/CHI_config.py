@@ -45,6 +45,7 @@ specialization of the NoC_Param classes defining the NoC dimensions and
 node to router binding. See configs/example/noc_config/2x4.py for an example.
 '''
 
+from curses.ascii import NUL
 import math
 import m5
 from m5.objects import *
@@ -82,7 +83,7 @@ class NoC_Params:
     router_latency = 1
     router_buffer_size = 4
     cntrl_msg_size = 8
-    data_width = 32
+    data_width = 16
     cross_links = []
     cross_link_latency = 0
 
@@ -160,7 +161,6 @@ class CHI_Node(SubSystem):
         cntrl.snpIn.in_port = self._network.out_port
         cntrl.datIn.in_port = self._network.out_port
 
-
 class TriggerMessageBuffer(MessageBuffer):
     '''
     MessageBuffer for triggering internal controller events.
@@ -205,7 +205,7 @@ class CHI_L1Controller(CHI_Cache_Controller):
     Default parameters for a L1 Cache controller
     '''
 
-    def __init__(self, ruby_system, sequencer, cache, prefetcher):
+    def __init__(self, ruby_system, sequencer, cache, prefetcher):  #modification
         super(CHI_L1Controller, self).__init__(ruby_system)
         self.sequencer = sequencer
         self.cache = cache
@@ -232,15 +232,14 @@ class CHI_L1Controller(CHI_Cache_Controller):
         self.number_of_snoop_TBEs = 4
         self.number_of_DVM_TBEs = 16
         self.number_of_DVM_snoop_TBEs = 4
-
         self.unify_repl_TBEs = False
 
-class CHI_L2Controller(CHI_Cache_Controller):
+class CHI_L2Controller(CHI_Cache_Controller):                 
     '''
     Default parameters for a L2 Cache controller
     '''
 
-    def __init__(self, ruby_system, cache, prefetcher):
+    def __init__(self, ruby_system, cache, prefetcher):         #New modification
         super(CHI_L2Controller, self).__init__(ruby_system)
         self.sequencer = NULL
         self.cache = cache
@@ -282,8 +281,8 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.addr_ranges = addr_ranges
         self.allow_SD = True
         self.is_HN = True
-        self.enable_DMT = True
-        self.enable_DCT = True
+        self.enable_DMT = False
+        self.enable_DCT = False
         self.send_evictions = False
         # MOESI / Mostly inclusive for shared / Exclusive for unique
         self.alloc_on_seq_acc = False
@@ -297,8 +296,8 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.dealloc_backinv_unique = False
         self.dealloc_backinv_shared = False
         # Some reasonable default TBE params
-        self.number_of_TBEs = 32
-        self.number_of_repl_TBEs = 32
+        self.number_of_TBEs = 2
+        self.number_of_repl_TBEs = 2
         self.number_of_snoop_TBEs = 1 # should not receive any snoop
         self.number_of_DVM_TBEs = 1 # should not receive any dvm
         self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
@@ -468,7 +467,7 @@ class CHI_RNF(CHI_Node):
             cpu.inst_sequencer.dcache = NULL
             cpu.data_sequencer.dcache = cpu.l1d.cache
 
-            cpu.l1d.sc_lock_enabled = True
+            cpu.l1d.sc_lock_enabled = True 
 
             cpu._ll_cntrls = [cpu.l1i, cpu.l1d]
             for c in cpu._ll_cntrls:
@@ -512,7 +511,6 @@ class CHI_RNF(CHI_Node):
             for c in cpu._ll_cntrls:
                 c.downstream_destinations = [cpu.l2]
             cpu._ll_cntrls = [cpu.l2]
-
 
 class CHI_HNF(CHI_Node):
     '''
@@ -575,7 +573,6 @@ class CHI_HNF(CHI_Node):
 
     def getNetworkSideControllers(self):
         return [self._cntrl]
-
 
 class CHI_MN(CHI_Node):
     '''

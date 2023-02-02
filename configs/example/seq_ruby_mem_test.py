@@ -87,7 +87,7 @@ if args.num_cpus > block_size:
 #
 
 if args.num_cpus > 0 :
-    cpus = [ IsolatedMemTest(max_loads = args.maxloads,
+    cpus = [ ProdConsMemTest(max_loads = args.maxloads,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
 
@@ -96,7 +96,7 @@ system = System(cpu = cpus,
                 mem_ranges = [AddrRange(args.mem_size)])
 
 if args.num_dmas > 0:
-    dmas = [ IsolatedMemTest(max_loads = args.maxloads,
+    dmas = [ ProdConsMemTest(max_loads = args.maxloads,
                      progress_interval = args.progress,
                      suppress_func_errors = not args.suppress_func_errors) \
              for i in range(args.num_dmas) ]
