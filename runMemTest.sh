@@ -40,6 +40,7 @@ l1i_assoc=8
 l2_assoc=8
 l3_assoc=16
 NUM_LLC=16
+NETWORK="garnet" #"simple"
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -63,7 +64,7 @@ if [ "$RUN1" != "" ]; then
         --l1i_assoc=${l1i_assoc} \
         --l2_assoc=${l2_assoc} \
         --l3_assoc=${l3_assoc} \
-        --network=simple \
+        --network=${NETWORK} \
         --topology=CustomMesh \
         --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
         --ruby \
