@@ -55,6 +55,7 @@ if [ "$RUN2" != "" ]; then
         --maxloads=3000 \
         --mem-size="4GB" \
         --mem-test-type='prod_cons_test' \
+        --enable-DMT=False \
         --num-cpus=${NUMCPUS}
     grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
     grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace

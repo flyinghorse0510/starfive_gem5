@@ -54,6 +54,10 @@ parser.add_argument("--functional", type=int, default=0,
                     help="percentage of accesses that should be functional")
 parser.add_argument("--suppress-func-errors", action="store_true",
                     help="suppress panic when functional accesses fail")
+parser.add_argument("--enable-DMT", default=False, help="enable DMT")
+parser.add_argument("--num-HNF-TBE", default=16, help="number of oustanding in HN-F")
+parser.add_argument("--num_HNF_ReplTBE", default=16, help="number of replacement oustanding in HN-F")
+
 
 #
 # Add the ruby specific and protocol specific options
