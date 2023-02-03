@@ -76,6 +76,7 @@ if [ "$RUN1" != "" ]; then
         --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
         --mem-test-type='prod_cons_test' \
         --disable-gclk-set \
+        --enable-DMT=False \
         --num-cpus=${NUMCPUS} \
         --num-producers=1
     grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace

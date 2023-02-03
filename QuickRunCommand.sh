@@ -35,7 +35,7 @@ done
 
 WORKSPACE="${HOME}/Desktop"
 GEM5_DIR=$(pwd)
-OUTPUT_DIR="${WORKSPACE}/04_gem5Dump/HAS0.5"
+OUTPUT_DIR="${WORKSPACE}/05_gem5Dump_PDCP_20230202/"
 ISA="RISCV"
 CCPROT="CHI"
 
@@ -50,14 +50,20 @@ l2_assoc=8
 l3_assoc=16
 NUM_LLC=16
 
+NUM_MEM=2
 
-NUM_ITER=4 #16 #800  #32 #16
-NUM_CPU=4 #16
+#enable_DMT=False #True #False
+DMT_Config=(True False)
 
+
+NUM_ITER=40 #16 #800  #32 #16
+NUM_CPU_SET=(1 2 4) # = #2 #4 #16
+
+VC_PER_VNET=4 
 #WS=2048*${NUM_CPU}
 
 workingset=(524288) #(32768) #
-prefix="PDCP_20230201"
+prefix="PDCP_20230202_TestDMT_Seq32TBE"
 #prefix="MultiThread"
 
 
@@ -68,11 +74,13 @@ fi
 
 if [ "$RUN" != "" ]; then
     for i in ${workingset[@]} ; do
-        mkdir -p $OUTPUT_DIR$i
+        mkdir -p $OUTPUT_DIR
         echo "Start running with $i working set size"
+      for j in ${DMT_Config[@]}; do  
+        for NUM_CPU in ${NUM_CPU_SET[@]}; do
         $GEM5_DIR/build/${ISA}_${CCPROT}/gem5.opt \
             --debug-flags=PseudoInst --debug-file=debug.trace \
-            -d "${OUTPUT_DIR}_${prefix}_Core${NUM_CPU}_Iter${NUM_ITER}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_WS${i}" \
+            -d "${OUTPUT_DIR}/${prefix}_VC${VC_PER_VNET}_Core${NUM_CPU}_Iter${NUM_ITER}_L1${l1d_size}_L2${l2_size}_L3${l3_size}MEM${NUM_MEM}_DMT${j}_WS${i}" \
             ${GEM5_DIR}/configs/example/Starlink2.0_intradie.py \
             --rate-style \
             --size-ws=$i \
@@ -84,19 +92,20 @@ if [ "$RUN" != "" ]; then
             --l1i_assoc=${l1i_assoc}\
             --l2_assoc=${l2_assoc}\
             --l3_assoc=${l3_assoc}\
-            --num-dirs=1 \
+            --enable-DMT=${j} \
+            --num-HNF-TBE=16  \
+            --num-dirs=${NUM_MEM} \
             --use-o3 \
             --num-l3caches=${NUM_LLC} \
             --num-iters=${NUM_ITER} \
-            --network=simple \
+            --network=simple --vcs-per-vnet=4 \
             --topology=CustomMesh \
             --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
             --ruby \
             --mem-size="4GB" \
-            --num-cpus=${NUM_CPU}
-    done
+            --mem-type=DDR4_2400_4x16 \
+            --num-cpus=${NUM_CPU} &
+         done
+      done
+   done
 fi
-            # --rate-style 
-            # --debug-flags=PseudoInst --debug-file=debug.trace 
-# --debug-flags=RubyCHIDebugStr5,RubyGenerated  --debug-file=debug.trace 
->>>>>>>>> Temporary merge branch 2

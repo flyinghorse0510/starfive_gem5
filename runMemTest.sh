@@ -29,19 +29,7 @@ export WORKSPACE="$(pwd)/output"
 export GEM5_DIR=$(pwd)
 export ISA="RISCV"
 export CCPROT="CHI"
-export NUMCPUS=3
-
-buildType="gem5.opt"
-l1d_size="32KiB"
-l1i_size="32KiB"
-l2_size="128KiB"
-l3_size="1024KiB" #"256KiB"
-l1d_assoc=8
-l1i_assoc=8
-l2_assoc=8
-l3_assoc=16
-NUM_LLC=16
-NETWORK="garnet" #"simple"
+export NUMCPUS=2
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -75,9 +63,8 @@ if [ "$RUN1" != "" ]; then
         --mem-type=DDR4_3200_8x8 \
         --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
         --mem-test-type='prod_cons_test' \
-        --disable-gclk-set \
-        --num-cpus=${NUMCPUS} \
-        --num-producers=1
+        --enable-DMT=False \
+        --num-cpus=${NUMCPUS}
     grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
     grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
 fi

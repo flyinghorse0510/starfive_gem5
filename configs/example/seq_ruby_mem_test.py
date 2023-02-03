@@ -57,6 +57,10 @@ parser.add_argument("--suppress-func-errors", action="store_true",
 parser.add_argument("--mem-test-type",type=str,default='bw_test',help="The type of Memtest stimulus generator to use")
 parser.add_argument("--size-ws",type=int,default=1024,help='Working set size in bytes. Must be a multiple of Cacheline size')
 parser.add_argument("--num-producers",type=int,default=1,help='Number of producer')
+parser.add_argument("--enable-DMT", default=False, help="enable DMT")
+parser.add_argument("--num-HNF-TBE", default=16, help="number of oustanding in HN-F")
+parser.add_argument("--num_HNF_ReplTBE", default=16, help="number of replacement oustanding in HN-F")
+
 #
 # Add the ruby specific and protocol specific options
 #

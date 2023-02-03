@@ -1,4 +1,4 @@
-# Copyright (c) 2021 ARM Limited
+
 # All rights reserved.
 #
 # The license below extends only to copyright in the software and shall
@@ -18,7 +18,7 @@
 # notice, this list of conditions and the following disclaimer in the
 # documentation and/or other materials provided with the distribution;
 # neither the name of the copyright holders nor the names of its
-# contributors may be used to endorse or promote products derived from
+
 # this software without specific prior written permission.
 #
 # THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
@@ -49,6 +49,32 @@ from curses.ascii import NUL
 import math
 import m5
 from m5.objects import *
+
+##from m5.util import addToPath
+##
+##import os, argparse, sys
+from common import Options
+##from ruby import Ruby
+##
+##addToPath('../')
+##from common.FileSystemConfig import config_filesystem
+##
+##
+##config_path = os.path.dirname(os.path.abspath(__file__))
+##config_root = os.path.dirname(config_path)
+##
+##parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+##
+##parser.add_argument("--enable-DMT",default=True, help="Enable DMT")
+##Options.addNoISAOptions(parser)
+##
+###
+### Add the ruby specific and protocol specific options
+###
+##Ruby.define_options(parser)
+##args = parser.parse_args()
+
+
 
 class Versions:
     '''
@@ -273,7 +299,7 @@ class CHI_HNFController(CHI_Cache_Controller):
     Default parameters for a coherent home node (HNF) cache controller
     '''
 
-    def __init__(self, ruby_system, cache, prefetcher, addr_ranges):
+    def __init__(self, options, ruby_system, cache, prefetcher, addr_ranges):
         super(CHI_HNFController, self).__init__(ruby_system)
         self.sequencer = NULL
         self.cache = cache
@@ -281,7 +307,7 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.addr_ranges = addr_ranges
         self.allow_SD = True
         self.is_HN = True
-        self.enable_DMT = False
+        self.enable_DMT = options.enable_DMT #False #True #args.enable_DMT #False
         self.enable_DCT = False
         self.send_evictions = False
         # MOESI / Mostly inclusive for shared / Exclusive for unique
@@ -296,8 +322,8 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.dealloc_backinv_unique = False
         self.dealloc_backinv_shared = False
         # Some reasonable default TBE params
-        self.number_of_TBEs = 16
-        self.number_of_repl_TBEs = 2
+        self.number_of_TBEs = options.num_HNF_TBE #2
+        self.number_of_repl_TBEs = options.num_HNF_ReplTBE #2
         self.number_of_snoop_TBEs = 1 # should not receive any snoop
         self.number_of_DVM_TBEs = 1 # should not receive any dvm
         self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
@@ -550,7 +576,7 @@ class CHI_HNF(CHI_Node):
 
     # The CHI controller can be a child of this object or another if
     # 'parent' if specified
-    def __init__(self, hnf_idx, ruby_system, llcache_type, parent):
+    def __init__(self,options, hnf_idx, ruby_system, llcache_type, parent):
         super(CHI_HNF, self).__init__(ruby_system)
 
         addr_ranges,intlvHighBit = self.getAddrRanges(hnf_idx)
@@ -558,7 +584,7 @@ class CHI_HNF(CHI_Node):
         assert(len(addr_ranges) >= 1)
 
         ll_cache = llcache_type(start_index_bit = intlvHighBit + 1)
-        self._cntrl = CHI_HNFController(ruby_system, ll_cache, NULL,
+        self._cntrl = CHI_HNFController(options, ruby_system, ll_cache, NULL,
                                         addr_ranges)
 
         if parent == None:
@@ -624,7 +650,8 @@ class CHI_SNF_Base(CHI_Node):
                           triggerQueue = TriggerMessageBuffer(),
                           responseFromMemory = MessageBuffer(),
                           requestToMemory = MessageBuffer(ordered = True),
-                          reqRdy = TriggerMessageBuffer())
+                          reqRdy = TriggerMessageBuffer(),
+                          number_of_TBEs=64)
 
         self.connectController(self._cntrl)
 
