@@ -96,3 +96,7 @@ if [ "$RUN" != "" ]; then
             --num-cpus=${NUM_CPU}
     done
 fi
+            # --rate-style 
+            # --debug-flags=PseudoInst --debug-file=debug.trace 
+# --debug-flags=RubyCHIDebugStr5,RubyGenerated  --debug-file=debug.trace 
+>>>>>>>>> Temporary merge branch 2

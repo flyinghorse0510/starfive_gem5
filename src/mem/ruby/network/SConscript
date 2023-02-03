@@ -45,3 +45,5 @@ Source('Network.cc')
 Source('Topology.cc')
 
 DebugFlag('MsgBufDebug', "For Packet DataFlow Tracing.")
+
+DebugFlag("TxnTrace", "Print TxnSeqNum Info")

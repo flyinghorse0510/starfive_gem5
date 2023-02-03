@@ -166,7 +166,7 @@ def parse_breakdown(line, cache_to_idx, idx_to_cache, num_caches, tick, name, se
 
 
 def parse_roundtrip(line, tick, seq_num):
-    seqreq_search = re.search('SeqRequest (\w+) ', line)
+    seqreq_search = re.search('Req (\w+) ', line)
     if seqreq_search : 
         seqReq = seqreq_search.group(1)
         if seqReq == 'Done': # this is the end of request
@@ -194,7 +194,7 @@ def parse_log(filename, cache_to_idx, idx_to_cache, num_caches, breakdown=False)
             # can also extract each part using "." as seperator
             name_search = re.search('system\.(\S*):', line)
             # search for TxSeqNum
-            seq_num_search = re.search('TxSeqNum: 0x([\w]+)', line)
+            seq_num_search = re.search('txsn: 0x([\w]+)', line)
 
             # First: if all search matched, this is the message we want
             if tick_search and name_search and seq_num_search:
