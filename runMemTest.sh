@@ -29,7 +29,7 @@ export WORKSPACE="$(pwd)/output"
 export GEM5_DIR=$(pwd)
 export ISA="RISCV"
 export CCPROT="CHI"
-export NUMCPUS=1
+export NUMCPUS=3
 
 buildType="gem5.opt"
 l1d_size="32KiB"
