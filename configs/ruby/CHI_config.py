@@ -650,7 +650,8 @@ class CHI_SNF_Base(CHI_Node):
                           triggerQueue = TriggerMessageBuffer(),
                           responseFromMemory = MessageBuffer(),
                           requestToMemory = MessageBuffer(ordered = True),
-                          reqRdy = TriggerMessageBuffer())
+                          reqRdy = TriggerMessageBuffer(),
+                          number_of_TBEs=64)
 
         self.connectController(self._cntrl)
 

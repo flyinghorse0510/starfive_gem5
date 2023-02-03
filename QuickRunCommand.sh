@@ -54,13 +54,13 @@ NUM_LLC=16
 DMT_Config=(True False)
 
 
-NUM_ITER=4 #16 #800  #32 #16
-NUM_CPU=1 #4 #16
+NUM_ITER=16 #16 #800  #32 #16
+NUM_CPU=4 #4 #16
 
 #WS=2048*${NUM_CPU}
 
 workingset=(524288) #(32768) #
-prefix="PDCP_20230201_TestDMT"
+prefix="PDCP_20230202_TestDMT"
 #prefix="MultiThread"
 
 
