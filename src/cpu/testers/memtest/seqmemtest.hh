@@ -144,11 +144,13 @@ class SeqMemTest : public ClockedObject
     std::unordered_set<Addr> outstandingAddrs;
 
     // store the expected value for the addresses we have touched
-    std::unordered_map<Addr, uint8_t> referenceData;
+    std::unordered_map<Addr, writeSyncData_t> referenceData;
 
     const unsigned blockSize;
 
     const Addr blockAddrMask;
+
+    const unsigned percentReads;
 
     /**
      * Get the block aligned address.

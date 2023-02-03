@@ -106,6 +106,7 @@ SeqMemTest::SeqMemTest(const Params &p)
       maxLoads(p.max_loads),
       atomic(p.system->isAtomicMode()),
       seqIdx(0),
+      percentReads(p.percent_reads),
       txSeqNum((static_cast<uint64_t>(p.system->getRequestorId(this))) << 48),
       suppressFuncErrors(p.suppress_func_errors), stats(this)
 {
@@ -231,7 +232,6 @@ SeqMemTest::tick()
 
     /* Too many outstanding transactions */
     if ((outstandingAddrs.size() >= 100) || (outstandingAddrs.size() >= workingSetSize)) {
-        // DPRINTF(SeqMemLatTest,"Too many outstanding transactions=%d,%d\n",outstandingAddrs.size(),workingSetSize);
         waitResponse = true;
         return;
     }
@@ -251,7 +251,8 @@ SeqMemTest::tick()
     PacketPtr pkt = nullptr;
     writeSyncData_t *pkt_data = new writeSyncData_t[1];
 
-    bool readOrWrite = true;
+    unsigned cmd = random_mt.random(0, 100);
+    bool readOrWrite = (cmd < percentReads)?true:false;
     if (readOrWrite) {
         pkt = new Packet(req, MemCmd::ReadReq);
         auto ref = referenceData.find(req->getPaddr());

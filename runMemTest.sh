@@ -29,7 +29,7 @@ export WORKSPACE="$(pwd)/output"
 export GEM5_DIR=$(pwd)
 export ISA="RISCV"
 export CCPROT="CHI"
-export NUMCPUS=3
+export NUMCPUS=4
 
 buildType="gem5.debug"
 l1d_size="32KiB"
@@ -69,9 +69,9 @@ if [ "$RUN1" != "" ]; then
         --topology=CustomMesh \
         --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
         --ruby \
-        --maxloads=100 \
+        --maxloads=1500 \
         --mem-size="16GB" \
-        --size-ws=256 \
+        --size-ws=33792 \
         --mem-type=DDR4_3200_8x8 \
         --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
         --mem-test-type='bw_test' \
