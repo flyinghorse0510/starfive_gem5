@@ -51,8 +51,11 @@ class SeqMemTest(ClockedObject):
     interval = Param.Cycles(5, "Interval between request packets")
     size = Param.Unsigned(4194304, "Size of memory region to use (bytes)")
     base_addr_1 = Param.Addr(0x100000, "Start of the first testing region")
+    working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
     max_loads = Param.Counter(1, "Number of loads to execute before exiting")
-    num_iters = Param.Counter(10, "Number of iterations in sequential loads")
+
+    num_cpus = Param.Counter(1, "Total number of CPUs")
+    num_producers = Param.Counter(1, "Number of (write) producers")
 
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses
