@@ -155,6 +155,17 @@ def setup_memory_controllers(system, ruby, dir_cntrls, options):
                 mem_ctrl.port = crossbar.mem_side_ports
             else:
                 mem_ctrl.port = dir_cntrl.memory_out_port
+                #mem_ctrl.dram.tREFI = "1000s"
+
+            opt_addr_mapping = getattr(options, "addr_mapping", None)
+            opt_disable_ref = getattr(options, "disable_ref", None)
+
+            if (opt_addr_mapping == "RoRaBaBg1CoBg0Co53Dp"):
+                mem_ctrl.dram.addr_mapping = 'RoRaBaBg1CoBg0Co53Dp'
+
+            if (opt_disable_ref):
+                mem_ctrl.dram.disable_ref = True
+
 
             # Enable low-power DRAM states if option is set
             if issubclass(mem_type, DRAMInterface):

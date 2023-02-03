@@ -123,6 +123,7 @@ class MemPacket
     const uint8_t rank;
     const uint8_t bank;
     const uint32_t row;
+    const uint32_t col;
 
     /**
      * Bank id is calculated considering banks in all the ranks
@@ -204,12 +205,12 @@ class MemPacket
     inline bool isDram() const { return dram; }
 
     MemPacket(PacketPtr _pkt, bool is_read, bool is_dram, uint8_t _channel,
-               uint8_t _rank, uint8_t _bank, uint32_t _row, uint16_t bank_id,
+               uint8_t _rank, uint8_t _bank, uint32_t _row, uint32_t _col, uint16_t bank_id,
                Addr _addr, unsigned int _size)
         : entryTime(curTick()), readyTime(curTick()), pkt(_pkt),
           _requestorId(pkt->requestorId()),
           read(is_read), dram(is_dram), pseudoChannel(_channel), rank(_rank),
-          bank(_bank), row(_row), bankId(bank_id), addr(_addr), size(_size),
+          bank(_bank), row(_row), col(_col), bankId(bank_id), addr(_addr), size(_size),
           burstHelper(NULL), _qosValue(_pkt->qosValue())
     { }
 

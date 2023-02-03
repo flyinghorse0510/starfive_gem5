@@ -49,7 +49,8 @@ from m5.objects.AbstractMemory import AbstractMemory
 # suitable for an open-page policy, optimising for sequential accesses
 # hitting in the open row. For a closed-page policy, RoCoRaBaCh
 # maximises parallelism.
-class AddrMap(Enum): vals = ['RoRaBaChCo', 'RoRaBaCoCh', 'RoCoRaBaCh']
+class AddrMap(Enum): vals = ['RoRaBaBg1CoBg0Co53Dp', 'RoRaBaChCo',
+    'RoRaBaCoCh', 'RoCoRaBaCh']
 
 class MemInterface(AbstractMemory):
     type = 'MemInterface'
@@ -105,3 +106,7 @@ class MemInterface(AbstractMemory):
     # 1) RD-to-RD, 2) WR-to-WR, 3) RD-to-WR, and 4) WR-to-RD
     # different rank bus delay
     tCS = Param.Latency("Rank to rank switching time")
+
+    # Shouldn't be enable for actual run as this violate DRAM requirement.
+    # Only use to measure performance impact due to refresh
+    disable_ref = Param.Bool(False, "Disabled refresh")
