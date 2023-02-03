@@ -192,6 +192,9 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // Internal queue for eviction requests
   MessageBuffer * replTriggerQueue;
 
+  // Internal queue for SFEviction requests
+  MessageBuffer * sfReplTriggerQueue;
+
   // Prefetch queue for receiving prefetch requests from prefetcher
   MessageBuffer * prefetchQueue;
 
@@ -199,6 +202,9 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // as demand access in this cache. Notice the demand access stats are still
   // updated only on true demand requests.
   bool upstream_prefetch_trains_prefetcher := "False";
+
+  // Allow infinite SnoopFilter entries
+  bool allow_infinite_SF_entries;
 
 {
 
@@ -391,6 +397,9 @@ machine(MachineType:Cache, "Cache coherency protocol") :
 
     // Cache fill handling
     CheckCacheFill,   desc="Check if need to write or update the cache and trigger any necessary allocation and evictions";
+
+    // Snoop Filter fill
+    CheckSnoopFilterFill, desc="Check if need to Snoop filter (directory) entry";
 
     // Internal requests generated to evict or writeback a local copy
     // to free-up cache space
@@ -642,6 +651,8 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool dir_ownerExists,         desc="Owner ID is valid";
     bool dir_ownerIsExcl,         desc="Owner is UD or UC; SD otherwise";
     bool doCacheFill,             desc="Write valid data to the cache when completing transaction";
+
+    bool requiresDirEntry,        desc="Do you require a dirEntry allocation";
     // NOTE: dataMaybeDirtyUpstream and dir_ownerExists are the same except
     // when we had just sent dirty data upstream and are waiting for ack to set
     // dir_ownerExists
@@ -733,6 +744,9 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     void deallocate(Addr);
     DirEntry lookup(Addr);
     bool isTagPresent(Addr);
+    int size();
+    bool cacheAvail(Addr);
+    Addr cacheProbe(Addr newAddress);
   }
 
   // Directory
@@ -822,6 +836,12 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool functionalRead(Packet *pkt) { return false; }
     bool functionalRead(Packet *pkt, WriteMask &mask) { return false; }
     bool functionalWrite(Packet *pkt) { return false; }
+  }
+
+  // Internal SF Replacement request
+  structure(SFReplacementMsg, interface="Message") {
+    Addr evicting_addr;
+    Addr addr;
   }
 
 

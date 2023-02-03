@@ -215,6 +215,7 @@ class CHI_Cache_Controller(Cache_Controller):
             triggerQueue = TriggerMessageBuffer(),
             retryTriggerQueue = OrderedTriggerMessageBuffer(),
             replTriggerQueue = OrderedTriggerMessageBuffer(),
+            sfReplTriggerQueue = OrderedTriggerMessageBuffer(),
             reqRdy = TriggerMessageBuffer(),
             snpRdy = TriggerMessageBuffer())
         # Set somewhat large number since we really a lot on internal
@@ -259,6 +260,7 @@ class CHI_L1Controller(CHI_Cache_Controller):
         self.number_of_DVM_TBEs = 16
         self.number_of_DVM_snoop_TBEs = 4
         self.unify_repl_TBEs = False
+        self.allow_infinite_SF_entries = True
 
 class CHI_L2Controller(CHI_Cache_Controller):                 
     '''
@@ -293,6 +295,7 @@ class CHI_L2Controller(CHI_Cache_Controller):
         self.number_of_DVM_TBEs = 1 # should not receive any dvm
         self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
         self.unify_repl_TBEs = False
+        self.allow_infinite_SF_entries = True
 
 class CHI_HNFController(CHI_Cache_Controller):
     '''
@@ -329,6 +332,7 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
         self.unify_repl_TBEs = False
         self.transitions_per_cycle = options.num_trans_per_cycle_llc
+        self.allow_infinite_SF_entries = False
 
 class CHI_MNController(MiscNode_Controller):
     '''

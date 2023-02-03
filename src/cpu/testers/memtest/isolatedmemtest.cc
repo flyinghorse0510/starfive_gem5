@@ -114,7 +114,7 @@ IsolatedMemTest::IsolatedMemTest(const Params &p)
     // set up counters
     numReads = 0;
     numWrites = 0;
-    bool readOrWriteVal = false; // true: read, false: write
+    bool readOrWriteVal = true; // true: read, false: write
     readWriteMap = { \
                     {0x40000, readOrWriteVal}, \
                     {0x40040, readOrWriteVal}, \

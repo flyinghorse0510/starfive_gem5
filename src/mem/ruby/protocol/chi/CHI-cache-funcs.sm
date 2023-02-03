@@ -753,6 +753,17 @@ void printResources() {
                 triggerQueue.getSize(curTick()));
 }
 
+bool requiresDirEntry(CHIRequestType reqType, DirEntry dir_entry, bool en) {
+  DPRINTF(RubyCHIDebugStr5,"Requires Dir Entry, reqType=%s,v_dir_entry=%d,en=%d\n",reqType,is_valid(dir_entry),en);
+  if (is_valid(dir_entry)) {
+    return false;
+  } else {
+    return (en && ((reqType == CHIRequestType:ReadShared) ||
+                   (reqType == CHIRequestType:ReadUnique) ||
+                   (reqType == CHIRequestType:ReadOnce)));
+  }
+}
+
 bool needCacheEntry(CHIRequestType req_type,
                     CacheEntry cache_entry, DirEntry dir_entry,
                     bool is_prefetch) {

@@ -112,6 +112,10 @@ transition({BUSY_INTR,BUSY_BLKD}, CheckCacheFill, BUSY_INTR) {
   // or a stall depending on block availability
 }
 
+transition({BUSY_INTR,BUSY_BLKD}, CheckSnoopFilterFill, BUSY_INTR) {
+  Check_SnoopFilterFill;
+}
+
 transition({BUSY_INTR,BUSY_BLKD}, DataArrayWrite) {DataArrayWrite} {
   Pop_TriggerQueue;
   DataArrayWrite;
@@ -178,7 +182,7 @@ transition({BUSY_INTR,BUSY_BLKD}, SnpOncePipe) {
 transition(I, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadShared_Miss;
-  Allocate_DirEntry;
+  // Allocate_DirEntry;
   Profile_Miss;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -195,7 +199,7 @@ transition({RSC,RUSC}, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
 transition({UD,SD,UC,SC}, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadShared_Hit;
-  Allocate_DirEntry;
+  // Allocate_DirEntry;
   Profile_Hit;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -249,7 +253,7 @@ transition({UD_RU,UC_RU,RU,RSD,RUSD,RSC,RUSC}, ReadOnce, BUSY_BLKD) {
 transition(I, {ReadUnique,ReadUnique_PoC}, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadUnique_Miss;
-  Allocate_DirEntry;
+  // Allocate_DirEntry;
   Profile_Miss;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -258,7 +262,7 @@ transition(I, {ReadUnique,ReadUnique_PoC}, BUSY_BLKD) {
 transition({UD,UC}, {ReadUnique,ReadUnique_PoC}, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadUnique_Hit;
-  Allocate_DirEntry;
+  // Allocate_DirEntry;
   Profile_Hit;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -284,7 +288,7 @@ transition({SC,SD}, ReadUnique_PoC, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadUnique_AutoUpgrade;
   Initiate_ReadUnique_Hit;
-  Allocate_DirEntry;
+  // Allocate_DirEntry;
   Profile_Hit;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -312,7 +316,7 @@ transition({RSC,RSD}, ReadUnique_PoC, BUSY_BLKD) {
 transition({SC,SD}, ReadUnique, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadUnique_Upgrade;
-  Allocate_DirEntry;
+  // Allocate_DirEntry;
   Profile_Miss;
   Pop_ReqRdyQueue;
   ProcessNextState;
