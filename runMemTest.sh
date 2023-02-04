@@ -49,7 +49,14 @@ NETWORK="simple" #"garnet" #"simple"
 
 DMT_Config=(True False)
 NUM_CPU_SET=(1 2) # = #2 #4 #16
-WKSET=524288 #(32768) #
+WKSET=8192 #16384 #524288 #(32768) #
+NUM_MEM_SET=(1 2)
+NUM_MEM=2
+
+#DEBUG_FLAGS=SeqMemLatTest,TxnTrace 
+DEBUG_FLAGS=SeqMemLatTest
+OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEMBW"
+OUTPUT_PREFIX="L1_BW"
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -57,16 +64,17 @@ if [ "$BUILD" != "" ]; then
 fi
 
 if [ "$RUN1" != "" ]; then
-    OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
+    #OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
     mkdir -p $OUTPUT_DIR
     for DMT in ${DMT_Config[@]}; do
        for NUMCPUS in ${NUM_CPU_SET[@]}; do
-        OUTPUT_DIR="${OUTPUT_ROOT}/${prefix}_Core${NUMCPUS}_DMT${DMT}" 
+       
+        OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}" 
         $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
-          --debug-flags=SeqMemLatTest --debug-file=debug.trace \
+          --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
           -d $OUTPUT_DIR \
           ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
-          --num-dirs=1 \
+          --num-dirs=${NUM_MEM} \
           --num-l3caches=${NUM_LLC} \
           --l1d_size=${l1d_size} \
           --l1i_size=${l1i_size} \
@@ -97,18 +105,20 @@ if [ "$RUN1" != "" ]; then
 fi
 
   if [ "$ANALYSIS" != "" ]; then
-    OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
-    mkdir -p $OUTPUT_DIR
+    #OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
     for DMT in ${DMT_Config[@]}; do
        for NUMCPUS in ${NUM_CPU_SET[@]}; do
 
-        OUTPUT_DIR="${OUTPUT_ROOT}/${prefix}_Core${NUMCPUS}_DMT${DMT}" 
+        OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}" 
+ 
       #grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
       #grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
           statsfile=$OUTPUT_DIR/stats.txt
           echo $OUTPUT_DIR
           grep simTicks  ${statsfile}
-          grep "mem_ctrls" ${statsfile} | grep readReqs 
+          grep "mem_ctrls" ${statsfile} | grep readReqs
+          grep "l1d.cache.numDataArrayReads" ${statsfile}
+          grep "l1d.cache.numTagArrayReads" ${statsfile}           
      done
    done
 
