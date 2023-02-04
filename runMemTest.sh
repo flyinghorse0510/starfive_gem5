@@ -35,11 +35,11 @@ export ISA="RISCV"
 export CCPROT="CHI"
 export NUMCPUS=4
 
-buildType="gem5.debug"
+buildType="gem5.opt"
 l1d_size="32KiB"
 l1i_size="32KiB"
 l2_size="64KiB"
-l3_size="16KiB" #"1024KiB" #"256KiB"
+l3_size=32KiB #"16KiB" #"1024KiB" #"256KiB"
 l1d_assoc=8
 l1i_assoc=8
 l2_assoc=8
@@ -48,15 +48,17 @@ NUM_LLC=16
 NETWORK="simple" #"garnet" #"simple"
 
 DMT_Config=(True False)
-NUM_CPU_SET=(1 2) # = #2 #4 #16
-WKSET=8192 #16384 #524288 #(32768) #
+NUM_CPU_SET=(8 16) # = #2 #4 #16
+WKSET=131072 #8192 #16384 #524288 #(32768) #
 NUM_MEM_SET=(1 2)
-NUM_MEM=2
+NUM_MEM=1
+TRANS_SET=(1 2 4)
 
 #DEBUG_FLAGS=SeqMemLatTest,TxnTrace 
-DEBUG_FLAGS=SeqMemLatTest
+#DEBUG_FLAGS=SeqMemLatTest
+DEBUG_FLAGS=PseudoInst
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEMBW"
-OUTPUT_PREFIX="L1_BW"
+OUTPUT_PREFIX="LLC_HIT_BW_MEM1"
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -68,8 +70,9 @@ if [ "$RUN1" != "" ]; then
     mkdir -p $OUTPUT_DIR
     for DMT in ${DMT_Config[@]}; do
        for NUMCPUS in ${NUM_CPU_SET[@]}; do
-       
-        OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}" 
+          for TRANS in ${TRANS_SET[@]}; do
+ 
+        OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_TRANS${TRANS}" 
         $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
           --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
           -d $OUTPUT_DIR \
@@ -88,7 +91,7 @@ if [ "$RUN1" != "" ]; then
           --topology=CustomMesh \
           --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
           --ruby \
-          --maxloads=5000 \
+          --maxloads=80000 \
           --mem-size="16GB" \
           --size-ws=${WKSET} \
           --mem-type=DDR4_3200_8x8 \
@@ -96,10 +99,12 @@ if [ "$RUN1" != "" ]; then
           --mem-test-type='bw_test' \
           --disable-gclk-set \
           --enable-DMT=${DMT} \
+          --num_trans_per_cycle_llc=${TRANS} \
           --num-cpus=${NUMCPUS} \
           --num-producers=1 &
        grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
        grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
+       done
      done
    done
 fi
@@ -108,8 +113,9 @@ fi
     #OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
     for DMT in ${DMT_Config[@]}; do
        for NUMCPUS in ${NUM_CPU_SET[@]}; do
-
-        OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}" 
+          for TRANS in ${TRANS_SET[@]}; do
+ 
+        OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_TRANS${TRANS}" 
  
       #grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
       #grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
@@ -117,9 +123,15 @@ fi
           echo $OUTPUT_DIR
           grep simTicks  ${statsfile}
           grep "mem_ctrls" ${statsfile} | grep readReqs
-          grep "l1d.cache.numDataArrayReads" ${statsfile}
-          grep "l1d.cache.numTagArrayReads" ${statsfile}           
+          #grep "l1d.cache.numDataArrayReads" ${statsfile}
+          #grep "l1d.cache.numTagArrayReads" ${statsfile} 
+          grep "l1d.cache.m_demand" ${statsfile}  
+          grep "l2.cache.m_demand" ${statsfile}  
+          #grep "cache.m_demand" ${statsfile} | grep hnf
+          grep "cntrl.avg_size" ${statsfile} | grep "TBE Request Occupanc"
+          grep "m_outstandReqHistSeqr::mean" ${statsfile}
+          grep "snf.cntrl.avg_size" ${statsfile}
      done
    done
-
+  done
 fi

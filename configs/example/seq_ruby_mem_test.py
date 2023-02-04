@@ -60,6 +60,7 @@ parser.add_argument("--num-producers",type=int,default=1,help='Number of produce
 parser.add_argument("--enable-DMT", default=False, help="enable DMT")
 parser.add_argument("--num-HNF-TBE", default=16, help="number of oustanding in HN-F")
 parser.add_argument("--num_HNF_ReplTBE", default=16, help="number of replacement oustanding in HN-F")
+parser.add_argument("--num_trans_per_cycle_llc", default=4, help="number of transitions per cycle in HN-F")
 
 #
 # Add the ruby specific and protocol specific options
