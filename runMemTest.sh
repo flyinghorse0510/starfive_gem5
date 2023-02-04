@@ -14,13 +14,17 @@ Help() {
 
 BUILD=""
 RUN=""
-while getopts "hbrs" options; do
+ANALYSIS=""
+
+while getopts "hbrsa" options; do
     case $options in
         h) Help
            exit;;
         b) BUILD="yes"
             ;;
         r) RUN1="yes"
+           ;;
+        a) ANALYSIS="yes"
            ;;
     esac
 done
@@ -43,7 +47,7 @@ l3_assoc=16
 NUM_LLC=16
 NETWORK="simple" #"garnet" #"simple"
 
-DMT_Config=(False)
+DMT_Config=(True False)
 NUM_CPU_SET=(1 2) # = #2 #4 #16
 WKSET=524288 #(32768) #
 
@@ -53,14 +57,14 @@ if [ "$BUILD" != "" ]; then
 fi
 
 if [ "$RUN1" != "" ]; then
-    OUTPUT_DIR="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
+    OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
     mkdir -p $OUTPUT_DIR
     for DMT in ${DMT_Config[@]}; do
        for NUMCPUS in ${NUM_CPU_SET[@]}; do
-         
+        OUTPUT_DIR="${OUTPUT_ROOT}/${prefix}_Core${NUMCPUS}_DMT${DMT}" 
         $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
           --debug-flags=SeqMemLatTest --debug-file=debug.trace \
-          -d "${OUTPUT_DIR}/${prefix}_Core${NUMCPUS}_DMT${DMT}" \
+          -d $OUTPUT_DIR \
           ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
           --num-dirs=1 \
           --num-l3caches=${NUM_LLC} \
@@ -83,11 +87,29 @@ if [ "$RUN1" != "" ]; then
           --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
           --mem-test-type='bw_test' \
           --disable-gclk-set \
-          --enable-DMT=False \
+          --enable-DMT=${DMT} \
           --num-cpus=${NUMCPUS} \
-          --num-producers=1
-      grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
-      grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
+          --num-producers=1 &
+       grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
+       grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
      done
    done
+fi
+
+  if [ "$ANALYSIS" != "" ]; then
+    OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
+    mkdir -p $OUTPUT_DIR
+    for DMT in ${DMT_Config[@]}; do
+       for NUMCPUS in ${NUM_CPU_SET[@]}; do
+
+        OUTPUT_DIR="${OUTPUT_ROOT}/${prefix}_Core${NUMCPUS}_DMT${DMT}" 
+      #grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
+      #grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
+          statsfile=$OUTPUT_DIR/stats.txt
+          echo $OUTPUT_DIR
+          grep simTicks  ${statsfile}
+          grep "mem_ctrls" ${statsfile} | grep readReqs 
+     done
+   done
+
 fi
