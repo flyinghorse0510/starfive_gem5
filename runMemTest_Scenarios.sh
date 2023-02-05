@@ -43,8 +43,8 @@ buildType="gem5.opt"
 
 #TEST="L1_Hit"
 #TEST="L2_Hit"
-#TEST="L3_Hit"
-TEST="DDR_BW"
+TEST="L3_Hit"
+#TEST="DDR_BW"
 
 if [ "$TEST" == "L1_Hit" ]; then
 echo $TEST
@@ -102,8 +102,6 @@ TRANS_SET=(1 2 4)
 SNF_TBE_SET=(32 64)
 HNF_TBE=32
 
-#DEBUG_FLAGS=SeqMemLatTest,TxnTrace 
-#DEBUG_FLAGS=SeqMemLatTest
 DEBUG_FLAGS=PseudoInst
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEMBW"
 fi
@@ -142,7 +140,7 @@ if [ "$TEST" == "DDR_BW" ]; then
 
 l1d_size="4KiB"
 l1i_size="4KiB"
-l2_size="64KiB"
+l2_size="32KiB"
 l3_size="16KiB" #"16KiB" #"1024KiB" #"256KiB"
 l1d_assoc=8
 l1i_assoc=8
@@ -174,11 +172,15 @@ NUM_CPU_SET=(1) # = #2 #4 #16
 #WKSET=131072 #8192 #16384 #524288 #(32768) #
 #NUM_MEM_SET=(1 2)
 NUM_MEM=1
-TRANS_SET=(1 2 4)
+TRANS_SET=(4)
+HNF_TBE=32
 SNF_TBE_SET=(32)
+NUM_LOAD_SET=(4000 5000 8000 80000)
 
 DEBUG_FLAGS="SeqMemLatTest,TxnTrace"
-OUTPUT_PREFIX="TEST_${TEST}/NETWK${NETWORK}"
+
+OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEM_Hier_BW"
+OUTPUT_PREFIX="TEST_${TEST}/NETWK${NETWORK}_LinkFactor40_SysClk2GHz"
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -192,8 +194,8 @@ if [ "$RUN1" != "" ]; then
        for NUMCPUS in ${NUM_CPU_SET[@]}; do
           for TRANS in ${TRANS_SET[@]}; do
              for  SNF_TBE in ${SNF_TBE_SET[@]}; do
-    
-            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}" 
+                for NUM_LOAD in ${NUM_LOAD_SET[@]}; do 
+            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
             $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
               --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
               -d $OUTPUT_DIR \
@@ -212,7 +214,7 @@ if [ "$RUN1" != "" ]; then
               --topology=CustomMesh \
               --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
               --ruby \
-              --maxloads=80000 \
+              --maxloads=${NUM_LOAD} \
               --mem-size="16GB" \
               --size-ws=${WKSET} \
               --mem-type=DDR4_3200_8x8 \
@@ -227,6 +229,7 @@ if [ "$RUN1" != "" ]; then
               --num-producers=1 &
        grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
        grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
+           done
          done
        done
      done
@@ -239,7 +242,9 @@ fi
        for NUMCPUS in ${NUM_CPU_SET[@]}; do
           for TRANS in ${TRANS_SET[@]}; do
              for  SNF_TBE in ${SNF_TBE_SET[@]}; do 
-        OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}" 
+                for NUM_LOAD in ${NUM_LOAD_SET[@]}; do 
+ 
+        OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
  
       #grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
       #grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
@@ -257,6 +262,7 @@ fi
           grep "cntrl.avg_size" ${statsfile} | grep "TBE Request Occupanc"
           grep "m_outstandReqHistSeqr::mean" ${statsfile}
           grep "snf.cntrl.avg_size" ${statsfile}
+         done
        done
      done
    done
