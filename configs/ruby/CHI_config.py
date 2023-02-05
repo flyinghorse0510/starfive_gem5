@@ -464,9 +464,11 @@ class CHI_RNF(CHI_Node):
         # First creates L1 caches and sequencers
         for cpu in self._cpus:
             cpu.inst_sequencer = RubySequencer(version = Versions.getSeqId(),
-                                         ruby_system = ruby_system)
+                                         ruby_system = ruby_system,
+                                         max_outstanding_requests = 32)
             cpu.data_sequencer = RubySequencer(version = Versions.getSeqId(),
-                                         ruby_system = ruby_system)
+                                         ruby_system = ruby_system,
+                                         max_outstanding_requests = 8)
 
             self._seqs.append(CPUSequencerWrapper(cpu.inst_sequencer,
                                                   cpu.data_sequencer))
