@@ -642,7 +642,7 @@ class CHI_SNF_Base(CHI_Node):
 
     # The CHI controller can be a child of this object or another if
     # 'parent' if specified
-    def __init__(self, ruby_system, parent):
+    def __init__(self, options, ruby_system, parent):
         super(CHI_SNF_Base, self).__init__(ruby_system)
 
         self._cntrl = Memory_Controller(
@@ -652,7 +652,7 @@ class CHI_SNF_Base(CHI_Node):
                           responseFromMemory = MessageBuffer(),
                           requestToMemory = MessageBuffer(ordered = True),
                           reqRdy = TriggerMessageBuffer(),
-                          number_of_TBEs=64)
+                          number_of_TBEs=options.num_SNF_TBE)
 
         self.connectController(self._cntrl)
 
@@ -680,8 +680,8 @@ class CHI_SNF_BootMem(CHI_SNF_Base):
     Create the SNF for the boot memory
     '''
 
-    def __init__(self, ruby_system, parent, bootmem):
-        super(CHI_SNF_BootMem, self).__init__(ruby_system, parent)
+    def __init__(self, options, ruby_system, parent, bootmem):
+        super(CHI_SNF_BootMem, self).__init__(options,ruby_system, parent)
         self._cntrl.memory_out_port = bootmem.port
         self._cntrl.addr_ranges = self.getMemRange(bootmem)
 
@@ -690,8 +690,8 @@ class CHI_SNF_MainMem(CHI_SNF_Base):
     Create the SNF for a list main memory controllers
     '''
 
-    def __init__(self, ruby_system, parent, mem_ctrl = None):
-        super(CHI_SNF_MainMem, self).__init__(ruby_system, parent)
+    def __init__(self, options, ruby_system, parent, mem_ctrl = None):
+        super(CHI_SNF_MainMem, self).__init__(options,ruby_system, parent)
         if mem_ctrl:
             self._cntrl.memory_out_port = mem_ctrl.port
             self._cntrl.addr_ranges = self.getMemRange(mem_ctrl)
