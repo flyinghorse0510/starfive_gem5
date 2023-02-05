@@ -468,7 +468,7 @@ class CHI_RNF(CHI_Node):
                                          max_outstanding_requests = 32)
             cpu.data_sequencer = RubySequencer(version = Versions.getSeqId(),
                                          ruby_system = ruby_system,
-                                         max_outstanding_requests = 8)
+                                         max_outstanding_requests = 32) 
 
             self._seqs.append(CPUSequencerWrapper(cpu.inst_sequencer,
                                                   cpu.data_sequencer))
