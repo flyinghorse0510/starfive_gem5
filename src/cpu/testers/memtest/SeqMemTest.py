@@ -50,7 +50,7 @@ class SeqMemTest(ClockedObject):
     # touched, and an optional stop condition
     interval = Param.Cycles(1, "Interval between request packets")
     size = Param.Unsigned(4194304, "Size of memory region to use (bytes)")
-    base_addr_1 = Param.Addr(0x100000, "Start of the first testing region")
+    base_addr_1 = Param.Addr(0x0, "Start of the first testing region")
     working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
     max_loads = Param.Counter(1, "Number of loads to execute before exiting")
     percent_reads = Param.Percent(65, "Percentage reads")
