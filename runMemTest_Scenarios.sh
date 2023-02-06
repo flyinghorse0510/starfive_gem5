@@ -20,15 +20,20 @@ ANALYSIS=""
 
 TEST=""
 
-while getopts "hbrsat:" options; do
+while getopts "hbrsa:t:" options; do
     case $options in
        h) Help
           exit;;
        b) BUILD="yes"
            ;;
        r) RUN1="yes"
+          TEST=${OPTARG}
+          RUN1="yes"
+          echo "Processing option 'c' with '${OPTARG}' argument"
           ;;
        a) ANALYSIS="yes"
+          TEST=${OPTARG}
+          echo "Analyze results '${OPTARG}' argument"
           ;;
        t)
           echo ${OPTARG}
@@ -39,11 +44,6 @@ while getopts "hbrsat:" options; do
     esac
 done
 
-if [ $TEST == "L2_Hit" ] || [ $TEST == "L1_Hit" ] || [ $TEST == "L3_Hit" ] || [ $TEST == "DDR_BW" ]; 
-then
-    RUN1="yes"
-    echo "to Run $TEST" 
-fi
 
 export WORKSPACE="$(pwd)/output"
 export GEM5_DIR=$(pwd)
@@ -90,7 +90,7 @@ NUM_LOAD_SET=(80000)
 #DEBUG_FLAGS=SeqMemLatTest,TxnTrace 
 #DEBUG_FLAGS=SeqMemLatTest
 DEBUG_FLAGS=PseudoInst
-OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEMBW_Test"
+OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEMBW_MultCore_WorkSetAddressNoGap"
 #OUTPUT_PREFIX="LLC_HIT_BW_MEM1_TestHNFTBE"
 #OUTPUT_PREFIX="SysClkRubyClk2GHz_LLC_HIT_BW_MEM1_HNF${HNF_TBE}"
 fi
