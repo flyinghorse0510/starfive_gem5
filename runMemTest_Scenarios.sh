@@ -142,7 +142,7 @@ NETWORK="simple" #"garnet" #"simple"
 DMT_Config=(True False)
 #NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
 NUM_CPU_SET=(1 2 4) # = #2 #4 #16
-WKSET=131072 #8192 #16384 #524288 #(32768) #
+WKSET=262144 #131072 #8192 #16384 #524288 #(32768) #
 #NUM_MEM_SET=(1 2)
 NUM_MEM=1
 TRANS_SET=(1 2 4)
@@ -193,10 +193,10 @@ DMT_Config=(True False)
 ##NUM_CPU_SET=(2 4 8 16) # = #2 #4 #16
 
 #Sinlge Core
-NUM_CPU_SET=(2 16) # = #2 #4 #16
+#NUM_CPU_SET=(2 16) # = #2 #4 #16
 
 #Multi Core
-#NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
+NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
 
 #WKSET=131072 #8192 #16384 #524288 #(32768) #
 #NUM_MEM_SET=(1 2)
@@ -211,7 +211,9 @@ SNF_TBE_SET=(32)
 #DEBUG_FLAGS=RubySlicc
 DEBUG_FLAGS="SeqMemLatTest"
 
-OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEM_Hier_BW"
+MultiCoreAddrMode=True #--addr-intrlvd-or-tiled true then interleaved 
+
+OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEM_Hier_MEMADDInteLeaving"
 OUTPUT_PREFIX="TEST_${TEST}/NETWK${NETWORK}_LinkFactor40_SysClk2GHz"
 
 if [ "$BUILD" != "" ]; then
@@ -227,7 +229,7 @@ if [ "$RUN1" != "" ]; then
           for TRANS in ${TRANS_SET[@]}; do
              for  SNF_TBE in ${SNF_TBE_SET[@]}; do
                 for NUM_LOAD in ${NUM_LOAD_SET[@]}; do 
-            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
+            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
             $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
               --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
               -d $OUTPUT_DIR \
@@ -252,6 +254,7 @@ if [ "$RUN1" != "" ]; then
               --mem-type=DDR4_3200_8x8 \
               --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
               --mem-test-type='bw_test' \
+              --addr-intrlvd-or-tiled=$MultiCoreAddrMode  \
               --disable-gclk-set \
               --enable-DMT=${DMT} \
               --num-HNF-TBE=${HNF_TBE}  \
@@ -276,8 +279,9 @@ fi
              for  SNF_TBE in ${SNF_TBE_SET[@]}; do 
                 for NUM_LOAD in ${NUM_LOAD_SET[@]}; do 
  
-        OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
  
+
       #grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
       #grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
           statsfile=$OUTPUT_DIR/stats.txt
