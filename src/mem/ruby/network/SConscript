@@ -46,4 +46,5 @@ Source('Topology.cc')
 
 DebugFlag('MsgBufDebug', "For Packet DataFlow Tracing.")
 
-DebugFlag("TxnTrace", "Print TxnSeqNum Info")
+DebugFlag("TxnTrace", "Print TxnSeqNum Info.")
+DebugFlag("TxnLink", "Enable TxnSeqNum Info for Link Node.")

@@ -305,7 +305,8 @@ class NVMInterface : public MemInterface
      */
     std::pair<Tick, Tick>
     doBurstAccess(MemPacket* pkt, Tick next_burst_at,
-                  const std::vector<MemPacketQueue>& queue) override;
+                  const std::vector<MemPacketQueue>& queue,
+                  uint64_t totalReadQueueSize) override;
 
     /**
      * The next three functions are DRAM-specific and will be ignored by NVM.

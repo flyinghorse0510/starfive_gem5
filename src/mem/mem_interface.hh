@@ -175,6 +175,7 @@ class MemInterface : public AbstractMemory
       */
     const uint32_t readBufferSize;
     const uint32_t writeBufferSize;
+    const bool disableRef;
 
     /**
      * NVM specific variable, but declaring it here allows
@@ -326,7 +327,8 @@ class MemInterface : public AbstractMemory
      */
     virtual std::pair<Tick, Tick>
     doBurstAccess(MemPacket* mem_pkt, Tick next_burst_at,
-                  const std::vector<MemPacketQueue>& queue) = 0;
+                  const std::vector<MemPacketQueue>& queue,
+                  uint64_t totalReadQueueSize) = 0;
 
     /**
      * This function is DRAM specific.

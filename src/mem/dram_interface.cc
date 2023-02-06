@@ -46,6 +46,7 @@
 #include "debug/DRAM.hh"
 #include "debug/DRAMPower.hh"
 #include "debug/DRAMState.hh"
+#include "debug/WSWS.hh"
 #include "sim/system.hh"
 
 namespace gem5
@@ -345,7 +346,8 @@ DRAMInterface::prechargeBank(Rank& rank_ref, Bank& bank, Tick pre_tick,
 
 std::pair<Tick, Tick>
 DRAMInterface::doBurstAccess(MemPacket* mem_pkt, Tick next_burst_at,
-                             const std::vector<MemPacketQueue>& queue)
+                             const std::vector<MemPacketQueue>& queue,
+                             uint64_t totalReadQueueSize)
 {
     DPRINTF(DRAM, "Timing access to addr %#x, rank/bank/row %d %d %d\n",
             mem_pkt->addr, mem_pkt->rank, mem_pkt->bank, mem_pkt->row);
@@ -413,7 +415,7 @@ DRAMInterface::doBurstAccess(MemPacket* mem_pkt, Tick next_burst_at,
     // 2) we are at an interleave boundary; if not, shift to next boundary
     Tick burst_gap = tBURST_MIN;
     if (burstInterleave) {
-        
+
         if (cmd_at == (rank_ref.lastBurstTick + tBURST_MIN)) {
             // already interleaving, push next command to end of full burst
             burst_gap = tBURST;
@@ -429,6 +431,16 @@ DRAMInterface::doBurstAccess(MemPacket* mem_pkt, Tick next_burst_at,
 
     }
     DPRINTF(DRAM, "Schedule RD/WR burst at tick %d\n", cmd_at);
+
+    DPRINTF(WSWS, "For user req with addr rank/bank/row/col =,"
+                  " %#x, %d, %d, %d,%d, excuted mem_rd cmd at =,"
+                  " %lld, dq start return read data at =, %lld,"
+                  " gap with prev mem_rd =, %11d, pagehit =, %d,"
+                  " totalReadQueueSize = ,%d\n",
+                  mem_pkt->addr, mem_pkt->rank, mem_pkt->bank, mem_pkt->row,
+                  mem_pkt->col,cmd_at, cmd_at + tRL,
+                  (cmd_at - last_col_at), row_hit, totalReadQueueSize);
+    last_col_at = cmd_at;
 
     // update the packet ready time
     if (mem_pkt->isRead()) {
@@ -665,7 +677,7 @@ DRAMInterface::DRAMInterface(const DRAMInterfaceParams &_p)
       rdToWrDlySameBG(_p.tRTW + _p.tBURST_MAX),
       pageMgmt(_p.page_policy),
       maxAccessesPerRow(_p.max_accesses_per_row),
-      timeStampOffset(0), activeRank(0),
+      timeStampOffset(0), last_col_at(0), activeRank(0),
       enableDRAMPowerdown(_p.enable_dram_powerdown),
       lastStatsResetTick(0),
       stats(*this)
@@ -849,10 +861,13 @@ DRAMInterface::decodePacket(const PacketPtr pkt, Addr pkt_addr,
     // Ro, Ra, Co, Ba and Ch denoting row, rank, column, bank and
     // channel, respectively
     uint8_t rank;
+    uint8_t bg0;
+    uint8_t ba10bg1;
     uint8_t bank;
     // use a 64-bit unsigned during the computations as the row is
     // always the top bits, and check before creating the packet
     uint64_t row;
+    uint64_t col;
 
     // Get packed address, starting at 0
     Addr addr = getCtrlAddr(pkt_addr);
@@ -863,7 +878,25 @@ DRAMInterface::decodePacket(const PacketPtr pkt, Addr pkt_addr,
 
     // we have removed the lowest order address bits that denote the
     // position within the column
-    if (addrMapping == enums::RoRaBaChCo || addrMapping == enums::RoRaBaCoCh) {
+    if (addrMapping == enums::RoRaBaBg1CoBg0Co53Dp) {
+        // Enable BG rotation
+        bg0 = addr % 2;
+        addr = addr / 2;
+
+        col = addr % burstsPerRowBuffer;
+        addr = addr / burstsPerRowBuffer;
+
+        ba10bg1 = addr % (banksPerRank / 2);
+        addr = addr / (banksPerRank / 2);
+
+        bank = (ba10bg1 << 1) | bg0;
+
+        rank = addr % ranksPerChannel;
+        addr = addr / ranksPerChannel;
+
+        // lastly, get the row bits, no need to remove them from addr
+        row = addr % rowsPerBank;
+    } else if (addrMapping == enums::RoRaBaChCo || addrMapping == enums::RoRaBaCoCh) {
         // the lowest order bits denote the column to ensure that
         // sequential cache lines occupy the same row
         addr = addr / burstsPerRowBuffer;
@@ -915,6 +948,10 @@ DRAMInterface::decodePacket(const PacketPtr pkt, Addr pkt_addr,
     assert(row < rowsPerBank);
     assert(row < Bank::NO_ROW);
 
+    DPRINTF(WSWS, "recvTimingReq: request %s addr %#x size %d Address: %#x "
+                  "Rank %d Bank %d (ba10bg1 %d bg0 %d) Row %d Col %d\n",
+                  pkt->cmdString(), pkt->getAddr(), pkt->getSize(),
+                  pkt_addr, rank, bank, ba10bg1, bg0, row, col);
     DPRINTF(DRAM, "Address: %#x Rank %d Bank %d Row %d\n",
             pkt_addr, rank, bank, row);
 
@@ -924,7 +961,7 @@ DRAMInterface::decodePacket(const PacketPtr pkt, Addr pkt_addr,
     uint16_t bank_id = banksPerRank * rank + bank;
 
     return new MemPacket(pkt, is_read, true, pseudo_channel, rank, bank, row,
-                   bank_id, pkt_addr, size);
+              col, bank_id, pkt_addr, size);
 }
 
 void DRAMInterface::setupRank(const uint8_t rank, const bool is_read)
@@ -1165,13 +1202,19 @@ DRAMInterface::Rank::Rank(const DRAMInterfaceParams &_p,
 void
 DRAMInterface::Rank::startup(Tick ref_tick)
 {
+    DPRINTF(WSWS, "sim_clock::Frequency =  %d, dram.burstDelay() = %d ,"
+            "dram.bytesPerBurst() = %d\n", sim_clock::Frequency,
+            dram.burstDelay(), dram.bytesPerBurst());
+
     assert(ref_tick > curTick());
 
     pwrStateTick = curTick();
 
     // kick off the refresh, and give ourselves enough time to
     // precharge
-    schedule(refreshEvent, ref_tick);
+    if (!dram.disableRef) {
+        schedule(refreshEvent, ref_tick);
+    }
 }
 
 void
@@ -1381,6 +1424,7 @@ DRAMInterface::Rank::processRefreshEvent()
         } else if ((pwrState == PWR_IDLE) && (outstandingEvents == 1))  {
             // Banks are closed, have transitioned to IDLE state, and
             // no outstanding ACT,RD/WR,Auto-PRE sequence scheduled
+            DPRINTF(WSWS, "All banks already precharged, starting refresh\n");
             DPRINTF(DRAM, "All banks already precharged, starting refresh\n");
 
             // go ahead and kick the power state machine into gear since

@@ -46,6 +46,7 @@
 #include "debug/MemCtrl.hh"
 #include "debug/NVM.hh"
 #include "debug/QOS.hh"
+#include "debug/WSWS.hh"
 #include "mem/dram_interface.hh"
 #include "mem/mem_interface.hh"
 #include "mem/nvm_interface.hh"
@@ -808,8 +809,11 @@ MemCtrl::doBurstAccess(MemPacket* mem_pkt, MemInterface* mem_intr)
     // Issue the next burst and update bus state to reflect
     // when previous command was issued
     std::vector<MemPacketQueue>& queue = selQueue(mem_pkt->isRead());
+
+    DPRINTF(WSWS, "Read queue limit %d, current totalReadQueueSize size %d\n", readBufferSize, totalReadQueueSize);
+
     std::tie(cmd_at, mem_intr->nextBurstAt) =
-            mem_intr->doBurstAccess(mem_pkt, mem_intr->nextBurstAt, queue);
+            mem_intr->doBurstAccess(mem_pkt, mem_intr->nextBurstAt, queue, totalReadQueueSize);
 
     DPRINTF(MemCtrl, "Access to %#x, readyTime:%lld next burst at %lld.\n",
             mem_pkt->addr, mem_pkt->readyTime, mem_intr->nextBurstAt);

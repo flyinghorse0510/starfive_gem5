@@ -176,7 +176,7 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     hnf_list = [i for i in range(options.num_l3caches)]
     CHI_HNF.createAddrRanges(sysranges, system.cache_line_size.value,
                              hnf_list)
-    ruby_system.hnf = [ CHI_HNF(i, ruby_system, HNFCache, None)
+    ruby_system.hnf = [ CHI_HNF(options, i, ruby_system, HNFCache, None)
                         for i in range(options.num_l3caches) ]
 
     for hnf in ruby_system.hnf:
@@ -190,7 +190,7 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     # Notice we don't define a Directory_Controller type so we don't use
     # create_directories shared by other protocols.
 
-    ruby_system.snf = [ CHI_SNF_MainMem(ruby_system, None, None)
+    ruby_system.snf = [ CHI_SNF_MainMem(options, ruby_system, None, None)
                         for i in range(options.num_dirs) ]
     for snf in ruby_system.snf:
         network_nodes.append(snf)
@@ -201,7 +201,7 @@ def create_system(options, full_system, system, dma_ports, bootmem,
         mem_dests.extend(snf.getAllControllers())
 
     if len(other_memories) > 0:
-        ruby_system.rom_snf = [ CHI_SNF_BootMem(ruby_system, None, m)
+        ruby_system.rom_snf = [ CHI_SNF_BootMem(options, ruby_system, None, m)
                                  for m in other_memories ]
         for snf in ruby_system.rom_snf:
             network_nodes.append(snf)
