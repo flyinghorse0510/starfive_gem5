@@ -168,7 +168,11 @@ class ProdConsMemTest : public ClockedObject
 
     const uint64_t workingSet; // Working Set in bytes
 
-    const uint64_t workingSetSize; // Number of unique cache lines in thw Working set
+    uint64_t numPerCPUWorkingBlocks;
+
+    Addr baseAddr;
+    
+    std::vector<Addr> perCPUWorkingBlocks;
 
     const unsigned progressInterval;  // frequency of progress reports
     const Cycles progressCheck;

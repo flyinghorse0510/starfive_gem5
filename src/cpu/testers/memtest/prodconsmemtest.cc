@@ -126,9 +126,9 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
       maxLoads(p.max_loads),
       atomic(p.system->isAtomicMode()),
       seqIdx(0),
+      baseAddr(p.base_addr_1),
       num_cpus(p.num_cpus),
       num_producers(p.num_producers),
-      workingSetSize(workingSet/blockSize),
       txSeqNum((static_cast<uint64_t>(p.system->getRequestorId(this))) << 48), // init txSeqNum as RequestorId(16-bit)_0000_0000_0000
       suppressFuncErrors(p.suppress_func_errors), stats(this)
 {
@@ -138,7 +138,13 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
 
     fatal_if(maxLoads <= 0, "Requires a minimum of 1 Load/Store");
 
-    fatal_if(workingSet%blockSize != 0, "Working set must be a multiple of cache line size");
+    fatal_if(workingSet%(num_producers*blockSize)!=0,"per producer working set not block aligned, workingSet=%d,num_cpus=%d,blockSize=%d\n",workingSet,num_cpus,blockSize);
+    numPerCPUWorkingBlocks=(workingSet/(num_producers*blockSize));
+    for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
+        perCPUWorkingBlocks.push_back((baseAddr+(numPerCPUWorkingBlocks*id)+i)<<(static_cast<uint64_t>(std::log2(blockSize))));
+    }
+    fatal_if(perCPUWorkingBlocks.size()<=0,"Working Set size is 0\n");
+
 
     // set up counters
     numReads = 0;
@@ -151,8 +157,7 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     }
     fatal_if(num_producers > num_cpus, "Number of producers must be less than the number of CPUs");
     num_consumers=num_cpus-num_producers;
-    DPRINTF(ProdConsMemLatTest,"cpus=%d,consumers=%d,producers=%d\n",num_cpus,num_producers,num_consumers);
-
+    DPRINTF(ProdConsMemLatTest,"CPU_%d(Producer:%d) WorkingSetRange:[%x,%x]\n",id,isProducer,perCPUWorkingBlocks.at(0),perCPUWorkingBlocks.at(numPerCPUWorkingBlocks-1));
     // kick things into action
     schedule(tickEvent, curTick());
     schedule(noRequestEvent, clockEdge(progressCheck));
@@ -180,6 +185,8 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
     outstandingAddrs.erase(remove_addr);
 
     const writeSyncData_t *pkt_data = pkt->getConstPtr<writeSyncData_t>();
+
+    unsigned workingSetSize=perCPUWorkingBlocks.size();
 
     if (pkt->isError()) {
         if (!functional || !suppressFuncErrors)
@@ -274,6 +281,7 @@ ProdConsMemTest::tick()
     Request::Flags flags;
     Addr paddr = 0;
     bool readOrWrite = (isProducer)?false:true;  // Only producer can write
+    unsigned workingSetSize=perCPUWorkingBlocks.size();
 
     // Skip if you have outstanding transactions
     if (outstandingAddrs.size() >= 100) {
@@ -281,25 +289,27 @@ ProdConsMemTest::tick()
         return;
     }
 
-    if ((!isProducer) && writeValsQ.empty() && (num_producers > 0)) {
-        /**
-         * There are no writes to the memory yet.
-         * And there are active writers
-         * Retry in the next interval
-         */
-        schedule(tickEvent, clockEdge(interval));
-        return;
-    } 
-    
     writeSyncData_t data;
     if (!isProducer) {
-        /* Find an address to generate a Read request */
+        /* No producer has generated any data */
+        if (writeValsQ.empty() && (num_producers > 0)) {
+            /**
+             * There are no writes to the memory yet.
+             * And there are active writers
+             * Retry in the next interval
+             */
+            schedule(tickEvent, clockEdge(interval));
+            reschedule(noRequestEvent, clockEdge(progressCheck), true);
+            return;
+        }
+
+        /* Find an address (from the produced data) to generate a Read request */
         auto consumer_data=writeValsQ.front();
         paddr=consumer_data->getPaddr();
 
-        /* A previous Read to same paddr is awaiting response */
+        /* A previous Read to same paddr from this consumer is awaiting response. Stall */
         if (outstandingAddrs.find(paddr) != outstandingAddrs.end()) {
-            schedule(tickEvent, clockEdge(interval));
+            waitResponse = true;
             return;
         }
 
@@ -309,25 +319,26 @@ ProdConsMemTest::tick()
             writeValsQ.pop();
         }
     } else {
+        /* No free addresses to generate from this producer. Stall */
         if (outstandingAddrs.size() >= workingSetSize) {
-            /* No free addresses to generate from this node. Quit */
-            schedule(tickEvent, clockEdge(interval));
+            waitResponse = true;
             return;
         }
 
         /* Search for an address within the workingSetSize cacheline */
         do {
-            paddr = blockAlign((id << 24)+(seqIdx << 6));
+            paddr = perCPUWorkingBlocks.at(seqIdx);
             seqIdx = (seqIdx+1)%(workingSetSize);
         } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
         data = (TESTER_PRODUCER_IDX << 8) + (writeSyncDataBase++);
 
-        /* This address has pending reads. Stall */
-        DPRINTF(ProdConsMemLatTest,"%x has %d consumers\n",paddr,num_consumers);
+        /* This address has pending reads. Stall and reschedule this write later*/
+        // DPRINTF(ProdConsMemLatTest,"%x has %d consumers\n",paddr,num_consumers);
         if (num_consumers > 0) {
             if (pendingReads.find(paddr) != pendingReads.end()) {
-                DPRINTF(ProdConsMemLatTest,"%x has pending Read requests\n",paddr);
+                // DPRINTF(ProdConsMemLatTest,"%x has pending Read requests\n",paddr);
                 schedule(tickEvent, clockEdge(interval));
+                reschedule(noRequestEvent, clockEdge(progressCheck), true);
                 return;
             }
             pendingReads[paddr]=num_consumers;
