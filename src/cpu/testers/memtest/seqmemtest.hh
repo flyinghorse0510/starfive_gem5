@@ -55,6 +55,7 @@
 namespace gem5
 {
 
+typedef uint16_t writeSyncData_t;
 
 /**
  * The SeqMemTest class tests a cache coherent memory system.
@@ -134,18 +135,22 @@ class SeqMemTest : public ClockedObject
 
     unsigned int id;
 
-    std::unordered_set<uint64_t> outstandingTxnIds;
+    const uint64_t workingSet; // Working Set in bytes
+
+    uint64_t workingSetSize; // Number of unique cache lines in thw Working set
+
+    writeSyncData_t writeSyncDataBase;
+
+    std::unordered_set<Addr> outstandingAddrs;
 
     // store the expected value for the addresses we have touched
-    std::unordered_map<Addr, uint8_t> referenceData;
-
-    // Some tracking info attached to each memory read/write request
-    std::unordered_map<uint64_t, MemTestTxnAttr_t> memTxnAttr;
-    uint64_t lastGenReqId, lastGenRespId;
+    std::unordered_map<Addr, writeSyncData_t> referenceData;
 
     const unsigned blockSize;
 
     const Addr blockAddrMask;
+
+    const unsigned percentReads;
 
     /**
      * Get the block aligned address.
@@ -158,8 +163,6 @@ class SeqMemTest : public ClockedObject
         return (addr & ~blockAddrMask);
     }
 
-    const Addr baseAddr1;
-
     const unsigned progressInterval;  // frequency of progress reports
     const Cycles progressCheck;
     Tick nextProgressMessage;   // access # for next progress report
@@ -168,10 +171,10 @@ class SeqMemTest : public ClockedObject
 
     uint64_t numReads;
     uint64_t numWrites;
-    uint64_t maxLoads2;
     bool isSequential;
-    uint64_t numIters;
     const uint64_t maxLoads;
+
+    uint64_t txSeqNum; // requestorID + txSeqNum should be the unique ID
 
     const bool atomic;
 

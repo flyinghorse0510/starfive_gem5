@@ -95,6 +95,10 @@ class RubySequencer(RubyPort):
     #max_outstanding_requests = Param.Int(16,
     #max_outstanding_requests = Param.Int(8,
     #max_outstanding_requests = Param.Int(64,
+    #max_outstanding_requests = Param.Int(32,
+
+    ##for test latency without any outstanding
+    #max_outstanding_requests = Param.Int(1,
     max_outstanding_requests = Param.Int(32,
          "max requests (incl. prefetches) outstanding")
     deadlock_threshold = Param.Cycles(500000,

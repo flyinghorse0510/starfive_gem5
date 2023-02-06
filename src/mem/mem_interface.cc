@@ -70,6 +70,7 @@ MemInterface::MemInterface(const MemInterfaceParams &_p)
       tWTR(_p.tWTR),
       readBufferSize(_p.read_buffer_size),
       writeBufferSize(_p.write_buffer_size),
+      disableRef(_p.disable_ref),
       numWritesQueued(0)
 {}
 
