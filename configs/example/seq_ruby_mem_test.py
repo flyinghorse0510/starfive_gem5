@@ -62,6 +62,7 @@ parser.add_argument("--num-HNF-TBE", default=16, help="number of oustanding in H
 parser.add_argument("--num_HNF_ReplTBE", default=16, help="number of replacement oustanding in HN-F")
 parser.add_argument("--num_trans_per_cycle_llc", default=4, help="number of transitions per cycle in HN-F")
 parser.add_argument("--num-SNF-TBE", default=32, help="number of oustanding in HN-F")
+parser.add_argument("--addr-intrlvd-or-tiled",default=False,help="If true the address partitioning across CPUs is interleaved (like [0-N-2N;1-N+1-2N+1;...]). Otherwise Tiled [0:N-1,N:2N-1]")
 
 #
 # Add the ruby specific and protocol specific options
@@ -107,6 +108,7 @@ if args.num_cpus > 0 :
                      working_set = args.size_ws,
                      num_producers = args.num_producers,
                      num_cpus = args.num_cpus,
+                     addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
 
@@ -120,6 +122,7 @@ if args.num_dmas > 0:
                      working_set = args.size_ws,
                      num_producers = args.num_producers,
                      num_cpus = args.num_cpus,
+                     addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,
                      suppress_func_errors = not args.suppress_func_errors) \
              for i in range(args.num_dmas) ]
     system.dma_devices = dmas

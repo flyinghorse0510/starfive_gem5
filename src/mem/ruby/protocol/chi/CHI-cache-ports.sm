@@ -375,6 +375,7 @@ in_port(reqInPort, CHIRequestMsg, reqIn, rank=2,
   if (reqInPort.isReady(clockEdge())) {
     printResources();
     peek(reqInPort, CHIRequestMsg) {
+      DPRINTF(RubySlicc, "Recv reqIn Message Addr:%x \n", in_msg.addr);
       // DVM Sync and TLBIs from external sources will use txnId requests,
       // but they aren't implemented yet.
       assert(!in_msg.usesTxnId);

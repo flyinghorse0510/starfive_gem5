@@ -20,7 +20,7 @@ ANALYSIS=""
 
 TEST=""
 
-while getopts "hbrsa:t:" options; do
+while getopts "hbr:sa:t:" options; do
     case $options in
        h) Help
           exit;;
@@ -128,9 +128,9 @@ fi
 if [ "$TEST" == "L3_Hit" ]; then
   echo "Test $TEST"
 
-l1d_size="4KiB"
-l1i_size="4KiB"
-l2_size="64KiB"
+l1d_size="2KiB"
+l1i_size="2KiB"
+l2_size="4KiB"
 l3_size="1024KiB" #"32KiB" #"16KiB" #"1024KiB" #"256KiB"
 l1d_assoc=8
 l1i_assoc=8
@@ -193,10 +193,10 @@ DMT_Config=(True False)
 ##NUM_CPU_SET=(2 4 8 16) # = #2 #4 #16
 
 #Sinlge Core
-#NUM_CPU_SET=(1) # = #2 #4 #16
+NUM_CPU_SET=(2 16) # = #2 #4 #16
 
 #Multi Core
-NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
+#NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
 
 #WKSET=131072 #8192 #16384 #524288 #(32768) #
 #NUM_MEM_SET=(1 2)
@@ -208,6 +208,8 @@ SNF_TBE_SET=(32)
 
 #DEBUG_FLAGS="SeqMemLatTest,TxnTrace"
 #DEBUG_FLAGS=TxnTrace
+#DEBUG_FLAGS=RubySlicc
+DEBUG_FLAGS="SeqMemLatTest"
 
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEM_Hier_BW"
 OUTPUT_PREFIX="TEST_${TEST}/NETWK${NETWORK}_LinkFactor40_SysClk2GHz"
@@ -294,6 +296,9 @@ fi
           grep "snf.cntrl.avg_size" ${statsfile}
           grep "mem_ctrls.readReqs" ${statsfile}
           grep "mem_ctrls.writeReqs" ${statsfile}
+          echo "**** search reqIn message in hnf"
+          grep reqIn.m_msg_count ${statsfile} | grep hnf
+
          done
        done
      done

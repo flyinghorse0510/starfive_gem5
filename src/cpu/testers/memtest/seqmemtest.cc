@@ -109,6 +109,7 @@ SeqMemTest::SeqMemTest(const Params &p)
       seqIdx(0),
       num_cpus(p.num_cpus),
       baseAddr(p.base_addr_1),
+      addrInterleavedOrTiled(p.addr_intrlvd_or_tiled),
       percentReads(p.percent_reads),
       txSeqNum((static_cast<uint64_t>(p.system->getRequestorId(this))) << 48),
       suppressFuncErrors(p.suppress_func_errors), stats(this)
@@ -120,11 +121,21 @@ SeqMemTest::SeqMemTest(const Params &p)
     fatal_if(workingSet%(num_cpus*blockSize)!=0,"per CPU working set not block aligned, workingSet=%d,num_cpus=%d,blockSize=%d\n",workingSet,num_cpus,blockSize);
     numPerCPUWorkingBlocks=(workingSet/(num_cpus*blockSize));
     for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
-        perCPUWorkingBlocks.push_back((baseAddr+(numPerCPUWorkingBlocks*id)+i)<<(static_cast<uint64_t>(std::log2(blockSize))));
+        Addr effectiveBlockAddr=(addrInterleavedOrTiled)?(baseAddr+(num_cpus*i)+id):
+                                (baseAddr+(numPerCPUWorkingBlocks*id)+i);
+        perCPUWorkingBlocks.push_back(effectiveBlockAddr<<(static_cast<uint64_t>(std::log2(blockSize))));
     }
     fatal_if(perCPUWorkingBlocks.size()<=0,"Working Set size is 0\n");
 
-    DPRINTF(SeqMemLatTest,"CPU_%d WorkingSetRange:[%x,%x]\n",id,perCPUWorkingBlocks.at(0),perCPUWorkingBlocks.at(numPerCPUWorkingBlocks-1));
+    if (perCPUWorkingBlocks.size() > 1) {
+        if (addrInterleavedOrTiled) {
+            DPRINTF(SeqMemLatTest,"CPU_%d WorkingSetRange:[%x:%x]\n",id,perCPUWorkingBlocks.at(0),perCPUWorkingBlocks.at(1));
+        } else {
+            DPRINTF(SeqMemLatTest,"CPU_%d WorkingSetRange:[%x,%x]\n",id,perCPUWorkingBlocks.at(0),perCPUWorkingBlocks.at(numPerCPUWorkingBlocks-1));
+        }
+    } else if (perCPUWorkingBlocks.size() >= 1) {
+        DPRINTF(SeqMemLatTest,"CPU_%d WorkingSetRange:[%x]\n",id,perCPUWorkingBlocks.at(0));
+    }
 
     // set up counters
     numReads = 0;
