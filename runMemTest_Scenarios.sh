@@ -85,7 +85,7 @@ NUM_MEM=1
 TRANS_SET=(1 2 4)
 SNF_TBE_SET=(32 64)
 HNF_TBE=32
-NUM_LOAD_SET=(80000)
+NUM_LOAD_SET=(100)
 
 #DEBUG_FLAGS=SeqMemLatTest,TxnTrace 
 #DEBUG_FLAGS=SeqMemLatTest
@@ -119,7 +119,7 @@ NUM_MEM=1
 TRANS_SET=(1 2 4)
 SNF_TBE_SET=(32 64)
 HNF_TBE=32
-NUM_LOAD_SET=(4000) #no eviction/writeback. if more than 5000, more writeback/eviction
+NUM_LOAD_SET=(100) #no eviction/writeback. if more than 5000, more writeback/eviction
 
 DEBUG_FLAGS=PseudoInst
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEMBW"
@@ -130,8 +130,8 @@ if [ "$TEST" == "L3_Hit" ]; then
 
 l1d_size="2KiB"
 l1i_size="2KiB"
-l2_size="4KiB"
-l3_size="1024KiB" #"32KiB" #"16KiB" #"1024KiB" #"256KiB"
+l2_size="8KiB"
+l3_size="64KiB" #"32KiB" #"16KiB" #"1024KiB" #"256KiB"
 l1d_assoc=8
 l1i_assoc=8
 l2_assoc=8
@@ -139,16 +139,18 @@ l3_assoc=16
 NUM_LLC=16
 NETWORK="simple" #"garnet" #"simple"
 
-DMT_Config=(True False)
+DMT_Config=(False)
 #NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
 NUM_CPU_SET=(1 2 4) # = #2 #4 #16
-WKSET=262144 #131072 #8192 #16384 #524288 #(32768) #
+WKSET=65536 #262144 #131072 #8192 #16384 #524288 #(32768) #
 #NUM_MEM_SET=(1 2)
 NUM_MEM=1
 TRANS_SET=(1 2 4)
 SNF_TBE_SET=(32 64)
 HNF_TBE=32
-NUM_LOAD_SET=(80000) #need more transactions. if just several thousand transaction, BW is low
+
+##Set Working set size and Load set carefully!
+NUM_LOAD_SET=(100) #need more transactions. if just several thousand transaction, BW is low
 
 
 #DEBUG_FLAGS=SeqMemLatTest,TxnTrace 
@@ -162,7 +164,7 @@ if [ "$TEST" == "DDR_BW" ]; then
 l1d_size="4KiB"
 l1i_size="4KiB"
 l2_size="32KiB"
-l3_size="16KiB" #"16KiB" #"1024KiB" #"256KiB"
+l3_size="4KiB" #"16KiB" #"1024KiB" #"256KiB"
 l1d_assoc=8
 l1i_assoc=8
 l2_assoc=8
@@ -173,13 +175,13 @@ NETWORK="simple" #"garnet" #"simple"
 DMT_Config=(True False)
 #NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
 NUM_CPU_SET=(4 8 16) # = #2 #4 #16
-WKSET=524288 #8192 #16384 #524288 #(32768) #
+WKSET=524288 #8192 #16384 #524288 #(32768) #Total working set shared by all CPUs
 #NUM_MEM_SET=(1 2)
 NUM_MEM=1
 TRANS_SET=(1 2 4)
 SNF_TBE_SET=(32)
 HNF_TBE=32
-NUM_LOAD_SET=(4000 80000)
+NUM_LOAD_SET=(50)
 
 #DEBUG_FLAGS=SeqMemLatTest,TxnTrace 
 #DEBUG_FLAGS=SeqMemLatTest
@@ -187,13 +189,13 @@ DEBUG_FLAGS=PseudoInst
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEMBW"
 fi
 
-DMT_Config=(True False)
+#DMT_Config=(True False)
 #NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
 #NUM_CPU_SET=(4 8 16) # = #2 #4 #16
 ##NUM_CPU_SET=(2 4 8 16) # = #2 #4 #16
 
 #Sinlge Core
-#NUM_CPU_SET=(2 16) # = #2 #4 #16
+#NUM_CPU_SET=(1) # = #2 #4 #16
 
 #Multi Core
 NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
@@ -211,9 +213,9 @@ SNF_TBE_SET=(32)
 #DEBUG_FLAGS=RubySlicc
 DEBUG_FLAGS="SeqMemLatTest"
 
-MultiCoreAddrMode=True #--addr-intrlvd-or-tiled true then interleaved 
+MultiCoreAddrMode=True #False #True #--addr-intrlvd-or-tiled true then interleaved 
 
-OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEM_Hier_MEMADDInteLeaving"
+OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEM_Hier_MEMADDInteLeaving2"
 OUTPUT_PREFIX="TEST_${TEST}/NETWK${NETWORK}_LinkFactor40_SysClk2GHz"
 
 if [ "$BUILD" != "" ]; then
@@ -294,7 +296,7 @@ fi
           #grep "l1d.avg_size" ${statsfile} | grep "TBE Request Occupancy"
  
           grep "l2.cache.m_demand" ${statsfile}  
-          #grep "cache.m_demand" ${statsfile} | grep hnf
+          grep "cache.m_demand" ${statsfile} | grep hnf
           grep "cntrl.avg_size" ${statsfile} | grep "TBE Request Occupanc"
           grep "m_outstandReqHistSeqr::mean" ${statsfile}
           grep "snf.cntrl.avg_size" ${statsfile}

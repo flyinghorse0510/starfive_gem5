@@ -177,7 +177,8 @@ class SeqMemTest : public ClockedObject
     uint64_t numReads;
     uint64_t numWrites;
     bool isSequential;
-    const uint64_t maxLoads;
+    //const uint64_t maxLoads;
+    uint64_t maxLoads;
 
     uint64_t txSeqNum; // requestorID + txSeqNum should be the unique ID
 

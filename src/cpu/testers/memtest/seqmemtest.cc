@@ -137,6 +137,9 @@ SeqMemTest::SeqMemTest(const Params &p)
         DPRINTF(SeqMemLatTest,"CPU_%d WorkingSetRange:[%x]\n",id,perCPUWorkingBlocks.at(0));
     }
 
+    maxLoads = maxLoads * perCPUWorkingBlocks.size();
+    printf("*** CPU%d workingBlocks(numCacheLines) in the CPU: %d, Working set load times:%d, maxLoads:%d  \n", id, perCPUWorkingBlocks.size(),  p.max_loads, maxLoads);
+
     // set up counters
     numReads = 0;
     numWrites = 0;
@@ -207,6 +210,7 @@ SeqMemTest::completeRequest(PacketPtr pkt, bool functional)
             stats.numWrites++;
         }
         if ((numReads+numWrites) >= maxLoads) {
+            printf("Reach MaxLoads, maxLoad:%d, numReads:%d numWrites:%d \n", maxLoads, numReads, numWrites);
             exitSimLoop("maximum number of loads/stores reached");
         }
     }
@@ -259,6 +263,7 @@ SeqMemTest::tick()
     do {
         paddr = perCPUWorkingBlocks.at(seqIdx);
         seqIdx = (seqIdx+1)%(perCPUWorkingBlocks.size());
+         
     } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
     writeSyncData_t data = (TESTER_PRODUCER_IDX << 8) + (writeSyncDataBase++);
     
