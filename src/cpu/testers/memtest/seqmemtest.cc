@@ -50,6 +50,7 @@
 #include "sim/stats.hh"
 #include "sim/system.hh"
 #include <algorithm>
+#include <cmath>
 #include "cpu/testers/memtest/common.hh"
 
 namespace gem5
@@ -106,6 +107,8 @@ SeqMemTest::SeqMemTest(const Params &p)
       maxLoads(p.max_loads),
       atomic(p.system->isAtomicMode()),
       seqIdx(0),
+      num_cpus(p.num_cpus),
+      baseAddr(p.base_addr_1),
       percentReads(p.percent_reads),
       txSeqNum((static_cast<uint64_t>(p.system->getRequestorId(this))) << 48),
       suppressFuncErrors(p.suppress_func_errors), stats(this)
@@ -114,9 +117,14 @@ SeqMemTest::SeqMemTest(const Params &p)
     fatal_if(id >= blockSize, "Too many testers, only %d allowed\n",
              blockSize - 1);
 
-    workingSetSize=(workingSet/blockSize);
-    // DPRINTF(SeqMemLatTest,"Working Set sizer is %d\n",workingSetSize);
-    fatal_if(workingSetSize<=0,"Working Set sizer is %d\n",workingSetSize);
+    fatal_if(workingSet%(num_cpus*blockSize)!=0,"per CPU working set not block aligned, workingSet=%d,num_cpus=%d,blockSize=%d\n",workingSet,num_cpus,blockSize);
+    numPerCPUWorkingBlocks=(workingSet/(num_cpus*blockSize));
+    for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
+        perCPUWorkingBlocks.push_back((baseAddr+(numPerCPUWorkingBlocks*id)+i)<<(static_cast<uint64_t>(std::log2(blockSize))));
+    }
+    fatal_if(perCPUWorkingBlocks.size()<=0,"Working Set size is 0\n");
+
+    DPRINTF(SeqMemLatTest,"CPU_%d WorkingSetRange:[%x,%x]\n",id,perCPUWorkingBlocks.at(0),perCPUWorkingBlocks.at(numPerCPUWorkingBlocks-1));
 
     // set up counters
     numReads = 0;
@@ -231,15 +239,15 @@ SeqMemTest::tick()
     Addr paddr = 0;
 
     /* Too many outstanding transactions */
-    if ((outstandingAddrs.size() >= 100) || (outstandingAddrs.size() >= workingSetSize)) {
+    if ((outstandingAddrs.size() >= 100) || (outstandingAddrs.size() >= perCPUWorkingBlocks.size())) {
         waitResponse = true;
         return;
     }
     
-    /* Search for an address within the workingSetSize cacheline */
+    /* Search for an address within perCPUWorkingBlocks */
     do {
-        paddr = blockAlign((id << 24)+(seqIdx << 6));
-        seqIdx = (seqIdx+1)%(workingSetSize);
+        paddr = perCPUWorkingBlocks.at(seqIdx);
+        seqIdx = (seqIdx+1)%(perCPUWorkingBlocks.size());
     } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
     writeSyncData_t data = (TESTER_PRODUCER_IDX << 8) + (writeSyncDataBase++);
     

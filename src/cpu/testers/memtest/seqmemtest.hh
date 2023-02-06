@@ -168,6 +168,10 @@ class SeqMemTest : public ClockedObject
     Tick nextProgressMessage;   // access # for next progress report
 
 
+    Addr baseAddr;
+    uint64_t num_cpus;
+    uint64_t numPerCPUWorkingBlocks;
+    std::vector<Addr> perCPUWorkingBlocks;
 
     uint64_t numReads;
     uint64_t numWrites;
