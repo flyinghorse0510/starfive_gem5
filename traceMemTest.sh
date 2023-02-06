@@ -47,15 +47,15 @@ if [ "$RUN2" != "" ]; then
         -d ${OUTPUT_DIR} \
         ${GEM5_DIR}/configs/example/isolated_ruby_mem_test.py \
         --num-dirs=1 \
-        --num-l3caches=1 \
+        --num-l3caches=2 \
         --network=simple \
         --topology=CustomMesh \
         --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_2x2Mesh.py \
         --ruby \
-        --maxloads=100 \
+        --maxloads=10 \
         --mem-size="4GB" \
         --num-cpus=${NUMCPUS}
-    grep -rwI -e 'system\.ruby\.hnf\.cntrl' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.hnf.trace
+    # grep -rwI -e 'system\.ruby\.hnf\.cntrl' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.hnf.trace
     # sed -i '/triggerQueue/d' $OUTPUT_DIR/debug.trace
     # sed -i '/system.ruby.network/d' $OUTPUT_DIR/debug.trace
     # sed -i '/reqRdy/d' $OUTPUT_DIR/debug.trace

@@ -361,6 +361,20 @@ MessageBuffer::enqueue(MsgPtr message, Tick current_time, Tick delta)
         // DPRINTF(MsgBufDebug, "txsn: %#018x, arr: %lld, Message: %s\n", txSeqNum, arrival_time, *msg);
         // assert(reqTxSeqNums.find(txSeqNum) != reqTxSeqNums.end()); // txsn should be the same as in RubyRequest
     }
+    else if (msg_type == typeid(MemoryMsg)){
+        const MemoryMsg* msg = dynamic_cast<MemoryMsg*>(message.get());
+        txSeqNum = msg->gettxSeqNum();
+        MachineID const & sender = msg->getSender();
+        // NetDest const & dest = msg->getDestination();
+        MemoryRequestType const & typ = msg->getType();
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, sdr: %s, type: %s, addr: %s\n", 
+            txSeqNum, 
+            arrival_time, 
+            sender, typ,
+            printAddress(msg->getaddr()));
+        // DPRINTF(MsgBufDebug, "txsn: %#018x, arr: %lld, Message: %s\n", txSeqNum, arrival_time, *msg);
+        // assert(reqTxSeqNums.find(txSeqNum) != reqTxSeqNums.end()); // txsn should be the same as in RubyRequest
+    }
 
     // Schedule the wakeup
     assert(m_consumer != NULL);

@@ -57,17 +57,25 @@ class MessageFlow:
 
 # Request type to manage the information of Request
 class Request:
-    def __init__(self, seq_num, start_time):
+    def __init__(self, seq_num, req_start, req_typ):
         self.seq_num = seq_num # this works as id for this request
-        self.start_time = start_time # 
-        self.end_time = None # 
-        self.cycles = None # 
+        self.req_typ = req_typ
+        self.req_start = req_start # 
+        self.req_end = None # 
+        self.req_cycles = None # entire round trip time
+        # memory statistics
+        self.mem_addr = None # memory address
+        self.mem_start = None # memory access time
+        self.mem_end = None
+        self.mem_cycles = None
         self.success = None # this request is successful or not 
         # messages used for breakdown of message traffic
         self.messages: List[MessageFlow] = []
 
     def __str__(self):
-        return "Request " + str(self.seq_num) + ":{start_time: " + str(self.start_time) + "}"
+        return str(self.seq_num)
+    def __repl__(self):
+        return str(self.seq_num)
     
 # RequestList type to record all the requests
 RequestList = Dict[int, Request]
@@ -165,25 +173,64 @@ def parse_breakdown(line, cache_to_idx, idx_to_cache, num_caches, tick, name, se
         req.messages.append(msg)
 
 
-def parse_roundtrip(line, tick, seq_num):
-    seqreq_search = re.search('Req (\w+) ', line)
+def parse_request(line:str, tick:int, seq_num:str, name:str):
+    seqreq_search = re.search('Req (\w+)', line)
     if seqreq_search : 
         seqReq = seqreq_search.group(1)
         if seqReq == 'Done': # this is the end of request
             cycle_search = re.search('(\d+)\scycles$',line)
-            req: Request = req_dict[seq_num]
-            req.end_time = tick
-            req.cycles = int(cycle_search.group(1))
+            try:
+                assert req_dict[seq_num] != None
+                req: Request = req_dict[seq_num]
+            except AssertionError:
+                logging.error(f"cannot find a previous begin of request {seq_num}")
+                logging.error(f"all requests are:{list(map(str, req_dict.values()))}")
+            req.req_end = tick
+            req.req_cycles = int(cycle_search.group(1))
             req.success = None # [TODO]: extract the status of the request
 
-        if seqReq == 'Begin': # this is the start of request
+        elif seqReq == 'Begin': # this is the start of request
             # create a new request with seq_num as the id and tick as the start time
-            req: Request = Request(seq_num, tick)
+            logging.debug(f"Found a request begin. line: {line}, txsn: {seq_num}")
+            typ_search = re.search('type: (\w+)', line)
+            typ = typ_search.group(1)
+            req: Request = Request(seq_num, tick, typ)
             try:
                 assert req_dict.get(seq_num) == None # we should never start a same seqNum for more than once
             except AssertionError:
-                print(f"TxSeqNum{seq_num} runs twice: First one is {req_dict.get(seq_num)}, Second is {tick}")
+                logging.error(f"TxSeqNum {seq_num} runs twice: First one is {req_dict.get(seq_num)}, Second is {tick}")
             req_dict[seq_num] = req
+
+        else:
+            logging.debug(f"Parse request found other match:{seqReq}")
+
+
+def parse_mem(line:str, tick:int, seq_num:str, name:str):
+    mem_req_search = re.search('requestToMemory', name)
+    mem_rsp_search = re.search('responseFromMemory', name)
+    if mem_req_search:
+        try:
+            assert req_dict.get(seq_num) != None
+            req: Request = req_dict[seq_num]
+            req.mem_start = tick
+        except AssertionError:
+            logging.error(f"Memory Request cannot find a valid Request of TxSeqNum {seq_num}.")
+            logging.error(f"all requests are:{list(map(str, req_dict.values()))}")
+
+    if mem_rsp_search:
+        try:
+            assert req_dict.get(seq_num) != None
+            req: Request = req_dict[seq_num]
+            req.mem_end = tick
+            try:
+                req.mem_cycles = req.mem_end - req.mem_start
+            except:
+                req.mem_cycles = None
+        except AssertionError:
+            logging.error(f"Memory Response cannot find a valid Request of TxSeqNum {seq_num}.")
+            logging.error(f"all requests are:{list(map(str, req_dict.values()))}")
+
+        
 
 def parse_log(filename, cache_to_idx, idx_to_cache, num_caches, breakdown=False):
     with open(filename) as f:
@@ -198,6 +245,8 @@ def parse_log(filename, cache_to_idx, idx_to_cache, num_caches, breakdown=False)
 
             # First: if all search matched, this is the message we want
             if tick_search and name_search and seq_num_search:
+                logging.debug(f"Found a matched line: {line}")
+
                 tick = int(tick_search.group(1))
                 name = name_search.group(1)
                 seq_num = seq_num_search.group(1)
@@ -216,8 +265,11 @@ def parse_log(filename, cache_to_idx, idx_to_cache, num_caches, breakdown=False)
                 if breakdown:
                     parse_breakdown(line, cache_to_idx, idx_to_cache, num_caches, tick, name, seq_num)
                 
-                # 2) Sequencer and snf
-                parse_roundtrip(line, tick, seq_num)
+                # 2) Sequencer
+                parse_request(line, tick, seq_num, name)
+
+                # 3) mem test
+                parse_mem(line, tick, seq_num, name)
 
 
 
@@ -229,40 +281,44 @@ def profiling(draw=False, console=False):
     # avg_cycles = total_cycles/num_req 
     num_req = len(req_dict)
     total_cycles = 0
+    totol_mem_cycles = 0
 
     assert num_req != 0 # should have at lease 1 request in trace message
-    print(f'{num_req} of requests in total')
+    logging.info(f'{num_req} of requests in total')
 
     # cycle_stat used for distribution plot
     cycle_stat: List[int] = []
     prof_str = []
-    prof_str.append(f'{"TxSeqNum": >16}\t{"start_time": >16}\t{"end_time": >16}\t{"cycles": >16}\n')
+    prof_str.append(f'{"TxSeqNum": >16}\t{"req_typ": >8}\t{"req_start": >16}\t{"req_end": >16}\t{"req_cycles": >16}\t{"mem_cycles": >16}\t{"mem_start": >16}\t{"mem_end": >16}\n')
     for seq_num,req in req_dict.items():
+        # need to deal with the cycle exceptions
+        # req.req_cycles may be None
         try:
-            total_cycles += req.cycles
-            cycle_stat.append(req.cycles)
-            prof_str.append(f'{seq_num:>16}\t{req.start_time: >16}\t{req.end_time: >16}\t{req.cycles: >16}\n')
-        except:
-            prof_str.append(f'{seq_num:>16}\t{req.start_time: >16}\t{"---": >16}\t{"---": >16}\n')
-
+            total_cycles += req.req_cycles
+            cycle_stat.append(req.req_cycles)
+        except TypeError:
+            logging.error(f"cannot find the req done of txn {req.seq_num}.")
+        prof_str.append(f'{seq_num:>16}\t{req.req_typ: >8}\t{req.req_start: >16}\t{req.req_end if req.req_end else "---": >16}\t{req.req_cycles if req.req_cycles else "---": >16}\t{req.mem_cycles if req.mem_cycles else "---":>16}\t{req.mem_start if req.mem_start else "---":>16}\t{req.mem_end if req.mem_end else "---":>16}\n')
     # debug print
     # print out the prof_str
     if console:
         for s in prof_str:
-            print(s,end="")
+            logging.info(s,end="")
     
     # write to file
     with open('profile_stat.log','w+') as f:
         f.writelines(prof_str)
 
-    print('Written to profile_stat.log')
+    logging.info('Written to profile_stat.log')
 
     # print avg cycle
     avg_req_cycle = total_cycles / num_req
-    print(f'Avg cycle is {avg_req_cycle}')
+    logging.info(f'Avg cycle is {avg_req_cycle}')
+
 
     if draw :
     # Creating histogram
+        logging.debug(f"cycle_stat: {cycle_stat}")
         fig, axs = plt.subplots(1, 1,
                             figsize =(10, 7),
                             tight_layout = True)
@@ -302,7 +358,11 @@ if __name__ == '__main__':
     num_cpus = 2
     num_dirs = 1 # snf
     num_l3caches = 1 # hnf
-    filename= 'debug.trace'
+
+    import sys
+    filename = 'debug.trace'
+    if len(sys.argv) == 2:
+        filename = sys.argv[1]
 
     cache_to_idx, idx_to_cache, num_caches = gen_cache_table(num_cpus, num_l3caches)
 
