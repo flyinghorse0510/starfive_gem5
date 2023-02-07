@@ -445,6 +445,7 @@ class CHI_RNF(CHI_Node):
 
     def __init__(self, cpus, ruby_system,
                  l1Icache_type, l1Dcache_type,
+                 options,
                  cache_line_size,
                  l1Iprefetcher_type=None, l1Dprefetcher_type=None):
         super(CHI_RNF, self).__init__(ruby_system)
@@ -465,10 +466,10 @@ class CHI_RNF(CHI_Node):
         for cpu in self._cpus:
             cpu.inst_sequencer = RubySequencer(version = Versions.getSeqId(),
                                          ruby_system = ruby_system,
-                                         max_outstanding_requests = 32)
+                                         max_outstanding_requests = options.sequencer_outstanding_requests)
             cpu.data_sequencer = RubySequencer(version = Versions.getSeqId(),
                                          ruby_system = ruby_system,
-                                         max_outstanding_requests = 32) 
+                                         max_outstanding_requests = options.sequencer_outstanding_requests) 
 
             self._seqs.append(CPUSequencerWrapper(cpu.inst_sequencer,
                                                   cpu.data_sequencer))

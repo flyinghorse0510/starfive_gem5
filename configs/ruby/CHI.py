@@ -140,7 +140,7 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     # Creates on RNF per cpu with priv l2 caches
     assert(len(cpus) == options.num_cpus)
     ruby_system.rnf = [ CHI_RNF([cpu], ruby_system, L1ICache, L1DCache,
-                                system.cache_line_size.value)
+                                options, system.cache_line_size.value)
                         for cpu in cpus ]
     for rnf in ruby_system.rnf:
         rnf.addPrivL2Cache(L2Cache)

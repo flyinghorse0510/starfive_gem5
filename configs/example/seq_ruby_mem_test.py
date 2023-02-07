@@ -63,6 +63,7 @@ parser.add_argument("--num_HNF_ReplTBE", default=16, help="number of replacement
 parser.add_argument("--num_trans_per_cycle_llc", default=4, help="number of transitions per cycle in HN-F")
 parser.add_argument("--num-SNF-TBE", default=32, help="number of oustanding in HN-F")
 parser.add_argument("--addr-intrlvd-or-tiled",default=False,help="If true the address partitioning across CPUs is interleaved (like [0-N-2N;1-N+1-2N+1;...]). Otherwise Tiled [0:N-1,N:2N-1]")
+parser.add_argument("--sequencer-outstanding-requests",type=int,default=32,help="Max outstanding sequencer requests")
 
 #
 # Add the ruby specific and protocol specific options
