@@ -139,7 +139,7 @@ def parse_breakdown(line, cache_to_idx, idx_to_cache, num_caches, tick, name, se
         try:
             assert len(bitmask) == num_caches
         except AssertionError:
-            print("assert len(bitmask) == num_caches failed")
+            logging.error("assert len(bitmask) == num_caches failed")
 
         bitmask = list(map(bool, bitmask)) # cast to bool
         dests = [idx for (idx,val) in enumerate(bitmask) if val] # collect the selected idx of cache
@@ -222,7 +222,7 @@ def parse_mem(line:str, tick:int, seq_num:str, name:str):
             req.mem_start = tick
         except AssertionError:
             logging.error(f"Memory Request cannot find a valid Request of TxSeqNum {seq_num}.")
-            logging.error(f"all requests are:{list(map(str, req_dict.values()))}")
+            logging.debug(f"all requests are:{list(map(str, req_dict.values()))}")
 
     if mem_rsp_search:
         try:
@@ -235,7 +235,7 @@ def parse_mem(line:str, tick:int, seq_num:str, name:str):
                 req.mem_cycles = None
         except AssertionError:
             logging.error(f"Memory Response cannot find a valid Request of TxSeqNum {seq_num}.")
-            logging.error(f"all requests are:{list(map(str, req_dict.values()))}")
+            logging.debug(f"all requests are:{list(map(str, req_dict.values()))}")
 
         
 
@@ -261,8 +261,8 @@ def parse_trace_log(filename, cache_to_idx, idx_to_cache, num_caches, breakdown=
                 try:
                     assert seq_num != '0000000000000000'
                 except:
-                    print("assert seq_num != 0 failed")
-                    print(line)
+                    logging.error("assert seq_num != 0 failed")
+                    logging.debug(line)
 
                 # print(tick, name, txsn)
 
@@ -287,17 +287,20 @@ def breakdown():
 def profiling(output_dir, draw=False, console=False):
     # avg_cycles = total_cycles/num_req 
     num_req = len(req_dict)
-    num_cmp_req = 0 # some reqs are not completed, but we need the completed reqs to calculate avg cycle
+    num_cmp_req = 0 # some reqs are not completed, we only need the completed ones to calculate avg cycle
     total_cycles = 0
-    totol_mem_cycles = 0
+    num_cmp_mem = 0 # some mem_reqs not completed, we only need the completed ones to calculate avg mem cycle
+    total_mem_cycles = 0
+    
 
     assert num_req != 0 # should have at lease 1 request in trace message
     logging.info(f'{num_req} of requests in total')
 
     # cycle_stat used for distribution plot
     cycle_stat: List[int] = []
+    mem_stat: List[int] = []
     prof_str = []
-    prof_str.append(f'{"TxSeqNum": >16}\t{"req_typ": >8}\t{"req_start": >16}\t{"req_end": >16}\t{"req_cycles": >16}\t{"mem_cycles": >16}\t{"mem_start": >16}\t{"mem_end": >16}\n')
+    prof_str.append(f'{"TxSeqNum": >16}\t{"req_typ": >8}\t{"req_cycles": >16}\t{"req_start": >16}\t{"req_end": >16}\t{"mem_cycles": >16}\t{"mem_start": >16}\t{"mem_end": >16}\n')
     for seq_num,req in req_dict.items():
         # need to deal with the cycle exceptions
         # req.req_cycles may be None
@@ -307,7 +310,13 @@ def profiling(output_dir, draw=False, console=False):
             cycle_stat.append(req.req_cycles)
         except TypeError:
             logging.warning(f"cannot find the req done of txn {req.seq_num}.")
-        prof_str.append(f'{seq_num:>16}\t{req.req_typ: >8}\t{req.req_start: >16}\t{req.req_end if req.req_end else "---": >16}\t{req.req_cycles if req.req_cycles else "---": >16}\t{req.mem_cycles if req.mem_cycles else "---":>16}\t{req.mem_start if req.mem_start else "---":>16}\t{req.mem_end if req.mem_end else "---":>16}\n')
+        try:
+            total_mem_cycles += req.mem_cycles
+            num_cmp_mem += 1
+            mem_stat.append(req.mem_cycles)
+        except TypeError:
+            logging.warning(f"cannot find the mem req response of request {req.seq_num}.")
+        prof_str.append(f'{seq_num:>16}\t{req.req_typ: >8}\t{req.req_cycles if req.req_cycles else "---": >16}\t{req.req_start: >16}\t{req.req_end if req.req_end else "---": >16}\t{req.mem_cycles if req.mem_cycles else "---":>16}\t{req.mem_start if req.mem_start else "---":>16}\t{req.mem_end if req.mem_end else "---":>16}\n')
     # debug print
     # print out the prof_str
     if console:
@@ -318,8 +327,16 @@ def profiling(output_dir, draw=False, console=False):
     output_fig = os.path.join(output_dir, 'profile_stat.png')
     
     avg_req_cycle = total_cycles / num_cmp_req
+    avg_mem_cycle = total_mem_cycles / num_cmp_mem
 
-    prof_str.insert(0, f'{num_req} of requests in total. {num_cmp_req} of completed requests. Avg cycle is {avg_req_cycle}\n')
+    avg_mem_str = f'{num_cmp_mem} of completed memory requests. Avg mem access cycle is {avg_mem_cycle}'
+    avg_cyc_str = f'{num_req} of requests in total. {num_cmp_req} of completed requests. Avg cycle is {avg_req_cycle}'
+    prof_str.insert(0, avg_mem_str+'\n')
+    prof_str.insert(0, avg_cyc_str+'\n')
+
+    # print avg cycle
+    logging.log(LOG_MSG, avg_cyc_str)
+    logging.log(LOG_MSG, avg_mem_str)
 
     # write to file
     with open(output_log,'w+') as f:
@@ -327,18 +344,18 @@ def profiling(output_dir, draw=False, console=False):
 
     logging.log(LOG_MSG, f'Written to {output_log}')
 
-    # print avg cycle
-    logging.log(LOG_MSG, f'Avg cycle is {avg_req_cycle}')
-
-
     if draw :
     # Creating histogram
         logging.debug(f"cycle_stat: {cycle_stat}")
-        fig, axs = plt.subplots(1, 1,
-                            figsize =(10, 7),
+        fig, (axs1,axs2) = plt.subplots(2, 1,
+                            figsize =(10, 10),
                             tight_layout = True)
     
-        axs.hist(cycle_stat, bins = 50)
+        axs1.hist(cycle_stat, bins = 64)
+        axs1.set_title(f"request latency distribution (bins=64,total_num={num_cmp_req},avg_latency={avg_req_cycle})")
+        axs2.hist(mem_stat, bins=64)
+        axs2.set_title(f"memory latency distribution (bins=64,total_num={num_cmp_mem},avg_latency={avg_mem_cycle})")
+        fig.suptitle(os.path.basename(os.path.normpath(output_dir)))
         plt.savefig(output_fig)
         logging.log(LOG_MSG, f"Saved to {output_fig}")
 
@@ -382,20 +399,30 @@ def file_path(path):
 if __name__ == '__main__':
 
     # [TODO]: now need to set the num_cpu and num_cache by hand
-    num_cpus = 2
-    num_dirs = 1 # snf
-    num_l3caches = 1 # hnf
+    num_cpus = None
+    num_dirs = None # snf
+    num_l3caches = None # hnf/llc
+    dmt=None
+    trans=None
+    hnf_tbe=None
+    snf_tbe=None
+    num_load=None
 
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument('-i','--input', help='input file', required=True)
-    parser.add_argument('-o','--output', help='output dir', required=True)
-    parser.add_argument('-c','--num_cpu',help='num of cpu cores', required=False)
-    parser.add_argument('-l','--num_l3caches', help='num of hnf nodes', required=False)
-    parser.add_argument('-d','--num_dirs', help='num of snf nodes', required=False)
+    parser.add_argument('--input', help='input dir', required=True, type=str)
+    parser.add_argument('--output', help='output dir', required=True, type=str)
+    parser.add_argument('--num_cpu',help='num of cpu cores', required=False,type=int)
+    parser.add_argument('--num_llc', help='num of hnf nodes', required=False,type=int)
+    parser.add_argument('--num_mem', help='num of snf nodes', required=False,type=int)
+    parser.add_argument('--num_load',required=True,type=int)
+
     args = vars(parser.parse_args())
 
     input_dir = args['input']
     output_dir = args['output']
+    num_cpus = args['num_cpu']
+    num_l3caches = args['num_llc']
+    num_dirs = args['num_mem']
     trace_file = os.path.join(input_dir, 'debug.trace')
     # currently we only need input and output args
 
