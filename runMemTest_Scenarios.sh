@@ -17,10 +17,11 @@ Help() {
 BUILD=""
 RUN=""
 ANALYSIS=""
+TXNTRACE=""
 
 TEST=""
 
-while getopts "hbrsa:t:" options; do
+while getopts "hbr:sa:t:p:" options; do
     case $options in
        h) Help
           exit;;
@@ -40,7 +41,11 @@ while getopts "hbrsa:t:" options; do
           TEST=${OPTARG}
           echo "Processing option 'c' with '${OPTARG}' argument"
           ;;
-     
+       p)
+         TXNTRACE="yes"
+         echo ${OPTARG}
+         TEST=${OPTARG}
+         echo "Running TxnTrace with '${OPTARG}' argument"
     esac
 done
 
@@ -294,6 +299,25 @@ fi
           grep "snf.cntrl.avg_size" ${statsfile}
           grep "mem_ctrls.readReqs" ${statsfile}
           grep "mem_ctrls.writeReqs" ${statsfile}
+         done
+       done
+     done
+   done
+  done
+fi
+
+  if [ "$TXNTRACE" != "" ]; then
+    #OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
+    for DMT in ${DMT_Config[@]}; do
+       for NUMCPUS in ${NUM_CPU_SET[@]}; do
+          for TRANS in ${TRANS_SET[@]}; do
+             for  SNF_TBE in ${SNF_TBE_SET[@]}; do 
+                for NUM_LOAD in ${NUM_LOAD_SET[@]}; do 
+ 
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
+
+          # change -o ${OUTPUT_DIR} to place profile to somewhere else, default is to place the same dir as debug.trace
+          python3 logparser.py -i ${OUTPUT_DIR} -o ${OUTPUT_DIR}
          done
        done
      done

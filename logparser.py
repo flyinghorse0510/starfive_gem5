@@ -10,6 +10,13 @@ import matplotlib.pyplot as plt
 from typing import List, Dict
 import logging
 from enum import Enum
+import argparse
+import os
+
+# add a new log level
+LOG_MSG = 60
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.ERROR)
+logging.addLevelName(LOG_MSG, 'MSG')
 
 # we donot use CHIXXXMsg to categorize different messages
 # instead, we use port name
@@ -183,8 +190,8 @@ def parse_request(line:str, tick:int, seq_num:str, name:str):
                 assert req_dict[seq_num] != None
                 req: Request = req_dict[seq_num]
             except AssertionError:
-                logging.error(f"cannot find a previous begin of request {seq_num}")
-                logging.error(f"all requests are:{list(map(str, req_dict.values()))}")
+                logging.warning(f"cannot find a previous begin of request {seq_num}")
+                logging.warning(f"all requests are:{list(map(str, req_dict.values()))}")
             req.req_end = tick
             req.req_cycles = int(cycle_search.group(1))
             req.success = None # [TODO]: extract the status of the request
@@ -232,7 +239,7 @@ def parse_mem(line:str, tick:int, seq_num:str, name:str):
 
         
 
-def parse_log(filename, cache_to_idx, idx_to_cache, num_caches, breakdown=False):
+def parse_trace_log(filename, cache_to_idx, idx_to_cache, num_caches, breakdown=False):
     with open(filename) as f:
         for line in f:
             # search for tick
@@ -277,9 +284,10 @@ def breakdown():
     pass
 
 
-def profiling(draw=False, console=False):
+def profiling(output_dir, draw=False, console=False):
     # avg_cycles = total_cycles/num_req 
     num_req = len(req_dict)
+    num_cmp_req = 0 # some reqs are not completed, but we need the completed reqs to calculate avg cycle
     total_cycles = 0
     totol_mem_cycles = 0
 
@@ -295,25 +303,32 @@ def profiling(draw=False, console=False):
         # req.req_cycles may be None
         try:
             total_cycles += req.req_cycles
+            num_cmp_req += 1
             cycle_stat.append(req.req_cycles)
         except TypeError:
-            logging.error(f"cannot find the req done of txn {req.seq_num}.")
+            logging.warning(f"cannot find the req done of txn {req.seq_num}.")
         prof_str.append(f'{seq_num:>16}\t{req.req_typ: >8}\t{req.req_start: >16}\t{req.req_end if req.req_end else "---": >16}\t{req.req_cycles if req.req_cycles else "---": >16}\t{req.mem_cycles if req.mem_cycles else "---":>16}\t{req.mem_start if req.mem_start else "---":>16}\t{req.mem_end if req.mem_end else "---":>16}\n')
     # debug print
     # print out the prof_str
     if console:
         for s in prof_str:
-            logging.info(s,end="")
+            logging.log(LOG_MSG, s, end="")
     
+    output_log = os.path.join(output_dir, 'profile_stat.log')
+    output_fig = os.path.join(output_dir, 'profile_stat.png')
+    
+    avg_req_cycle = total_cycles / num_cmp_req
+
+    prof_str.insert(0, f'{num_req} of requests in total. {num_cmp_req} of completed requests. Avg cycle is {avg_req_cycle}\n')
+
     # write to file
-    with open('profile_stat.log','w+') as f:
+    with open(output_log,'w+') as f:
         f.writelines(prof_str)
 
-    logging.info('Written to profile_stat.log')
+    logging.log(LOG_MSG, f'Written to {output_log}')
 
     # print avg cycle
-    avg_req_cycle = total_cycles / num_req
-    logging.info(f'Avg cycle is {avg_req_cycle}')
+    logging.log(LOG_MSG, f'Avg cycle is {avg_req_cycle}')
 
 
     if draw :
@@ -324,8 +339,8 @@ def profiling(draw=False, console=False):
                             tight_layout = True)
     
         axs.hist(cycle_stat, bins = 50)
-        plt.savefig("profile_stat.png")
-        print("Saved to profile_state.png")
+        plt.savefig(output_fig)
+        logging.log(LOG_MSG, f"Saved to {output_fig}")
 
 
 # this cache_table is used for name mapping for NetDest
@@ -346,33 +361,47 @@ def gen_cache_table(num_cpus, num_l3caches):
     for i in range(num_l3caches):
         name_to_idx[f"hnf.cntrl"] = num_cpus*3+i
         idx_to_name[num_cpus*3+i] = f"hnf.cntrl"
-
-    return name_to_idx, idx_to_name, len(name_to_idx)
     
+    num_caches = len(name_to_idx)
+    # logging.info(f"num_cpus:{num_cpus}")
+    # logging.info("cache idx:")
+    # for k,v in name_to_idx.items():
+    #     logging.info(f'{k}: {v}')
+    # logging.info(f"num_caches:{num_caches}")
+
+    return name_to_idx, idx_to_name, num_caches
+    
+
+def file_path(path):
+    if os.path.isfile(path):
+        return path
+    else:
+        raise argparse.ArgumentTypeError(f"not a file!")
 
 
 if __name__ == '__main__':
-    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
     # [TODO]: now need to set the num_cpu and num_cache by hand
     num_cpus = 2
     num_dirs = 1 # snf
     num_l3caches = 1 # hnf
 
-    import sys
-    filename = 'debug.trace'
-    if len(sys.argv) == 2:
-        filename = sys.argv[1]
+    parser = argparse.ArgumentParser(description="")
+    parser.add_argument('-i','--input', help='input file', required=True)
+    parser.add_argument('-o','--output', help='output dir', required=True)
+    parser.add_argument('-c','--num_cpu',help='num of cpu cores', required=False)
+    parser.add_argument('-l','--num_l3caches', help='num of hnf nodes', required=False)
+    parser.add_argument('-d','--num_dirs', help='num of snf nodes', required=False)
+    args = vars(parser.parse_args())
+
+    input_dir = args['input']
+    output_dir = args['output']
+    trace_file = os.path.join(input_dir, 'debug.trace')
+    # currently we only need input and output args
 
     cache_to_idx, idx_to_cache, num_caches = gen_cache_table(num_cpus, num_l3caches)
 
-    logging.info(f"num_cpus:{num_cpus}")
-    logging.info("cache idx:")
-    for k,v in cache_to_idx.items():
-        logging.info(f'{k}: {v}')
-    logging.info(f"num_caches:{num_caches}")
-
-    parse_log(filename, cache_to_idx, idx_to_cache, num_caches, breakdown=False)
+    parse_trace_log(trace_file, cache_to_idx, idx_to_cache, num_caches, breakdown=False)
     # turn on plot by setting draw True
     # turn on console log by setting console True
-    profiling(draw=True, console=False)
+    profiling(output_dir, draw=True, console=False)
