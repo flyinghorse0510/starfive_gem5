@@ -174,15 +174,23 @@ class ProdConsMemTest : public ClockedObject
     
     std::vector<Addr> perCPUWorkingBlocks;
 
+    bool addrInterleavedOrTiled;
+
     const unsigned progressInterval;  // frequency of progress reports
     const Cycles progressCheck;
     Tick nextProgressMessage;   // access # for next progress report
 
-    uint64_t numReads;
+    uint64_t numReadTxnGenerated;
 
-    uint64_t numWrites;
+    uint64_t numReadTxnCompleted;
 
-    const uint64_t maxLoads;
+    uint64_t numWriteTxnGenerated;
+
+    uint64_t numWriteTxnCompleted;
+
+    const double maxLoadFactor;
+
+    uint64_t maxLoads;
     
     uint64_t txSeqNum; // requestorID + txSeqNum should be the unique ID
 
