@@ -213,7 +213,7 @@ SNF_TBE_SET=(32)
 #DEBUG_FLAGS=RubySlicc
 DEBUG_FLAGS="SeqMemLatTest"
 
-MultiCoreAddrMode=True #False #True #--addr-intrlvd-or-tiled true then interleaved 
+MultiCoreAddrMode=False #False #True #--addr-intrlvd-or-tiled true then interleaved 
 
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEM_Hier_MEMADDInteLeaving2"
 OUTPUT_PREFIX="TEST_${TEST}/NETWK${NETWORK}_LinkFactor40_SysClk2GHz"
