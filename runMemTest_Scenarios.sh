@@ -163,7 +163,7 @@ if [ "$TEST" == "DDR_BW" ]; then
 
 l1d_size="4KiB"
 l1i_size="4KiB"
-l2_size="32KiB"
+l2_size="8KiB"
 l3_size="4KiB" #"16KiB" #"1024KiB" #"256KiB"
 l1d_assoc=8
 l1i_assoc=8
@@ -199,6 +199,8 @@ fi
 
 #Multi Core
 NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
+#NUM_CPU_SET=(16) # = #2 #4 #16
+
 
 #WKSET=131072 #8192 #16384 #524288 #(32768) #
 #NUM_MEM_SET=(1 2)
