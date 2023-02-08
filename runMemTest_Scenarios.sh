@@ -43,6 +43,7 @@ while getopts "hbr:sa:t:p:" options; do
           ;;
        p)
          TXNTRACE="yes"
+         DEBUG_FLAGS=TxnLink,TxnTrace
          echo ${OPTARG}
          TEST=${OPTARG}
          echo "Running TxnTrace with '${OPTARG}' argument"
