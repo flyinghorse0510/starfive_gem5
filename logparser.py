@@ -15,7 +15,7 @@ import os
 
 # add a new log level
 LOG_MSG = 60
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.ERROR)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.CRITICAL)
 logging.addLevelName(LOG_MSG, 'MSG')
 
 # we donot use CHIXXXMsg to categorize different messages
@@ -69,12 +69,12 @@ class Request:
         self.req_typ = req_typ
         self.req_start = req_start # 
         self.req_end = None # 
-        self.req_cycles = None # entire round trip time
+        self.req_latency = None # entire round trip time
         # memory statistics
         self.mem_addr = None # memory address
         self.mem_start = None # memory access time
         self.mem_end = None
-        self.mem_cycles = None
+        self.mem_latency = None
         self.success = None # this request is successful or not 
         # messages used for breakdown of message traffic
         self.messages: List[MessageFlow] = []
@@ -193,7 +193,7 @@ def parse_request(line:str, tick:int, seq_num:str, name:str):
                 logging.warning(f"cannot find a previous begin of request {seq_num}")
                 logging.warning(f"all requests are:{list(map(str, req_dict.values()))}")
             req.req_end = tick
-            req.req_cycles = int(cycle_search.group(1))
+            req.req_latency = int(cycle_search.group(1))
             req.success = None # [TODO]: extract the status of the request
 
         elif seqReq == 'Begin': # this is the start of request
@@ -230,9 +230,9 @@ def parse_mem(line:str, tick:int, seq_num:str, name:str):
             req: Request = req_dict[seq_num]
             req.mem_end = tick
             try:
-                req.mem_cycles = req.mem_end - req.mem_start
+                req.mem_latency = req.mem_end - req.mem_start
             except:
-                req.mem_cycles = None
+                req.mem_latency = None
         except AssertionError:
             logging.error(f"Memory Response cannot find a valid Request of TxSeqNum {seq_num}.")
             logging.debug(f"all requests are:{list(map(str, req_dict.values()))}")
@@ -285,38 +285,40 @@ def breakdown():
 
 
 def profiling(output_dir, draw=False, console=False):
-    # avg_cycles = total_cycles/num_req 
+    # 1000 ticks per ns. we need this to transfer between ns and tick
+    tick_per_ns = 1000
+    # avg_cycles = req_latency_sum/num_cmp_req 
     num_req = len(req_dict)
     num_cmp_req = 0 # some reqs are not completed, we only need the completed ones to calculate avg cycle
-    total_cycles = 0
+    req_latency_sum = 0
     num_cmp_mem = 0 # some mem_reqs not completed, we only need the completed ones to calculate avg mem cycle
-    total_mem_cycles = 0
+    mem_latency_sum = 0
     
 
     assert num_req != 0 # should have at lease 1 request in trace message
     logging.info(f'{num_req} of requests in total')
 
-    # cycle_stat used for distribution plot
-    cycle_stat: List[int] = []
-    mem_stat: List[int] = []
+    # cpu_req_stat used for distribution plot
+    cpu_req_stat: List[int] = []
+    mem_req_stat: List[int] = []
     prof_str = []
-    prof_str.append(f'{"TxSeqNum": >16}\t{"req_typ": >8}\t{"req_cycles": >16}\t{"req_start": >16}\t{"req_end": >16}\t{"mem_cycles": >16}\t{"mem_start": >16}\t{"mem_end": >16}\n')
+    prof_str.append(f'{"TxSeqNum": >16}\t{"req_typ": >8}\t{"req_latency": >16}\t{"req_start": >16}\t{"req_end": >16}\t{"mem_latency": >16}\t{"mem_start": >16}\t{"mem_end": >16}\n')
     for seq_num,req in req_dict.items():
         # need to deal with the cycle exceptions
-        # req.req_cycles may be None
+        # req.req_latency may be None
         try:
-            total_cycles += req.req_cycles
+            req_latency_sum += req.req_latency
             num_cmp_req += 1
-            cycle_stat.append(req.req_cycles)
+            cpu_req_stat.append(req.req_latency)
         except TypeError:
             logging.warning(f"cannot find the req done of txn {req.seq_num}.")
         try:
-            total_mem_cycles += req.mem_cycles
+            mem_latency_sum += req.mem_latency
             num_cmp_mem += 1
-            mem_stat.append(req.mem_cycles)
+            mem_req_stat.append(req.mem_latency)
         except TypeError:
             logging.warning(f"cannot find the mem req response of request {req.seq_num}.")
-        prof_str.append(f'{seq_num:>16}\t{req.req_typ: >8}\t{req.req_cycles if req.req_cycles else "---": >16}\t{req.req_start: >16}\t{req.req_end if req.req_end else "---": >16}\t{req.mem_cycles if req.mem_cycles else "---":>16}\t{req.mem_start if req.mem_start else "---":>16}\t{req.mem_end if req.mem_end else "---":>16}\n')
+        prof_str.append(f'{seq_num:>16}\t{req.req_typ: >8}\t{req.req_latency if req.req_latency else "---": >16}\t{req.req_start: >16}\t{req.req_end if req.req_end else "---": >16}\t{req.mem_latency if req.mem_latency else "---":>16}\t{req.mem_start if req.mem_start else "---":>16}\t{req.mem_end if req.mem_end else "---":>16}\n')
     # debug print
     # print out the prof_str
     if console:
@@ -326,8 +328,8 @@ def profiling(output_dir, draw=False, console=False):
     output_log = os.path.join(output_dir, 'profile_stat.log')
     output_fig = os.path.join(output_dir, 'profile_stat.png')
     
-    avg_req_cycle = total_cycles / num_cmp_req
-    avg_mem_cycle = total_mem_cycles / num_cmp_mem
+    avg_req_cycle = round(req_latency_sum / num_cmp_req, 4)
+    avg_mem_cycle = round(mem_latency_sum / num_cmp_mem / tick_per_ns, 4)
 
     avg_mem_str = f'{num_cmp_mem} of completed memory requests. Avg mem access cycle is {avg_mem_cycle}'
     avg_cyc_str = f'{num_req} of requests in total. {num_cmp_req} of completed requests. Avg cycle is {avg_req_cycle}'
@@ -346,15 +348,24 @@ def profiling(output_dir, draw=False, console=False):
 
     if draw :
     # Creating histogram
-        logging.debug(f"cycle_stat: {cycle_stat}")
+        # logging.debug(f"cpu_req_stat: {cpu_req_stat}")
         fig, (axs1,axs2) = plt.subplots(2, 1,
                             figsize =(10, 10),
                             tight_layout = True)
-    
-        axs1.hist(cycle_stat, bins = 64)
-        axs1.set_title(f"request latency distribution (bins=64,total_num={num_cmp_req},avg_latency={avg_req_cycle})")
-        axs2.hist(mem_stat, bins=64)
-        axs2.set_title(f"memory latency distribution (bins=64,total_num={num_cmp_mem},avg_latency={avg_mem_cycle})")
+
+        # translate tick to cycle
+        import numpy as np
+        mem_req_stat = np.array(mem_req_stat)/tick_per_ns
+
+        bins = 64
+        axs1.hist(cpu_req_stat, bins)
+        axs1.set_title(f"cpu request latency distribution (bins={bins},total_num={num_cmp_req},avg_latency={avg_req_cycle} cycles)")
+        axs1.set_xlabel('latency(cycles)')
+        axs1.set_ylabel('nums of cpu requests')
+        axs2.hist(mem_req_stat, bins)
+        axs2.set_title(f"memory latency distribution (bins={bins},total_num={num_cmp_mem},avg_latency={avg_mem_cycle} ns)")
+        axs2.set_xlabel('latency(ns)')
+        axs2.set_ylabel('nums of memory requests')
         fig.suptitle(os.path.basename(os.path.normpath(output_dir)))
         plt.savefig(output_fig)
         logging.log(LOG_MSG, f"Saved to {output_fig}")
