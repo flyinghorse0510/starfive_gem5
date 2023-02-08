@@ -4,7 +4,7 @@
 Usage:
 Before you run, pass num of cpu,ddr,llc as input arguments.
 You can choose which component to be printed in console by adding l1i,l1d,l2p,llc,cpu,ddr behind --print, the default option is cpu,llc,ddr
-python3 stats_parser.py --input stats.txt --output stats.log --num_cpu 1 --num_llc 1 --num_ddr 1 --print l1d,l2p,llc,cpu,ddr
+python3 stats_parser.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --print l1d,l2p,llc,cpu,ddr
 
 To work with .sh script, add the following lines to your .sh script
   if [ "$STATS" != "" ]; then
