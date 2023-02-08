@@ -183,25 +183,43 @@ def gen_header(name:List[str]):
 def gen_bottom(width):
     return '='*width+'\n'
 
+from functools import reduce
 def gen_cache_str(caches:List[Cache], name:str):
-    cache_str,cache_width = gen_header([name,'HIT','MISS','ACCESS','HIT_RATE'])
+    cache_str,cache_table_width = gen_header([name,'HIT','MISS','ACCESS','HIT_RATE'])
     cache_str += '\n'.join([cache.table_print() for cache in caches]) + '\n'
-    cache_str += gen_bottom(cache_width)
+    cache_hit_sum = reduce(lambda x,y:x+y, [cache.hit for cache in caches])
+    cache_miss_sum = reduce(lambda x,y:x+y, [cache.miss for cache in caches])
+    cache_access_sum = reduce(lambda x,y:x+y, [cache.access for cache in caches])
+    try:
+        cache_hit_rate = round(cache_hit_sum/cache_access_sum,4)
+    except:
+        cache_hit_rate = 'NIL'
+    cache_str += '-'*cache_table_width+'\n'
+    cache_str += f'||{"TOTAL":^16}|{cache_hit_sum:^16}|{cache_miss_sum:^16}|{cache_access_sum:^16}|{cache_hit_rate:^16}||\n'
+    cache_str += gen_bottom(cache_table_width)
     return cache_str
 
-def gen_print_str(cpus, llcs, ddrs, l1ds, l1is, l2ps):
+def gen_print_str(cpus:List[CPU], llcs, ddrs, l1ds, l1is, l2ps):
     # print cpu
-    cpu_str,cpu_width = gen_header(['CPU','READ','WRITE'])
+    cpu_str,cpu_table_width = gen_header(['CPU','READ','WRITE'])
     cpu_str += '\n'.join([cpu.table_print() for cpu in cpus]) + '\n'
-    cpu_str += gen_bottom(cpu_width)
+    cpu_read_sum = reduce(lambda x,y:x+y, [cpu.read for cpu in cpus])
+    cpu_write_sum = reduce(lambda x,y:x+y, [cpu.write for cpu in cpus])
+    cpu_str += '-'*cpu_table_width+'\n'
+    cpu_str += f'||{"TOTAL":^16}|{cpu_read_sum:^16}|{cpu_write_sum:^16}||\n'
+    cpu_str += gen_bottom(cpu_table_width)
 
     # print caches
     llc_str,l1d_str, l1i_str, l2p_str = [gen_cache_str(cache,name) for cache,name in ((llcs,'LLC'), (l1ds,'L1D'), (l1is,'L1I'), (l2ps,'L2P'))]
 
     # print ddr
-    ddr_str,ddr_width = gen_header(['DDR','READ','WRITE'])
+    ddr_str,ddr_table_width = gen_header(['DDR','READ','WRITE'])
     ddr_str += '\n'.join([ddr.table_print() for ddr in ddrs]) + '\n'
-    ddr_str += gen_bottom(ddr_width)
+    ddr_read_sum = reduce(lambda x,y:x+y, [ddr.read for ddr in ddrs])
+    ddr_write_sum = reduce(lambda x,y:x+y, [ddr.write for ddr in ddrs])
+    ddr_str += '-'*ddr_table_width+'\n'
+    ddr_str += f'||{"TOTAL":^16}|{ddr_read_sum:^16}|{ddr_write_sum:^16}\n'
+    ddr_str += gen_bottom(ddr_table_width)
 
     return {'cpu':cpu_str,'llc':llc_str,'ddr':ddr_str,'l1d':l1d_str,'l1i':l1i_str,'l2p':l2p_str} # you can add more options to print
 
