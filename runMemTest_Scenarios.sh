@@ -21,7 +21,7 @@ TXNTRACE=""
 
 TEST=""
 
-while getopts "hbr:sa:t:p:" options; do
+while getopts "hbr:s:a:t:p:" options; do
     case $options in
        h) Help
           exit;;
@@ -47,6 +47,11 @@ while getopts "hbr:sa:t:p:" options; do
          echo ${OPTARG}
          TEST=${OPTARG}
          echo "Running TxnTrace with '${OPTARG}' argument"
+         ;;
+       s)
+         STATS="yes"
+         TEST=${OPTARG}
+         echo "Running STATS parser"
     esac
 done
 
@@ -330,6 +335,22 @@ fi
  
           OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
           python3 logparser.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR} --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_mem ${NUM_MEM} --num_load ${NUM_LOAD}
+         done
+       done
+     done
+   done
+  done
+fi
+
+  if [ "$STATS" != "" ]; then
+    #OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
+    for DMT in ${DMT_Config[@]}; do
+       for NUMCPUS in ${NUM_CPU_SET[@]}; do
+          for TRANS in ${TRANS_SET[@]}; do
+             for  SNF_TBE in ${SNF_TBE_SET[@]}; do 
+                for NUM_LOAD in ${NUM_LOAD_SET[@]}; do 
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
+          python3 stats_parser.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM}
          done
        done
      done
