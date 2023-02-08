@@ -51,6 +51,9 @@
 #include "mem/ruby/network/simple/Switch.hh"
 #include "mem/ruby/slicc_interface/Message.hh"
 
+#include "debug/TxnTrace.hh"
+#include "debug/TxnLink.hh"
+
 namespace gem5
 {
 
@@ -266,6 +269,13 @@ PerfectSwitch::operateMessageBuffer(MessageBuffer *buffer, int vnet)
             DPRINTF(RubyNetwork, "Enqueuing net msg from "
                     "inport[%d][%d] to outport [%d][%d].\n",
                     buffer->getIncomingLink(), vnet, outgoing, vnet);
+
+            DPRINTF(TxnTrace, "Router[%d]: inport[%d][%d] to outport [%d][%d]. %d pending msgs.\n",
+                    this->m_switch_id, 
+                    buffer->getIncomingLink(), vnet, 
+                    outgoing, vnet,
+                    m_pending_message_count[vnet]
+                    );
 
             out_port.buffers[vnet]->enqueue(msg_ptr, current_time,
                                            out_port.latency);
