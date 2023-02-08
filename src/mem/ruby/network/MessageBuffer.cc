@@ -230,6 +230,7 @@ void
 MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time)
 {
 
+    return;
     const std::type_info& msg_type = typeid(*(message.get()));
     // this set stores every txsn of rubyrequest. All subsequent messages must have a txsn within this set.
     static std::set<uint64_t> reqTxSeqNums;
