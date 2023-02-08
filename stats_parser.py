@@ -2,9 +2,26 @@
 
 '''
 Usage:
-Currently need to change the num_cpus num_llcs num_ddrs manually
-You can choose which component to print by adding any combination from l1i,l1d,l2p,llc,cpu,ddr, the default option is cpu,llc,ddr
-python3 stats_parser.py --input stats.txt --num_cpus 1 --num_llcs 1 --num_ddrs 1 --print l1d,l2p,llc,cpu,ddr
+Before you run, pass num of cpu,ddr,llc as input arguments.
+You can choose which component to be printed in console by adding l1i,l1d,l2p,llc,cpu,ddr behind --print, the default option is cpu,llc,ddr
+python3 stats_parser.py --input stats.txt --output stats.log --num_cpu 1 --num_llc 1 --num_ddr 1 --print l1d,l2p,llc,cpu,ddr
+
+To work with .sh script, add the following lines to your .sh script
+  if [ "$STATS" != "" ]; then
+    #OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
+    for DMT in ${DMT_Config[@]}; do
+       for NUMCPUS in ${NUM_CPU_SET[@]}; do
+          for TRANS in ${TRANS_SET[@]}; do
+             for  SNF_TBE in ${SNF_TBE_SET[@]}; do 
+                for NUM_LOAD in ${NUM_LOAD_SET[@]}; do 
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
+          python3 stats_parser.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM}
+         done
+       done
+     done
+   done
+  done
+fi
 '''
 import re
 from typing import List
@@ -12,7 +29,7 @@ import logging
 
 # add a new log level
 LOG_MSG = 60
-logging.basicConfig(format='%(levelname)s:%(message)s', level=LOG_MSG)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.CRITICAL)
 logging.addLevelName(LOG_MSG, 'MSG')
 
 
@@ -138,7 +155,6 @@ class L1D(PrivCache):
 class L1I(PrivCache):
     def table_print(self):
         self.cal_hit_rate()
-        print(self.hit_rate)
         return f'||{"cpu"+str(self.cpu_id)+"."+"l1i":^16}|{self.hit:^16}|{self.miss:^16}|{self.access:^16}|{self.hit_rate:^16}||'
 
 class L2P(PrivCache):
@@ -278,24 +294,29 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description="")
     parser.add_argument('--input', required=True, type=str)
-    parser.add_argument('--num_cpus', required=True, type=int)
-    parser.add_argument('--num_llcs', required=True, type=int)
-    parser.add_argument('--num_ddrs', required=True, type=int)
+    parser.add_argument('--output', required=True, type=str)
+    parser.add_argument('--num_cpu', required=True, type=int)
+    parser.add_argument('--num_llc', required=True, type=int)
+    parser.add_argument('--num_ddr', required=True, type=int)
     parser.add_argument('--print', required=False,type=str,default='cpu,ddr,llc',help='choose what to print from [cpu,l1d,l1i,l2,llc,ddr] with comma as delimiter. e.g. --print cpu,llc will only print cpu and llc. default options is cpu,llc,ddr')
 
     args = parser.parse_args()
-    cpus = [CPU(i) for i in range(args.num_cpus)]
-    llcs = [LLC(i) for i in range(args.num_llcs)]
-    l1ds = [L1D(i) for i in range(args.num_cpus)]
-    l1is = [L1I(i) for i in range(args.num_cpus)]
-    l2ps = [L2P(i) for i in range(args.num_cpus)]
-    ddrs = [DDR(i) for i in range(args.num_ddrs)]
+    cpus = [CPU(i) for i in range(args.num_cpu)]
+    llcs = [LLC(i) for i in range(args.num_llc)]
+    l1ds = [L1D(i) for i in range(args.num_cpu)]
+    l1is = [L1I(i) for i in range(args.num_cpu)]
+    l2ps = [L2P(i) for i in range(args.num_cpu)]
+    ddrs = [DDR(i) for i in range(args.num_ddr)]
+
+    import subprocess
+    out = subprocess.getoutput('wc -l %s' % args.input)
+    if int(out.split()[0]) == 0:
+        logging.critical(f'{args.input} has no content. Please check if your test has finished.')
+        exit()
 
     with open(args.input, 'r') as f:
         for line in f:
             parse_stats(line, cpus, llcs, ddrs, l1ds, l1is, l2ps)
-    
-    num_dash = 32
 
     # print tick
     tick_str = f'total cycle is {tick/1000}\n'
@@ -310,13 +331,14 @@ if __name__ == '__main__':
         if k in print_args:
             stats_str += v
         
-
+    import os
     if args.print:
+        print(f'Stats for configuration {os.path.basename(os.path.dirname(args.input))}')
         print(stats_str)
         print(llc_summary(llcs))
 
     
-    with open('stats.log','w+') as f:
+    with open(args.output,'w+') as f:
         f.write(stats_str)
         f.write(llc_summary(llcs))
-    print('written to stats.log')
+    print(f'written to {args.output}')
