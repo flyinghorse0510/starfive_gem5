@@ -10,6 +10,13 @@ import matplotlib.pyplot as plt
 from typing import List, Dict
 import logging
 from enum import Enum
+import argparse
+import os
+
+# add a new log level
+LOG_MSG = 60
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.CRITICAL)
+logging.addLevelName(LOG_MSG, 'MSG')
 
 # we donot use CHIXXXMsg to categorize different messages
 # instead, we use port name
@@ -57,17 +64,25 @@ class MessageFlow:
 
 # Request type to manage the information of Request
 class Request:
-    def __init__(self, seq_num, start_time):
+    def __init__(self, seq_num, req_start, req_typ):
         self.seq_num = seq_num # this works as id for this request
-        self.start_time = start_time # 
-        self.end_time = None # 
-        self.cycles = None # 
+        self.req_typ = req_typ
+        self.req_start = req_start # 
+        self.req_end = None # 
+        self.req_latency = None # entire round trip time
+        # memory statistics
+        self.mem_addr = None # memory address
+        self.mem_start = None # memory access time
+        self.mem_end = None
+        self.mem_latency = None
         self.success = None # this request is successful or not 
         # messages used for breakdown of message traffic
         self.messages: List[MessageFlow] = []
 
     def __str__(self):
-        return "Request " + str(self.seq_num) + ":{start_time: " + str(self.start_time) + "}"
+        return str(self.seq_num)
+    def __repl__(self):
+        return str(self.seq_num)
     
 # RequestList type to record all the requests
 RequestList = Dict[int, Request]
@@ -124,7 +139,7 @@ def parse_breakdown(line, cache_to_idx, idx_to_cache, num_caches, tick, name, se
         try:
             assert len(bitmask) == num_caches
         except AssertionError:
-            print("assert len(bitmask) == num_caches failed")
+            logging.error("assert len(bitmask) == num_caches failed")
 
         bitmask = list(map(bool, bitmask)) # cast to bool
         dests = [idx for (idx,val) in enumerate(bitmask) if val] # collect the selected idx of cache
@@ -165,27 +180,66 @@ def parse_breakdown(line, cache_to_idx, idx_to_cache, num_caches, tick, name, se
         req.messages.append(msg)
 
 
-def parse_roundtrip(line, tick, seq_num):
-    seqreq_search = re.search('Req (\w+) ', line)
+def parse_request(line:str, tick:int, seq_num:str, name:str):
+    seqreq_search = re.search('Req (\w+)', line)
     if seqreq_search : 
         seqReq = seqreq_search.group(1)
         if seqReq == 'Done': # this is the end of request
             cycle_search = re.search('(\d+)\scycles$',line)
-            req: Request = req_dict[seq_num]
-            req.end_time = tick
-            req.cycles = int(cycle_search.group(1))
+            try:
+                assert req_dict[seq_num] != None
+                req: Request = req_dict[seq_num]
+            except AssertionError:
+                logging.warning(f"cannot find a previous begin of request {seq_num}")
+                logging.warning(f"all requests are:{list(map(str, req_dict.values()))}")
+            req.req_end = tick
+            req.req_latency = int(cycle_search.group(1))
             req.success = None # [TODO]: extract the status of the request
 
-        if seqReq == 'Begin': # this is the start of request
+        elif seqReq == 'Begin': # this is the start of request
             # create a new request with seq_num as the id and tick as the start time
-            req: Request = Request(seq_num, tick)
+            logging.debug(f"Found a request begin. line: {line}, txsn: {seq_num}")
+            typ_search = re.search('type: (\w+)', line)
+            typ = typ_search.group(1)
+            req: Request = Request(seq_num, tick, typ)
             try:
                 assert req_dict.get(seq_num) == None # we should never start a same seqNum for more than once
             except AssertionError:
-                print(f"TxSeqNum{seq_num} runs twice: First one is {req_dict.get(seq_num)}, Second is {tick}")
+                logging.error(f"TxSeqNum {seq_num} runs twice: First one is {req_dict.get(seq_num)}, Second is {tick}")
             req_dict[seq_num] = req
 
-def parse_log(filename, cache_to_idx, idx_to_cache, num_caches, breakdown=False):
+        else:
+            logging.debug(f"Parse request found other match:{seqReq}")
+
+
+def parse_mem(line:str, tick:int, seq_num:str, name:str):
+    mem_req_search = re.search('requestToMemory', name)
+    mem_rsp_search = re.search('responseFromMemory', name)
+    if mem_req_search:
+        try:
+            assert req_dict.get(seq_num) != None
+            req: Request = req_dict[seq_num]
+            req.mem_start = tick
+        except AssertionError:
+            logging.error(f"Memory Request cannot find a valid Request of TxSeqNum {seq_num}.")
+            logging.debug(f"all requests are:{list(map(str, req_dict.values()))}")
+
+    if mem_rsp_search:
+        try:
+            assert req_dict.get(seq_num) != None
+            req: Request = req_dict[seq_num]
+            req.mem_end = tick
+            try:
+                req.mem_latency = req.mem_end - req.mem_start
+            except:
+                req.mem_latency = None
+        except AssertionError:
+            logging.error(f"Memory Response cannot find a valid Request of TxSeqNum {seq_num}.")
+            logging.debug(f"all requests are:{list(map(str, req_dict.values()))}")
+
+        
+
+def parse_trace_log(filename, cache_to_idx, idx_to_cache, num_caches, breakdown=False):
     with open(filename) as f:
         for line in f:
             # search for tick
@@ -198,6 +252,8 @@ def parse_log(filename, cache_to_idx, idx_to_cache, num_caches, breakdown=False)
 
             # First: if all search matched, this is the message we want
             if tick_search and name_search and seq_num_search:
+                logging.debug(f"Found a matched line: {line}")
+
                 tick = int(tick_search.group(1))
                 name = name_search.group(1)
                 seq_num = seq_num_search.group(1)
@@ -205,8 +261,8 @@ def parse_log(filename, cache_to_idx, idx_to_cache, num_caches, breakdown=False)
                 try:
                     assert seq_num != '0000000000000000'
                 except:
-                    print("assert seq_num != 0 failed")
-                    print(line)
+                    logging.error("assert seq_num != 0 failed")
+                    logging.debug(line)
 
                 # print(tick, name, txsn)
 
@@ -216,8 +272,11 @@ def parse_log(filename, cache_to_idx, idx_to_cache, num_caches, breakdown=False)
                 if breakdown:
                     parse_breakdown(line, cache_to_idx, idx_to_cache, num_caches, tick, name, seq_num)
                 
-                # 2) Sequencer and snf
-                parse_roundtrip(line, tick, seq_num)
+                # 2) Sequencer
+                parse_request(line, tick, seq_num, name)
+
+                # 3) mem test
+                parse_mem(line, tick, seq_num, name)
 
 
 
@@ -225,51 +284,91 @@ def breakdown():
     pass
 
 
-def profiling(draw=False, console=False):
-    # avg_cycles = total_cycles/num_req 
+def profiling(output_dir, draw=False, console=False):
+    # 1000 ticks per ns. we need this to transfer between ns and tick
+    tick_per_ns = 1000
+    # avg_cycles = req_latency_sum/num_cmp_req 
     num_req = len(req_dict)
-    total_cycles = 0
+    num_cmp_req = 0 # some reqs are not completed, we only need the completed ones to calculate avg cycle
+    req_latency_sum = 0
+    num_cmp_mem = 0 # some mem_reqs not completed, we only need the completed ones to calculate avg mem cycle
+    mem_latency_sum = 0
+    
 
     assert num_req != 0 # should have at lease 1 request in trace message
-    print(f'{num_req} of requests in total')
+    logging.info(f'{num_req} of requests in total')
 
-    # cycle_stat used for distribution plot
-    cycle_stat: List[int] = []
+    # cpu_req_stat used for distribution plot
+    cpu_req_stat: List[int] = []
+    mem_req_stat: List[int] = []
     prof_str = []
-    prof_str.append(f'{"TxSeqNum": >16}\t{"start_time": >16}\t{"end_time": >16}\t{"cycles": >16}\n')
+    prof_str.append(f'{"TxSeqNum": >16}\t{"req_typ": >8}\t{"req_latency": >16}\t{"req_start": >16}\t{"req_end": >16}\t{"mem_latency": >16}\t{"mem_start": >16}\t{"mem_end": >16}\n')
     for seq_num,req in req_dict.items():
+        # need to deal with the cycle exceptions
+        # req.req_latency may be None
         try:
-            total_cycles += req.cycles
-            cycle_stat.append(req.cycles)
-            prof_str.append(f'{seq_num:>16}\t{req.start_time: >16}\t{req.end_time: >16}\t{req.cycles: >16}\n')
-        except:
-            prof_str.append(f'{seq_num:>16}\t{req.start_time: >16}\t{"---": >16}\t{"---": >16}\n')
-
+            req_latency_sum += req.req_latency
+            num_cmp_req += 1
+            cpu_req_stat.append(req.req_latency)
+        except TypeError:
+            logging.warning(f"cannot find the req done of txn {req.seq_num}.")
+        try:
+            mem_latency_sum += req.mem_latency
+            num_cmp_mem += 1
+            mem_req_stat.append(req.mem_latency)
+        except TypeError:
+            logging.warning(f"cannot find the mem req response of request {req.seq_num}.")
+        prof_str.append(f'{seq_num:>16}\t{req.req_typ: >8}\t{req.req_latency if req.req_latency else "---": >16}\t{req.req_start: >16}\t{req.req_end if req.req_end else "---": >16}\t{req.mem_latency/tick_per_ns if req.mem_latency else "---":>16}\t{req.mem_start if req.mem_start else "---":>16}\t{req.mem_end if req.mem_end else "---":>16}\n')
     # debug print
     # print out the prof_str
     if console:
         for s in prof_str:
-            print(s,end="")
+            logging.log(LOG_MSG, s, end="")
     
-    # write to file
-    with open('profile_stat.log','w+') as f:
-        f.writelines(prof_str)
+    output_log = os.path.join(output_dir, 'profile_stat.log')
+    output_fig = os.path.join(output_dir, 'profile_stat.png')
+    
+    avg_req_cycle = round(req_latency_sum / num_cmp_req, 4)
+    avg_mem_latency = round(mem_latency_sum / num_cmp_mem / tick_per_ns, 4) # in ns
 
-    print('Written to profile_stat.log')
+    avg_mem_str = f'{num_cmp_mem} of completed memory requests. Avg mem access time is {avg_mem_latency} ns. Min is {min(mem_req_stat)/tick_per_ns} ns. Max is {max(mem_req_stat)/tick_per_ns} ns.'
+    avg_cyc_str = f'{num_req} of requests in total. {num_cmp_req} of completed requests. Avg complete time is {avg_req_cycle} cycle. Min is {min(cpu_req_stat)} cycle. Max is {max(cpu_req_stat)} cycle.'
+    prof_str.insert(0, avg_mem_str+'\n')
+    prof_str.insert(0, avg_cyc_str+'\n')
 
     # print avg cycle
-    avg_req_cycle = total_cycles / num_req
-    print(f'Avg cycle is {avg_req_cycle}')
+    logging.log(LOG_MSG, avg_cyc_str)
+    logging.log(LOG_MSG, avg_mem_str)
+
+    # write to file
+    with open(output_log,'w+') as f:
+        f.writelines(prof_str)
+
+    logging.log(LOG_MSG, f'Written to {output_log}')
 
     if draw :
     # Creating histogram
-        fig, axs = plt.subplots(1, 1,
-                            figsize =(10, 7),
+        # logging.debug(f"cpu_req_stat: {cpu_req_stat}")
+        fig, (axs1,axs2) = plt.subplots(2, 1,
+                            figsize =(10, 10),
                             tight_layout = True)
-    
-        axs.hist(cycle_stat, bins = 50)
-        plt.savefig("profile_stat.png")
-        print("Saved to profile_state.png")
+
+        # translate tick to cycle
+        import numpy as np
+        mem_req_stat = np.array(mem_req_stat)/tick_per_ns
+
+        bins = 64
+        axs1.hist(cpu_req_stat, bins)
+        axs1.set_title(f"cpu request latency distribution (bins={bins},total_num={num_cmp_req},avg_latency={avg_req_cycle} cycles)")
+        axs1.set_xlabel('latency(cycles)')
+        axs1.set_ylabel('nums of cpu requests')
+        axs2.hist(mem_req_stat, bins)
+        axs2.set_title(f"memory latency distribution (bins={bins},total_num={num_cmp_mem},avg_latency={avg_mem_latency} ns)")
+        axs2.set_xlabel('latency(ns)')
+        axs2.set_ylabel('nums of memory requests')
+        fig.suptitle(os.path.basename(os.path.normpath(output_dir)))
+        plt.savefig(output_fig)
+        logging.log(LOG_MSG, f"Saved to {output_fig}")
 
 
 # this cache_table is used for name mapping for NetDest
@@ -290,29 +389,57 @@ def gen_cache_table(num_cpus, num_l3caches):
     for i in range(num_l3caches):
         name_to_idx[f"hnf.cntrl"] = num_cpus*3+i
         idx_to_name[num_cpus*3+i] = f"hnf.cntrl"
-
-    return name_to_idx, idx_to_name, len(name_to_idx)
     
+    num_caches = len(name_to_idx)
+    # logging.info(f"num_cpus:{num_cpus}")
+    # logging.info("cache idx:")
+    # for k,v in name_to_idx.items():
+    #     logging.info(f'{k}: {v}')
+    # logging.info(f"num_caches:{num_caches}")
+
+    return name_to_idx, idx_to_name, num_caches
+    
+
+def file_path(path):
+    if os.path.isfile(path):
+        return path
+    else:
+        raise argparse.ArgumentTypeError(f"not a file!")
 
 
 if __name__ == '__main__':
-    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 
     # [TODO]: now need to set the num_cpu and num_cache by hand
-    num_cpus = 2
-    num_dirs = 1 # snf
-    num_l3caches = 1 # hnf
-    filename= 'debug.trace'
+    num_cpus = None
+    num_dirs = None # snf
+    num_l3caches = None # hnf/llc
+    dmt=None
+    trans=None
+    hnf_tbe=None
+    snf_tbe=None
+    num_load=None
+
+    parser = argparse.ArgumentParser(description="")
+    parser.add_argument('--input', help='input file', required=True, type=str)
+    parser.add_argument('--output', help='output dir', required=True, type=str)
+    parser.add_argument('--num_cpu',help='num of cpu cores', required=False,type=int)
+    parser.add_argument('--num_llc', help='num of hnf nodes', required=False,type=int)
+    parser.add_argument('--num_mem', help='num of snf nodes', required=False,type=int)
+    parser.add_argument('--num_load',required=True,type=int)
+
+    args = vars(parser.parse_args())
+
+    trace_file = args['input']
+    output_dir = args['output']
+    num_cpus = args['num_cpu']
+    num_l3caches = args['num_llc']
+    num_dirs = args['num_mem']
+
+    # currently we only need input and output args
 
     cache_to_idx, idx_to_cache, num_caches = gen_cache_table(num_cpus, num_l3caches)
 
-    logging.info(f"num_cpus:{num_cpus}")
-    logging.info("cache idx:")
-    for k,v in cache_to_idx.items():
-        logging.info(f'{k}: {v}')
-    logging.info(f"num_caches:{num_caches}")
-
-    parse_log(filename, cache_to_idx, idx_to_cache, num_caches, breakdown=False)
+    parse_trace_log(trace_file, cache_to_idx, idx_to_cache, num_caches, breakdown=False)
     # turn on plot by setting draw True
     # turn on console log by setting console True
-    profiling(draw=True, console=False)
+    profiling(output_dir, draw=True, console=False)

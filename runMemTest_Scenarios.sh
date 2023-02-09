@@ -17,10 +17,11 @@ Help() {
 BUILD=""
 RUN=""
 ANALYSIS=""
+TXNTRACE=""
 
 TEST=""
 
-while getopts "hbr:sa:t:" options; do
+while getopts "hbr:s:a:t:p:" options; do
     case $options in
        h) Help
           exit;;
@@ -40,7 +41,17 @@ while getopts "hbr:sa:t:" options; do
           TEST=${OPTARG}
           echo "Processing option 'c' with '${OPTARG}' argument"
           ;;
-     
+       p)
+         TXNTRACE="yes"
+         DEBUG_FLAGS=TxnLink,TxnTrace
+         echo ${OPTARG}
+         TEST=${OPTARG}
+         echo "Running TxnTrace with '${OPTARG}' argument"
+         ;;
+       s)
+         STATS="yes"
+         TEST=${OPTARG}
+         echo "Running STATS parser"
     esac
 done
 
@@ -215,9 +226,9 @@ SNF_TBE_SET=(32)
 #DEBUG_FLAGS=RubySlicc
 DEBUG_FLAGS="SeqMemLatTest"
 
-MultiCoreAddrMode=False #False #True #--addr-intrlvd-or-tiled true then interleaved 
+MultiCoreAddrMode=False #False #False #True #--addr-intrlvd-or-tiled true then interleaved 
 
-OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEM_Hier_MEMADDInteLeaving2"
+OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEM_Hier_MEMADDInterL_PHYVNET"
 OUTPUT_PREFIX="TEST_${TEST}/NETWK${NETWORK}_LinkFactor40_SysClk2GHz"
 
 if [ "$BUILD" != "" ]; then
@@ -250,6 +261,7 @@ if [ "$RUN1" != "" ]; then
               --l3_assoc=${l3_assoc} \
               --network=${NETWORK} \
               --topology=CustomMesh \
+              --simple-physical-channels \
               --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
               --ruby \
               --maxloads=${NUM_LOAD} \
@@ -307,6 +319,43 @@ fi
           echo "**** search reqIn message in hnf"
           grep reqIn.m_msg_count ${statsfile} | grep hnf
 
+         done
+       done
+     done
+   done
+  done
+fi
+
+  if [ "$TXNTRACE" != "" ]; then
+    #OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
+    for DMT in ${DMT_Config[@]}; do
+       for NUMCPUS in ${NUM_CPU_SET[@]}; do
+          for TRANS in ${TRANS_SET[@]}; do
+             for  SNF_TBE in ${SNF_TBE_SET[@]}; do 
+                for NUM_LOAD in ${NUM_LOAD_SET[@]}; do 
+ 
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
+          grep -E 'Req Begin|Req Done|requestToMemory|responseFromMemory' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace
+          python3 logparser.py --input ${OUTPUT_DIR}/simple.trace --output ${OUTPUT_DIR} --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_mem ${NUM_MEM} --num_load ${NUM_LOAD}
+         done
+       done
+     done
+   done
+  done
+fi
+
+  if [ "$STATS" != "" ]; then
+    #OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
+    for DMT in ${DMT_Config[@]}; do
+       for NUMCPUS in ${NUM_CPU_SET[@]}; do
+          for TRANS in ${TRANS_SET[@]}; do
+             for  SNF_TBE in ${SNF_TBE_SET[@]}; do 
+                for NUM_LOAD in ${NUM_LOAD_SET[@]}; do 
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
+          ## by default will only print cpu,ddr,llc
+          ## python3 stats_parser.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM}
+          ## also print l2p,l1d,l1i
+          python3 stats_parser.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --print l1d,l1i,l2p,llc,cpu,ddr
          done
        done
      done
