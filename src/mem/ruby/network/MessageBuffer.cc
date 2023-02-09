@@ -230,23 +230,22 @@ void
 MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time)
 {
 
-    return;
     const std::type_info& msg_type = typeid(*(message.get()));
     // this set stores every txsn of rubyrequest. All subsequent messages must have a txsn within this set.
     static std::set<uint64_t> reqTxSeqNums;
 
     // use regex to choose the port_name we want to print
     std::string port_name = name();
-    std::regex req("^system[\\s\\S]+reqRdy$");
-    std::regex link("^system.ruby.network.int_links[\\s\\S]*");
+    // std::regex req("^system[\\s\\S]+reqRdy$");
+    // std::regex link("^system.ruby.network.int_links[\\s\\S]*");
 
     // if this line is reqRdy, skip this line
-    if(std::regex_match(port_name,req)){
+    if(port_name.find("reqRdy") != std::string::npos){
         // DPRINTF(TxnTrace, "Matched reqRdy\n");
         return;
     }
     // else if this line is link, depends on whether we set TxnLink
-    else if(std::regex_match(port_name,link)){
+    else if(port_name.find("system.ruby.network.int_links") != std::string::npos){
         // DPRINTF(TxnTrace, "Matched int_links\n");
         if(!::gem5::debug::TxnLink){ // if we not enabled txnlink, skip this line
             return;
