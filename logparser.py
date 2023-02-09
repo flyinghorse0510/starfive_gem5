@@ -420,7 +420,7 @@ if __name__ == '__main__':
     num_load=None
 
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument('--input', help='input dir', required=True, type=str)
+    parser.add_argument('--input', help='input file', required=True, type=str)
     parser.add_argument('--output', help='output dir', required=True, type=str)
     parser.add_argument('--num_cpu',help='num of cpu cores', required=False,type=int)
     parser.add_argument('--num_llc', help='num of hnf nodes', required=False,type=int)
@@ -429,12 +429,12 @@ if __name__ == '__main__':
 
     args = vars(parser.parse_args())
 
-    input_dir = args['input']
+    trace_file = args['input']
     output_dir = args['output']
     num_cpus = args['num_cpu']
     num_l3caches = args['num_llc']
     num_dirs = args['num_mem']
-    trace_file = os.path.join(input_dir, 'debug.trace')
+
     # currently we only need input and output args
 
     cache_to_idx, idx_to_cache, num_caches = gen_cache_table(num_cpus, num_l3caches)

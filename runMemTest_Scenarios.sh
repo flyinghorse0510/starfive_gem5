@@ -335,7 +335,8 @@ fi
                 for NUM_LOAD in ${NUM_LOAD_SET[@]}; do 
  
           OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
-          python3 logparser.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR} --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_mem ${NUM_MEM} --num_load ${NUM_LOAD}
+          grep -E 'Req Begin|Req Done|requestToMemory|responseFromMemory' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace
+          python3 logparser.py --input ${OUTPUT_DIR}/simple.trace --output ${OUTPUT_DIR} --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_mem ${NUM_MEM} --num_load ${NUM_LOAD}
          done
        done
      done
