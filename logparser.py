@@ -318,7 +318,7 @@ def profiling(output_dir, draw=False, console=False):
             mem_req_stat.append(req.mem_latency)
         except TypeError:
             logging.warning(f"cannot find the mem req response of request {req.seq_num}.")
-        prof_str.append(f'{seq_num:>16}\t{req.req_typ: >8}\t{req.req_latency if req.req_latency else "---": >16}\t{req.req_start: >16}\t{req.req_end if req.req_end else "---": >16}\t{req.mem_latency if req.mem_latency else "---":>16}\t{req.mem_start if req.mem_start else "---":>16}\t{req.mem_end if req.mem_end else "---":>16}\n')
+        prof_str.append(f'{seq_num:>16}\t{req.req_typ: >8}\t{req.req_latency if req.req_latency else "---": >16}\t{req.req_start: >16}\t{req.req_end if req.req_end else "---": >16}\t{req.mem_latency/tick_per_ns if req.mem_latency else "---":>16}\t{req.mem_start if req.mem_start else "---":>16}\t{req.mem_end if req.mem_end else "---":>16}\n')
     # debug print
     # print out the prof_str
     if console:
@@ -331,8 +331,8 @@ def profiling(output_dir, draw=False, console=False):
     avg_req_cycle = round(req_latency_sum / num_cmp_req, 4)
     avg_mem_latency = round(mem_latency_sum / num_cmp_mem / tick_per_ns, 4) # in ns
 
-    avg_mem_str = f'{num_cmp_mem} of completed memory requests. Avg mem access time is {avg_mem_latency} ns.'
-    avg_cyc_str = f'{num_req} of requests in total. {num_cmp_req} of completed requests. Avg complete time is {avg_req_cycle} cycle.'
+    avg_mem_str = f'{num_cmp_mem} of completed memory requests. Avg mem access time is {avg_mem_latency} ns. Min is {min(mem_req_stat)/tick_per_ns} ns. Max is {max(mem_req_stat)/tick_per_ns} ns.'
+    avg_cyc_str = f'{num_req} of requests in total. {num_cmp_req} of completed requests. Avg complete time is {avg_req_cycle} cycle. Min is {min(cpu_req_stat)} cycle. Max is {max(cpu_req_stat)} cycle.'
     prof_str.insert(0, avg_mem_str+'\n')
     prof_str.insert(0, avg_cyc_str+'\n')
 
@@ -363,7 +363,7 @@ def profiling(output_dir, draw=False, console=False):
         axs1.set_xlabel('latency(cycles)')
         axs1.set_ylabel('nums of cpu requests')
         axs2.hist(mem_req_stat, bins)
-        axs2.set_title(f"memory latency distribution (bins={bins},total_num={num_cmp_mem},avg_latency={avg_mem_cycle} ns)")
+        axs2.set_title(f"memory latency distribution (bins={bins},total_num={num_cmp_mem},avg_latency={avg_mem_latency} ns)")
         axs2.set_xlabel('latency(ns)')
         axs2.set_ylabel('nums of memory requests')
         fig.suptitle(os.path.basename(os.path.normpath(output_dir)))
