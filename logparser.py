@@ -329,10 +329,10 @@ def profiling(output_dir, draw=False, console=False):
     output_fig = os.path.join(output_dir, 'profile_stat.png')
     
     avg_req_cycle = round(req_latency_sum / num_cmp_req, 4)
-    avg_mem_cycle = round(mem_latency_sum / num_cmp_mem / tick_per_ns, 4)
+    avg_mem_latency = round(mem_latency_sum / num_cmp_mem / tick_per_ns, 4) # in ns
 
-    avg_mem_str = f'{num_cmp_mem} of completed memory requests. Avg mem access cycle is {avg_mem_cycle}'
-    avg_cyc_str = f'{num_req} of requests in total. {num_cmp_req} of completed requests. Avg cycle is {avg_req_cycle}'
+    avg_mem_str = f'{num_cmp_mem} of completed memory requests. Avg mem access time is {avg_mem_latency} ns.'
+    avg_cyc_str = f'{num_req} of requests in total. {num_cmp_req} of completed requests. Avg complete time is {avg_req_cycle} cycle.'
     prof_str.insert(0, avg_mem_str+'\n')
     prof_str.insert(0, avg_cyc_str+'\n')
 
