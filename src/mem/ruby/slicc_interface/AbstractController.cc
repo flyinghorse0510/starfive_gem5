@@ -277,6 +277,7 @@ AbstractController::serviceMemoryQueue()
     
     // need to pass the txseqnum from memmsg to pkt, but now use req for convenience.
     req->setTraceTxsn(mem_msg->gettxSeqNum());
+    // we cannot use the reqPtr, cause this req is nothing same with our sequencer's request
 
     PacketPtr pkt;
     if (mem_msg->getType() == MemoryRequestType_MEMORY_WB) {
@@ -385,6 +386,7 @@ AbstractController::recvTimingResp(PacketPtr pkt)
 
     // copy the txsn from pkt to memmsg, now use req for convenience
     (*msg).m_txSeqNum = pkt->req->getTraceTxsn();
+    // but we cannot use this req's address as reqPtr, since this is not the same seqReq we want.
 
     SenderState *s = dynamic_cast<SenderState *>(pkt->senderState);
     (*msg).m_OriginalRequestorMachId = s->id;

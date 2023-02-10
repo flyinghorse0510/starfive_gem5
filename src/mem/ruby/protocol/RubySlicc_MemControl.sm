@@ -74,7 +74,9 @@ structure(MemoryMsg, desc="...", interface="Message") {
   PrefetchBit Prefetch,         desc="Is this a prefetch request";
   bool ReadX,                   desc="Exclusive";
   int Acks,                     desc="How many acks to expect";
+  // zhiang: add txSeqNum to MemoryMsg
   uint64_t txSeqNum,            desc="Self-Defined Transaction Sequence Number";
+  RequestPtr reqPtr,        default="nullptr", desc="Pointer to original request";
 
   bool functionalRead(Packet *pkt) {
     if ((MessageSize == MessageSizeType:Response_Data) ||

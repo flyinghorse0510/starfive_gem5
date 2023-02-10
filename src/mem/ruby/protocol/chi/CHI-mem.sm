@@ -172,8 +172,9 @@ machine(MachineType:Memory, "Memory controller interface") :
     MachineID destination, desc="Where we are sending data";
     bool useDataSepResp, desc="Replies with DataSepResp instead of CompData";
 
-    // zhiang: add txSeqNum to TBE, we assign txSeqNum with -1
-    uint64_t txSeqNum, default="0xffffffffffffffff", desc="Store txSeqNum from CHIRequestMsg to CHIDataMsg and CHIResponseMsg";
+    // zhiang: add txSeqNum to TBE, we assign txSeqNum with 0
+    uint64_t txSeqNum, default="0", desc="Store txSeqNum from CHIRequestMsg to CHIDataMsg and CHIResponseMsg";
+    RequestPtr reqPtr, default="nullptr", desc="Pointer to original request";
   }
 
   structure(TBETable, external ="yes") {
@@ -504,6 +505,7 @@ machine(MachineType:Memory, "Memory controller interface") :
       // zhiang: we need to pass seqNum from CHIRequestMsg to CHIDataMsg/CHIResponseMsg
       // so we need to add seqNum here
       tbe.txSeqNum := in_msg.txSeqNum;
+      tbe.reqPtr := in_msg.reqPtr;
 
       if (in_msg.dataToFwdRequestor) {
         tbe.destination := in_msg.fwdRequestor;
@@ -549,6 +551,7 @@ machine(MachineType:Memory, "Memory controller interface") :
 
       // zhiang: CHIResponseMsg will carry the seqNum from tbe
       out_msg.txSeqNum := tbe.txSeqNum;
+      out_msg.reqPtr := tbe.reqPtr;
     }
     // also send different type of data when ready
     tbe.useDataSepResp := true;
@@ -564,6 +567,7 @@ machine(MachineType:Memory, "Memory controller interface") :
 
       // zhiang: CHIResponseMsg will carry the seqNum from tbe
       out_msg.txSeqNum := tbe.txSeqNum;
+      out_msg.reqPtr := tbe.reqPtr;
     }
   }
 
@@ -577,6 +581,7 @@ machine(MachineType:Memory, "Memory controller interface") :
       out_msg.MessageSize := MessageSizeType:Request_Control;
       out_msg.Len := 0;
       out_msg.txSeqNum := tbe.txSeqNum;
+      out_msg.reqPtr := tbe.reqPtr;
     }
   }
 
@@ -591,6 +596,7 @@ machine(MachineType:Memory, "Memory controller interface") :
       out_msg.DataBlk := tbe.dataBlk;
       out_msg.Len := tbe.accSize;
       out_msg.txSeqNum := tbe.txSeqNum;
+      out_msg.reqPtr := tbe.reqPtr;
     }
     tbe.dataBlkValid.clear();
     pendingWrites := pendingWrites + 1;
@@ -615,6 +621,7 @@ machine(MachineType:Memory, "Memory controller interface") :
 
       // zhiang: CHIResponseMsg will carry the seqNum from tbe
       tbe.txSeqNum := in_msg.txSeqNum;
+      tbe.reqPtr := in_msg.reqPtr;
     }
   }
 
@@ -632,6 +639,7 @@ machine(MachineType:Memory, "Memory controller interface") :
 
       // zhiang: pass seqNum to CHIDataMsg
       out_msg.txSeqNum := tbe.txSeqNum;
+      out_msg.reqPtr := tbe.reqPtr;
 
       // Called in order for the whole block so use rxtxBytes as offset
       out_msg.bitMask.setMask(tbe.rxtxBytes, data_channel_size);

@@ -244,6 +244,13 @@ VC_PER_VNET=4
 #DEBUG_FLAGS=RubySlicc
 DEBUG_FLAGS="SeqMemLatTest"
 
+# note from zhiang:
+# use FlitHop to print only Head/HeadTail Flit msg
+# use FlitHopFull to print all Flit msg, body, credit ...
+#DEBUG_FLAGS="SeqMemLatTest,TxnTrace,FlitHop,FlitHopFull"
+DEBUG_FLAGS="SeqMemLatTest,TxnTrace,FlitHop"
+DMT_Config=(False)
+
 MultiCoreAddrMode=True #False #False #True #--addr-intrlvd-or-tiled true then interleaved 
 
 #OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/Garnet_PHYVNET_SEQTBE1_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}"

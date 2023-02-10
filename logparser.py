@@ -70,6 +70,7 @@ class Request:
         self.req_start = req_start # 
         self.req_end = None # 
         self.req_latency = None # entire round trip time
+        self.hops = None
         # memory statistics
         self.mem_addr = None # memory address
         self.mem_start = None # memory access time
@@ -185,7 +186,7 @@ def parse_request(line:str, tick:int, seq_num:str, name:str):
     if seqreq_search : 
         seqReq = seqreq_search.group(1)
         if seqReq == 'Done': # this is the end of request
-            cycle_search = re.search('(\d+)\scycles$',line)
+            cycle_search = re.search('(\d+)\scycles, (\d+) hops$',line)
             try:
                 assert req_dict[seq_num] != None
                 req: Request = req_dict[seq_num]
@@ -194,6 +195,7 @@ def parse_request(line:str, tick:int, seq_num:str, name:str):
                 logging.warning(f"all requests are:{list(map(str, req_dict.values()))}")
             req.req_end = tick
             req.req_latency = int(cycle_search.group(1))
+            req.hops = int(cycle_search.group(2))
             req.success = None # [TODO]: extract the status of the request
 
         elif seqReq == 'Begin': # this is the start of request
@@ -302,8 +304,9 @@ def profiling(output_dir, draw=False, console=False):
     cpu_req_stat: List[int] = []
     mem_req_stat: List[int] = []
     prof_str = []
-    prof_str.append(f'{"TxSeqNum": >16}\t{"req_typ": >8}\t{"req_latency": >16}\t{"req_start": >16}\t{"req_end": >16}\t{"mem_latency": >16}\t{"mem_start": >16}\t{"mem_end": >16}\n')
-    for seq_num,req in req_dict.items():
+
+    prof_str.append(f'{"TxSeqNum": >16}\t{"req_typ": >8}\t{"req_latency": >16}\t{"hops": >16}\t{"req_start": >16}\t{"req_end": >16}\t{"mem_latency": >16}\t{"mem_start": >16}\t{"mem_end": >16}\n')
+    for req_num,req in req_dict.items():
         # need to deal with the cycle exceptions
         # req.req_latency may be None
         try:
@@ -318,7 +321,7 @@ def profiling(output_dir, draw=False, console=False):
             mem_req_stat.append(req.mem_latency)
         except TypeError:
             logging.warning(f"cannot find the mem req response of request {req.seq_num}.")
-        prof_str.append(f'{seq_num:>16}\t{req.req_typ: >8}\t{req.req_latency if req.req_latency else "---": >16}\t{req.req_start: >16}\t{req.req_end if req.req_end else "---": >16}\t{req.mem_latency/tick_per_ns if req.mem_latency else "---":>16}\t{req.mem_start if req.mem_start else "---":>16}\t{req.mem_end if req.mem_end else "---":>16}\n')
+        prof_str.append(f'{req_num:>16}\t{req.req_typ: >8}\t{req.req_latency if req.req_latency!=None else "---": >16}\t{req.hops if req.hops!=None else "---": >16}\t{req.req_start: >16}\t{req.req_end if req.req_end!=None else "---": >16}\t{req.mem_latency/tick_per_ns if req.mem_latency!=None else "---":>16}\t{req.mem_start if req.mem_start!=None else "---":>16}\t{req.mem_end if req.mem_end!=None else "---":>16}\n')
     # debug print
     # print out the prof_str
     if console:
@@ -438,7 +441,7 @@ if __name__ == '__main__':
     # currently we only need input and output args
 
     cache_to_idx, idx_to_cache, num_caches = gen_cache_table(num_cpus, num_l3caches)
-
+    print(f"Processing file: {trace_file}")
     parse_trace_log(trace_file, cache_to_idx, idx_to_cache, num_caches, breakdown=False)
     # turn on plot by setting draw True
     # turn on console log by setting console True

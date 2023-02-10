@@ -42,6 +42,12 @@
 #include "mem/ruby/network/garnet/flitBuffer.hh"
 #include "mem/ruby/slicc_interface/Message.hh"
 
+#include "mem/ruby/slicc_interface/RubyRequest.hh"
+#include "mem/ruby/protocol/CHIRequestMsg.hh"
+#include "mem/ruby/protocol/CHIResponseMsg.hh"
+#include "mem/ruby/protocol/CHIDataMsg.hh"
+#include "mem/ruby/protocol/MemoryMsg.hh"
+
 namespace gem5
 {
 
@@ -364,6 +370,31 @@ NetworkInterface::checkStallQueue()
     }
 }
 
+
+void set_flit_seq_ptr(MsgPtr message, flit* fl){
+    const std::type_info& msg_type = typeid(*(message.get()));
+    if (msg_type == typeid(RubyRequest)){
+        const RubyRequest* msg = dynamic_cast<RubyRequest*>(message.get());
+        fl->set_req_ptr(msg->getRequestPtr());
+    }
+    else if(msg_type == typeid(CHIRequestMsg)){
+        const CHIRequestMsg* msg = dynamic_cast<CHIRequestMsg*>(message.get());
+        fl->set_req_ptr(msg->getreqPtr());
+    }
+    else if (msg_type == typeid(CHIResponseMsg)){
+        const CHIResponseMsg* msg = dynamic_cast<CHIResponseMsg*>(message.get());
+        fl->set_req_ptr(msg->getreqPtr());
+    }
+    else if (msg_type == typeid(CHIDataMsg)){
+        const CHIDataMsg* msg = dynamic_cast<CHIDataMsg*>(message.get());
+        fl->set_req_ptr(msg->getreqPtr());
+    }
+    else if (msg_type == typeid(MemoryMsg)){
+        const MemoryMsg* msg = dynamic_cast<MemoryMsg*>(message.get());
+        fl->set_req_ptr(msg->getreqPtr());
+    }
+}
+
 // Embed the protocol message into flits
 bool
 NetworkInterface::flitisizeMessage(MsgPtr msg_ptr, int vnet)
@@ -445,6 +476,8 @@ NetworkInterface::flitisizeMessage(MsgPtr msg_ptr, int vnet)
                 net_msg_ptr->getMessageSize()),
                 oPort->bitWidth(), curTick());
 
+            // set flit seqPtr
+            set_flit_seq_ptr(msg_ptr, fl);
             fl->set_src_delay(curTick() - msg_ptr->getTime());
             niOutVcs[vc].insert(fl);
         }

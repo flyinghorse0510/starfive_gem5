@@ -476,6 +476,9 @@ class Request
     /** The transaction Id used by TxnTrace between snf and ddrctl **/
     uint64_t _traceTxsn = 0;
 
+    /** Number of hops in RubyNetwork **/
+    uint64_t _hops = 0;
+
   public:
 
     /**
@@ -666,6 +669,14 @@ class Request
     void setTraceTxsn(uint64_t txsn){
         // assert(txsn != 0);
         _traceTxsn = txsn;
+    }
+
+    uint64_t getHops() const {
+        return _hops;
+    }
+
+    void setHops(uint64_t hops){
+        _hops = hops;
     }
 
     /**

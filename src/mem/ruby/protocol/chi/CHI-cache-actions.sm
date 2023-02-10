@@ -153,8 +153,9 @@ action(AllocateTBE_SeqRequest, desc="") {
 
       // zhiang: now pass txSeqNum of rubyrequest from mandatoryqueue
       // to reqRdy as CHIRequestMsg. Otherwise CHIRequestMsg won't have correct txSeqNum
-      // this function also have a DVM sibling, now we don't care.
+      // this function also have a DVM sibling, we need to do this the same way there
       out_msg.txSeqNum := getTxSeqNum(in_msg.getRequestPtr());
+      out_msg.reqPtr := in_msg.getRequestPtr();
 
       if ((in_msg.Type == RubyRequestType:LD) ||
           (in_msg.Type == RubyRequestType:IFETCH)) {
@@ -201,6 +202,9 @@ action(AllocateTBE_SeqDvmRequest, desc="") {
       out_msg.seqReq := in_msg.getRequestPtr();
       out_msg.isSeqReqValid := true;
 
+      // zhiang: pass txseqnum to out_msg
+      out_msg.txSeqNum := getTxSeqNum(in_msg.getRequestPtr());
+      out_msg.reqPtr := in_msg.getRequestPtr();
 
       if (in_msg.Type == RubyRequestType:TLBI) {
         out_msg.type := CHIRequestType:DvmTlbi_Initiate;
@@ -237,6 +241,10 @@ action(AllocateTBE_PfRequest, desc="Allocate TBE for prefetch request") {
       assert(in_msg.Prefetch != PrefetchBit:No);
       out_msg.is_local_pf := true;
       out_msg.is_remote_pf := false;
+
+      // zhiang: pass txSeqnum to out_msg
+      out_msg.txSeqNum := getTxSeqNum(in_msg.getRequestPtr());
+      out_msg.reqPtr := in_msg.getRequestPtr();
 
       if (in_msg.Type == RubyRequestType:LD) {
         out_msg.type := CHIRequestType:Load;
@@ -2495,8 +2503,9 @@ action(Send_FwdSnpResp, desc="") {
     out_msg.responder := machineID;
     out_msg.Destination.add(tbe.requestor);
 
-    // zhiang: pass seqReq to CHIResponseMsg
+    // zhiang: pass txSeqNum to CHIResponseMsg
     out_msg.txSeqNum := tbe.txSeqNum;
+    out_msg.reqPtr := tbe.reqPtr;
 
     // We have the data (locally or upstream) or are dropping it
     bool keepData := (tbe.dir_sharers.count() > 0) ||
@@ -2549,6 +2558,7 @@ action(Send_Data, desc="") {
 
     // zhiang: pass txSeqNum to CHIDataMsg
     out_msg.txSeqNum := tbe.txSeqNum;
+    out_msg.reqPtr := tbe.reqPtr;
 
     int offset := tbe.snd_pendBytes.firstBitSet(true);
     assert(offset < blockSize);
@@ -2581,7 +2591,7 @@ action(Send_RespSepData, desc="") {
 
     // zhiang: pass txSeqNum to CHIResponseMsg
     out_msg.txSeqNum := tbe.txSeqNum;
-
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2602,7 +2612,7 @@ action(Send_CompI, desc="") {
 
     // zhiang: pass txSeqNum to CHIResponseMsg
     out_msg.txSeqNum := tbe.txSeqNum;
-
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2616,7 +2626,7 @@ action(Send_CompUC, desc="") {
 
     // zhiang: pass txSeqNum to CHIResponseMsg
     out_msg.txSeqNum := tbe.txSeqNum;
-
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2633,7 +2643,7 @@ action(Send_CompUC_Stale, desc="") {
 
     // zhiang: pass txSeqNum to CHIResponseMsg
     out_msg.txSeqNum := tbe.txSeqNum;
-
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2645,9 +2655,9 @@ action(Send_CompAck, desc="") {
     out_msg.responder := machineID;
     out_msg.Destination.add(mapAddressToDownstreamMachine(tbe.addr));
 
-    // zhiang: pass seqReq to CHIResponseMsg
+    // zhiang: pass reqPtr to CHIResponseMsg
     out_msg.txSeqNum := tbe.txSeqNum;
-
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2664,7 +2674,7 @@ action(Send_CompI_Stale, desc="") {
 
     // zhiang: pass txSeqNum to CHIResponseMsg
     out_msg.txSeqNum := tbe.txSeqNum;
-
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2678,7 +2688,7 @@ action(Send_CompDBIDResp, desc="") {
 
     // zhiang: pass txSeqNum to CHIResponseMsg
     out_msg.txSeqNum := tbe.txSeqNum;
-
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2695,7 +2705,7 @@ action(Send_CompDBIDResp_Stale, desc="") {
 
     // zhiang: pass seqReq to CHIResponseMsg
     out_msg.txSeqNum := tbe.txSeqNum;
-
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2709,7 +2719,7 @@ action(Send_DBIDResp, desc="") {
 
     // zhiang: pass seqReq to CHIResponseMsg
     out_msg.txSeqNum := tbe.txSeqNum;
-
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2723,7 +2733,7 @@ action(Send_Comp_WU, desc="") {
 
     // zhiang: pass txSeqNum to CHIResponseMsg
     out_msg.txSeqNum := tbe.txSeqNum;
-
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2740,7 +2750,7 @@ action(Send_SnpRespI, desc="") {
 
     // zhiang: pass txSeqNum to CHIResponseMsg
     out_msg.txSeqNum := tbe.txSeqNum;
-
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 

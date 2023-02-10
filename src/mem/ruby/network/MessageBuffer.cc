@@ -225,6 +225,13 @@ random_time()
     return time;
 }
 
+std::string denseDst(NetDest& dst)
+{
+    std::vector<NodeID> nodes = dst.getAllDest();
+    std::stringstream ss;
+    std::copy(nodes.begin(), nodes.end(), std::ostream_iterator<int>(ss, ","));
+    return ss.str();
+}
 
 void
 MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time)
@@ -253,17 +260,19 @@ MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time)
     }
     // else we always print this line
     // zhiang: we added txSeqNum to CHI protocol msgs so that can print txSeqNum
-    uint64_t txSeqNum = -1; 
+    uint64_t txSeqNum = 0; 
     if (msg_type == typeid(RubyRequest)){
         const RubyRequest* msg = dynamic_cast<RubyRequest*>(message.get());
         txSeqNum = msg->getRequestPtr()->getReqInstSeqNum();
         // DPRINTF(MsgBufDebug, "txsn: %#018x, arr: %lld, Message: %s\n", txSeqNum, arrival_time, *msg);
-        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, phyAddr: %s, lineAddr: %s\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, req: %p, PA: %s, LA: %s\n", 
                 txSeqNum, 
                 arrival_time, 
-                msg->getPhysicalAddress(),
-                msg->getLineAddress());
-        assert(txSeqNum != -1 && txSeqNum != 0); // txsn should not be -1 and 0
+                msg->getRequestPtr(),
+                printAddress(msg->getPhysicalAddress()),
+                printAddress(msg->getLineAddress()));
+        assert(txSeqNum != 0); // txsn should not be 0
+        assert(msg->getRequestPtr() != nullptr); // requestPtr should not be nullptr
         reqTxSeqNums.insert(txSeqNum);
     }
     else if(msg_type == typeid(CHIRequestMsg)){
@@ -272,12 +281,15 @@ MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time)
         MachineID const & reqtor = msg->getrequestor();
         // NetDest const & dest = msg->getDestination();
         CHIRequestType const & typ = msg->gettype();
-        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, req: %s, type: %s, accAddr: %s, addr: %s\n", 
+        NetDest dst = msg->getDestination();
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, %s->%s type: %s, req: %p, accA: %s, addr: %s\n", 
             txSeqNum, 
             arrival_time, 
-            reqtor, typ,
+            reqtor, denseDst(dst), typ,
+            msg->getreqPtr(),
             printAddress(msg->getaccAddr()),
             printAddress(msg->getaddr()));
+        // assert(msg->getreqPtr() != nullptr); // requestPtr should not be nullptr
         // DPRINTF(MsgBufDebug, "txsn: %#018x, arr: %lld, Message: %s\n", txSeqNum, arrival_time, *msg);
         // assert(reqTxSeqNums.find(txSeqNum) != reqTxSeqNums.end()); // txsn should be the same as in RubyRequest
     }
@@ -287,11 +299,14 @@ MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time)
         MachineID const & rspder = msg->getresponder();
         // NetDest const & dest = msg->getDestination();
         CHIResponseType const & typ = msg->gettype();
-        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, rsp: %s, type: %s, addr: %s\n", 
+        NetDest dst = msg->getDestination();
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, %s->%s type: %s, req: %p, addr: %s\n", 
             txSeqNum, 
             arrival_time, 
-            rspder, typ,
+            rspder, denseDst(dst), typ,
+            msg->getreqPtr(),
             printAddress(msg->getaddr()));
+        // assert(msg->getreqPtr() != nullptr); // requestPtr should not be nullptr
         // DPRINTF(MsgBufDebug, "txsn: %#018x, arr: %lld, Message: %s\n", txSeqNum, arrival_time, *msg);
         // assert(reqTxSeqNums.find(txSeqNum) != reqTxSeqNums.end()); // txsn should be the same as in RubyRequest
     }
@@ -301,11 +316,14 @@ MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time)
         MachineID const & rspder = msg->getresponder();
         // NetDest const & dest = msg->getDestination();
         CHIDataType const & typ = msg->gettype();
-        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, rsp: %s, type: %s, addr: %s\n", 
+        NetDest dst = msg->getDestination();
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, %s->%s type: %s, req: %p, addr: %s\n", 
             txSeqNum, 
             arrival_time, 
-            rspder, typ,
+            rspder, denseDst(dst), typ,
+            msg->getreqPtr(),
             printAddress(msg->getaddr()));
+        // assert(msg->getreqPtr() != nullptr); // requestPtr should not be nullptr
         // DPRINTF(MsgBufDebug, "txsn: %#018x, arr: %lld, Message: %s\n", txSeqNum, arrival_time, *msg);
         // assert(reqTxSeqNums.find(txSeqNum) != reqTxSeqNums.end()); // txsn should be the same as in RubyRequest
     }
@@ -315,11 +333,13 @@ MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time)
         MachineID const & sender = msg->getSender();
         // NetDest const & dest = msg->getDestination();
         MemoryRequestType const & typ = msg->getType();
-        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, sdr: %s, type: %s, addr: %s\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, %s->, type: %s, req: %p, addr: %s\n", 
             txSeqNum, 
             arrival_time, 
             sender, typ,
+            msg->getreqPtr(),
             printAddress(msg->getaddr()));
+        // assert(msg->getreqPtr() != nullptr); // requestPtr should not be nullptr
         // DPRINTF(MsgBufDebug, "txsn: %#018x, arr: %lld, Message: %s\n", txSeqNum, arrival_time, *msg);
         // assert(reqTxSeqNums.find(txSeqNum) != reqTxSeqNums.end()); // txsn should be the same as in RubyRequest
     }
