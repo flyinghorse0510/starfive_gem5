@@ -79,24 +79,13 @@ Ruby.define_options(parser)
 
 args = parser.parse_args()
 
-#
-# Set the default cache size and associativity to be very small to encourage
-# races between requests and writebacks.
-#
-# args.l1d_size="32kB"
-# args.l1i_size="32kB"
-# args.l2_size="256kB"
-# args.l3_size="2048kB"
-# args.l1d_assoc=2
-# args.l1i_assoc=2
-# args.l2_assoc=2
-# args.l3_assoc=2
-
 block_size = 64
-
-if args.num_cpus > block_size:
+producers_list=getCPUList(args.producers)
+consumers_list=getCPUList(args.consumers)
+num_cpus=args.num_cpus #len(producers_list)+len(consumers_list)
+if num_cpus > block_size:
      print("Error: Number of testers %d limited to %d because of false sharing"
-           % (args.num_cpus, block_size))
+           % (num_cpus, block_size))
      sys.exit(1)
 
 #
@@ -111,15 +100,15 @@ elif args.mem_test_type=='prod_cons_test':
 elif args.mem_test_type=='random_test':
     MemTestClass=MemRandomTest
 
-if args.num_cpus > 0 :
+if num_cpus > 0 :
     cpus = [ MemTestClass(max_loads = args.maxloads,
                      working_set = args.size_ws,
-                     num_producers = args.num_producers,
-                     num_cpus = args.num_cpus,
+                     num_producers = len(producers_list),
+                     num_cpus = num_cpus,
                      addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,
                      bench_c2cbw_mode = args.bench_c2cbw_mode,
-                     id_producers = getCPUList(args.producers),
-                     id_consumers = getCPUList(args.consumers),
+                     id_producers = producers_list,
+                     id_consumers = consumers_list,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
 
@@ -131,11 +120,11 @@ if args.num_dmas > 0:
     dmas = [ MemTestClass(max_loads = args.maxloads,
                      progress_interval = args.progress,
                      working_set = args.size_ws,
-                     num_producers = args.num_producers,
-                     num_cpus = args.num_cpus,
+                     num_producers = len(producers_list),
+                     num_cpus = num_cpus,
                      bench_c2cbw_mode = args.bench_c2cbw_mode,
-                     id_producers = getCPUList(args.producers),
-                     id_consumers = getCPUList(args.consumers),
+                     id_producers = producers_list,
+                     id_consumers = consumers_list,
                      addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,
                      suppress_func_errors = not args.suppress_func_errors) \
              for i in range(args.num_dmas) ]
