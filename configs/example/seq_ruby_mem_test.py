@@ -56,7 +56,6 @@ parser.add_argument("--suppress-func-errors", action="store_true",
                     help="suppress panic when functional accesses fail")
 parser.add_argument("--mem-test-type",type=str,default='bw_test',help="The type of Memtest stimulus generator to use")
 parser.add_argument("--size-ws",type=int,default=1024,help='Working set size in bytes. Must be a multiple of Cacheline size')
-parser.add_argument("--num-producers",type=int,default=1,help='Number of producer')
 parser.add_argument("--enable-DMT", default=False, help="enable DMT")
 parser.add_argument("--enable-DCT", default=False, help="enable DCT")
 parser.add_argument("--num-HNF-TBE", default=16, help="number of oustanding in HN-F")
@@ -66,8 +65,20 @@ parser.add_argument("--num-SNF-TBE", default=32, help="number of oustanding in H
 parser.add_argument("--addr-intrlvd-or-tiled",default=False,help="If true the address partitioning across CPUs is interleaved (like [0-N-2N;1-N+1-2N+1;...]). Otherwise Tiled [0:N-1,N:2N-1]")
 parser.add_argument("--sequencer-outstanding-requests",type=int,default=32,help="Max outstanding sequencer requests")
 parser.add_argument("--bench-c2cbw-mode",default=True,help="[True] Producer Consumer BW or [False] C2C Latency Test")
+
+"""
+    The (--producers,--num-producers) are mutually exclusive argument specification 
+    as are (--consumers,--num-consumers). --producers an --consumers specify the 
+    location and the number of producers and consumers respectively. These are mainly
+    used in pingpong latency benchmarks. While --num-producers and --num-consumers 
+    specify the number of producers and consumer respectively w/o any location information.
+    These are used in producer consumer style benchmarks. DO NOT specify both of them
+    together. If you do the results are not well-defined
+"""
 parser.add_argument("--producers",type=str, default="0", help="semicolon separated list of producers")
 parser.add_argument("--consumers",type=str, default="1", help="semicolon separated list of consumers")
+parser.add_argument("--num-producers",type=int,default=-1,help="number of producers")
+parser.add_argument("--num-consumers",type=int,default=-1,help="number of consumers")
 
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]
@@ -82,7 +93,13 @@ args = parser.parse_args()
 block_size = 64
 producers_list=getCPUList(args.producers)
 consumers_list=getCPUList(args.consumers)
-num_cpus=args.num_cpus #len(producers_list)+len(consumers_list)
+num_cpus=args.num_cpus
+if args.num_producers >= 1:
+    producers_list=[i for i in range(args.num_producers)]
+cpu_offset=len(producers_list)
+if args.num_consumers >= 1:
+    consumers_list=[(cpu_offset+i) for i in range(args.num_consumers)]
+
 if num_cpus > block_size:
      print("Error: Number of testers %d limited to %d because of false sharing"
            % (num_cpus, block_size))

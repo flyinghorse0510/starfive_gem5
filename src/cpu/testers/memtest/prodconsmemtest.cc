@@ -163,8 +163,8 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     num_consumers=id_consumers.size();
     fatal_if(num_producers > num_cpus, "Number of producers must be less than the number of CPUs");
     fatal_if(num_consumers > num_cpus, "Number of consumers must be less than the number of CPUs");
-    fatal_if((num_producers+num_producers) < 1, "Number of active CPUs must be atleast 1");
-    fatal_if((num_producers+num_producers) <= num_cpus, "Total active CPUs higher than maximum number of CPUs");
+    fatal_if((num_consumers+num_producers) < 1, "Number of active CPUs must be atleast 1");
+    fatal_if((num_consumers+num_producers) > num_cpus, "Total active CPUs higher than maximum number of CPUs,(num_producers=%d,num_consumers=%d,num_cpus=%d)\n",num_producers,num_consumers,num_cpus);
     auto itr_producer = std::find(id_producers.begin(),id_producers.end(),id);
     auto itr_consumer = std::find(id_consumers.begin(),id_consumers.end(),id);
     isIdle = true;
@@ -177,8 +177,8 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
         fatal_if(itr_producer != id_producers.end(),"%d cannot be both producer and consumer \n",id);
         isIdle = false;
     }
-    
-    fatal_if(workingSet%(num_producers*blockSize)!=0,"per producer working set not block aligned, workingSet=%d,num_cpus=%d,blockSize=%d\n",workingSet,num_cpus,blockSize);
+
+    fatal_if(workingSet%(num_producers*blockSize)!=0,"per producer working set not block aligned\n");
     numPerCPUWorkingBlocks=(workingSet/(num_producers*blockSize));
     for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
         Addr effectiveBlockAddr=(addrInterleavedOrTiled)?(baseAddr+(num_producers*i)+id):
@@ -294,7 +294,7 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
             }
         }
         
-        if (numCPUTransactionsCompleted >= num_cpus) {
+        if (numCPUTransactionsCompleted >= (num_consumers+num_producers)) {
             exitSimLoop("maximum number of loads/stores reached");
         }
     }
