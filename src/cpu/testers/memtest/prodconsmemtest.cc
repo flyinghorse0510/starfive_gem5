@@ -53,6 +53,8 @@
 #include <utility>
 #include <tuple>
 #include <memory>
+#include <algorithm>
+#include <iterator>
 #include "debug/MsgBufDebug.hh"
 
 namespace gem5
@@ -62,21 +64,37 @@ class ConsumerReadData_t {
     private:
         Addr addr;
         writeSyncData_t data;
-        uint32_t num_consumers;
+        std::set<unsigned> consumer_set;
     public:
-        ConsumerReadData_t(Addr addr, writeSyncData_t data, uint32_t num_consumers)
+        ConsumerReadData_t(Addr addr, writeSyncData_t data, const std::set<unsigned> &srcset)
             : addr(addr),
-              data(data),
-              num_consumers(num_consumers) {}
+              data(data) {
+            std::copy(srcset.begin(),srcset.end(),std::inserter(consumer_set,consumer_set.end()));
+        }
         Addr getPaddr() const { return addr; }
         writeSyncData_t getData() const { return data; }
-        uint32_t getNumConsumers() const { return num_consumers; }
-        void decConsumers() { num_consumers--; }
+        uint32_t getNumConsumers() const { return consumer_set.size(); }
+        void removeConsumer(unsigned);
+        void addConsumer(unsigned);
+        bool forme(unsigned);
 };
+
+bool ConsumerReadData_t::forme(unsigned myId) {
+    return (consumer_set.count(myId) > 0);
+}
+
+void ConsumerReadData_t::addConsumer(unsigned idToAdd) {
+    consumer_set.insert(idToAdd);
+}
+
+void ConsumerReadData_t::removeConsumer(unsigned idToRemove) {
+    fatal_if(consumer_set.count(idToRemove) < 1,"Consumer does not exist in this set");
+    consumer_set.erase(idToRemove);
+}
 
 static unsigned int TESTER_ALLOCATOR = 0;
 static std::queue<std::shared_ptr<ConsumerReadData_t>> writeValsQ=std::queue<std::shared_ptr<ConsumerReadData_t>>();
-static std::unordered_map<Addr,uint32_t> pendingReads;  // Data has not been consumed for these address. The mapped value represents the number of consumers
+static std::unordered_map<Addr,uint32_t> pendingReads;  // Data has not been consumed for these addresses. The mapped value represents the number of consumers
 static unsigned int TESTER_PRODUCER_IDX; // Pass Index of the writer. Only written by sole producer
 static unsigned int numCPUTransactionsCompleted = 0; // Number of CPUs that have completed their transactions
 
@@ -128,8 +146,8 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
       atomic(p.system->isAtomicMode()),
       seqIdx(0),
       baseAddr(p.base_addr_1),
+      benchmarkC2CBWMode(p.bench_c2cbw_mode),
       num_cpus(p.num_cpus),
-      num_producers(p.num_producers),
       addrInterleavedOrTiled(p.addr_intrlvd_or_tiled),
       txSeqNum((static_cast<uint64_t>(p.system->getRequestorId(this))) << 48), // init txSeqNum as RequestorId(16-bit)_0000_0000_0000
       suppressFuncErrors(p.suppress_func_errors), stats(this)
@@ -138,14 +156,28 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     fatal_if(id >= blockSize, "Too many testers, only %d allowed\n",
              blockSize - 1);
     
-    // Compute the number of consumers
-    isProducer=false;
-    if (id < num_producers) {
-        isProducer=true;
-    }
+    // Compute the producer consumer relations
+    std::copy(p.id_producers.begin(),p.id_producers.end(),std::inserter(id_producers,id_producers.end()));
+    std::copy(p.id_consumers.begin(),p.id_consumers.end(),std::inserter(id_consumers,id_consumers.end()));
+    num_producers=id_producers.size();
+    num_consumers=id_consumers.size();
     fatal_if(num_producers > num_cpus, "Number of producers must be less than the number of CPUs");
-    num_consumers=num_cpus-num_producers;
-
+    fatal_if(num_consumers > num_cpus, "Number of consumers must be less than the number of CPUs");
+    fatal_if((num_producers+num_producers) < 1, "Number of active CPUs must be atleast 1");
+    fatal_if((num_producers+num_producers) <= num_cpus, "Total active CPUs higher than maximum number of CPUs");
+    auto itr_producer = std::find(id_producers.begin(),id_producers.end(),id);
+    auto itr_consumer = std::find(id_consumers.begin(),id_consumers.end(),id);
+    isIdle = true;
+    isProducer = false;
+    if (itr_producer != id_producers.end()) {
+        fatal_if(itr_consumer != id_consumers.end(),"%d cannot be both producer and consumer \n",id);
+        isProducer = true;
+        isIdle = false;
+    } else if (itr_consumer != id_consumers.end()) {
+        fatal_if(itr_producer != id_producers.end(),"%d cannot be both producer and consumer \n",id);
+        isIdle = false;
+    }
+    
     fatal_if(workingSet%(num_producers*blockSize)!=0,"per producer working set not block aligned, workingSet=%d,num_cpus=%d,blockSize=%d\n",workingSet,num_cpus,blockSize);
     numPerCPUWorkingBlocks=(workingSet/(num_producers*blockSize));
     for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
@@ -156,13 +188,15 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     fatal_if(perCPUWorkingBlocks.size()<=0,"Working Set size is 0\n");
 
     maxLoads=0;
-    if (isProducer) {
-        maxLoads = static_cast<uint64_t>(std::ceil(maxLoadFactor * (static_cast<double>(perCPUWorkingBlocks.size()))));
-    } else {
-        /* If you are a consumer. Consume the data generated by all the producers */
-        maxLoads = static_cast<uint64_t>(std::ceil(num_producers * maxLoadFactor * (static_cast<double>(perCPUWorkingBlocks.size()))));        
+    if (!isIdle) {
+        if (isProducer) {
+            maxLoads = static_cast<uint64_t>(std::ceil(maxLoadFactor * (static_cast<double>(perCPUWorkingBlocks.size()))));
+        } else {
+            /* If you are a consumer. Consume the data generated by all the producers */
+            maxLoads = static_cast<uint64_t>(std::ceil(num_producers * maxLoadFactor * (static_cast<double>(perCPUWorkingBlocks.size()))));        
+        }
+        fatal_if(maxLoads <= 0, "Requires a minimum of 1 Load/Store for non idle MemTesters");
     }
-    fatal_if(maxLoads <= 0, "Requires a minimum of 1 Load/Store");
 
     // Initialize the txn counters
     numReadTxnGenerated=0;
@@ -170,12 +204,19 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     numWriteTxnGenerated=0;
     numWriteTxnCompleted=0;
     TESTER_PRODUCER_IDX = 0;
+
+    maxOutStandingTransactions = 1;
+    if (benchmarkC2CBWMode) {
+        maxOutStandingTransactions = 100;
+    }
     
-    DPRINTF(ProdConsMemLatTest,"CPU_%d(Producer:%d) WorkingSetRange:[%x,%x], maxTxn=%d\n",id,isProducer,perCPUWorkingBlocks.at(0),perCPUWorkingBlocks.at(numPerCPUWorkingBlocks-1),maxLoads);
+    DPRINTF(ProdConsMemLatTest,"CPU_%d(Producer:%d,Idle:%d) WorkingSetRange:[%x,%x], maxTxn=%d\n",id,isProducer,isIdle,perCPUWorkingBlocks.at(0),perCPUWorkingBlocks.at(numPerCPUWorkingBlocks-1),maxLoads);
     
     // kick things into action
-    schedule(tickEvent, curTick());
-    schedule(noRequestEvent, clockEdge(progressCheck));
+    if (!isIdle) {
+        schedule(tickEvent, curTick());
+        schedule(noRequestEvent, clockEdge(progressCheck));
+    }
 }
 
 Port &
@@ -190,6 +231,7 @@ ProdConsMemTest::getPort(const std::string &if_name, PortID idx)
 void
 ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
 {
+    assert(!isIdle); // An idle MemTester cannot receive a response. It has never generated a request
     const RequestPtr &req = pkt->req;
     assert(req->getSize() == 2);
 
@@ -243,7 +285,7 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
             referenceData[req->getPaddr()] = pkt_data[0];
             numWriteTxnCompleted++;
             stats.numWrites++;
-            writeValsQ.push(std::make_shared<ConsumerReadData_t>(req->getPaddr(),pkt_data[0],num_consumers));
+            writeValsQ.push(std::make_shared<ConsumerReadData_t>(req->getPaddr(),pkt_data[0],id_consumers));
             if (isProducer && (numWriteTxnCompleted > 0) && (numWriteTxnCompleted%workingSetSize==0)) {
                 TESTER_PRODUCER_IDX++;
             }
@@ -289,6 +331,7 @@ ProdConsMemTest::tick()
     // we should never tick if we are waiting for a retry
     assert(!retryPkt);
     assert(!waitResponse);
+    assert(!isIdle);
 
     // create a new request
     unsigned offset=0;
@@ -298,7 +341,7 @@ ProdConsMemTest::tick()
     unsigned workingSetSize=perCPUWorkingBlocks.size();
 
     // Skip if you have outstanding Too many outstanding transactions
-    if (outstandingAddrs.size() >= 100) {
+    if (outstandingAddrs.size() >= maxOutStandingTransactions) {
         waitResponse = true;
         return;
     }
@@ -328,14 +371,22 @@ ProdConsMemTest::tick()
         auto consumer_data=writeValsQ.front();
         paddr=consumer_data->getPaddr();
 
-        /* A previous Read to same paddr from this consumer is awaiting response. Stall */
+        /* This data is not meant for this consumer. Stall */
+        if (!(consumer_data->forme(id))) {
+            schedule(tickEvent, clockEdge(interval));
+            reschedule(noRequestEvent, clockEdge(progressCheck), true);
+            return;
+        }
+
+        /* A previous Read from this consumer is awaiting response. Stall */
         if (outstandingAddrs.find(paddr) != outstandingAddrs.end()) {
             waitResponse = true;
             return;
         }
 
+        /* Obtain the data and free-up the the writeVals queue */
         data=consumer_data->getData();
-        consumer_data->decConsumers();
+        consumer_data->removeConsumer(id);
         if (consumer_data->getNumConsumers() <= 0) {
             writeValsQ.pop();
         }
@@ -420,6 +471,7 @@ ProdConsMemTest::tick()
 void
 ProdConsMemTest::noRequest()
 {
+    assert(!isIdle);
     if (isProducer) {
         if (numWriteTxnGenerated < maxLoads) {
             panic("%s did not send a request for %d cycles", name(), progressCheck);
@@ -435,6 +487,7 @@ ProdConsMemTest::noRequest()
 void
 ProdConsMemTest::noResponse()
 {
+    assert(!isIdle);
     panic("%s did not see a response for %d cycles", name(), progressCheck);
 }
 

@@ -49,7 +49,7 @@ class ProdConsMemTest(ClockedObject):
     # Interval of packet injection, the size of the memory range
     # touched, and an optional stop condition
     interval = Param.Cycles(5, "Interval between request packets")
-    size = Param.Unsigned(4194304, "Working set(bytes). Deprecated")
+    size = Param.Unsigned(4194304, "[Deprecated] Working set(bytes)")
     base_addr_1 = Param.Addr(0x0, "Start of the testing region for writes")
     working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
     max_loads = Param.Counter(1, "Number of loads to unique address")
@@ -57,7 +57,11 @@ class ProdConsMemTest(ClockedObject):
     addr_intrlvd_or_tiled = Param.Bool(False,"If true the address partitioning across CPUs is interleaved [0,N,2N;1,N+1,2N+1;...]. Otherwise Tiled [0:N-1,N:2N-1]")
 
     num_cpus = Param.Counter(1, "Total number of CPUs")
-    num_producers = Param.Counter(1, "Number of producers")
+    num_producers = Param.Counter(1, "[Deprecated] Number of producers")
+
+    bench_c2cbw_mode = Param.Bool(False,"[True] Producer Consumer BW or [False] C2C Latency Test")
+    id_producers = VectorParam.Int([], "List of Producer Ids")
+    id_consumers = VectorParam.Int([], "List of Consumer Ids")
 
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses
