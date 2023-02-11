@@ -47,7 +47,7 @@ NUM_LLC=16
 NETWORK="simple" #"garnet" #"simple"
 NUM_MEM=1
 DEBUG_FLAGS=ProdConsMemLatTest #RubyCHIDebugStr5,RubyGenerated
-OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/C2C_1_${NETWORK}"
+OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/C2C_3_${NETWORK}"
 DCT_CONFIGS=(False) #(False True) #(True False)
 
 if [ "$BUILD" != "" ]; then
@@ -58,9 +58,9 @@ fi
 if [ "$PINGPONG" != "" ]; then
   echo "Pingpong latency test"
   NUM_CPUS=16
-  CONSUMER_SET_CONFIGS=(1) #$(seq 0 $((${NUM_CPUS}-1))) #("1") #(2 4 8 16)
-  PRODUCER_SET_CONFIGS=(0) #$(seq 0 $((${NUM_CPUS}-1))) #("0") #(1 2 4 8)
-  WKSETLIST=(128) #(1024 8192 32768 131072 262144 524288)
+  CONSUMER_SET_CONFIGS=$(seq 0 $((${NUM_CPUS}-1))) #("1") #(2 4 8 16)
+  PRODUCER_SET_CONFIGS=$(seq 0 $((${NUM_CPUS}-1))) #("0") #(1 2 4 8)
+  WKSETLIST=(1024 65536) #(1024 8192 32768 131072 262144 524288)
   OUTPUT_PREFIX="PRODCONS_PINGPONG"
 
   for DCT in ${DCT_CONFIGS[@]}; do
@@ -100,14 +100,14 @@ if [ "$PINGPONG" != "" ]; then
                --num_trans_per_cycle_llc=4 \
                --addr-intrlvd-or-tiled=True \
                --bench-c2cbw-mode=False \
-               --maxloads=10 \
+               --maxloads=100 \
                --size-ws=${WKSET} \
                --num-cpus=${NUM_CPUS} \
                --producers=${PRODUCER_SET} \
-               --consumers=${CONSUMER_SET}
+               --consumers=${CONSUMER_SET} &
           done
         fi
-        break
+        wait
       done
     done
   done
@@ -124,46 +124,49 @@ if [ "$C2CBW" != "" ]; then
   for DCT in ${DCT_CONFIGS[@]}; do
     for PRODUCER_SET in ${PRODUCER_SET_CONFIGS[@]}; do
       for CONSUMER_SET in ${CONSUMER_SET_CONFIGS[@]}; do
-        for WKSET in ${WKSETLIST[@]}; do
-          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_Prod${PRODUCER_SET}_Cons${CONSUMER_SET}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}"
-          echo $OUTPUT_DIR
-          mkdir -p $OUTPUT_DIR
-          $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
-             --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
-             -d $OUTPUT_DIR \
-             ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
-             --ruby \
-             --num-dirs=${NUM_MEM} \
-             --num-l3caches=${NUM_LLC} \
-             --l1d_size=${l1d_size} \
-             --l1i_size=${l1i_size} \
-             --l2_size=${l2_size} \
-             --l3_size=${l3_size} \
-             --l1d_assoc=${l1d_assoc} \
-             --l1i_assoc=${l1i_assoc} \
-             --l2_assoc=${l2_assoc} \
-             --l3_assoc=${l3_assoc} \
-             --network=${NETWORK} \
-             --topology=CustomMesh \
-             --simple-physical-channels \
-             --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
-             --mem-size="16GB" \
-             --mem-type=DDR4_3200_8x8 \
-             --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
-             --mem-test-type='prod_cons_test' \
-             --disable-gclk-set \
-             --enable-DMT=False \
-             --enable-DCT=${DCT} \
-             --num_trans_per_cycle_llc=4 \
-             --addr-intrlvd-or-tiled=True \
-             --bench-c2cbw-mode=True \
-             --maxloads=10 \
-             --size-ws=${WKSET} \
-             --num-cpus=${NUM_CPUS} \
-             --num-producers=${PRODUCER_SET} \
-             --num-consumers=${CONSUMER_SET}
-        done
+        if [[ $(($PRODUCER_SET + $CONSUMER_SET)) -lt ${NUM_CPUS} ]]; then
+          for WKSET in ${WKSETLIST[@]}; do
+            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_Prod${PRODUCER_SET}_Cons${CONSUMER_SET}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}"
+            echo $OUTPUT_DIR
+            mkdir -p $OUTPUT_DIR
+            $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
+               --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
+               -d $OUTPUT_DIR \
+               ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
+               --ruby \
+               --num-dirs=${NUM_MEM} \
+               --num-l3caches=${NUM_LLC} \
+               --l1d_size=${l1d_size} \
+               --l1i_size=${l1i_size} \
+               --l2_size=${l2_size} \
+               --l3_size=${l3_size} \
+               --l1d_assoc=${l1d_assoc} \
+               --l1i_assoc=${l1i_assoc} \
+               --l2_assoc=${l2_assoc} \
+               --l3_assoc=${l3_assoc} \
+               --network=${NETWORK} \
+               --topology=CustomMesh \
+               --simple-physical-channels \
+               --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
+               --mem-size="16GB" \
+               --mem-type=DDR4_3200_8x8 \
+               --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
+               --mem-test-type='prod_cons_test' \
+               --disable-gclk-set \
+               --enable-DMT=False \
+               --enable-DCT=${DCT} \
+               --num_trans_per_cycle_llc=4 \
+               --addr-intrlvd-or-tiled=True \
+               --bench-c2cbw-mode=True \
+               --maxloads=100 \
+               --size-ws=${WKSET} \
+               --num-cpus=${NUM_CPUS} \
+               --num-producers=${PRODUCER_SET} \
+               --num-consumers=${CONSUMER_SET} &
+          done
+        fi
       done
+      wait
     done
   done
 fi
