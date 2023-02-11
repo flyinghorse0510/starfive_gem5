@@ -105,7 +105,7 @@ class NoC_Params:
     (see configs/ruby/CHI.py)
     '''
     router_link_latency = 1
-    node_link_latency = 1
+    node_link_latency = 0 #1
     router_latency = 1
     router_buffer_size = 4
     cntrl_msg_size = 8
