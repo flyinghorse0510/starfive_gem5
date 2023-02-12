@@ -397,6 +397,17 @@ ProdConsMemTest::tick()
             waitResponse = true;
             return;
         }
+
+        /* 
+         * If you are running C2C pingpong latency tests. 
+         * Do not allow any new write txns if there
+         * are any pending readings
+         */
+        if ((!benchmarkC2CBWMode) && (pendingReads.size() > 0)) {
+            schedule(tickEvent, clockEdge(interval));
+            reschedule(noRequestEvent, clockEdge(progressCheck), true);
+            return;
+        }
         
         /* No free addresses to generate from this producer. Stall */
         if (outstandingAddrs.size() >= workingSetSize) {
