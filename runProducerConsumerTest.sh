@@ -44,11 +44,15 @@ l1i_assoc=2
 l2_assoc=8
 l3_assoc=16
 NUM_LLC=16
-NETWORK="simple" #"garnet" #"simple"
 NUM_MEM=1
 DEBUG_FLAGS=ProdConsMemLatTest #RubyCHIDebugStr5,RubyGenerated
-OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/C2C_3_${NETWORK}"
-DCT_CONFIGS=(False) #(False True) #(True False)
+DCT_CONFIGS=(False True) #(True False)
+NETWORK="garnet" #"garnet" #"simple"
+LINKWIDTH=128 #(128 256)
+VC_PER_VNET=4
+ROUTER_LAT=1
+LINK_LAT=1
+OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/C2C_4_${NETWORK}"
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -87,6 +91,10 @@ if [ "$PINGPONG" != "" ]; then
                --l2_assoc=${l2_assoc} \
                --l3_assoc=${l3_assoc} \
                --network=${NETWORK} \
+               --link-width-bits=${LINKWIDTH} \
+               --vcs-per-vnet=${VC_PER_VNET} \
+               --link-latency=${LINK_LAT} \
+               --router-latency=${ROUTER_LAT} \
                --topology=CustomMesh \
                --simple-physical-channels \
                --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
@@ -107,8 +115,8 @@ if [ "$PINGPONG" != "" ]; then
                --consumers=${CONSUMER_SET} &
           done
         fi
-        wait
       done
+      wait
     done
   done
 fi
@@ -145,6 +153,10 @@ if [ "$C2CBW" != "" ]; then
                --l2_assoc=${l2_assoc} \
                --l3_assoc=${l3_assoc} \
                --network=${NETWORK} \
+               --link-width-bits=${LINKWIDTH} \
+               --vcs-per-vnet=${VC_PER_VNET} \
+               --link-latency=${LINK_LAT} \
+               --router-latency=${ROUTER_LAT} \
                --topology=CustomMesh \
                --simple-physical-channels \
                --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
