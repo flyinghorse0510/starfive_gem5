@@ -297,6 +297,13 @@ def llc_summary(llcs:List[LLC]):
         total_access += llc.access
     return f'LLC summary: hit rate:{total_hit/total_access}, miss rate: {total_miss/total_access}'
 
+def gen_throughput():
+    cpu_read_sum = reduce(lambda x,y:x+y, [cpu.read for cpu in cpus])
+    cpu_write_sum = reduce(lambda x,y:x+y, [cpu.write for cpu in cpus])
+    cpu_read_byte = cpu_read_sum * 64
+    cpu_write_byte = cpu_write_sum * 64
+    throughput = round(cpu_read_byte * 1000 / tick, 4)
+    return cpu_read_byte, cpu_write_byte, throughput
 
 if __name__ == '__main__':
 
@@ -309,6 +316,8 @@ if __name__ == '__main__':
     # test_ddr()
     # test_priv_cache_pat()
 
+
+    # --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --trans ${TRANS} --snf_tbe ${SNF_TBE} --dmt ${DMT} --linkwidth ${LINKWIDTH} --print l1d,l1i,l2p,llc,cpu,ddr
     import argparse
     parser = argparse.ArgumentParser(description="")
     parser.add_argument('--input', required=True, type=str)
@@ -316,6 +325,10 @@ if __name__ == '__main__':
     parser.add_argument('--num_cpu', required=True, type=int)
     parser.add_argument('--num_llc', required=True, type=int)
     parser.add_argument('--num_ddr', required=True, type=int)
+    parser.add_argument('--trans', required=True, type=int)
+    parser.add_argument('--snf_tbe', required=True, type=int)
+    parser.add_argument('--dmt', required=True, type=bool)
+    parser.add_argument('--linkwidth', required=True, type=int)
     parser.add_argument('--print', required=False,type=str,default='cpu,ddr,llc',help='choose what to print from [cpu,l1d,l1i,l2,llc,ddr] with comma as delimiter. e.g. --print cpu,llc will only print cpu and llc. default options is cpu,llc,ddr')
 
     args = parser.parse_args()
@@ -360,3 +373,15 @@ if __name__ == '__main__':
         f.write(stats_str)
         f.write(llc_summary(llcs))
     print(f'written to {args.output}')
+
+    # need to create a new file by .sh to avoid historical data from last run
+    # --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --dmt ${DMT} --trans ${TRANS} --snf_tbe ${SNF_TBE} --linkwidth ${LINKWIDTH}
+
+    # generate the header for throughput.txt
+    if not os.path.getsize('throughput.txt'):
+        with open('throughput.txt', 'w') as f:
+            f.write(f'{"CPU":^8}{"LLC":^8}{"DDR":^8}{"DMT":^8}{"TRANS":^8}{"SNF_TBE":^8}{"LINKWIDTH":^16}{"READ(B)":^16}{"WRITE(B)":16}{"TICK(ps)":^16}{"THROUGHPUT(GB/s)":^16}\n')
+    
+    cpu_read_byte, cpu_write_byte, throughput = gen_throughput()
+    with open('throughput.txt', 'a+') as f:
+        f.write(f'{args.num_cpu:^8}{args.num_llc:^8}{args.num_ddr:^8}{args.dmt:^8}{args.trans:^8}{args.snf_tbe:^8}{args.linkwidth:^16}{cpu_read_byte:^16}{cpu_write_byte:^16}{tick:^16}{throughput:^16}\n')

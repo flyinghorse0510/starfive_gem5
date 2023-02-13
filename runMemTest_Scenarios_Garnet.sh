@@ -390,6 +390,9 @@ fi
 fi
 
   if [ "$STATS" != "" ]; then
+    # generate throughput.txt to summarize all throughput from stats.log. Each time will generate new throughput.txt
+    touch throughput.txt
+    dd if=/dev/null of=throughput.txt
     #OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
     for DMT in ${DMT_Config[@]}; do
        for NUMCPUS in ${NUM_CPU_SET[@]}; do
@@ -404,7 +407,7 @@ fi
           ## by default will only print cpu,ddr,llc
           ## python3 stats_parser.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM}
           ## also print l2p,l1d,l1i
-          python3 stats_parser.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --print l1d,l1i,l2p,llc,cpu,ddr
+          python3 stats_parser.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --trans ${TRANS} --snf_tbe ${SNF_TBE} --dmt ${DMT} --linkwidth ${LINKWIDTH} --print l1d,l1i,l2p,llc,cpu,ddr
          done
        done
      done
