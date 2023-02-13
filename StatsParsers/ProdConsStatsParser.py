@@ -198,10 +198,11 @@ def getStatsFromTraceTest(outdir_root):
 
 
 
-def getStats(statsFileName,dstCPU):
+def getBWStats(statsFileName,dstCPU):
     statMatcherList=[
         re.compile(r'simTicks'),
         re.compile(r'system\.cpu'+str(dstCPU)+r'\.numReads'),
+        re.compile(r'system\.clk_domain\.clock')
         re.compile(r'simFreq')]
     statsDict={}
     with open(statsFileName,'r') as statFileD:
@@ -217,28 +218,27 @@ def getStats(statsFileName,dstCPU):
                     else :
                         statsDict[metric]=int(line.split()[1])
     newStatsDict={}
-    newStatsDict['Latency']=(statsDict['simTicks']/statsDict['simFreq'])
+    newStatsDict['Latency']=(statsDict['simTicks']/statsDict['system.clk_domain.clock'])
     newStatsDict['numReads']=statsDict['numReads']
-    perUnitLatency=1e9*(newStatsDict['Latency']/statsDict['numReads'])
-    print(f'Latency={perUnitLatency}')
-    return newStatsDict
+    bw=64*((newStatsDict['numReads'])/(newStatsDict['Latency']))
+    return bw
 
-def getPingPong(outdir_root):
+def getProdConsBW(outdir_root):
     dctConfigList=[True,False]
     workinSetList=[1024, 65536]
     allProducerList=list(range(16))
     allConsumerList=list(range(16))
-    bwOrC2C=False
+    bwOrC2C=True
     allConfigList=it.product(dctConfigList,workinSetList,allProducerList,allConsumerList)
     for dct,ws,prod,cons in tqdm(allConfigList):
         tc=Gem5SysConfigInfo(outdir_root,dct,ws,prod,cons,bwOrC2C)
         statsFile=tc.__repr__()+'/stats.txt'
         if os.path.isfile(statsFile):
-            statsDict=getStats(statsFile,cons)
+            statsDict=getBWStats(statsFile,cons)
         
 def main():
     outdir_root='/home/arka.maity/Desktop/gem5_starlink2.0_memtest/output/GEM5_PDCP/C2C_7_simple'
-    # getPingPong(outdir_root)
+    # getProdConsBW(outdir_root)
     getStatsFromTraceTest(outdir_root)
 
 if __name__=="__main__":

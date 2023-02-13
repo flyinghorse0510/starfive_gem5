@@ -45,15 +45,15 @@ l2_assoc=8
 l3_assoc=16
 NUM_LLC=16
 NUM_MEM=1
-DEBUG_FLAGS=ProdConsMemLatTest,TxnTrace #RubyCHIDebugStr5,RubyGenerated
-DCT_CONFIGS=(False) #(False True) #(True False)
+DEBUG_FLAGS=RubyGenerated,TxnTrace #RubyCHIDebugStr5,RubyGenerated
+DCT_CONFIGS=(True) #(False True) #(True False)
 NETWORK="simple"
 LINKWIDTH=128 #(128 256)
 VC_PER_VNET=4
 ROUTER_LAT=1
 LINK_LAT=1
-MAXNUMLOADS=10
-OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/C2C_8_${NETWORK}"
+MAXNUMLOADS=2
+OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/C2C_9_${NETWORK}"
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -65,7 +65,7 @@ if [ "$PINGPONG" != "" ]; then
   NUM_CPUS=16
   CONSUMER_SET_CONFIGS=(0) #$(seq 0 $((${NUM_CPUS}-1))) #("1") #(2 4 8 16)
   PRODUCER_SET_CONFIGS=(2) #$(seq 0 $((${NUM_CPUS}-1))) #("0") #(1 2 4 8)
-  WKSETLIST=(65536) #(1024 8192 32768 131072 262144 524288)
+  WKSETLIST=(64) #(65536) #(1024 8192 32768 131072 262144 524288)
   OUTPUT_PREFIX="PRODCONS_PINGPONG"
 
   for DCT in ${DCT_CONFIGS[@]}; do
