@@ -3,8 +3,10 @@ import os
 import numpy as np
 import pprint as pp
 from tqdm import tqdm
-from dataclasses import dataclass
 import itertools as it
+import matplotlib.pyplot as plt
+from dataclasses import dataclass
+
 
 @dataclass
 class Gem5SysConfigInfo:
@@ -88,10 +90,7 @@ def getTickInterval(statsFileName):
     """
         Returns the tickInterval in seconds
     """
-    statMatcherList=[
-        re.compile(r'simTicks'),
-        re.compile(r'simFreq')]
-
+    statMatcherList=[re.compile(r'system\.clk_domain\.clock')]
     with open(statsFileName,'r') as statFileD:
         statLines=statFileD.readlines()
         statsDict=dict()
@@ -102,10 +101,9 @@ def getTickInterval(statsFileName):
                     metric=line.split()[0]
                     statsDict[metric]=int(line.split()[1])
 
-    return (1/statsDict['simFreq'])
+    return (1/statsDict['system.clk_domain.clock'])
 
 def getStatsFromTrace(trcFileName,srcCPU,dstCPU,tickInterval):
-    print(f'Tick Interval {tickInterval}')
     trcMatcherList=[
         re.compile(r'Complete'),
         re.compile(r'Start')
@@ -139,7 +137,7 @@ def getStatsFromTrace(trcFileName,srcCPU,dstCPU,tickInterval):
                         pcTxnIdPair = (memAddr,pcTxnId)
                         assert ('start' in trcStatsDict[pcTxnIdPair]), f'{pcTxnIdPair} has not started {int(lineComp[0])}\n{memOp}\n{trcStatsDict}'
                         trcStatsDict[pcTxnIdPair]['end']=int(lineComp[0])
-                        trcStatsDict[pcTxnIdPair]['lat']=1e9*tickInterval*(trcStatsDict[pcTxnIdPair]['end']-trcStatsDict[pcTxnIdPair]['start'])
+                        trcStatsDict[pcTxnIdPair]['lat']=tickInterval*(trcStatsDict[pcTxnIdPair]['end']-trcStatsDict[pcTxnIdPair]['start'])
     allLatencies=[]
     for k,v in trcStatsDict.items():
         addr,txnId=k
@@ -147,14 +145,33 @@ def getStatsFromTrace(trcFileName,srcCPU,dstCPU,tickInterval):
     minLat=np.array(allLatencies).min()
     medianLat=np.median(allLatencies)
     maxLat=np.array(allLatencies).max()
-    print(f'Min={minLat},Median={medianLat},Max={maxLat}')
-    return medianLat
+    return (minLat, medianLat, maxLat)
+
+def plotHeatMap(latMatrixList,cpuLabels,savedFileName):
+    fig,ax=plt.subplots(ncols=2)
+    for i,latMatrix in  enumerate(latMatrixList):
+        heatMap=ax[i].imshow(latMatrix,cmap='hot_r',vmin=100,vmax=150,interpolation='nearest', origin='lower')
+        ax[i].set_xticks(np.arange(len(cpuLabels)),labels=cpuLabels)
+        ax[i].set_yticks(np.arange(len(cpuLabels)),labels=cpuLabels)
+        if i == 0:
+            ax[i].set_title('C2C Latency')
+        else :
+            ax[i].set_title('C2C Latency (DCT)')
+
+    cb_ax = fig.add_axes([0.83, 0.1, 0.02, 0.8])
+    fig.colorbar(heatMap,ax=cb_ax)
+
+    fig.tight_layout()
+    plt.savefig(savedFileName)
 
 def getStatsFromTraceTest(outdir_root):
-    dctConfigList=[False]
+    dctConfigList=[False, True]
     workinSetList=[65536]
-    allProducerList=[0] #list(range(16))
-    allConsumerList=[2] #list(range(16))
+    allProducerList=list(range(3))
+    allConsumerList=list(range(3))
+    shape=(len(allProducerList),len(allConsumerList))
+    latMatrix=np.zeros(shape,dtype=float)
+    latMatrixDCT=np.zeros(shape,dtype=float)
     bwOrC2C=False
     allConfigList=it.product(dctConfigList,workinSetList,allProducerList,allConsumerList)
     tickInterval=-1
@@ -163,9 +180,23 @@ def getStatsFromTraceTest(outdir_root):
         trcFile=tc.__repr__()+'/debug.trace'
         statsFile=tc.__repr__()+'/stats.txt'
         if tickInterval <= 0:
-            tickInterval=getTickInterval(statsFile)
+            if os.path.isfile(statsFile):
+                tickInterval=getTickInterval(statsFile)
         if os.path.isfile(trcFile):
-            getStatsFromTrace(trcFile,prod,cons,tickInterval)
+            _,medianLat,_=getStatsFromTrace(trcFile,prod,cons,tickInterval)
+            if dct:
+                latMatrixDCT[prod,cons]=medianLat
+            else:
+                latMatrix[prod,cons]=medianLat
+    
+    # Plot the heatmaps for latMatrix
+    # cpuLabels=[f'{i}' for i in allProducerList]
+    # savedFileName=f'latMatrix.png'
+    # plotHeatMap([latMatrix,latMatrixDCT],cpuLabels,savedFileName)
+    print(f'Median latency w/o DCT {np.median(latMatrix)}')
+    print(f'Median latency with DCT {np.median(latMatrixDCT)}')
+
+
 
 def getStats(statsFileName,dstCPU):
     statMatcherList=[
@@ -206,7 +237,7 @@ def getPingPong(outdir_root):
             statsDict=getStats(statsFile,cons)
         
 def main():
-    outdir_root='/home/arka.maity/Desktop/gem5_starlink2.0_memtest/output/GEM5_PDCP/C2C_5_garnet'
+    outdir_root='/home/arka.maity/Desktop/gem5_starlink2.0_memtest/output/GEM5_PDCP/C2C_7_simple'
     # getPingPong(outdir_root)
     getStatsFromTraceTest(outdir_root)
 
