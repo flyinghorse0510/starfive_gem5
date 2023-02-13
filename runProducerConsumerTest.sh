@@ -46,13 +46,14 @@ l3_assoc=16
 NUM_LLC=16
 NUM_MEM=1
 DEBUG_FLAGS=ProdConsMemLatTest #RubyCHIDebugStr5,RubyGenerated
-DCT_CONFIGS=(False True) #(True False)
-NETWORK="garnet" #"garnet" #"simple"
+DCT_CONFIGS=(True) #(False True) #(True False)
+NETWORK="simple"
 LINKWIDTH=128 #(128 256)
 VC_PER_VNET=4
 ROUTER_LAT=1
 LINK_LAT=1
-OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/C2C_4_${NETWORK}"
+MAXNUMLOADS=10
+OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/C2C_7_${NETWORK}"
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -91,10 +92,6 @@ if [ "$PINGPONG" != "" ]; then
                --l2_assoc=${l2_assoc} \
                --l3_assoc=${l3_assoc} \
                --network=${NETWORK} \
-               --link-width-bits=${LINKWIDTH} \
-               --vcs-per-vnet=${VC_PER_VNET} \
-               --link-latency=${LINK_LAT} \
-               --router-latency=${ROUTER_LAT} \
                --topology=CustomMesh \
                --simple-physical-channels \
                --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
@@ -108,7 +105,7 @@ if [ "$PINGPONG" != "" ]; then
                --num_trans_per_cycle_llc=4 \
                --addr-intrlvd-or-tiled=True \
                --bench-c2cbw-mode=False \
-               --maxloads=100 \
+               --maxloads=${MAXNUMLOADS} \
                --size-ws=${WKSET} \
                --num-cpus=${NUM_CPUS} \
                --producers=${PRODUCER_SET} \
@@ -126,7 +123,7 @@ if [ "$C2CBW" != "" ]; then
   NUM_CPUS=16
   CONSUMER_SET_CONFIGS=(1 2 4 8) #$(seq 0 $((${NUM_CPUS}-1))) #("1") #(2 4 8 16)
   PRODUCER_SET_CONFIGS=(1 2 4 8) #$(seq 0 $((${NUM_CPUS}-1))) #("0") #(1 2 4 8)
-  WKSETLIST=(1024 8192 32768 131072 262144 524288)
+  WKSETLIST=(1024 65536)
   OUTPUT_PREFIX="PRODCONS_BW"
   
   for DCT in ${DCT_CONFIGS[@]}; do
@@ -153,10 +150,6 @@ if [ "$C2CBW" != "" ]; then
                --l2_assoc=${l2_assoc} \
                --l3_assoc=${l3_assoc} \
                --network=${NETWORK} \
-               --link-width-bits=${LINKWIDTH} \
-               --vcs-per-vnet=${VC_PER_VNET} \
-               --link-latency=${LINK_LAT} \
-               --router-latency=${ROUTER_LAT} \
                --topology=CustomMesh \
                --simple-physical-channels \
                --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
@@ -170,7 +163,7 @@ if [ "$C2CBW" != "" ]; then
                --num_trans_per_cycle_llc=4 \
                --addr-intrlvd-or-tiled=True \
                --bench-c2cbw-mode=True \
-               --maxloads=100 \
+               --maxloads=${MAXNUMLOADS} \
                --size-ws=${WKSET} \
                --num-cpus=${NUM_CPUS} \
                --num-producers=${PRODUCER_SET} \
