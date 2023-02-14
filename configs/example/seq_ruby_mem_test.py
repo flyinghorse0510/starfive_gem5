@@ -94,10 +94,9 @@ block_size = 64
 producers_list=getCPUList(args.producers)
 consumers_list=getCPUList(args.consumers)
 num_cpus=args.num_cpus
-if args.num_producers >= 1:
+if args.bench_c2cbw_mode:
     producers_list=[i for i in range(args.num_producers)]
-cpu_offset=len(producers_list)
-if args.num_consumers >= 1:
+    cpu_offset=len(producers_list)
     consumers_list=[(cpu_offset+i) for i in range(args.num_consumers)]
 
 if num_cpus > block_size:
@@ -120,7 +119,6 @@ elif args.mem_test_type=='random_test':
 if num_cpus > 0 :
     cpus = [ MemTestClass(max_loads = args.maxloads,
                      working_set = args.size_ws,
-                     num_producers = len(producers_list),
                      num_cpus = num_cpus,
                      addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,
                      bench_c2cbw_mode = args.bench_c2cbw_mode,
@@ -137,7 +135,6 @@ if args.num_dmas > 0:
     dmas = [ MemTestClass(max_loads = args.maxloads,
                      progress_interval = args.progress,
                      working_set = args.size_ws,
-                     num_producers = len(producers_list),
                      num_cpus = num_cpus,
                      bench_c2cbw_mode = args.bench_c2cbw_mode,
                      id_producers = producers_list,

@@ -157,11 +157,12 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     fatal_if(id >= blockSize, "Too many testers, only %d allowed\n",
              blockSize - 1);
     
-    // Compute the producer consumer relations
+
     std::copy(p.id_producers.begin(),p.id_producers.end(),std::inserter(id_producers,id_producers.end()));
     std::copy(p.id_consumers.begin(),p.id_consumers.end(),std::inserter(id_consumers,id_consumers.end()));
     num_producers=id_producers.size();
     num_consumers=id_consumers.size();
+    fatal_if(num_producers < 1, "Must have atleast one producer");
     fatal_if(num_producers > num_cpus, "Number of producers must be less than the number of CPUs");
     fatal_if(num_consumers > num_cpus, "Number of consumers must be less than the number of CPUs");
     fatal_if((num_consumers+num_producers) < 1, "Number of active CPUs must be atleast 1");
@@ -170,6 +171,8 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     auto itr_consumer = std::find(id_consumers.begin(),id_consumers.end(),id);
     isIdle = true;
     isProducer = false;
+    DPRINTF(ProdConsMemLatTest,"CPU_%d:num_producers=%d,num_consumers=%d\n",id,num_producers,num_consumers);
+
     if (itr_producer != id_producers.end()) {
         fatal_if(itr_consumer != id_consumers.end(),"%d cannot be both producer and consumer \n",id);
         isProducer = true;
@@ -391,11 +394,13 @@ ProdConsMemTest::tick()
 
         /* Obtain the data and free-up the the writeVals queue */
         data=consumer_data->getData();
-        if (removeConsumedData) {
-            consumer_data->removeConsumer(id);
-            if (consumer_data->getNumConsumers() <= 0) {
-                writeValsQ.pop();
-            }
+        consumer_data->removeConsumer(id);
+        if (consumer_data->getNumConsumers() <= 0) {
+            writeValsQ.pop();
+        }
+        if (!removeConsumedData) {
+            /* Push back at the again. So that you can read fresh data from the head */
+            writeValsQ.push(std::make_shared<ConsumerReadData_t>(consumer_data->getPaddr(),data,id_consumers));
         }
     } else {
         /* Skip if you generated maxLoads transactions. But keep rescheduling noRequestEvent */

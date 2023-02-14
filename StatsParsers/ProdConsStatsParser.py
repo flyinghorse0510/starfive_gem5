@@ -142,10 +142,10 @@ def getStatsFromTrace(trcFileName,srcCPU,dstCPU,tickInterval):
     for k,v in trcStatsDict.items():
         addr,txnId=k
         allLatencies.append(v['lat'])
-    minLat=np.array(allLatencies).min()
-    medianLat=np.median(allLatencies)
-    maxLat=np.array(allLatencies).max()
-    return (minLat, medianLat, maxLat)
+    # minLat=np.array(allLatencies).min()
+    # medianLat=np.median(allLatencies)
+    # maxLat=np.array(allLatencies).max()
+    return allLatencies
 
 def plotHeatMap(latMatrixList,cpuLabels,savedFileName):
     fig,ax=plt.subplots(ncols=2)
@@ -167,14 +167,16 @@ def plotHeatMap(latMatrixList,cpuLabels,savedFileName):
 def getStatsFromTraceTest(outdir_root):
     dctConfigList=[False, True]
     workinSetList=[65536]
-    allProducerList=list(range(3))
-    allConsumerList=list(range(3))
+    allProducerList=list(range(16))
+    allConsumerList=list(range(16))
     shape=(len(allProducerList),len(allConsumerList))
     latMatrix=np.zeros(shape,dtype=float)
     latMatrixDCT=np.zeros(shape,dtype=float)
     bwOrC2C=False
     allConfigList=it.product(dctConfigList,workinSetList,allProducerList,allConsumerList)
     tickInterval=-1
+    allLatencies=[]
+    allLatenciesDCT=[]
     for dct,ws,prod,cons in tqdm(allConfigList):
         tc=Gem5SysConfigInfo(outdir_root,dct,ws,prod,cons,bwOrC2C)
         trcFile=tc.__repr__()+'/debug.trace'
@@ -183,26 +185,30 @@ def getStatsFromTraceTest(outdir_root):
             if os.path.isfile(statsFile):
                 tickInterval=getTickInterval(statsFile)
         if os.path.isfile(trcFile):
-            _,medianLat,_=getStatsFromTrace(trcFile,prod,cons,tickInterval)
             if dct:
-                latMatrixDCT[prod,cons]=medianLat
+                allLatenciesDCT+=getStatsFromTrace(trcFile,prod,cons,tickInterval)
             else:
-                latMatrix[prod,cons]=medianLat
+                allLatencies+=getStatsFromTrace(trcFile,prod,cons,tickInterval)
+    print(f'DCT')
+    print(f'{np.min(allLatenciesDCT),np.mean(allLatenciesDCT),np.max(allLatenciesDCT)}')
+    print(f'nonDCT')
+    print(f'{np.min(allLatencies),np.mean(allLatencies),np.max(allLatencies)}')
+            
     
     # Plot the heatmaps for latMatrix
     # cpuLabels=[f'{i}' for i in allProducerList]
     # savedFileName=f'latMatrix.png'
     # plotHeatMap([latMatrix,latMatrixDCT],cpuLabels,savedFileName)
-    print(f'Median latency w/o DCT {np.median(latMatrix)}')
-    print(f'Median latency with DCT {np.median(latMatrixDCT)}')
+    # print(f'Median latency w/o DCT {np.median(latMatrix)}')
+    # print(f'Median latency with DCT {np.median(latMatrixDCT)}')
 
 
 
-def getBWStats(statsFileName,dstCPU):
+def getBWStats(statsFileName,srcCPU,dstCPU,ws,dct):
     statMatcherList=[
         re.compile(r'simTicks'),
         re.compile(r'system\.cpu'+str(dstCPU)+r'\.numReads'),
-        re.compile(r'system\.clk_domain\.clock')
+        re.compile(r'system\.clk_domain\.clock'),
         re.compile(r'simFreq')]
     statsDict={}
     with open(statsFileName,'r') as statFileD:
@@ -220,26 +226,30 @@ def getBWStats(statsFileName,dstCPU):
     newStatsDict={}
     newStatsDict['Latency']=(statsDict['simTicks']/statsDict['system.clk_domain.clock'])
     newStatsDict['numReads']=statsDict['numReads']
-    bw=64*((newStatsDict['numReads'])/(newStatsDict['Latency']))
-    return bw
+    # bw=64*((newStatsDict['numReads'])/(newStatsDict['Latency']))
+    print('--------------')
+    print(f'ProdCons={(srcCPU,dstCPU)}|ws={ws},dct={dct}')
+    print(newStatsDict)
+    print('--------------')
 
 def getProdConsBW(outdir_root):
     dctConfigList=[True,False]
-    workinSetList=[1024, 65536]
-    allProducerList=list(range(16))
-    allConsumerList=list(range(16))
+    workinSetList=[65536,131072]
+    allProducerList=[1] #list(range(16))
+    allConsumerList=[1] #list(range(16))
     bwOrC2C=True
     allConfigList=it.product(dctConfigList,workinSetList,allProducerList,allConsumerList)
     for dct,ws,prod,cons in tqdm(allConfigList):
         tc=Gem5SysConfigInfo(outdir_root,dct,ws,prod,cons,bwOrC2C)
         statsFile=tc.__repr__()+'/stats.txt'
         if os.path.isfile(statsFile):
-            statsDict=getBWStats(statsFile,cons)
+            getBWStats(statsFile,prod,cons,ws,dct)
         
 def main():
-    outdir_root='/home/arka.maity/Desktop/gem5_starlink2.0_memtest/output/GEM5_PDCP/C2C_7_simple'
-    # getProdConsBW(outdir_root)
-    getStatsFromTraceTest(outdir_root)
+    # outdir_root='/home/arka.maity/Desktop/gem5_starlink2.0_memtest/output/GEM5_PDCP/C2C_7_simple'
+    outdir_root='/home/arka.maity/Desktop/gem5_starlink2.0_memtest/output/GEM5_PDCP/C2C_9_simple'
+    getProdConsBW(outdir_root)
+    # getStatsFromTraceTest(outdir_root)
 
 if __name__=="__main__":
     main()
