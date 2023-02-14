@@ -62,39 +62,32 @@ namespace gem5
 
 class ConsumerReadData_t {
     private:
-        Addr addr;
-        writeSyncData_t data;
-        std::set<unsigned> consumer_set;
+        std::unordered_map<Addr,writeSyncData_t> addr_and_data;
+        std::vector<Addr> all_addr;
+        unsigned seqIdx;
     public:
-        ConsumerReadData_t(Addr addr, writeSyncData_t data, const std::set<unsigned> &srcset)
-            : addr(addr),
-              data(data) {
-            std::copy(srcset.begin(),srcset.end(),std::inserter(consumer_set,consumer_set.end()));
+        ConsumerReadData_t(const std::unordered_map<Addr,writeSyncData_t> &addrData) : seqIdx(0) {
+            std::copy(addrData.begin(), addrData.end(), std::inserter(addr_and_data,addr_and_data.end()));
+            for (auto it = addrData.begin(); it != addrData.end(); it++) {
+                all_addr.push_back(it->first);
+            }
         }
-        Addr getPaddr() const { return addr; }
-        writeSyncData_t getData() const { return data; }
-        uint32_t getNumConsumers() const { return consumer_set.size(); }
-        void removeConsumer(unsigned);
-        void addConsumer(unsigned);
-        bool forme(unsigned);
+        Addr getNextAddr();
+        writeSyncData_t getRefData(const Addr addr) const { 
+            assert(addr_and_data.find(addr) != addr_and_data.end());
+            return addr_and_data.at(addr); 
+        }
 };
 
-bool ConsumerReadData_t::forme(unsigned myId) {
-    return (consumer_set.count(myId) > 0);
+Addr ConsumerReadData_t::getNextAddr() {
+    Addr addr = all_addr.at(seqIdx);
+    seqIdx = (seqIdx+1)%(all_addr.size());
+    return addr;
 }
 
-void ConsumerReadData_t::addConsumer(unsigned idToAdd) {
-    consumer_set.insert(idToAdd);
-}
-
-void ConsumerReadData_t::removeConsumer(unsigned idToRemove) {
-    fatal_if(consumer_set.count(idToRemove) < 1,"Consumer does not exist in this set");
-    consumer_set.erase(idToRemove);
-}
 
 static unsigned int TESTER_ALLOCATOR = 0;
-static std::queue<std::shared_ptr<ConsumerReadData_t>> writeValsQ=std::queue<std::shared_ptr<ConsumerReadData_t>>();
-static std::unordered_map<Addr,uint32_t> pendingReads;  // Data has not been consumed for these addresses. The mapped value represents the number of consumers
+static std::unordered_map<unsigned,std::shared_ptr<ConsumerReadData_t>> writeValsQ;
 static unsigned int TESTER_PRODUCER_IDX; // Pass Index of the writer. Only written by sole producer
 static unsigned int numCPUTransactionsCompleted = 0; // Number of CPUs that have completed their transactions
 
@@ -147,7 +140,6 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
       seqIdx(0),
       baseAddr(p.base_addr_1),
       benchmarkC2CBWMode(p.bench_c2cbw_mode),
-      removeConsumedData(p.removed_consumed_data),
       num_cpus(p.num_cpus),
       addrInterleavedOrTiled(p.addr_intrlvd_or_tiled),
       txSeqNum((static_cast<uint64_t>(p.system->getRequestorId(this))) << 48), // init txSeqNum as RequestorId(16-bit)_0000_0000_0000
@@ -171,7 +163,6 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     auto itr_consumer = std::find(id_consumers.begin(),id_consumers.end(),id);
     isIdle = true;
     isProducer = false;
-    DPRINTF(ProdConsMemLatTest,"CPU_%d:num_producers=%d,num_consumers=%d\n",id,num_producers,num_consumers);
 
     if (itr_producer != id_producers.end()) {
         fatal_if(itr_consumer != id_consumers.end(),"%d cannot be both producer and consumer \n",id);
@@ -216,7 +207,7 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
         maxOutStandingTransactions = 100;
     }
     
-    DPRINTF(ProdConsMemLatTest,"CPU_%d(Producer:%d,Idle:%d) WorkingSetRange:[%x,%x], maxTxn=%d\n",id,isProducer,isIdle,perCPUWorkingBlocks.at(0),perCPUWorkingBlocks.at(numPerCPUWorkingBlocks-1),maxLoads);
+    DPRINTF(ProdConsMemLatTest,"CPU_%d(Producer:%d,Idle:%d) WorkingSetRange:[%x,%x], WorkingSetSize=%d, maxTxn=%d\n",id,isProducer,isIdle,perCPUWorkingBlocks.at(0),perCPUWorkingBlocks.at(numPerCPUWorkingBlocks-1),numPerCPUWorkingBlocks,maxLoads);
     
     // kick things into action
     if (!isIdle) {
@@ -257,7 +248,9 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
                 pkt->isWrite() ? "Write" : "Read", req->getPaddr());
     } else {
         if (pkt->isRead()) {
-            writeSyncData_t ref_data = referenceData[req->getPaddr()];
+            assert(writeValsQ.find(id) != writeValsQ.end());
+            auto cdata = writeValsQ.at(id);
+            writeSyncData_t ref_data = cdata->getRefData(remove_paddr);
             if (pkt_data[0] != ref_data) {
                 // Incorrect data read. Probably due to unhandled race conditions
                 panic("Read of %x returns %x, expected %x\n", remove_paddr,pkt_data[0], ref_data);
@@ -273,15 +266,7 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
                     nextProgressMessage += progressInterval;
                 }
             }
-            
-            if (removeConsumedData) { // Do not remove consume data. No need to check if there are pending reads
-                auto pendingAddrPtr=pendingReads.find(req->getPaddr());
-                assert(pendingAddrPtr != pendingReads.end());
-                pendingReads[req->getPaddr()]--;
-                if (pendingReads[req->getPaddr()]==0) {
-                    pendingReads.erase(pendingAddrPtr);
-                }
-            }
+
             if (numReadTxnCompleted >= maxLoads) {
                 numCPUTransactionsCompleted++;
             }
@@ -293,8 +278,13 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
             referenceData[req->getPaddr()] = pkt_data[0];
             numWriteTxnCompleted++;
             stats.numWrites++;
-            writeValsQ.push(std::make_shared<ConsumerReadData_t>(req->getPaddr(),pkt_data[0],id_consumers));
             if (isProducer && (numWriteTxnCompleted > 0) && (numWriteTxnCompleted%workingSetSize==0)) {
+                // The writer must sweep the entire working set before the readers can beging
+                assert(referenceData.size()==workingSetSize);
+                auto consumer_data = std::make_shared<ConsumerReadData_t>(referenceData);
+                for (auto c : id_consumers) {
+                    writeValsQ[c] = consumer_data;
+                }
                 TESTER_PRODUCER_IDX++;
             }
             if (numWriteTxnCompleted >= maxLoads) {
@@ -363,45 +353,20 @@ ProdConsMemTest::tick()
             return;
         }
 
-        /* No producer has generated any data. Stall and check again later */
-        if (writeValsQ.empty() && (num_producers > 0)) {
-            /**
-             * There are no writes to the memory yet.
-             * And there are active writers
-             * Retry in the next interval
-             */
+        /* The writer has not finished writing to working set yet. Stall */
+        if (writeValsQ.find(id) == writeValsQ.end()) {
             schedule(tickEvent, clockEdge(interval));
             reschedule(noRequestEvent, clockEdge(progressCheck), true);
             return;
         }
 
-        /* Find an address (from the produced data) to generate a Read request */
-        auto consumer_data=writeValsQ.front();
-        paddr=consumer_data->getPaddr();
+        /* Pick an address and generate a  */
+        auto cdata = writeValsQ.at(id);
+        do {
+            paddr = cdata->getNextAddr();
+            data = cdata->getRefData(paddr);
+        } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
 
-        /* This data is not meant for this consumer. Stall */
-        if (!(consumer_data->forme(id))) {
-            schedule(tickEvent, clockEdge(interval));
-            reschedule(noRequestEvent, clockEdge(progressCheck), true);
-            return;
-        }
-
-        /* A previous Read from this consumer is awaiting response. Stall */
-        if (outstandingAddrs.find(paddr) != outstandingAddrs.end()) {
-            waitResponse = true;
-            return;
-        }
-
-        /* Obtain the data and free-up the the writeVals queue */
-        data=consumer_data->getData();
-        consumer_data->removeConsumer(id);
-        if (consumer_data->getNumConsumers() <= 0) {
-            writeValsQ.pop();
-        }
-        if (!removeConsumedData) {
-            /* Push back at the again. So that you can read fresh data from the head */
-            writeValsQ.push(std::make_shared<ConsumerReadData_t>(consumer_data->getPaddr(),data,id_consumers));
-        }
     } else {
         /* Skip if you generated maxLoads transactions. But keep rescheduling noRequestEvent */
         if (numWriteTxnGenerated >= maxLoads) {
@@ -409,19 +374,9 @@ ProdConsMemTest::tick()
             waitResponse = true;
             return;
         }
-
-        /* 
-         * If you are running C2C pingpong latency tests. 
-         * Do not allow any new write txns if there
-         * are any pending readings
-         */
-        if ((!benchmarkC2CBWMode) && (pendingReads.size() > 0)) {
-            schedule(tickEvent, clockEdge(interval));
-            reschedule(noRequestEvent, clockEdge(progressCheck), true);
-            return;
-        }
         
         /* No free addresses to generate from this producer. Stall */
+        /* Should have an assertions that? outstandingAddrs.size() <= workingSetSize*/
         if (outstandingAddrs.size() >= workingSetSize) {
             waitResponse = true;
             return;
@@ -434,15 +389,6 @@ ProdConsMemTest::tick()
         } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
         data = (TESTER_PRODUCER_IDX << 8) + (writeSyncDataBase++);
 
-        /* This address has pending reads. Stall and reschedule this write later*/
-        if ((num_consumers > 0) && (!removeConsumedData)) { // If you have "infinite" consumption of write data. Do not update pendingReads
-            if (pendingReads.find(paddr) != pendingReads.end()) {
-                schedule(tickEvent, clockEdge(interval));
-                reschedule(noRequestEvent, clockEdge(progressCheck), true);
-                return;
-            }
-            pendingReads[paddr]=num_consumers;
-        }
     }
 
     outstandingAddrs.insert(paddr);
