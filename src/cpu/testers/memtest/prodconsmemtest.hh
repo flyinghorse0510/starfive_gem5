@@ -184,6 +184,8 @@ class ProdConsMemTest : public ClockedObject
 
     const double maxLoadFactor;
 
+    bool removeConsumedData;
+
     uint64_t maxLoads;
     
     uint64_t txSeqNum; // requestorID + txSeqNum should be the unique ID

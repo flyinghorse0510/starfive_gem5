@@ -48,7 +48,7 @@ class ProdConsMemTest(ClockedObject):
 
     # Interval of packet injection, the size of the memory range
     # touched, and an optional stop condition
-    interval = Param.Cycles(5, "Interval between request packets")
+    interval = Param.Cycles(1, "Interval between request packets")
     size = Param.Unsigned(4194304, "[Deprecated] Working set(bytes)")
     base_addr_1 = Param.Addr(0x0, "Start of the testing region for writes")
     working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
@@ -62,6 +62,8 @@ class ProdConsMemTest(ClockedObject):
     bench_c2cbw_mode = Param.Bool(False,"[True] Producer Consumer BW or [False] C2C Latency Test")
     id_producers = VectorParam.Int([], "List of Producer Ids")
     id_consumers = VectorParam.Int([], "List of Consumer Ids")
+
+    removed_consumed_data = Param.Bool(False,"[False] The reader will re-read consumed data several times")
 
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses
