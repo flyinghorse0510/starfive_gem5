@@ -77,6 +77,7 @@ class ConsumerReadData_t {
             assert(addr_and_data.find(addr) != addr_and_data.end());
             return addr_and_data.at(addr); 
         }
+        unsigned getWorkingSetSize() const { return all_addr.size(); }
 };
 
 Addr ConsumerReadData_t::getNextAddr() {
@@ -360,8 +361,15 @@ ProdConsMemTest::tick()
             return;
         }
 
-        /* Pick an address and generate a  */
+        /* The entire working set is outstanding*/
         auto cdata = writeValsQ.at(id);
+        auto readWorkingSetSize = cdata->getWorkingSetSize();
+        if (outstandingAddrs.size() >= readWorkingSetSize) {
+            waitResponse = true;
+            return;
+        }
+
+        /* Pick an address to generate a read request */
         do {
             paddr = cdata->getNextAddr();
             data = cdata->getRefData(paddr);
