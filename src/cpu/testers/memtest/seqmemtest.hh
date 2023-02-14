@@ -57,18 +57,6 @@ namespace gem5
 
 typedef uint16_t writeSyncData_t;
 
-class StreamTriadDepStore_t {
-  private:
-    uint32_t numOperands; // How many operands should this store depend on
-    uint32_t delayCount;  // How many ticks/cycles to wait before generate a store request
-  public:
-    StreamTriadDepStore_t(uint32_t numOperands, uint32_t delayCount)
-      : numOperands(numOperands),  delayCount(delayCount) {}
-    void decOpCount() { if (numOperands > 0) { numOperands--; } }
-    void decDelayCount() { if (delayCount > 0) {}}
-    
-};
-
 /**
  * The SeqMemTest class tests a cache coherent memory system.
  * 1. All requests issued by the SeqMemTest instance are a
@@ -181,43 +169,18 @@ class SeqMemTest : public ClockedObject
 
 
     Addr baseAddr;
-
     uint64_t num_cpus;
-
     uint64_t numPerCPUWorkingBlocks;
-
     std::vector<Addr> perCPUWorkingBlocks;
-
-    /*
-     * perCPUWorkingBlocks2 and perCPUWorkingBlocks3
-     * are not used if triad mode is
-     * switched off
-     */
-    std::vector<Addr> perCPUWorkingBlocks2;
-
-    std::vector<Addr> perCPUWorkingBlocks3;
-
-    std::queue<std::shared<StreamTriadDepStore_t>> streamTriadConsumer;
-
     bool addrInterleavedOrTiled;
 
-    uint64_t numReadTxnGenerated=0;
-
-    uint64_t numReadTxnCompleted=0;
-
-    uint64_t numWriteTxnGenerated=0;
-
-    uint64_t numWriteTxnCompleted=0;
-
+    uint64_t numReads;
+    uint64_t numWrites;
     bool isSequential;
-
+    //const uint64_t maxLoads;
     uint64_t maxLoads;
 
-    uint64_t maxLoadFactor;
-
     uint64_t txSeqNum; // requestorID + txSeqNum should be the unique ID
-
-    bool modStreamTriad;
 
     const bool atomic;
 
@@ -247,3 +210,4 @@ class SeqMemTest : public ClockedObject
 } // namespace gem5
 
 #endif // __CPU_MEMTEST_MEMTEST_HH__
+

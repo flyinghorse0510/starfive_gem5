@@ -104,14 +104,13 @@ SeqMemTest::SeqMemTest(const Params &p)
       progressInterval(p.progress_interval),
       progressCheck(p.progress_check),
       nextProgressMessage(p.progress_interval),
-      maxLoadFactor(p.max_loads),
+      maxLoads(p.max_loads),
       atomic(p.system->isAtomicMode()),
       seqIdx(0),
       num_cpus(p.num_cpus),
       baseAddr(p.base_addr_1),
       addrInterleavedOrTiled(p.addr_intrlvd_or_tiled),
       percentReads(p.percent_reads),
-      modStreamTriad(p.mod_stream_triad),
       txSeqNum((static_cast<uint64_t>(p.system->getRequestorId(this))) << 48),
       suppressFuncErrors(p.suppress_func_errors), stats(this)
 {
@@ -119,66 +118,31 @@ SeqMemTest::SeqMemTest(const Params &p)
     fatal_if(id >= blockSize, "Too many testers, only %d allowed\n",
              blockSize - 1);
 
-    if (modStreamTriad) {
-        fatal_if(workingSet%(3*num_cpus*blockSize)!=0,"per CPU working set not 3 times block aligned, workingSet=%d,num_cpus=%d,blockSize=%d\n",workingSet,num_cpus,blockSize);
-        numPerCPUWorkingBlocks=(workingSet/(3*num_cpus*blockSize));
-
-        for (unsigned i = 0; i < (3*numPerCPUWorkingBlocks); i++ ) {
-            Addr effectiveBlockAddr=(addrInterleavedOrTiled)?(baseAddr+(num_cpus*i)+id):
+    fatal_if(workingSet%(num_cpus*blockSize)!=0,"per CPU working set not block aligned, workingSet=%d,num_cpus=%d,blockSize=%d\n",workingSet,num_cpus,blockSize);
+    numPerCPUWorkingBlocks=(workingSet/(num_cpus*blockSize));
+    for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
+        Addr effectiveBlockAddr=(addrInterleavedOrTiled)?(baseAddr+(num_cpus*i)+id):
                                 (baseAddr+(numPerCPUWorkingBlocks*id)+i);
-            
-            if (i < numPerCPUWorkingBlocks) {
-                // Read Location 1
-                perCPUWorkingBlocks.push_back(effectiveBlockAddr<<(static_cast<uint64_t>(std::log2(blockSize))));
-            } else if ((i >= numPerCPUWorkingBlocks) && (i < (2*numPerCPUWorkingBlocks))) {
-                // Read Location 2
-                perCPUWorkingBlocks2.push_back(effectiveBlockAddr<<(static_cast<uint64_t>(std::log2(blockSize))));
+        perCPUWorkingBlocks.push_back(effectiveBlockAddr<<(static_cast<uint64_t>(std::log2(blockSize))));
+    }
+    fatal_if(perCPUWorkingBlocks.size()<=0,"Working Set size is 0\n");
 
-            } else {
-                // Write Location 1
-                perCPUWorkingBlocks3.push_back(effectiveBlockAddr<<(static_cast<uint64_t>(std::log2(blockSize))));
-            }
+    if (perCPUWorkingBlocks.size() > 1) {
+        if (addrInterleavedOrTiled) {
+            DPRINTF(SeqMemLatTest,"CPU_%d WorkingSetRange:[%x:%x]\n",id,perCPUWorkingBlocks.at(0),perCPUWorkingBlocks.at(1));
+        } else {
+            DPRINTF(SeqMemLatTest,"CPU_%d WorkingSetRange:[%x,%x]\n",id,perCPUWorkingBlocks.at(0),perCPUWorkingBlocks.at(numPerCPUWorkingBlocks-1));
         }
-        fatal_if(perCPUWorkingBlocks.size()<=0, "Stream TRIAD Working Set1 size is 0\n")
-        fatal_if(perCPUWorkingBlocks2.size()<=0,"Stream TRIAD Working Set2 size is 0\n")
-        fatal_if(perCPUWorkingBlocks3.size()<=0,"Stream TRIAD Working Set3 size is 0\n")
-    } else {
-        fatal_if(workingSet%(num_cpus*blockSize)!=0,"per CPU working set not block aligned, workingSet=%d,num_cpus=%d,blockSize=%d\n",workingSet,num_cpus,blockSize);
-        numPerCPUWorkingBlocks=(workingSet/(num_cpus*blockSize));
-        for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
-            Addr effectiveBlockAddr=(addrInterleavedOrTiled)?(baseAddr+(num_cpus*i)+id):
-                                    (baseAddr+(numPerCPUWorkingBlocks*id)+i);
-            perCPUWorkingBlocks.push_back(effectiveBlockAddr<<(static_cast<uint64_t>(std::log2(blockSize))));
-        }
-        fatal_if(perCPUWorkingBlocks.size()<=0,"Working Set size is 0\n");
-
-        if (perCPUWorkingBlocks.size() > 1) {
-            if (addrInterleavedOrTiled) {
-                DPRINTF(SeqMemLatTest,"CPU_%d WorkingSetRange:[%x:%x]\n",id,perCPUWorkingBlocks.at(0),perCPUWorkingBlocks.at(1));
-            } else {
-                DPRINTF(SeqMemLatTest,"CPU_%d WorkingSetRange:[%x,%x]\n",id,perCPUWorkingBlocks.at(0),perCPUWorkingBlocks.at(numPerCPUWorkingBlocks-1));
-            }
-        } else if (perCPUWorkingBlocks.size() >= 1) {
-            DPRINTF(SeqMemLatTest,"CPU_%d WorkingSetRange:[%x]\n",id,perCPUWorkingBlocks.at(0));
-        }
+    } else if (perCPUWorkingBlocks.size() >= 1) {
+        DPRINTF(SeqMemLatTest,"CPU_%d WorkingSetRange:[%x]\n",id,perCPUWorkingBlocks.at(0));
     }
 
-    maxLoads = 0;
-    if (modStreamTriad) {
-        maxLoads = static_cast<uint64_t>(std::ceil(maxLoadFactor * (static_cast<double>(perCPUWorkingBlocks.size())))) + \
-                   static_cast<uint64_t>(std::ceil(maxLoadFactor * (static_cast<double>(perCPUWorkingBlocks2.size())))) + \
-                   static_cast<uint64_t>(std::ceil(maxLoadFactor * (static_cast<double>(perCPUWorkingBlocks3.size()))));
-    } else {
-        maxLoads = static_cast<uint64_t>(std::ceil(maxLoadFactor * (static_cast<double>(perCPUWorkingBlocks.size()))));
-    }
-
-    // printf("*** CPU%d workingBlocks(numCacheLines) in the CPU: %d, Working set load times:%d, maxLoads:%d  \n", id, perCPUWorkingBlocks.size(),  p.max_loads, maxLoads);
+    maxLoads = maxLoads * perCPUWorkingBlocks.size();
+    printf("*** CPU%d workingBlocks(numCacheLines) in the CPU: %d, Working set load times:%d, maxLoads:%d  \n", id, perCPUWorkingBlocks.size(),  p.max_loads, maxLoads);
 
     // set up counters
-    numReadTxnGenerated=0;
-    numReadTxnCompleted=0;
-    numWriteTxnGenerated=0;
-    numWriteTxnCompleted=0;
+    numReads = 0;
+    numWrites = 0;
     writeSyncDataBase=0x8f1;
 
     // kick things into action
@@ -295,17 +259,13 @@ SeqMemTest::tick()
         return;
     }
     
-    if (modStreamTriad) {
-        
-    } else {
-        /* Search for an address within perCPUWorkingBlocks */
-        do {
-            paddr = perCPUWorkingBlocks.at(seqIdx);
-            seqIdx = (seqIdx+1)%(perCPUWorkingBlocks.size());
-
-        } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
-        writeSyncData_t data = (TESTER_PRODUCER_IDX << 8) + (writeSyncDataBase++);
-    }
+    /* Search for an address within perCPUWorkingBlocks */
+    do {
+        paddr = perCPUWorkingBlocks.at(seqIdx);
+        seqIdx = (seqIdx+1)%(perCPUWorkingBlocks.size());
+         
+    } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
+    writeSyncData_t data = (TESTER_PRODUCER_IDX << 8) + (writeSyncDataBase++);
     
     outstandingAddrs.insert(paddr);
     RequestPtr req = std::make_shared<Request>(paddr, 2, flags, requestorId);
@@ -380,3 +340,4 @@ SeqMemTest::recvRetry()
 }
 
 } // namespace gem5
+
