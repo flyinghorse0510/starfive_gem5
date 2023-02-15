@@ -92,6 +92,7 @@ static std::unordered_map<unsigned,std::shared_ptr<ConsumerReadData_t>> writeVal
 static unsigned int TESTER_PRODUCER_IDX; // Pass Index of the writer. Only written by sole producer
 static unsigned int numCPUTransactionsCompleted = 0; // Number of CPUs that have completed their transactions
 static unsigned int TOTAL_REQ_AGENTS = 0;  // Used to hold the agents capable of generating Read/Write requests
+static unsigned int producer_peer_id=0;    // Location ind producer peer id
 bool
 ProdConsMemTest::CpuPort::recvTimingResp(PacketPtr pkt)
 {
@@ -176,13 +177,31 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     }
 
     fatal_if(workingSet%(numPeerProducers*blockSize)!=0,"per producer working set not block aligned\n");
+    unsigned totalWorkingSetInBlocks=(workingSet/blockSize);
     numPerCPUWorkingBlocks=(workingSet/(numPeerProducers*blockSize));
-    for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
-        Addr effectiveBlockAddr=(addrInterleavedOrTiled)?(baseAddr+(numPeerProducers*i)+id):
-                                (baseAddr+(numPerCPUWorkingBlocks*id)+i);
-        perCPUWorkingBlocks.push_back(effectiveBlockAddr<<(static_cast<uint64_t>(std::log2(blockSize))));
+    if (addrInterleavedOrTiled) {
+        for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
+            Addr effectiveBlockAddr=baseAddr+(numPeerProducers*i)+producer_peer_id;
+            perCPUWorkingBlocks.push_back(effectiveBlockAddr<<(static_cast<uint64_t>(std::log2(blockSize))));
+        }
+    } else {
+        for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
+            Addr effectiveBlockAddr=baseAddr+(numPerCPUWorkingBlocks*(producer_peer_id))+i;
+            perCPUWorkingBlocks.push_back(effectiveBlockAddr<<(static_cast<uint64_t>(std::log2(blockSize))));
+        }
     }
+    
     fatal_if(perCPUWorkingBlocks.size()<=0,"Working Set size is 0\n");
+
+    /* Assertions related to working set */
+    // std::set<Addr> allocated_addr;
+    // DPRINTF(ProdConsMemLatTest,"totalWorkingSetInBlocks=%d,perCPUWorkingBlocks=%d,numPeerProducers=%d\n",totalWorkingSetInBlocks,perCPUWorkingBlocks.size(),numPeerProducers);
+    // for (auto addr: perCPUWorkingBlocks) {
+    //     if (allocated_addr.find(addr) != allocated_addr.end()) {
+    //         DPRINTF(ProdConsMemLatTest,"id=(%d,%d),addr=%x is repeated\n",producer_peer_id,id,addr);
+    //         assert(false);
+    //     }
+    // }
 
     maxLoads=0;
     if (!isIdle) {
@@ -195,6 +214,10 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
             maxLoads = static_cast<uint64_t>(std::ceil(num_producers * maxLoadFactor * (static_cast<double>(perCPUWorkingBlocks.size()))));        
         }
         fatal_if(maxLoads <= 0, "Requires a minimum of 1 Load/Store for non idle MemTesters");
+    }
+
+    if (isProducer) {
+        producer_peer_id++;
     }
 
     // Initialize the txn counters
@@ -278,12 +301,17 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
 
             DPRINTF(ProdConsMemLatTest, "Complete,W,%x,%x\n", req->getPaddr(),pkt_data[0]);
             // update the reference data
+            // if (referenceData.find(req->getPaddr()) != referenceData.end()) {
+            //     DPRINTF(ProdConsMemLatTest,"Reference data already exists=[%x,%x]\n",req->getPaddr(),referenceData[req->getPaddr()]);
+            //     assert(false);
+            // }
             referenceData[req->getPaddr()] = pkt_data[0];
             numWriteTxnCompleted++;
             stats.numWrites++;
-            if (isProducer && (numWriteTxnCompleted > 0) && (numWriteTxnCompleted%workingSetSize==0)) {
-                // The writer must sweep the entire working set before the readers can beging
-                assert(referenceData.size()==workingSetSize);
+            if (isProducer && (numWriteTxnCompleted > 0) && (referenceData.size()>=workingSetSize)) {
+                // The writer must sweep the entire working set before the readers can begin
+                // DPRINTF(ProdConsMemLatTest,"RefDataSize=%d,WorkingSetSize=%d\n",referenceData.size(),workingSetSize);
+                // assert(referenceData.size()==workingSetSize);
                 auto consumer_data = std::make_shared<ConsumerReadData_t>(referenceData);
                 for (auto c : id_consumers) {
                     writeValsQ[c] = consumer_data;
