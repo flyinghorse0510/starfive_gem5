@@ -90,8 +90,10 @@ Addr ConsumerReadData_t::getNextAddr() {
 static unsigned int TESTER_ALLOCATOR = 0;
 static std::unordered_map<unsigned,std::shared_ptr<ConsumerReadData_t>> writeValsQ;
 static unsigned int TESTER_PRODUCER_IDX; // Pass Index of the writer. Only written by sole producer
-static unsigned int numCPUTransactionsCompleted = 0; // Number of CPUs that have completed their transactions
+// static unsigned int numCPUTransactionsCompleted = 0; // Number of CPUs that have completed their transactions
 // static unsigned int 
+static unsigned int numProdCompleted = 0;
+static unsigned int numConsCompleted = 0;
 static unsigned int TOTAL_REQ_AGENTS = 0;  // Used to hold the agents capable of generating Read/Write requests
 static unsigned int producer_peer_id=0;    // Location ind producer peer id
 bool
@@ -295,38 +297,30 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
             }
 
             if (numReadTxnCompleted >= maxLoads) {
-                DPRINTF(ProdConsMemLatTest, "Completed all Read Resp=%d,%d\n",numReadTxnCompleted,maxLoads);
-                numCPUTransactionsCompleted++;
+                DPRINTF(ProdConsMemLatTest,"id=(%d/%d) Completed all read resp=%d,%d\n",id,numConsCompleted,numReadTxnCompleted,maxLoads);
+                numConsCompleted++;
             }
         } else {
             assert(pkt->isWrite());
 
             DPRINTF(ProdConsMemLatTest, "Complete,W,%x,%x\n", req->getPaddr(),pkt_data[0]);
-            // update the reference data
-            // if (referenceData.find(req->getPaddr()) != referenceData.end()) {
-            //     DPRINTF(ProdConsMemLatTest,"Reference data already exists=[%x,%x]\n",req->getPaddr(),referenceData[req->getPaddr()]);
-            //     assert(false);
-            // }
             referenceData[req->getPaddr()] = pkt_data[0];
             stats.numWrites++;
             if (isProducer && ((referenceData.size())>=workingSetSize)) {
-                // The writer must sweep the entire working set before the readers can begin
-                // DPRINTF(ProdConsMemLatTest,"RefDataSize=%d,WorkingSetSize=%d\n",referenceData.size(),workingSetSize);
-                // assert(referenceData.size()==workingSetSize);
-                DPRINTF(ProdConsMemLatTest,"id=(%d,%d) Completed all writes resp=%d,%d,numCPUTransactionsCompleted=%d\n",id,producer_peer_id,referenceData.size(),workingSetSize,numCPUTransactionsCompleted);
+                DPRINTF(ProdConsMemLatTest,"id=(%d,%d) Completed all writes resp=%d,%d,numProdCompleted=%d\n",id,producer_peer_id,referenceData.size(),workingSetSize,numProdCompleted);
                 auto consumer_data = std::make_shared<ConsumerReadData_t>(referenceData);
                 for (auto c : id_consumers) {
                     writeValsQ[c] = consumer_data;
                 }
                 TESTER_PRODUCER_IDX++;
 
-                numCPUTransactionsCompleted++;
+                numProdCompleted++;
             }
 
         }
         
-        if (numCPUTransactionsCompleted >= TOTAL_REQ_AGENTS) {
-            DPRINTF(ProdConsMemLatTest, "id=%d,num_consumers=%d,num_producers=%d,numCPUTransactionsCompleted=%d,TOTAL_REQ_AGENTS=%d\n", id, num_consumers, num_producers, numCPUTransactionsCompleted,TOTAL_REQ_AGENTS);
+        if ((numConsCompleted+numProdCompleted) >= TOTAL_REQ_AGENTS) {
+            DPRINTF(ProdConsMemLatTest, "id=%d,num_consumers=%d,num_producers=%d,numConsCompleted=%d,numProdCompleted=%d,TOTAL_REQ_AGENTS=%d\n", id, num_consumers, num_producers, numConsCompleted,numProdCompleted,TOTAL_REQ_AGENTS);
             exitSimLoop("maximum number of loads/stores reached");
         }
     }
@@ -386,6 +380,16 @@ ProdConsMemTest::tick()
             waitResponse = true;
             return;
         }
+
+        if (numProdCompleted < numPeerProducers) {
+            /* Wait for all writes to finish before generating a read*/
+            schedule(tickEvent, clockEdge(interval));
+            reschedule(noRequestEvent, clockEdge(progressCheck), true);
+            // DPRINTF(ProdConsMemLatTest,"Reader waiting for %d/%d\n",numProdCompleted,numPeerProducers);
+            return;
+        }
+        // DPRINTF(ProdConsMemLatTest,"All producers finished generating\n");
+        assert(writeValsQ.find(id) != writeValsQ.end());
 
         /* The writer has not finished writing to working set yet. Stall */
         if (writeValsQ.find(id) == writeValsQ.end()) {
