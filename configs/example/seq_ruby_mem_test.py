@@ -79,6 +79,11 @@ parser.add_argument("--producers",type=str, default="0", help="semicolon separat
 parser.add_argument("--consumers",type=str, default="1", help="semicolon separated list of consumers")
 parser.add_argument("--num-producers",type=int,default=-1,help="number of producers")
 parser.add_argument("--num-consumers",type=int,default=-1,help="number of consumers")
+parser.add_argument("--chs-1p1c",action='store_true',help='[Test 1] Run isolated 1p 1c coherence sharing benchmarks')
+parser.add_argument("--chs-cons-id",type=int,default=0,help='[Test 1] Consumer Id')
+parser.add_argument("--chs-prod-id",type=int,default=2,help='[Test 1] Producer Id')
+parser.add_argument("--chs-1p1c-num-pairs",default=1,type=int,help='[Test 2] Number of coherence sharing pairs')
+# parser.add_argument("--chs-1p-mc",type=int,action='store_')
 
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]
@@ -91,13 +96,34 @@ Ruby.define_options(parser)
 args = parser.parse_args()
 
 block_size = 64
-producers_list=getCPUList(args.producers)
-consumers_list=getCPUList(args.consumers)
+
 num_cpus=args.num_cpus
-if args.bench_c2cbw_mode:
-    producers_list=[i for i in range(args.num_producers)]
-    cpu_offset=len(producers_list)
-    consumers_list=[(cpu_offset+i) for i in range(args.num_consumers)]
+cpuProdListMap=dict([(c,[-1]) for c in range(num_cpus)])
+cpuConsListMap=dict([(c,[-1]) for c in range(num_cpus)])
+import random
+if (args.chs_1p1c):
+    # 1P-1C with controllable prod_id and cons_id locations
+    assert(args.chs_prod_id != args.chs_cons_id)
+    assert(args.chs_prod_id < num_cpus)
+    assert(args.chs_cons_id < num_cpus)
+    cpuProdListMap[args.chs_prod_id]=[args.chs_prod_id]
+    cpuConsListMap[args.chs_prod_id]=[args.chs_cons_id]
+    cpuProdListMap[args.chs_cons_id]=[args.chs_prod_id]
+    cpuConsListMap[args.chs_cons_id]=[args.chs_cons_id]
+else :
+    npairs = args.chs_1p1c_num_pairs
+    assert((2*npairs) <= num_cpus)
+    available_cpus = set(range(num_cpus))
+    for _ in range(npairs) :
+        producer=random.sample(available_cpus,1)[0]
+        available_cpus.remove(producer)
+        consumer=random.sample(available_cpus,1)[0]
+        available_cpus.remove(consumer)
+        cpuProdListMap[producer]=[producer]
+        cpuConsListMap[producer]=[consumer]
+        cpuProdListMap[consumer]=[producer]
+        cpuConsListMap[consumer]=[consumer]
+
 
 if num_cpus > block_size:
      print("Error: Number of testers %d limited to %d because of false sharing"
@@ -122,8 +148,8 @@ if num_cpus > 0 :
                      num_cpus = num_cpus,
                      addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,
                      bench_c2cbw_mode = args.bench_c2cbw_mode,
-                     id_producers = producers_list,
-                     id_consumers = consumers_list,
+                     id_producers = cpuProdListMap[i],
+                     id_consumers = cpuConsListMap[i],
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
 
