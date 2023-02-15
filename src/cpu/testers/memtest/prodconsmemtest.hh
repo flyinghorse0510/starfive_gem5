@@ -184,6 +184,8 @@ class ProdConsMemTest : public ClockedObject
 
     const double maxLoadFactor;
 
+    unsigned numPeerProducers;
+
     bool removeConsumedData;
 
     uint64_t maxLoads;

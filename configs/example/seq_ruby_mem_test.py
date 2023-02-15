@@ -100,6 +100,7 @@ block_size = 64
 num_cpus=args.num_cpus
 cpuProdListMap=dict([(c,[-1]) for c in range(num_cpus)])
 cpuConsListMap=dict([(c,[-1]) for c in range(num_cpus)])
+num_peer_producers=1
 import random
 if (args.chs_1p1c):
     # 1P-1C with controllable prod_id and cons_id locations
@@ -114,6 +115,7 @@ else :
     npairs = args.chs_1p1c_num_pairs
     assert((2*npairs) <= num_cpus)
     available_cpus = set(range(num_cpus))
+    num_peer_producers=npairs
     for _ in range(npairs) :
         producer=random.sample(available_cpus,1)[0]
         available_cpus.remove(producer)
@@ -124,6 +126,11 @@ else :
         cpuProdListMap[consumer]=[producer]
         cpuConsListMap[consumer]=[consumer]
 
+# for cpu in range(num_cpus):
+#     prod=cpuProdListMap[cpu]
+#     cons=cpuConsListMap[cpu]
+#     print(f'cpu={cpu}|prod={prod},cons={cons}')
+# sys.exit(1)
 
 if num_cpus > block_size:
      print("Error: Number of testers %d limited to %d because of false sharing"
@@ -150,6 +157,7 @@ if num_cpus > 0 :
                      bench_c2cbw_mode = args.bench_c2cbw_mode,
                      id_producers = cpuProdListMap[i],
                      id_consumers = cpuConsListMap[i],
+                     num_peer_producers = num_peer_producers,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
 
@@ -163,8 +171,9 @@ if args.num_dmas > 0:
                      working_set = args.size_ws,
                      num_cpus = num_cpus,
                      bench_c2cbw_mode = args.bench_c2cbw_mode,
-                     id_producers = producers_list,
-                     id_consumers = consumers_list,
+                     id_producers = cpuProdListMap[i],
+                     id_consumers = cpuConsListMap[i],
+                     num_peer_producers = num_peer_producers,
                      addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,
                      suppress_func_errors = not args.suppress_func_errors) \
              for i in range(args.num_dmas) ]

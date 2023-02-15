@@ -62,7 +62,8 @@ class ProdConsMemTest(ClockedObject):
     id_producers = VectorParam.Int([], "List of Producer Ids")
     id_consumers = VectorParam.Int([], "List of Consumer Ids")
 
-    removed_consumed_data = Param.Bool(False,"[False] The reader will re-read consumed data several times")
+    num_peer_producers = Param.Counter(1, "Number of independent peer producers. Use to partition the working set")
+    # removed_consumed_data = Param.Bool(False,"[False] The reader will re-read consumed data several times")
 
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses

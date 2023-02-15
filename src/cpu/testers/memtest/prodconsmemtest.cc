@@ -91,7 +91,7 @@ static unsigned int TESTER_ALLOCATOR = 0;
 static std::unordered_map<unsigned,std::shared_ptr<ConsumerReadData_t>> writeValsQ;
 static unsigned int TESTER_PRODUCER_IDX; // Pass Index of the writer. Only written by sole producer
 static unsigned int numCPUTransactionsCompleted = 0; // Number of CPUs that have completed their transactions
-
+static unsigned int TOTAL_REQ_AGENTS = 0;  // Used to hold the agents capable of generating Read/Write requests
 bool
 ProdConsMemTest::CpuPort::recvTimingResp(PacketPtr pkt)
 {
@@ -142,6 +142,7 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
       baseAddr(p.base_addr_1),
       benchmarkC2CBWMode(p.bench_c2cbw_mode),
       num_cpus(p.num_cpus),
+      numPeerProducers(p.num_peer_producers),
       addrInterleavedOrTiled(p.addr_intrlvd_or_tiled),
       txSeqNum((static_cast<uint64_t>(p.system->getRequestorId(this))) << 48), // init txSeqNum as RequestorId(16-bit)_0000_0000_0000
       suppressFuncErrors(p.suppress_func_errors), stats(this)
@@ -174,10 +175,10 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
         isIdle = false;
     }
 
-    fatal_if(workingSet%(num_producers*blockSize)!=0,"per producer working set not block aligned\n");
-    numPerCPUWorkingBlocks=(workingSet/(num_producers*blockSize));
+    fatal_if(workingSet%(numPeerProducers*blockSize)!=0,"per producer working set not block aligned\n");
+    numPerCPUWorkingBlocks=(workingSet/(numPeerProducers*blockSize));
     for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
-        Addr effectiveBlockAddr=(addrInterleavedOrTiled)?(baseAddr+(num_producers*i)+id):
+        Addr effectiveBlockAddr=(addrInterleavedOrTiled)?(baseAddr+(numPeerProducers*i)+id):
                                 (baseAddr+(numPerCPUWorkingBlocks*id)+i);
         perCPUWorkingBlocks.push_back(effectiveBlockAddr<<(static_cast<uint64_t>(std::log2(blockSize))));
     }
@@ -212,6 +213,7 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     
     // kick things into action
     if (!isIdle) {
+        TOTAL_REQ_AGENTS++;
         schedule(tickEvent, curTick());
         schedule(noRequestEvent, clockEdge(progressCheck));
     }
@@ -293,7 +295,8 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
             }
         }
         
-        if (numCPUTransactionsCompleted >= (num_consumers+num_producers)) {
+        if (numCPUTransactionsCompleted >= TOTAL_REQ_AGENTS) {
+            DPRINTF(ProdConsMemLatTest, "id=%d,num_consumers=%d,num_producers=%d,numCPUTransactionsCompleted=%d\n", id, num_consumers, num_producers, numCPUTransactionsCompleted);
             exitSimLoop("maximum number of loads/stores reached");
         }
     }
