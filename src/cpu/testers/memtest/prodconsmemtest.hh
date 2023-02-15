@@ -141,6 +141,8 @@ class ProdConsMemTest : public ClockedObject
     // store the expected value for the addresses we have touched
     std::unordered_map<Addr, writeSyncData_t> referenceData;
 
+    std::set<Addr> writeDataGenerated;
+
     const unsigned blockSize;
 
     const Addr blockAddrMask;

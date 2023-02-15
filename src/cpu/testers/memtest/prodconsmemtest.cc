@@ -219,12 +219,12 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     if (isProducer) {
         producer_peer_id++;
     }
+    writeDataGenerated.clear();
 
     // Initialize the txn counters
     numReadTxnGenerated=0;
     numReadTxnCompleted=0;
     numWriteTxnGenerated=0;
-    numWriteTxnCompleted=0;
     TESTER_PRODUCER_IDX = 0;
 
     maxOutStandingTransactions = 1;
@@ -306,21 +306,21 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
             //     assert(false);
             // }
             referenceData[req->getPaddr()] = pkt_data[0];
-            numWriteTxnCompleted++;
             stats.numWrites++;
-            if (isProducer && (numWriteTxnCompleted > 0) && (referenceData.size()>=workingSetSize)) {
+            if (isProducer && ((referenceData.size())>=workingSetSize)) {
                 // The writer must sweep the entire working set before the readers can begin
                 // DPRINTF(ProdConsMemLatTest,"RefDataSize=%d,WorkingSetSize=%d\n",referenceData.size(),workingSetSize);
                 // assert(referenceData.size()==workingSetSize);
+                DPRINTF(ProdConsMemLatTest,"id=(%d,%d) Completed all writes resp=%d,%d\n",id,producer_peer_id,referenceData.size(),workingSetSize);
                 auto consumer_data = std::make_shared<ConsumerReadData_t>(referenceData);
                 for (auto c : id_consumers) {
                     writeValsQ[c] = consumer_data;
                 }
                 TESTER_PRODUCER_IDX++;
-            }
-            if (numWriteTxnCompleted >= maxLoads) {
+
                 numCPUTransactionsCompleted++;
             }
+
         }
         
         if (numCPUTransactionsCompleted >= TOTAL_REQ_AGENTS) {
@@ -407,9 +407,9 @@ ProdConsMemTest::tick()
         } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
 
     } else {
-        /* Skip if you generated maxLoads transactions. But keep rescheduling noRequestEvent */
-        if (numWriteTxnGenerated >= maxLoads) {
-            DPRINTF(ProdConsMemLatTest,"Writer finished generating %d\n",numWriteTxnGenerated);
+        /* Skip if you generated workingSetSize write transactions */
+        if (writeDataGenerated.size() >= workingSetSize) {
+            DPRINTF(ProdConsMemLatTest,"id=(%d,%d) Completed all writes reqs=%d,%d\n",producer_peer_id,id,writeDataGenerated.size(),workingSetSize);
             waitResponse = true;
             return;
         }
@@ -428,6 +428,7 @@ ProdConsMemTest::tick()
         } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
         data = (TESTER_PRODUCER_IDX << 8) + (writeSyncDataBase++);
 
+        writeDataGenerated.insert(paddr);
     }
 
     outstandingAddrs.insert(paddr);
