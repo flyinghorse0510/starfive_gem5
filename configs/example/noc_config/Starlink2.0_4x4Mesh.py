@@ -24,7 +24,7 @@ class NoC_Params(CHI_config.NoC_Params):
 
 class CHI_RNF(CHI_config.CHI_RNF):
     class NoC_Params(CHI_config.CHI_RNF.NoC_Params):
-        router_list = list(range(16))
+        router_list = [0,10] #list(range(16))
 
 class CHI_HNF(CHI_config.CHI_HNF):
     class NoC_Params(CHI_config.CHI_HNF.NoC_Params):

@@ -238,22 +238,15 @@ MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time)
 {
 
     const std::type_info& msg_type = typeid(*(message.get()));
-    // this set stores every txsn of rubyrequest. All subsequent messages must have a txsn within this set.
-    static std::set<uint64_t> reqTxSeqNums;
 
     // use regex to choose the port_name we want to print
     std::string port_name = name();
-    // std::regex req("^system[\\s\\S]+reqRdy$");
-    // std::regex link("^system.ruby.network.int_links[\\s\\S]*");
 
     // if this line is reqRdy, skip this line
     if(port_name.find("reqRdy") != std::string::npos){
-        // DPRINTF(TxnTrace, "Matched reqRdy\n");
         return;
     }
-    // else if this line is link, depends on whether we set TxnLink
     else if(port_name.find("system.ruby.network.int_links") != std::string::npos){
-        // DPRINTF(TxnTrace, "Matched int_links\n");
         if(!::gem5::debug::TxnLink){ // if we not enabled txnlink, skip this line
             return;
         }
@@ -273,7 +266,7 @@ MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time)
                 printAddress(msg->getLineAddress()));
         assert(txSeqNum != 0); // txsn should not be 0
         assert(msg->getRequestPtr() != nullptr); // requestPtr should not be nullptr
-        reqTxSeqNums.insert(txSeqNum);
+        // reqTxSeqNums.insert(txSeqNum);
     }
     else if(msg_type == typeid(CHIRequestMsg)){
         const CHIRequestMsg* msg = dynamic_cast<CHIRequestMsg*>(message.get());
@@ -422,7 +415,7 @@ MessageBuffer::enqueue(MsgPtr message, Tick current_time, Tick delta)
             arrival_time, delta, *(message.get()));
 
     // zhiang: print the txntrace message
-    txntrace_print(message, arrival_time);
+    // txntrace_print(message, arrival_time);
     // Schedule the wakeup
     assert(m_consumer != NULL);
     m_consumer->scheduleEventAbsolute(arrival_time);
@@ -462,7 +455,9 @@ MessageBuffer::dequeue(Tick current_time, bool decrement_messages)
         // If the message will be removed from the queue, decrement the
         // number of message in the queue.
         m_buf_msgs--;
+        
     }
+    DPRINTF(TxnTrace,"StallTime=%d,TotalMsgDelay=%d\n",(curTick() - message->getLastEnqueueTime()),delay);
 
     // if a dequeue callback was requested, call it now
     if (m_dequeue_callback) {
@@ -591,6 +586,7 @@ MessageBuffer::stallMessage(Addr addr, Tick current_time)
     (m_stall_msg_map[addr]).push_back(message);
     m_stall_map_size++;
     m_stall_count++;
+
 }
 
 bool

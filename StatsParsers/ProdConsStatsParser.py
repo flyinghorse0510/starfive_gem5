@@ -18,12 +18,11 @@ class Gem5SysConfigInfo:
     outdir_root: str
     outdir_prefix: str
     enable_dct: bool
-    num_cpus_total: int = 16
+    num_cpus_total: int = 2
     l1i_size: str = '32KiB'
     l1d_size: str = '32KiB'
     l2_size: str = '256KiB'
     hnf_size: str = '1024KiB'
-    num_cpus: int = 16
     pc_pairs: int = 1
 
     def __init__(self,outdir_root,enable_dct,working_set,producers,consumers,bwOrC2C,outdir_prefix,pc_pairs=1):
@@ -239,8 +238,8 @@ def getProdConsBW(outdir_root):
 def get1P1CStats(outdir_root):
     dctConfigList=[True,False]
     workinSetList=[65536]
-    allProducerList=[2]
-    allConsumerList=[4]
+    allProducerList=[0]
+    allConsumerList=[1]
     bwOrC2C=True
     outdir_prefix='PRODCONS_1P1C_BW'
     allConfigList=it.product(dctConfigList,workinSetList,allProducerList,allConsumerList)
@@ -253,7 +252,9 @@ def get1P1CStats(outdir_root):
             numReads=len(dX.index)
             totalCyc=dX['req_end'].max()-dX['req_start'].min()
             bw=(numReads*64)/totalCyc
-            print(f'Bandwidth={bw} with DCT={dct}')
+            print(f'numReads={numReads},totalCyc={totalCyc},Bandwidth={bw} with DCT={dct}')
+        else :
+            print(f'{statsFile} does not exists')
 
 
 def getM1P1CStats(outdir_root):

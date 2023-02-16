@@ -48,8 +48,8 @@ l2_assoc=8
 l3_assoc=16
 NUM_LLC=16
 NUM_MEM=1
-DEBUG_FLAGS=ProdConsMemLatTest,TxnTrace,TxnLink,RubyCHIDebugStr5 #RubyCHIDebugStr5,RubyGenerated
-DCT_CONFIGS=(True) # True) # True) #(False True) #(False True) #(True False)
+DEBUG_FLAGS=ProdConsMemLatTest,TxnTrace,TxnLink #RubyCHIDebugStr5,RubyGenerated
+DCT_CONFIGS=(False True) # True) # True) #(False True) #(False True) #(True False)
 NETWORK="simple"
 LINKWIDTH=128 #(128 256)
 VC_PER_VNET=4
@@ -124,9 +124,9 @@ fi
 
 if [ "$C2CBW" != "" ]; then
   echo "1P1C BW test"
-  NUM_CPUS=16
-  CONSUMER_SET_CONFIGS=(4) #(1 2 4 8) #$(seq 0 $((${NUM_CPUS}-1))) #("1") #(2 4 8 16)
-  PRODUCER_SET_CONFIGS=(2) #(1 2 4 8) #$(seq 0 $((${NUM_CPUS}-1))) #("0") #(1 2 4 8)
+  NUM_CPUS=2
+  CONSUMER_SET_CONFIGS=(1) #(1 2 4 8) #$(seq 0 $((${NUM_CPUS}-1))) #("1") #(2 4 8 16)
+  PRODUCER_SET_CONFIGS=(0) #(1 2 4 8) #$(seq 0 $((${NUM_CPUS}-1))) #("0") #(1 2 4 8)
   WKSETLIST=(65536) #(65536 131072) #(1024 65536)
   OUTPUT_PREFIX="PRODCONS_1P1C_BW"
   
@@ -189,9 +189,11 @@ if [ "$C2CBW" != "" ]; then
             OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUM_CPUS}_Prod${LOC_PROD}_Cons${LOC_CONS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}"
             # grep -E 'Req Begin|Req Done|requestToMemory|responseFromMemory' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace 
             # python3 logparser.py --input ${OUTPUT_DIR}/simple.trace --output ${OUTPUT_DIR} --num_cpu ${NUM_CPUS} --num_llc ${NUM_LLC} --num_mem ${NUM_MEM} --num_load 5000
+            # grep -E 'req_typ|LD' ${OUTPUT_DIR}/profile_stat.csv > ${OUTPUT_DIR}/profile_stat_LD.csv
             # grep -E "^[[:space:]]+[0-9]+: system\.ruby\.network\.int_links[0-9]+\.buffers[0-9]+" ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/link.log
+            grep -E 'StallTime=^0' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/StallMessage.trace
             # ${PY3} netparse.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR}
-            grep -E "PendingMsgs=" ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/SwitchVnet.log
+            # grep -E "PendingMsgs=" ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/SwitchVnet.log
           done
         fi
       done
