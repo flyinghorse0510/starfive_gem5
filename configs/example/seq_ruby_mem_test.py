@@ -114,22 +114,22 @@ if (args.chs_1p1c):
 else :
     npairs = args.chs_1p1c_num_pairs
     assert((2*npairs) <= num_cpus)
-    available_cpus = set(range(num_cpus))
+    available_cpus = list(range(num_cpus))
     num_peer_producers=npairs
-    for _ in range(npairs) :
-        producer=random.sample(available_cpus,1)[0]
+    for n in range(npairs) :
+        producer=available_cpus[n] #random.sample(available_cpus,1)[0]
         available_cpus.remove(producer)
-        consumer=random.sample(available_cpus,1)[0]
+        consumer=available_cpus[npairs-n] #random.sample(available_cpus,1)[0]
         available_cpus.remove(consumer)
         cpuProdListMap[producer]=[producer]
         cpuConsListMap[producer]=[consumer]
         cpuProdListMap[consumer]=[producer]
         cpuConsListMap[consumer]=[consumer]
 
-# for cpu in range(num_cpus):
-#     prod=cpuProdListMap[cpu]
-#     cons=cpuConsListMap[cpu]
-#     print(f'cpu={cpu}|prod={prod},cons={cons}')
+for cpu in range(num_cpus):
+    prod=cpuProdListMap[cpu]
+    cons=cpuConsListMap[cpu]
+    print(f'cpu={cpu}|prod={prod},cons={cons}')
 # sys.exit(1)
 
 if num_cpus > block_size:
