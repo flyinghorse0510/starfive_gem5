@@ -360,11 +360,11 @@ ProdConsMemTest::tick()
     assert(!isIdle);
 
     // create a new request
-    unsigned offset=0;
     Request::Flags flags;
     Addr paddr = 0;
     bool readOrWrite = (isProducer)?false:true;  // Only producer can write
     unsigned workingSetSize=perCPUWorkingBlocks.size();
+    unsigned readWorkingSetSize=0;
 
     // Skip if you have outstanding Too many outstanding transactions
     if (outstandingAddrs.size() >= maxOutStandingTransactions) {
@@ -400,7 +400,7 @@ ProdConsMemTest::tick()
 
         /* The entire working set is outstanding*/
         auto cdata = writeValsQ.at(id);
-        auto readWorkingSetSize = cdata->getWorkingSetSize();
+        readWorkingSetSize = cdata->getWorkingSetSize();
         if (outstandingAddrs.size() >= readWorkingSetSize) {
             waitResponse = true;
             return;
@@ -449,12 +449,12 @@ ProdConsMemTest::tick()
         pkt = new Packet(req, MemCmd::ReadReq);
         referenceData[req->getPaddr()] = data;
         pkt->dataDynamic(pkt_data);
-        DPRINTF(ProdConsMemLatTest,"Start,R,%x,%x\n",req->getPaddr(),data);
+        DPRINTF(ProdConsMemLatTest,"Start,R,%x,%x,%d/%d\n",req->getPaddr(),data,outstandingAddrs.size(),readWorkingSetSize);
     } else {
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
         pkt_data[0] = data;
-        DPRINTF(ProdConsMemLatTest,"Start,W,%x,%x\n",req->getPaddr(),data);
+        DPRINTF(ProdConsMemLatTest,"Start,W,%x,%x,%d\n",req->getPaddr(),data,outstandingAddrs.size());
     }
 
     txSeqNum++; // for each transaction,increate 1 to generate a new txSeqNum
