@@ -70,6 +70,7 @@ class Request:
         self.req_start = req_start # 
         self.req_end = None # 
         self.req_latency = None # entire round trip time
+        self.hops = None
         # memory statistics
         self.mem_addr = None # memory address
         self.mem_start = None # memory access time
@@ -185,7 +186,7 @@ def parse_request(line:str, tick:int, seq_num:str, name:str):
     if seqreq_search : 
         seqReq = seqreq_search.group(1)
         if seqReq == 'Done': # this is the end of request
-            cycle_search = re.search('(\d+)\scycles$',line)
+            cycle_search = re.search('(\d+)\scycles, (\d+) hops$',line)
             try:
                 assert req_dict[seq_num] != None
                 req: Request = req_dict[seq_num]
@@ -194,6 +195,7 @@ def parse_request(line:str, tick:int, seq_num:str, name:str):
                 logging.warning(f"all requests are:{list(map(str, req_dict.values()))}")
             req.req_end = tick
             req.req_latency = int(cycle_search.group(1))
+            req.hops = int(cycle_search.group(2))
             req.success = None # [TODO]: extract the status of the request
 
         elif seqReq == 'Begin': # this is the start of request
@@ -444,7 +446,7 @@ if __name__ == '__main__':
     # currently we only need input and output args
 
     cache_to_idx, idx_to_cache, num_caches = gen_cache_table(num_cpus, num_l3caches)
-
+    print(f"Processing file: {trace_file}")
     parse_trace_log(trace_file, cache_to_idx, idx_to_cache, num_caches, breakdown=False)
     # turn on plot by setting draw True
     # turn on console log by setting console True

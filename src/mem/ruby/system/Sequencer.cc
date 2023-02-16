@@ -394,11 +394,11 @@ Sequencer::recordMissLatency(SequencerRequest* srequest, bool llscSuccess,
     }
 
     // zhiang: print TxSeqNum as TxnTrace flag.
-    DPRINTF(TxnTrace, "txsn: %#018x, Req Done with %10s, addr: %#x, %d cycles\n", 
+    DPRINTF(TxnTrace, "txsn: %#018x, Req Done with %10s, addr: %#x, %d cycles, %d hops\n", 
             srequest->pkt->req->getReqInstSeqNum(), 
             llscSuccess ? "SC_Success" : "SC_Failed",
             printAddress(srequest->pkt->getAddr()),
-            total_lat);
+            total_lat, srequest->pkt->req->getHops());
                 
     DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %s %d cycles\n",
              curTick(), m_version, "Seq", llscSuccess ? "Done" : "SC_Failed",

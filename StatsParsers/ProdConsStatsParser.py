@@ -255,6 +255,7 @@ def get1P1CStats(outdir_root):
             bw=(numReads*64)/totalCyc
             print(f'Bandwidth={bw} with DCT={dct}')
 
+
 def getM1P1CStats(outdir_root):
     dctConfigList=[True,False]
     workinSetList=[65536]

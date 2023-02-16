@@ -112,7 +112,8 @@ structure(CHIRequestMsg, desc="", interface="Message") {
   Addr txnId,           desc="Transaction ID", default="0";
 
   // zhiang: add txSeqNum here
-  uint64_t txSeqNum;
+  uint64_t txSeqNum,        default="0", desc="Sequence number for txn trace";
+  RequestPtr reqPtr,        default="nullptr", desc="Pointer to original request";
 
   MessageSizeType MessageSize, default="MessageSizeType_Control";
 
@@ -162,7 +163,8 @@ structure(CHIResponseMsg, desc="", interface="Message") {
   //NOTE: not in CHI and for debuging only
 
   // zhiang: add txSeqNum here
-  uint64_t txSeqNum;
+  uint64_t txSeqNum,    default="0", desc="Sequence number for txn trace";
+  RequestPtr reqPtr,        default="nullptr", desc="Pointer to original request";
 
   MessageSizeType MessageSize, default="MessageSizeType_Control";
 
@@ -213,7 +215,8 @@ structure(CHIDataMsg, desc="", interface="Message") {
   Addr txnId,           desc="Transaction ID", default="0";
 
   // zhiang: add txSeqNum here
-  uint64_t txSeqNum;
+  uint64_t txSeqNum,    default="0", desc="Sequence number for txn trace";
+  RequestPtr reqPtr,        default="nullptr", desc="Pointer to original request";
 
   MessageSizeType MessageSize, default="MessageSizeType_Data";
 

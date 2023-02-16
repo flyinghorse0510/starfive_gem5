@@ -35,6 +35,10 @@
 #include "mem/ruby/network/garnet/Credit.hh"
 #include "mem/ruby/network/garnet/Router.hh"
 
+#include "mem/request.hh"
+#include "debug/FlitHop.hh"
+#include "debug/FlitHopFull.hh"
+
 namespace gem5
 {
 
@@ -73,6 +77,8 @@ InputUnit::InputUnit(int id, PortDirection direction, Router *router)
  *
  */
 
+std::vector<std::string> flit_type{"HEAD","BODY","TAIL","HDTL","CREDIT","NUM"};
+
 void
 InputUnit::wakeup()
 {
@@ -90,6 +96,13 @@ InputUnit::wakeup()
         if ((t_flit->get_type() == HEAD_) ||
             (t_flit->get_type() == HEAD_TAIL_)) {
 
+            // TODO: zhiang: current implementation can have nullptr. need more care.
+            // assert(t_flit->get_req_ptr() != nullptr);
+            if(t_flit->get_req_ptr()){
+                uint64_t cur_hop = t_flit->get_req_ptr()->getHops();
+                t_flit->get_req_ptr()->setHops(cur_hop+1);
+            }
+
             assert(virtualChannels[vc].get_state() == IDLE_);
             set_vc_active(vc, curTick());
 
@@ -106,6 +119,22 @@ InputUnit::wakeup()
             assert(virtualChannels[vc].get_state() == ACTIVE_);
         }
 
+        // zhiang: print flit msg. current implementation can have nullptr. need more care.
+        if(::gem5::debug::FlitHopFull || t_flit->get_type() == HEAD_ || t_flit->get_type() == HEAD_TAIL_){
+            if(t_flit->get_req_ptr()){
+                DPRINTF(FlitHop, "Flit_%s of Req[%p] reach Router[%d] from %s. CurHop: %lu.\n", 
+                    flit_type[t_flit->get_type()],
+                    t_flit->get_req_ptr(), 
+                    m_router->get_id(), 
+                    m_in_link->name(), 
+                    t_flit->get_req_ptr()->getHops());
+            } else {
+                DPRINTF(FlitHop, "Flit%s reach Router[%d] from %s is nullptr. No hop is added.\n",
+                    flit_type[t_flit->get_type()],
+                    m_router->get_id(),
+                    m_in_link->name());
+            }
+        }
 
         // Buffer the flit
         virtualChannels[vc].insertFlit(t_flit);
