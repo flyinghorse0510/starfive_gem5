@@ -7,6 +7,7 @@ import os
 import argparse
 from typing import Dict,List
 import logging
+import pandas as pd
 
 logging.basicConfig(level=logging.INFO)
 
@@ -122,7 +123,7 @@ class Controller:
         self.path = path
 
     def __repr__(self):
-        return self.path
+        return self.path.split('.')[-2]
 
 controllers:List[Controller] = []
 
@@ -132,7 +133,7 @@ class Router:
         self.id = id
 
     def __repr__(self):
-        return f'Router[{self.id}]'
+        return f'R{self.id}'
 
 class Link:
     def __init__(self, name, path, id):
@@ -141,7 +142,7 @@ class Link:
         self.id = id
 
     def __repr__(self):
-        return self.path
+        return self.name
 
 class ExtLink(Link):
     def __init__(self, name, path, id, int_node=None, ext_node=None):
@@ -153,7 +154,7 @@ class ExtLink(Link):
         return f'ExtLink{self.id}: {self.int_node}<->{self.ext_node}'
     
     def __str__(self):
-        return f'{self.path.split(".")[-1]}'
+        return f'e{self.name[self.name.find("s")+1:]}'
 
 class IntLink(Link):
     def __init__(self, name, path, id, src_node=None, dst_node=None):
@@ -166,7 +167,7 @@ class IntLink(Link):
         return f'IntLink{self.id}: {self.src_node}-->{self.dst_node}'
     
     def __str__(self):
-        return f'{self.path.split(".")[-1]},\n{self.stats}'
+        return f'i{self.name[self.name.find("s")+1:]},\n{self.stats}'
 
 def get_node(routers:List[Router], path):
     if isinstance(path, dict):
@@ -233,32 +234,57 @@ def parse_link_log(log_path: str, routers: List[Router], ext_links: List[ExtLink
                 int_links_dict[link].stats.__dict__[typ] += 1
 
 
-def build_network(ext_links:List[ExtLink],int_links:List[IntLink],routers:List[Router]):
+def build_network(ext_links:List[ExtLink],int_links:List[IntLink],routers:List[Router],draw_ctrl:bool):
     G = nx.DiGraph()
-    G.add_nodes_from(controllers)
-    G.add_nodes_from(routers)
-    for e in ext_links:
-        G.add_edge(e.ext_node, e.int_node, data=e)
-        G.add_edge(e.int_node, e.ext_node, data=e)
 
-    for i in int_links:
-        G.add_edge(i.src_node, i.dst_node, data=i)
+    if draw_ctrl:
+        G.add_nodes_from(routers)
+        G.add_nodes_from(controllers)
+        for e in ext_links:
+            G.add_edge(e.ext_node, e.int_node, data=e)
+            G.add_edge(e.int_node, e.ext_node, data=e)
+        for i in int_links:
+            G.add_edge(i.src_node, i.dst_node, data=i)
+
+    else:
+        G.add_nodes_from(routers)
+        for i in int_links:
+            G.add_edge(i.src_node, i.dst_node, data=i)
+
     
     return G
 
-def draw_network(G, output_file):
+def draw_network(G, output_file, num_int_router, num_ext_router, num_ctrl, draw_ctrl:bool):
     pos = nx.kamada_kawai_layout(G)
-    nx.draw_networkx_nodes(G, pos)
-    nx.draw_networkx_labels(G, pos, font_size='2')
-    nx.draw_networkx_edges(G, pos, edge_color='k',connectionstyle='arc3,rad=0.3',width=0.5,arrowsize=5)
-    my_draw_networkx_edge_labels(G, pos, edge_labels={(u, v): edge['data'] for (u, v, edge) in G.edges(data=True)},font_size='2',rad=0.3)
-    plt.savefig(output_file,dpi = 500)
+    node_color = ['#6096B4']*num_int_router+['#EEE9DA']*num_ext_router
+    if draw_ctrl:
+        node_color += ['#A7727D']*num_ctrl
+
+    nx.draw_networkx_nodes(G, pos, node_size=20, node_color=node_color)
+    nx.draw_networkx_labels(G, pos, font_size=2)
+    nx.draw_networkx_edges(G, pos, edge_color='k',connectionstyle='arc3,rad=0.1',width=0.3,arrowsize=2, node_size=20)
+    my_draw_networkx_edge_labels(G, pos, edge_labels={(u, v): edge['data'] for (u, v, edge) in G.edges(data=True)},font_size=1,rad=0.1)
+    plt.savefig(output_file,dpi = 800)
     logging.info(f'save fig to {output_file}')
+
+
+def dump_log(ext_links:List[ExtLink],int_links:List[IntLink],routers:List[Router],dump_path):
+    int_links_stats = {l.name:{'src_node':l.src_node.__repr__(), 'dst_node':l.dst_node.__repr__(), 'msg':l.stats.__dict__} for l in int_links}
+
+    with open(dump_path, 'w+') as f:
+        json.dump(int_links_stats, f, indent=2)
+    
+    logging.info(f'details dump to {dump_path}')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--input', required=True, type=str)
     parser.add_argument('--output', required=True, type=str)
+    parser.add_argument('--draw-ctrl', required=False, action='store_true')
+    parser.add_argument('--num_int_router', required=False, default=16, type=int)
+    parser.add_argument('--start-time', required=False, default=0, type=int)
+    parser.add_argument('--end-time', required=False, default=float('inf'), type=float)
     options = parser.parse_args()
 
     json_file = os.path.join(options.input,'config.json')
@@ -274,6 +300,10 @@ if __name__ == '__main__':
         ext_links, int_links, routers = parse_json(JSON)
     
     parse_link_log(link_log, routers, ext_links, int_links)
+    dump_log(ext_links, int_links, routers, dump_path)
 
-    graph = build_network(ext_links,int_links,routers)
-    draw_network(G=graph, output_file=diagram_path)
+    graph = build_network(ext_links,int_links,routers,draw_ctrl=options.draw_ctrl)
+    draw_network(G=graph, output_file=diagram_path, 
+                 num_int_router=options.num_int_router, 
+                 num_ext_router=len(routers)-options.num_int_router, 
+                 num_ctrl=len(controllers), draw_ctrl=options.draw_ctrl)
