@@ -457,7 +457,8 @@ MessageBuffer::dequeue(Tick current_time, bool decrement_messages)
         m_buf_msgs--;
         
     }
-    DPRINTF(TxnTrace,"StallTime=%d,TotalMsgDelay=%d\n",(curTick() - message->getLastEnqueueTime()),delay);
+    DPRINTF(TxnTrace,"StallTime=%d,TotalMsgDelay=%d,MsgType=%s\n",(curTick() - message->getLastEnqueueTime()),delay,getCHITypeStr(message));
+    // txntrace_print(message,curTick()-message->getLastEnqueueTime());
 
     // if a dequeue callback was requested, call it now
     if (m_dequeue_callback) {
@@ -465,6 +466,22 @@ MessageBuffer::dequeue(Tick current_time, bool decrement_messages)
     }
 
     return delay;
+}
+
+std::string MessageBuffer::getCHITypeStr(const MsgPtr& message) {
+    const std::type_info& msg_type = typeid(*(message.get()));
+    if (msg_type==typeid(CHIRequestMsg)) {
+        const CHIRequestMsg* msg = dynamic_cast<CHIRequestMsg*>(message.get());
+        return CHIRequestType_to_string(msg->gettype());
+    } else if (msg_type==typeid(CHIResponseMsg)) {
+        const CHIResponseMsg* msg = dynamic_cast<CHIResponseMsg*>(message.get());
+        return CHIResponseType_to_string(msg->gettype());
+    } else if (msg_type==typeid(CHIDataMsg)) {
+        const CHIDataMsg* msg = dynamic_cast<CHIDataMsg*>(message.get());
+        return CHIDataType_to_string(msg->gettype());
+    } else {
+        return std::string("");
+    }
 }
 
 void

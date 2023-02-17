@@ -126,6 +126,8 @@ class MessageBuffer : public SimObject
     void txntrace_print(MsgPtr message, const gem5::Tick& arrival_time);
     void enqueue(MsgPtr message, Tick curTime, Tick delta);
 
+    std::string getCHITypeStr(const MsgPtr& message);
+
     // Defer enqueueing a message to a later cycle by putting it aside and not
     // enqueueing it in this cycle
     // The corresponding controller will need to explicitly enqueue the
