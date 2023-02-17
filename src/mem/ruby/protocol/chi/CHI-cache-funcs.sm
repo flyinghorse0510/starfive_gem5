@@ -842,7 +842,7 @@ void printTBEStateStr5(TBE tbe) {
       DPRINTF(RubyCHIDebugStr5, "addr=%#x,actions queue empty\n",tbe.addr);
     }
   } else {
-    DPRINTF(RubyCHIDebugStr5,"TBE invalid");
+    DPRINTF(RubyCHIDebugStr5,"TBE invalid\n");
   }
 }
 

@@ -112,9 +112,18 @@ transition({BUSY_INTR,BUSY_BLKD}, CheckCacheFill, BUSY_INTR) {
   // or a stall depending on block availability
 }
 
-transition({BUSY_INTR,BUSY_BLKD}, CheckSnoopFilterFill, BUSY_INTR) {
-  Check_SnoopFilterFill;
+transition({BUSY_INTR,BUSY_BLKD}, StartSnoopFilterFill, BUSY_INTR) {
+  Start_SnoopFilterFill;
 }
+
+transition({SC,UC,SC_RSC,UC_RSC,
+            UD_RU,UC_RU,UD_RSD,SD_RSD, RU}, SnoopFilterEviction, BUSY_INTR) {
+  Initiate_SFRepl;
+  // Profile_Eviction;
+  Pop_SFReplTriggerQueue;
+  ProcessNextState;
+}
+
 
 transition({BUSY_INTR,BUSY_BLKD}, DataArrayWrite) {DataArrayWrite} {
   Pop_TriggerQueue;

@@ -159,8 +159,6 @@ class IsolatedMemTest : public ClockedObject
         return (addr & ~blockAddrMask);
     }
 
-    const Addr baseAddr1;
-
     const unsigned progressInterval;  // frequency of progress reports
     const Cycles progressCheck;
     Tick nextProgressMessage;   // access # for next progress report
@@ -171,7 +169,6 @@ class IsolatedMemTest : public ClockedObject
     uint64_t numWrites;
     uint64_t maxLoads2;
     bool isSequential;
-    uint64_t numIters;
     uint64_t txSeqNum; // zhiang: requestorID + txSeqNum should be the unique ID
     const uint64_t maxLoads;
 

@@ -96,13 +96,11 @@ IsolatedMemTest::IsolatedMemTest(const Params &p)
       requestorId(p.system->getRequestorId(this)),
       blockSize(p.system->cacheLineSize()),
       blockAddrMask(blockSize - 1),
-      baseAddr1(p.base_addr_1),
       progressInterval(p.progress_interval),
       progressCheck(p.progress_check),
       nextProgressMessage(p.progress_interval),
       maxLoads(p.max_loads),
       atomic(p.system->isAtomicMode()),
-      numIters(p.num_iters),
       seqIdx(0),
       txSeqNum((static_cast<uint64_t>(p.system->getRequestorId(this))) << 48), // zhiang: init txSeqNum to ReqId(16-bit)_0000_0000_0000
       suppressFuncErrors(p.suppress_func_errors), stats(this)

@@ -50,9 +50,10 @@ class IsolatedMemTest(ClockedObject):
     # touched, and an optional stop condition
     interval = Param.Cycles(5, "Interval between request packets")
     size = Param.Unsigned(4194304, "Working set(bytes)")
-    base_addr_1 = Param.Addr(0x2000, "Start of the first testing region")
+    working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
+    num_producers = Param.Counter(1, "Number of producers")
+    num_cpus = Param.Counter(1, "Total number of CPUs")
     max_loads = Param.Counter(1, "Number of loads to unique address")
-    num_iters = Param.Counter(10, "Number of load iterations to each address")
 
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses
