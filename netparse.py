@@ -251,11 +251,25 @@ def build_network(ext_links:List[ExtLink],int_links:List[IntLink],routers:List[R
         for i in int_links:
             G.add_edge(i.src_node, i.dst_node, data=i)
 
-    
     return G
 
-def draw_network(G, output_file, num_int_router, num_ext_router, num_ctrl, draw_ctrl:bool):
-    pos = nx.kamada_kawai_layout(G)
+def draw_network(G, output_file, routers, num_int_router, num_ext_router, num_ctrl, draw_ctrl:bool):
+    
+    for num_cols in range(1,num_int_router):
+        num_rows = num_int_router//num_cols
+        if num_int_router==num_cols*num_rows and num_cols>=num_rows:
+            break
+    
+    logging.debug(f'num_rows:{num_rows}, num_cols:{num_cols}')
+
+    pos_dict = {}
+    for i in range(num_int_router):
+        r = routers[i]
+        pos_dict[r] = np.array([(i//num_cols)*100,(i%num_cols-1)*100])
+    
+    logging.debug(f'pos:{pos_dict}')
+    pos = nx.spring_layout(G, pos=pos_dict, fixed=list(pos_dict.keys()))
+    logging.debug(f'pos:{pos}')
     node_color = ['#6096B4']*num_int_router+['#EEE9DA']*num_ext_router
     if draw_ctrl:
         node_color += ['#A7727D']*num_ctrl
@@ -282,7 +296,7 @@ if __name__ == '__main__':
     parser.add_argument('--input', required=True, type=str)
     parser.add_argument('--output', required=True, type=str)
     parser.add_argument('--draw-ctrl', required=False, action='store_true')
-    parser.add_argument('--num_int_router', required=False, default=16, type=int)
+    parser.add_argument('--num-int-router', required=False, default=16, type=int)
     parser.add_argument('--start-time', required=False, default=0, type=int)
     parser.add_argument('--end-time', required=False, default=float('inf'), type=float)
     options = parser.parse_args()
@@ -303,7 +317,7 @@ if __name__ == '__main__':
     dump_log(ext_links, int_links, routers, dump_path)
 
     graph = build_network(ext_links,int_links,routers,draw_ctrl=options.draw_ctrl)
-    draw_network(G=graph, output_file=diagram_path, 
+    draw_network(G=graph, routers=routers, output_file=diagram_path, 
                  num_int_router=options.num_int_router, 
                  num_ext_router=len(routers)-options.num_int_router, 
                  num_ctrl=len(controllers), draw_ctrl=options.draw_ctrl)
