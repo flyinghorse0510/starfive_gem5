@@ -924,7 +924,7 @@ Sequencer::issueRequest(PacketPtr pkt, RubyRequestType secondary_type)
                                             PrefetchBit_No, proc_id, core_id);
 
         // zhiang: print TxSeqNum as TxnTrace flag.
-        DPRINTF(TxnTrace, "txsn: %#018x, Req Begin, type: %s, addr: %#x\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, ReqBegin=%s, addr: %#x\n", 
                 pkt->req->getReqInstSeqNum(), 
                 RubyRequestType_to_string(secondary_type),
                 printAddress(msg->getPhysicalAddress()));
