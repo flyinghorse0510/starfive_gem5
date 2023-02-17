@@ -14,6 +14,12 @@ logging.basicConfig(level=logging.INFO)
 # we need 7 groups: 1) curTick, 2) name, 3) txsn, 4) arr time, 5) path, 6) type, 7) reqPtr
 msg_pat = re.compile('^(\s*\d*): (\S+): txsn: (\w+), arr: (\d*), (\S+), type: (\w+), req: (\w+), [\s\S]*$')
 
+# we need 7 groups: 1) curTick, 2) name, 3) txsn, 4) arr time, 5) addon for msg breakdown, 6) path, 7) type, 8) reqPtr
+msg_pat = re.compile('^(\s*\d*): (\S+): txsn: (\w+), arr: (\d*)(.*), (\S+), type: (\w+), req: (\w+), [\s\S]*$')
+
+# we need 9 groups: 1) curTick, 2) name, 3) txsn, 4) arr time, 5) last_arr_time, 6) last_link 7) path, 8) type, 9) reqPtr
+# msg_pat = re.compile('^(\s*\d*): (\S+): txsn: (\w+), arr: (\d*)<-(\d*)\((\S+)\), (\S+), type: (\w+), req: (\w+), [\s\S]*$')
+
 
 def my_draw_networkx_edge_labels(
     G,
@@ -167,7 +173,14 @@ class IntLink(Link):
         return f'IntLink{self.id}: {self.src_node}-->{self.dst_node}'
     
     def __str__(self):
-        return f'i{self.name[self.name.find("s")+1:]},\n{self.stats}'
+        link_str = ''
+        for i,(k,v) in enumerate(self.stats.__dict__.items()):
+            if i%3==2:
+                link_str += f'{k}:{v}\n'
+            else:
+                link_str += f'{k}:{v}, '
+
+        return f'i{self.name[self.name.find("s")+1:]}, {link_str}'
 
 def get_node(routers:List[Router], path):
     if isinstance(path, dict):
@@ -215,18 +228,25 @@ def parse_link_log(log_path: str, routers: List[Router], ext_links: List[ExtLink
             msg_srch = re.search(msg_pat, line)
             assert msg_srch != None
 
-            # 1) curTick, 2) name, 3) txsn, 4) arr tick, 5) path, 6) type, 7) reqPtr
+            # 1) curTick, 2) name, 3) txsn, 4) arr time, 5) last_arr_time, 6) last_link 7) path, 8) type, 9) reqPtr
             curtick = int(msg_srch.group(1))
             issuer:str = msg_srch.group(2)
             txsn = msg_srch.group(3)
             arrtick = int(msg_srch.group(4))
-            path = msg_srch.group(5)
-            typ = msg_srch.group(6)
-            reqptr = msg_srch.group(7)
+            addon_msg = msg_srch.group(5)
+            path = msg_srch.group(6)
+            typ = msg_srch.group(7)
+            reqptr = msg_srch.group(8)
 
-            link:str = issuer[:issuer.rfind('.')]
-            logging.debug(f'router matched: {link}')
+            issuer:str = issuer[:issuer.rfind('.')]
+
+            if issuer.find('int_links') == -1:
+                logging.debug(f'cntrl port found: {issuer}')
+                continue ### TODO: this should not continue, need to update link latency
+            else:
+                logging.debug(f'router matched: {issuer}')
             
+            link = issuer
             # add new field to link's stats
             if int_links_dict[link].stats.__dict__.get(typ) == None:
                 int_links_dict[link].stats.__dict__[typ] = 1

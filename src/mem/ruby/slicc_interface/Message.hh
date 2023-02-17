@@ -65,8 +65,8 @@ class Message
     Message(Tick curTime)
         : m_time(curTime),
           m_LastEnqueueTime(curTime),
-          m_DelayedTicks(0), m_msg_counter(0)
-    { }
+          m_DelayedTicks(0), m_msg_counter(0), m_LastLinkTime(0)
+    { m_LastLinkName = "origin"; } // zhiang: since all msgs are only created from controllers, the first link for msg is initialized as origin
 
     Message(const Message &other) = default;
 
@@ -121,11 +121,19 @@ class Message
     int getVnet() const { return vnet; }
     void setVnet(int net) { vnet = net; }
 
+    // zhiang: for tracing msg's path
+    void setLastLinkName(const std::string& name) { m_LastLinkName = name; }
+    std::string getLastLinkName() const {return m_LastLinkName;}
+    void setLastLinkTime(const Tick& time) { m_LastLinkTime = time; }
+    Tick getLastLinkTime() const {return m_LastLinkTime;}
+
   private:
     Tick m_time;
     Tick m_LastEnqueueTime; // my last enqueue time
     Tick m_DelayedTicks; // my delayed cycles
     uint64_t m_msg_counter; // FIXME, should this be a 64-bit value?
+    std::string m_LastLinkName; // last link name
+    Tick m_LastLinkTime; // last link time, we need another field
 
     // Variables for required network traversal
     int incoming_link;

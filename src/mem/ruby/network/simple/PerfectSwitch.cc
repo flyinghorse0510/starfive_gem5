@@ -270,8 +270,7 @@ PerfectSwitch::operateMessageBuffer(MessageBuffer *buffer, int vnet)
                     "inport[%d][%d] to outport [%d][%d].\n",
                     buffer->getIncomingLink(), vnet, outgoing, vnet);
 
-            DPRINTF(TxnTrace, "Router[%d]: inport[%d][%d] to outport [%d][%d]. %d pending msgs.\n",
-                    this->m_switch_id, 
+            DPRINTF(TxnLink, "msg [%d][%d] to [%d][%d]. %d pending.\n",
                     buffer->getIncomingLink(), vnet, 
                     outgoing, vnet,
                     m_pending_message_count[vnet]
