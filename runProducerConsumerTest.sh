@@ -127,8 +127,8 @@ if [ "$C2CBW" != "" ]; then
   NUM_CPUS=2
   CONSUMER_SET_CONFIGS=(1) #(1 2 4 8) #$(seq 0 $((${NUM_CPUS}-1))) #("1") #(2 4 8 16)
   PRODUCER_SET_CONFIGS=(0) #(1 2 4 8) #$(seq 0 $((${NUM_CPUS}-1))) #("0") #(1 2 4 8)
-  WKSETLIST=(320) #(65536 131072) #(1024 65536)
-  OUTPUT_PREFIX="PRODCONS_1P1C_BW"
+  WKSETLIST=(65536) #(65536 131072) #(1024 65536)
+  OUTPUT_PREFIX="PRODCONS_1P1C_BW_2"
   
   for DCT in ${DCT_CONFIGS[@]}; do
     for LOC_PROD in ${PRODUCER_SET_CONFIGS[@]}; do
@@ -172,6 +172,7 @@ if [ "$C2CBW" != "" ]; then
                --num-cpus=${NUM_CPUS} \
                --sequencer-outstanding-requests=32 \
                --chs-1p1c \
+               --simple-link-bw-factor=16 \
                --chs-cons-id=${LOC_CONS} \
                --chs-prod-id=${LOC_PROD} &
           done
@@ -189,15 +190,15 @@ if [ "$C2CBW" != "" ]; then
             OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUM_CPUS}_Prod${LOC_PROD}_Cons${LOC_CONS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}"
             # grep "ReqDone=LD" ${OUTPUT_DIR}/debug.trace  >& ${OUTPUT_DIR}/search_trace.txt
             # grep "0x0018000000000002" ${OUTPUT_DIR}/debug.trace  >& ${OUTPUT_DIR}/txsn1.txt
-            # grep -E 'Req Begin|Req Done|requestToMemory|responseFromMemory' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace 
+            grep -E 'ReqBegin=LD|ReqDone=LD' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace 
             # python3 logparser.py --input ${OUTPUT_DIR}/simple.trace --output ${OUTPUT_DIR} --num_cpu ${NUM_CPUS} --num_llc ${NUM_LLC} --num_mem ${NUM_MEM} --num_load 5000
             # grep -E 'req_typ|LD' ${OUTPUT_DIR}/profile_stat.csv > ${OUTPUT_DIR}/profile_stat_LD.csv
             # grep -E 'StallTime=' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/link.log
-            # ${PY3} ProdConsStatsParser.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR}
+            ${PY3} ProdConsStatsParser.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR}
             # grep -E 'system\.ruby\.network\.int_links00\.src_node\.port_buffers07' ${OUTPUT_DIR}/debug.trace >& ${OUTPUT_DIR}/IntLink00.src.pb07.trace
             # grep -E 'system\.ruby\.hnf00\.cntrl: next_state:|system\.cpu[0-1].l1d: next_state:' ${OUTPUT_DIR}/debug.trace >& ${OUTPUT_DIR}/hnf00.trace
             # grep -E 'allow_SD' ${OUTPUT_DIR}/debug.trace >& ${OUTPUT_DIR}/allowSD.trace
-            grep -E 'system\.cpu0|system\.ruby\.hnf[0-9]+' ${OUTPUT_DIR}/debug.trace >& ${OUTPUT_DIR}/Snoopee.trace
+            # grep -E 'system\.cpu0|system\.ruby\.hnf[0-9]+' ${OUTPUT_DIR}/debug.trace >& ${OUTPUT_DIR}/Snoopee.trace
             # grep -E "PendingMsgs=" ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/SwitchVnet.log
           done
         fi
