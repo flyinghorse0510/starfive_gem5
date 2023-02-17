@@ -21,7 +21,7 @@ TXNTRACE=""
 
 TEST=""
 
-while getopts "hbr:s:a:t:p:" options; do
+while getopts "hbr:s:a:t:p:g:" options; do
     case $options in
        h) Help
           exit;;
@@ -52,6 +52,12 @@ while getopts "hbr:s:a:t:p:" options; do
          STATS="yes"
          TEST=${OPTARG}
          echo "Running STATS parser"
+         ;;
+       g)
+        GRAPH="yes"
+        DEBUG_FLAGS=TxnLink
+        TEST=${OPTARG}
+        echo "Running link graphing, need to turn on TxnLink"
     esac
 done
 
@@ -408,6 +414,31 @@ fi
           ## python3 stats_parser.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM}
           ## also print l2p,l1d,l1i
           python3 stats_parser.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --trans ${TRANS} --snf_tbe ${SNF_TBE} --dmt ${DMT} --linkwidth ${LINKWIDTH} --print l1d,l1i,l2p,llc,cpu,ddr
+         done
+       done
+     done
+   done
+  done
+ done
+fi
+
+  if [ "$GRAPH" != "" ]; then
+    #OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
+    for DMT in ${DMT_Config[@]}; do
+       for NUMCPUS in ${NUM_CPU_SET[@]}; do
+          for TRANS in ${TRANS_SET[@]}; do
+             for  SNF_TBE in ${SNF_TBE_SET[@]}; do 
+                for NUM_LOAD in ${NUM_LOAD_SET[@]}; do 
+                   for LINKWIDTH in ${LINKWIDTH_SET[@]}; do
+
+            OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}"
+            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
+          
+          grep -E "^[[:space:]]+[0-9]+: system\.ruby\.network\.int_links[0-9]+\.buffers[0-9]+" ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/link.log
+          # python3 netparse.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR} --num-int-router 16
+          # enable --draw-ctrl to draw controllers
+          # currently need to manually pass the number of internal routers
+          python3 netparse.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR} --draw-ctrl --num-int-router 16
          done
        done
      done
