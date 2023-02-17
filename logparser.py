@@ -336,17 +336,17 @@ def profiling(output_dir, draw=False, console=False):
     output_log = os.path.join(output_dir, 'profile_stat.csv')
     output_fig = os.path.join(output_dir, 'profile_stat.png')
     
-    avg_req_cycle = round(req_latency_sum / num_cmp_req, 4)
-    avg_mem_latency = round(mem_latency_sum / num_cmp_mem / tick_per_ns, 4) # in ns
+    # avg_req_cycle = round(req_latency_sum / num_cmp_req, 4)
+    # avg_mem_latency = round(mem_latency_sum / num_cmp_mem / tick_per_ns, 4) # in ns
 
-    avg_mem_str = f'{num_cmp_mem} of completed memory requests. Avg mem access time is {avg_mem_latency} ns. Min is {min(mem_req_stat)/tick_per_ns} ns. Max is {max(mem_req_stat)/tick_per_ns} ns.'
-    avg_cyc_str = f'{num_req} of requests in total. {num_cmp_req} of completed requests. Avg complete time is {avg_req_cycle} cycle. Min is {min(cpu_req_stat)} cycle. Max is {max(cpu_req_stat)} cycle.'
+    # avg_mem_str = f'{num_cmp_mem} of completed memory requests. Avg mem access time is {avg_mem_latency} ns. Min is {min(mem_req_stat)/tick_per_ns} ns. Max is {max(mem_req_stat)/tick_per_ns} ns.'
+    # avg_cyc_str = f'{num_req} of requests in total. {num_cmp_req} of completed requests. Avg complete time is {avg_req_cycle} cycle. Min is {min(cpu_req_stat)} cycle. Max is {max(cpu_req_stat)} cycle.'
     # prof_str.insert(0, avg_mem_str+'\n')
     # prof_str.insert(0, avg_cyc_str+'\n')
 
     # print avg cycle
-    logging.log(LOG_MSG, avg_cyc_str)
-    logging.log(LOG_MSG, avg_mem_str)
+    # logging.log(LOG_MSG, avg_cyc_str)
+    # logging.log(LOG_MSG, avg_mem_str)
 
     # write to file
     with open(output_log,'w+') as f:
