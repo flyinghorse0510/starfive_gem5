@@ -394,9 +394,9 @@ Sequencer::recordMissLatency(SequencerRequest* srequest, bool llscSuccess,
     }
 
     // zhiang: print TxSeqNum as TxnTrace flag.
-    DPRINTF(TxnTrace, "txsn: %#018x, Req Done with %10s, addr: %#x, %d cycles, %d hops\n", 
+    DPRINTF(TxnTrace, "txsn: %#018x, ReqDone=%s, addr: %#x, %d cycles, %d hops\n", 
             srequest->pkt->req->getReqInstSeqNum(), 
-            llscSuccess ? "SC_Success" : "SC_Failed",
+            RubyRequestType_to_string(type),
             printAddress(srequest->pkt->getAddr()),
             total_lat, srequest->pkt->req->getHops());
                 

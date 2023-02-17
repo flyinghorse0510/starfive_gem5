@@ -123,7 +123,7 @@ class MessageBuffer : public SimObject
 
     const MsgPtr &peekMsgPtr() const { return m_prio_heap.front(); }
 
-    void txntrace_print(MsgPtr message, const gem5::Tick& arrival_time);
+    void txntrace_print(MsgPtr message, const gem5::Tick& arrival_time, const bool);
     void enqueue(MsgPtr message, Tick curTime, Tick delta);
 
     std::string getCHITypeStr(const MsgPtr& message);
