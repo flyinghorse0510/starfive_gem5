@@ -189,7 +189,7 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     # Create the memory controllers
     # Notice we don't define a Directory_Controller type so we don't use
     # create_directories shared by other protocols.
-
+    CHI_SNF_MainMem.NoC_Params.router_list = [15]
     ruby_system.snf = [ CHI_SNF_MainMem(options, ruby_system, None, None)
                         for i in range(options.num_dirs) ]
     for snf in ruby_system.snf:
