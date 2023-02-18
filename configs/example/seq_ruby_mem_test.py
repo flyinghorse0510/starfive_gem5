@@ -83,7 +83,8 @@ parser.add_argument("--chs-1p1c",action='store_true',help='[Test 1] Run isolated
 parser.add_argument("--chs-cons-id",type=int,default=0,help='[Test 1] Consumer Id')
 parser.add_argument("--chs-prod-id",type=int,default=2,help='[Test 1] Producer Id')
 parser.add_argument("--chs-1p1c-num-pairs",default=1,type=int,help='[Test 2] Number of coherence sharing pairs')
-# parser.add_argument("--chs-1p-mc",type=int,action='store_')
+parser.add_argument("--chs-1pMc",action='store_true',help='[Test 3] Run 1 producer M > 1 consumers')
+parser.add_argument("--chs-1p-MSharers",default=2,type=int,help='[Test 3] Number of sharers')
 
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]
@@ -98,8 +99,8 @@ args = parser.parse_args()
 block_size = 64
 
 num_cpus=args.num_cpus
-cpuProdListMap=dict([(c,[-1]) for c in range(num_cpus)])
-cpuConsListMap=dict([(c,[-1]) for c in range(num_cpus)])
+cpuProdListMap=dict([(c,[]) for c in range(num_cpus)])
+cpuConsListMap=dict([(c,[]) for c in range(num_cpus)])
 num_peer_producers=1
 import random
 if (args.chs_1p1c):
@@ -111,7 +112,24 @@ if (args.chs_1p1c):
     cpuConsListMap[args.chs_prod_id]=[args.chs_cons_id]
     cpuProdListMap[args.chs_cons_id]=[args.chs_prod_id]
     cpuConsListMap[args.chs_cons_id]=[args.chs_cons_id]
+elif (args.chs_1pMc) :
+    assert(not (args.chs_1p1c)) # Do not set it to true
+    assert(args.chs_prod_id < num_cpus)
+    cpuProdListMap[args.chs_prod_id]=[args.chs_prod_id]
+    assert(args.chs_1p_MSharers > 1)
+    num_cons=0
+    for cons_id in range(num_cpus):
+        if num_cons >= args.chs_1p_MSharers:
+            break
+        if cons_id == args.chs_prod_id:
+            continue
+        else :
+            cpuConsListMap[cons_id].append(cons_id)
+            cpuProdListMap[cons_id].append(args.chs_prod_id)
+            cpuConsListMap[args.chs_prod_id].append(cons_id)
+            num_cons+=1
 else :
+    # M x (1P-1C) with controllable prod_id and cons_id locations
     npairs = args.chs_1p1c_num_pairs
     assert((2*npairs) <= num_cpus)
     available_cpus = list(range(num_cpus))
@@ -130,7 +148,6 @@ for cpu in range(num_cpus):
     prod=cpuProdListMap[cpu]
     cons=cpuConsListMap[cpu]
     print(f'cpu={cpu}|prod={prod},cons={cons}')
-# sys.exit(1)
 
 if num_cpus > block_size:
      print("Error: Number of testers %d limited to %d because of false sharing"
@@ -140,7 +157,6 @@ if num_cpus > block_size:
 #
 # Currently ruby does not support atomic or uncacheable accesses
 #
-
 MemTestClass=None
 if args.mem_test_type=='bw_test':
     MemTestClass=SeqMemTest
