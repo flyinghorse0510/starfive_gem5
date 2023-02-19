@@ -2756,6 +2756,10 @@ action(Send_SnpRespI, desc="") {
 
 action(Send_RetryAck, desc="") {
   peek(retryTriggerInPort, RetryTriggerMsg) {
+//    DPRINTF(RubyTxnTrace, "HNFRetry: seqn %#018x\n", tbe.txSeqNum);
+    DPRINTF(RubyTxnTrace, "HNFRetry: \n");
+    cache.profileRetryAck();
+ 
     enqueue(rspOutPort, CHIResponseMsg, response_latency) {
       out_msg.addr := in_msg.addr;
       out_msg.usesTxnId := in_msg.usesTxnId;
