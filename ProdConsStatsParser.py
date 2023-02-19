@@ -125,7 +125,6 @@ def main():
     parseReadWriteTxn(allMsgLog,msgPerfDumFile)
     # parseLinkLog(link_log, bottleNeckInfoFile)
     if os.path.isfile(msgPerfDumFile):
-        print(f'{options.input}')
         get1P1CStats(msgPerfDumFile)
         
     #     bX=pd.read_csv(bottleNeckInfoFile,index_col=False)
