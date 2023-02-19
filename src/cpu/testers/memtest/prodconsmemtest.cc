@@ -370,11 +370,11 @@ ProdConsMemTest::tick()
         assert(writeValsQ.find(id) != writeValsQ.end());
 
         /* The writer has not finished writing to working set yet. Stall */
-        if (writeValsQ.find(id) == writeValsQ.end()) {
-            schedule(tickEvent, clockEdge(interval));
-            reschedule(noRequestEvent, clockEdge(progressCheck), true);
-            return;
-        }
+        // if (writeValsQ.find(id) == writeValsQ.end()) {
+        //     schedule(tickEvent, clockEdge(interval));
+        //     reschedule(noRequestEvent, clockEdge(progressCheck), true);
+        //     return;
+        // }
 
         /* The entire working set is outstanding*/
         auto cdata = writeValsQ.at(id);
