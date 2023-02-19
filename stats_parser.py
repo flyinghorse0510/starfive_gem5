@@ -319,6 +319,7 @@ if __name__ == '__main__':
 
     # --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --trans ${TRANS} --snf_tbe ${SNF_TBE} --dmt ${DMT} --linkwidth ${LINKWIDTH} --print l1d,l1i,l2p,llc,cpu,ddr
     import argparse
+    import ast
     parser = argparse.ArgumentParser(description="")
     parser.add_argument('--input', required=True, type=str)
     parser.add_argument('--output', required=True, type=str)
@@ -327,11 +328,12 @@ if __name__ == '__main__':
     parser.add_argument('--num_ddr', required=True, type=int)
     parser.add_argument('--trans', required=True, type=int)
     parser.add_argument('--snf_tbe', required=True, type=int)
-    parser.add_argument('--dmt', required=True, type=bool)
+    parser.add_argument('--dmt', required=True, type=ast.literal_eval)
     parser.add_argument('--linkwidth', required=True, type=int)
     parser.add_argument('--print', required=False,type=str,default='cpu,ddr,llc',help='choose what to print from [cpu,l1d,l1i,l2,llc,ddr] with comma as delimiter. e.g. --print cpu,llc will only print cpu and llc. default options is cpu,llc,ddr')
 
     args = parser.parse_args()
+    
     cpus = [CPU(i) for i in range(args.num_cpu)]
     llcs = [LLC(i) for i in range(args.num_llc)]
     l1ds = [L1D(i) for i in range(args.num_cpu)]
