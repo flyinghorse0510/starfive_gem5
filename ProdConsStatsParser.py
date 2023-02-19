@@ -36,14 +36,17 @@ def parseReadWriteTxn(logfile,dumpfile):
                 TxSeqNum=startMatch.group(3)
                 time=(int(startMatch.group(1)))/tickPerCyc
                 addr=startMatch.group(4)
-                if addr in addrReqCount:
-                    addrReqCount[addr]+=1
+                reqAgent=(startMatch.group(2)).lstrip('system.').rstrip('.data_sequencer')
+                
+                if (reqAgent,addr) in addrReqCount:
+                    addrReqCount[(reqAgent,addr)]+=1
                 else:
-                    addrReqCount[addr]=1
+                    addrReqCount[(reqAgent,addr)]=1
                 msgDict[TxSeqNum] = {
                     'StartTime': time,
                     'Addr' : addr,
-                    'ReqCount':addrReqCount[addr],
+                    'ReqAgent': reqAgent,
+                    'ReqCount':addrReqCount[(reqAgent,addr)],
                     'EndTime': -1
                 }
             elif endMatch:
@@ -57,15 +60,16 @@ def parseReadWriteTxn(logfile,dumpfile):
                 print(f'DOES NOT MATCH')
                 print(line)
     with open(dumpfile, 'w') as fw:
-        print(f'TxSeqNum,StartTime,EndTime,Addr,ReqCount',file=fw)
+        print(f'TxSeqNum,StartTime,EndTime,Addr,ReqAgent,ReqCount',file=fw)
         for k,v in msgDict.items():
             StartTime=v['StartTime']
             EndTime=v['EndTime']
             Addr=v['Addr']
             ReqCount=v['ReqCount']
+            ReqAgent=v['ReqAgent']
             if (EndTime > 0) :
                 assert(EndTime > StartTime)
-                print(f'{k},{StartTime},{EndTime},{Addr},{ReqCount}',file=fw)
+                print(f'{k},{StartTime},{EndTime},{Addr},{ReqAgent},{ReqCount}',file=fw)
             else :
                 print(f'{k},{StartTime},,{Addr},{ReqCount}',file=fw)
 
