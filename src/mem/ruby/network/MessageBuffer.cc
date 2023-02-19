@@ -85,6 +85,8 @@ MessageBuffer::MessageBuffer(const Params &p)
     ADD_STAT(m_buf_msgs, statistics::units::Rate<
                 statistics::units::Count, statistics::units::Tick>::get(),
              "Average number of messages in buffer"),
+    ADD_STAT(m_retry_msgs, statistics::units::Count::get(),
+             "Number of retry message"), 
     ADD_STAT(m_stall_time, statistics::units::Tick::get(),
              "Total number of ticks messages were stalled in this buffer"),
     ADD_STAT(m_stall_count, statistics::units::Count::get(),
@@ -121,6 +123,9 @@ MessageBuffer::MessageBuffer(const Params &p)
         .flags(statistics::nozero);
 
     m_buf_msgs
+        .flags(statistics::nozero);
+
+    m_retry_msgs
         .flags(statistics::nozero);
 
     m_stall_count
@@ -421,6 +426,8 @@ MessageBuffer::enqueue(MsgPtr message, Tick current_time, Tick delta)
     DPRINTF(RubyQueue, "Enqueue arrival_time: %lld, delta:%lld, Message: %s\n",
             arrival_time, delta, *(message.get()));
 
+    profileRetry(message);
+
     // zhiang: print the txntrace message
     txntrace_print(message, arrival_time);
     // Schedule the wakeup
@@ -627,6 +634,18 @@ bool
 MessageBuffer::isDeferredMsgMapEmpty(Addr addr) const
 {
     return m_deferred_msg_map.count(addr) == 0;
+}
+
+void
+MessageBuffer::profileRetry(MsgPtr message)
+{
+    const std::type_info& msg_type = typeid(*(message.get()));
+    if(msg_type == typeid(CHIResponseMsg)) {
+         const CHIResponseMsg* msg = dynamic_cast<CHIResponseMsg*>(message.get());
+         CHIResponseType const & typ = msg->gettype();
+         if(CHIResponseType_RetryAck == typ)
+             m_retry_msgs++;
+    }
 }
 
 void

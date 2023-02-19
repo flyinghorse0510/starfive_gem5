@@ -123,6 +123,7 @@ class MessageBuffer : public SimObject
 
     const MsgPtr &peekMsgPtr() const { return m_prio_heap.front(); }
 
+    void profileRetry(MsgPtr message);
     void txntrace_print(MsgPtr message, const gem5::Tick& arrival_time);
     void enqueue(MsgPtr message, Tick curTime, Tick delta);
 
@@ -285,6 +286,7 @@ class MessageBuffer : public SimObject
     statistics::Scalar m_not_avail_count;
     statistics::Scalar m_msg_count;
     statistics::Average m_buf_msgs;
+    statistics::Scalar m_retry_msgs; //chi retry
     statistics::Scalar m_stall_time;
     statistics::Scalar m_stall_count;
     statistics::Formula m_avg_stall_time;
