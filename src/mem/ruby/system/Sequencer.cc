@@ -397,7 +397,7 @@ Sequencer::recordMissLatency(SequencerRequest* srequest, bool llscSuccess,
     DPRINTF(TxnTrace, "txsn: %#018x, ReqDone=%s, addr: %#x, %d cycles, %d hops\n", 
             srequest->pkt->req->getReqInstSeqNum(), 
             RubyRequestType_to_string(type),
-            printAddress(srequest->pkt->getAddr()),
+            srequest->pkt->getAddr(),
             total_lat, srequest->pkt->req->getHops());
                 
     DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %s %d cycles\n",
@@ -927,7 +927,7 @@ Sequencer::issueRequest(PacketPtr pkt, RubyRequestType secondary_type)
         DPRINTF(TxnTrace, "txsn: %#018x, ReqBegin=%s, addr: %#x\n", 
                 pkt->req->getReqInstSeqNum(), 
                 RubyRequestType_to_string(secondary_type),
-                printAddress(msg->getPhysicalAddress()));
+                msg->getPhysicalAddress());
 
         DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %#x %s\n",
                 curTick(), m_version, "Seq", "Begin", "", "",

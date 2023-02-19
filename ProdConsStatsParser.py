@@ -23,10 +23,11 @@ def parseLinkLog(log_path,bottleNeckInfoFile):
                     print(f'{CurCyc},{Loc},{StallTime},{AggDelay},{MsgType}',file=fw)
 
 def parseReadWriteTxn(logfile,dumpfile):
-    startPat=re.compile(r'^(\s*\d*): (\S+): txsn: (\w+), ReqBegin=LD, [\s\S]*$')
-    endPat=re.compile(r'^(\s*\d*): (\S+): txsn: (\w+), ReqDone=LD, [\s\S]*$')
+    startPat=re.compile(r'^(\s*\d*): (\S+): txsn: (\w+), ReqBegin=LD, addr: ([x0-9a-f]+)')
+    endPat=re.compile(r'^(\s*\d*): (\S+): txsn: (\w+), ReqDone=LD, addr: ([x0-9a-f]+), [\s\S]*$')
     tickPerCyc=500
     msgDict=dict()
+    addrReqCount=dict()
     with open(logfile,'r') as f:
         for line in f:
             startMatch=startPat.match(line)
@@ -34,8 +35,15 @@ def parseReadWriteTxn(logfile,dumpfile):
             if startMatch:
                 TxSeqNum=startMatch.group(3)
                 time=(int(startMatch.group(1)))/tickPerCyc
+                addr=startMatch.group(4)
+                if addr in addrReqCount:
+                    addrReqCount[addr]+=1
+                else:
+                    addrReqCount[addr]=1
                 msgDict[TxSeqNum] = {
                     'StartTime': time,
+                    'Addr' : addr,
+                    'ReqCount':addrReqCount[addr],
                     'EndTime': -1
                 }
             elif endMatch:
@@ -49,19 +57,22 @@ def parseReadWriteTxn(logfile,dumpfile):
                 print(f'DOES NOT MATCH')
                 print(line)
     with open(dumpfile, 'w') as fw:
-        print(f'TxSeqNum,StartTime,EndTime',file=fw)
+        print(f'TxSeqNum,StartTime,EndTime,Addr,ReqCount',file=fw)
         for k,v in msgDict.items():
             StartTime=v['StartTime']
             EndTime=v['EndTime']
+            Addr=v['Addr']
+            ReqCount=v['ReqCount']
             if (EndTime > 0) :
                 assert(EndTime > StartTime)
-                print(f'{k},{StartTime},{EndTime}',file=fw)
+                print(f'{k},{StartTime},{EndTime},{Addr},{ReqCount}',file=fw)
             else :
-                print(f'{k},{StartTime},',file=fw)
+                print(f'{k},{StartTime},,{Addr},{ReqCount}',file=fw)
 
 def get1P1CStats(statsFile):
-    dX=pd.read_csv(statsFile)
-    dX.dropna(inplace=True)
+    dX2=pd.read_csv(statsFile)
+    dX2.dropna(inplace=True)
+    dX=dX2.query(f'ReqCount <= 1')
     numReads=len(dX.index)
     endTime=dX['EndTime'].max()
     startTime=dX['StartTime'].min()
