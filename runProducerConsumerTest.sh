@@ -52,12 +52,11 @@ l3_assoc=16
 NUM_LLC=16
 NUM_MEM=1
 DEBUG_FLAGS=ProdConsMemLatTest,TxnTrace,TxnLink,RubyCHIDebugStr5,RubyGenerated
-DCT_CONFIGS=(False True) # True) # True) #(False True) #(False True) #(True False)
-LINK_BW_CONFIGS=(16 24 32 48)
+DCT_CONFIGS=(False True) # True) #(False True) #(False True) #(True False)
+LINK_BW_CONFIGS=(32)
 NETWORK="simple"
-LINKWIDTH=128 #(128 256)
 MAXNUMLOADS=1
-OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/C2C_9_${NETWORK}"
+OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/C2C_11_${NETWORK}"
 PY3=/home/arka.maity/anaconda3/bin/python3
 
 if [ "$BUILD" != "" ]; then
@@ -65,9 +64,12 @@ if [ "$BUILD" != "" ]; then
     scons build/${ISA}_${CCPROT}/${buildType} --default=RISCV PROTOCOL=${CCPROT} -j`nproc`
 fi
 
+
+echo "Starting coherence sharing benchmarks" > "${OUTPUT_ROOT}/Summary.txt"
+
 if [ "$C2CBW" != "" ]; then
   echo "1P1C BW test"
-  NUM_CPUS=2
+  NUM_CPUS=16
   CONSUMER_SET_CONFIGS=(1)
   PRODUCER_SET_CONFIGS=(0)
   WKSETLIST=(65536)
@@ -100,7 +102,7 @@ if [ "$C2CBW" != "" ]; then
                  --network=${NETWORK} \
                  --topology=CustomMesh \
                  --simple-physical-channels \
-                 --simple-link-bw-factor=16 \
+                 --simple-link-bw-factor=${LINK_BW} \
                  --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
                  --mem-size="16GB" \
                  --mem-type=DDR4_3200_8x8 \
@@ -127,6 +129,8 @@ if [ "$C2CBW" != "" ]; then
   done
   wait
 
+
+  echo "Test Case 1: Single producer single consumer " >> "${OUTPUT_ROOT}/Summary.txt"
   for DCT in ${DCT_CONFIGS[@]}; do
     for LOC_PROD in ${PRODUCER_SET_CONFIGS[@]}; do
       for LOC_CONS in ${CONSUMER_SET_CONFIGS[@]}; do
@@ -177,8 +181,8 @@ if [ "$C2CMBW" != "" ]; then
                  --l3_assoc=${l3_assoc} \
                  --network=${NETWORK} \
                  --topology=CustomMesh \
+                 --simple-link-bw-factor=${LINK_BW} \
                  --simple-physical-channels \
-                 --simple-link-bw-factor=16 \
                  --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
                  --mem-size="16GB" \
                  --mem-type=DDR4_3200_8x8 \
@@ -204,6 +208,7 @@ if [ "$C2CMBW" != "" ]; then
   done
   wait
 
+  echo "Test Case 3: Single producer multiple consumer " >> "${OUTPUT_ROOT}/Summary.txt"
   for DCT in ${DCT_CONFIGS[@]}; do
     for LOC_PROD in ${PRODUCER_SET_CONFIGS[@]}; do
       for NUM_CONS in ${NUM_CONSUMER_SET_CONFIGS[@]}; do
@@ -212,7 +217,7 @@ if [ "$C2CMBW" != "" ]; then
             OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_LINKBW${LINK_BW}_Core${NUM_CPUS}_Prod${LOC_PROD}_NumCons${NUM_CONS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}"
             # ${PY3} draw_config.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR} --draw-ctrl --num-int-router 16
             grep -E 'ReqBegin=LD|ReqDone=LD' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace 
-            ${PY3} ProdConsStatsParser.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR}
+            ${PY3} ProdConsStatsParser.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR} >> "${OUTPUT_ROOT}/Summary.txt"
           done
         done
       done
@@ -274,13 +279,14 @@ if [ "$MC2CBW" != "" ]; then
   done
   wait
 
+  echo "Test Case 2: Multiple pairs of Producer Consumer" >> "${OUTPUT_ROOT}/Summary.txt"
   for DCT in ${DCT_CONFIGS[@]}; do
     for NUM_PAIRS in ${NUM_PAIRS_CONFIG[@]}; do
       for WKSET in ${WKSETLIST[@]}; do
         for LINK_BW in ${LINK_BW_CONFIGS[@]}; do
           OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_LINKBW${LINK_BW}_Core${NUM_CPUS}_PCPairs${NUM_PAIRS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}"
           grep -E 'ReqBegin=LD|ReqDone=LD' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace 
-          ${PY3} ProdConsStatsParser.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR}
+          ${PY3} ProdConsStatsParser.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR} >> "${OUTPUT_ROOT}/Summary.txt"
         done
       done
     done
