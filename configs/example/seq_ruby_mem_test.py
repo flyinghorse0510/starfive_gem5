@@ -133,12 +133,12 @@ else :
     npairs = args.chs_1p1c_num_pairs
     assert((2*npairs) <= num_cpus)
     available_cpus = list(range(num_cpus))
+    producer_cpus=available_cpus[:num_cpus//2]
+    consumer_cpus=available_cpus[num_cpus//2:]
     num_peer_producers=npairs
     for n in range(npairs) :
-        producer=available_cpus[n] #random.sample(available_cpus,1)[0]
-        available_cpus.remove(producer)
-        consumer=available_cpus[npairs-n] #random.sample(available_cpus,1)[0]
-        available_cpus.remove(consumer)
+        producer=producer_cpus[n] #random.sample(available_cpus,1)[0]
+        consumer=consumer_cpus[n] #random.sample(available_cpus,1)[0]
         cpuProdListMap[producer]=[producer]
         cpuConsListMap[producer]=[consumer]
         cpuProdListMap[consumer]=[producer]
