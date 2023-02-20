@@ -227,6 +227,7 @@ def my_draw_networkx_edge_labels(
 class Stats:
     def __init__(self, num_vnet):
         self.vnets = [0]*num_vnet
+        self.latency = [[],float('-inf'),float('inf')] # hisV, maxV, minV
 
     def __str__(self):
         return f'{self.__dict__}'
@@ -324,14 +325,12 @@ def parse_json(JSON: Dict):
     return ext_links, int_links, routers
 
 def parse_link_log(log_path: str, routers: List[Router], ext_links: List[ExtLink], int_links: List[IntLink]):
+    routers_dict = {r.path:r for r in routers}
+    int_links_dict = {l.path:l for l in int_links}
+    ext_links_dict = {l.path:l for l in ext_links}
+
     with open(log_path,'r') as f:
         for line in f:
-
-            routers_dict = {r.path:r for r in routers}
-            int_links_dict = {l.path:l for l in int_links}
-            ext_links_dict = {l.path:l for l in ext_links}
-
-            logging.debug(f'router_dict: {routers_dict}')
 
             msg_srch = re.search(msg_pat, line)
             assert msg_srch != None
@@ -356,13 +355,9 @@ def parse_link_log(log_path: str, routers: List[Router], ext_links: List[ExtLink
                 typ,vnet = typ.split(':')
             typ = CHIMsgType_dict[typ].abbr # use abbr
 
-            # issuer can be int_links or req/rsp/snp/datIn
+            # issuer can be int_links or req/rsp/snp/datIn, we only update msg types in links
             # this is done by grep
-            if issuer.find('int_links') == -1: # req/rsp/snp/datIn
-                last_link_name, last_link_time = addon_msg.strip(')').split(':')
-                last_link_time = int(last_link_time)
-                logging.debug(f'cntrl port found: {issuer}, last_link:{last_link_name}({last_link_time})ticks')
-            else: # links
+            if issuer.find('int_links') != -1: # links
                 link = issuer
                 logging.debug(f'router matched: {issuer}')
                 int_links_dict[link].stats.vnets[int(vnet)]+=1
@@ -371,6 +366,19 @@ def parse_link_log(log_path: str, routers: List[Router], ext_links: List[ExtLink
                     int_links_dict[link].stats.__dict__[typ] = 1
                 else:
                     int_links_dict[link].stats.__dict__[typ] += 1
+
+            # but we need to collect last link time
+            last_link_name, last_link_time = addon_msg.strip('()').split(':')
+            last_link_time = int(last_link_time)
+            if last_link_name != 'origin': # eg: l2.reqOut->l1d.reqIn. TODO: check if reqOut has no stalls.
+                link_path = 'system.ruby.network.'+last_link_name
+                hisV,maxV,minV = int_links_dict[link_path].stats.latency # hisV first record values, later divided by total # msgs
+                int_links_dict[link_path].stats.latency = [hisV+[last_link_time], max(maxV,last_link_time), min(minV,last_link_time)]
+            logging.debug(f'last_link:{last_link_name}, last_time:{last_link_time}ticks')
+
+    for i in int_links:
+        if sum(i.stats.vnets) != 0:
+            i.stats.latency[0] = sum(i.stats.latency[0])//len(i.stats.latency[0]) # avgV = sum(hisV)/len(hisV). WARNING: cannot use the sum(vnets) since when maxloads hit simulation shuts down
 
 
 def build_network(ext_links:List[ExtLink],int_links:List[IntLink],routers:List[Router],draw_ctrl:bool):
@@ -413,10 +421,11 @@ def draw_network(G, output_file, routers, num_int_router, num_ext_router, num_ct
     if draw_ctrl:
         node_color += ['#A7727D']*num_ctrl
 
+    plt.figure(figsize=(12,12))
     nx.draw_networkx_nodes(G, pos, node_size=10, node_color=node_color)
-    nx.draw_networkx_labels(G, pos, font_size=1)
+    nx.draw_networkx_labels(G, pos, font_size=2)
     nx.draw_networkx_edges(G, pos, edge_color='k',connectionstyle='arc3,rad=0.1',width=0.3,arrowsize=2, node_size=10)
-    my_draw_networkx_edge_labels(G, pos, edge_labels={(u, v): edge['data'] for (u, v, edge) in G.edges(data=True)},font_size=1,rad=0.1)
+    my_draw_networkx_edge_labels(G, pos, edge_labels={(u, v): edge['data'] for (u, v, edge) in G.edges(data=True)},font_size=2,rad=0.1)
     plt.savefig(output_file,dpi = 800)
     logging.info(f'save fig to {output_file}')
 

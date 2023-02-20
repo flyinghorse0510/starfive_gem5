@@ -266,7 +266,8 @@ MessageBuffer::txntrace_print(MsgPtr message, const Tick& arrival_time)
         // this works for both simple and garnet
         Tick last_link_time = message->getLastLinkTime();
         std::string last_link = message->getLastLinkName();
-        message->setLastLinkName(port_name.substr(20));
+        int pos = port_name.rfind(".");
+        message->setLastLinkName(port_name.substr(20,pos-20));
         message->setLastLinkTime(arrival_time);
 
         // snprintf(link_info, sizeof(link_info), "<-%lu(%s)", last_link_time, last_link.c_str());
