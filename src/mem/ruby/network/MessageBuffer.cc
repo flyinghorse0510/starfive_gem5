@@ -258,6 +258,10 @@ MessageBuffer::txntrace_print(MsgPtr message, const Tick& arrival_time)
             return;
         }
 
+        if(!::gem5::debug::TxnLink){ // if we not enabled txnlink, skip the rest calculation and dprintf
+            return;
+        }
+
         // we only update the link_time and link_name when we are in a link.
         // this works for both simple and garnet
         Tick last_link_time = message->getLastLinkTime();
@@ -266,11 +270,7 @@ MessageBuffer::txntrace_print(MsgPtr message, const Tick& arrival_time)
         message->setLastLinkTime(arrival_time);
 
         // snprintf(link_info, sizeof(link_info), "<-%lu(%s)", last_link_time, last_link.c_str());
-        snprintf(link_info, sizeof(link_info), "<-%lu(%s)", arrival_time - last_link_time, last_link.c_str());
-
-        if(!::gem5::debug::TxnLink){ // if we not enabled txnlink, skip this line
-            return;
-        }
+        snprintf(link_info, sizeof(link_info), "(%s:%lu)", last_link.c_str(), arrival_time - last_link_time);
     }
 
     // else we always print this line
@@ -297,10 +297,10 @@ MessageBuffer::txntrace_print(MsgPtr message, const Tick& arrival_time)
         // NetDest const & dest = msg->getDestination();
         CHIRequestType const & typ = msg->gettype();
         NetDest dst = msg->getDestination();
-        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld%s, %s->%s type: %s, req: %p, accA: %s, addr: %s\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld%s, %s->%s type: %s:%d, req: %p, accA: %s, addr: %s\n", 
             txSeqNum, 
             arrival_time, link_info,
-            reqtor, denseDst(dst), typ,
+            reqtor, denseDst(dst), typ, this->getVnet(),
             msg->getreqPtr(),
             printAddress(msg->getaccAddr()),
             printAddress(msg->getaddr()));
@@ -315,10 +315,10 @@ MessageBuffer::txntrace_print(MsgPtr message, const Tick& arrival_time)
         // NetDest const & dest = msg->getDestination();
         CHIResponseType const & typ = msg->gettype();
         NetDest dst = msg->getDestination();
-        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld%s, %s->%s type: %s, req: %p, accA: %s, addr: %s\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld%s, %s->%s type: %s:%d, req: %p, addr: %s\n", 
             txSeqNum, 
             arrival_time, link_info,
-            rspder, denseDst(dst), typ,
+            rspder, denseDst(dst), typ, this->getVnet(),
             msg->getreqPtr(),
             printAddress(msg->getaddr()));
         // assert(msg->getreqPtr() != nullptr); // requestPtr should not be nullptr
@@ -332,10 +332,10 @@ MessageBuffer::txntrace_print(MsgPtr message, const Tick& arrival_time)
         // NetDest const & dest = msg->getDestination();
         CHIDataType const & typ = msg->gettype();
         NetDest dst = msg->getDestination();
-        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld%s, %s->%s type: %s, req: %p, addr: %s\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld%s, %s->%s type: %s:%d, req: %p, addr: %s\n", 
             txSeqNum, 
             arrival_time, link_info,
-            rspder, denseDst(dst), typ,
+            rspder, denseDst(dst), typ, this->getVnet(),
             msg->getreqPtr(),
             printAddress(msg->getaddr()));
         // assert(msg->getreqPtr() != nullptr); // requestPtr should not be nullptr
