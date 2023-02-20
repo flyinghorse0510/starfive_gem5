@@ -286,8 +286,17 @@ action(Initiate_Request, desc="") {
 
   // Requires a DirEntry allocation
   tbe.requiresDirEntry := requiresDirEntry(tbe.reqType, dir_entry, (is_HN && !(allow_infinite_SF_entries)));
-  bool avail_direntry  := directory.cacheAvail(address) && (!directory.isTagPresent(address)); // Check if a directory can be allocated
 
+  // model the initial tag array read
+  tbe.actions.pushNB(Event:TagArrayRead);
+
+  incomingTransactionStart(address, curTransitionEvent(), initial, was_retried);
+}
+
+action(Initiate_SnoopFilterFill, desc="") {
+  // Check if a directory can be allocated
+  bool avail_direntry := directory.cacheAvail(address) && (!directory.isTagPresent(address));
+  
   // Perform a SnoopFilterFill if required
   if (tbe.requiresDirEntry && !avail_direntry) {
     tbe.actions.push(Event:StartSnoopFilterFill);
@@ -295,11 +304,6 @@ action(Initiate_Request, desc="") {
     // Allocate the DirEntry
     directory.allocate(address);
   }
-
-  // model the initial tag array read
-  tbe.actions.pushNB(Event:TagArrayRead);
-
-  incomingTransactionStart(address, curTransitionEvent(), initial, was_retried);
 }
 
 action(Initiate_Request_DVM, desc="") {
@@ -2898,7 +2902,6 @@ action(Start_SnoopFilterFill, desc="") {
 
   // Remember that this action will be entered again
   // once the eviction is complete so need to impl the
-  // processNext family of functions like CheckCacheFill
   // Start SFEntry eviction
   Addr victim_addr := directory.cacheProbe(address);
   DirEntry victim_dir_entry := getDirEntry(victim_addr);
@@ -2918,8 +2921,51 @@ action(Start_SnoopFilterFill, desc="") {
   wakeupPendingSnps(tbe); // Arka. Is this required
 }
 
-action(Initiate_SFRepl, desc="") {
+action(Initiate_SnoopFilterReplacement_WB_BackInv, desc="") {
+  assert(is_HN);
+  assert(is_valid(tbe));
+  assert(tbe.dataDirty || tbe.dataUnique || tbe.dataMaybeDirtyUpstream);
+  tbe.actions.push(Event:SendSnpCleanInvalid);
+  tbe.actions.push(Event:WriteFEPipe);
+  if (tbe.dataDirty || tbe.dataMaybeDirtyUpstream) {
+    tbe.actions.push(Event:SendWriteNoSnp);
+  }
+  tbe.actions.pushNB(Event:DataArrayRead);
+  tbe.actions.push(Event:WriteBEPipe);
+  tbe.actions.push(Event:SendWBData);
+  tbe.dataToBeInvalid := true;
+  tbe.actions.pushNB(Event:TagArrayWrite);
+}
 
+action(Initiate_SnoopFilterReplacement_Evict_BackInv, desc="") {
+  assert(is_HN);
+  assert(is_valid(tbe));
+  tbe.actions.push(Event:SendSnpCleanInvalid);
+  tbe.dataToBeInvalid := true;
+  tbe.actions.pushNB(Event:TagArrayWrite);
+}
+
+action(Pop_SFReplTriggerQueue, desc="") {
+  sfReplInPort.dequeue(clockEdge());
+}
+
+action(Initiate_SnoopFilterReplacement, desc="") {
+  assert(is_invalid(tbe));
+  State initial := getState(tbe, cache_entry, address);
+  set_tbe(allocateSnoopFilterTBE(address, machineID, machineID));
+
+  // [REDUNDANT] Store the address that cause the SF Eviction.
+  // peek(sfReplInPort, SFReplacementMsg) {
+  //   tbe.evicting_addr := in_msg.evicting_addr;
+  //   tbe.evicting_addr_valid := true;
+  // }
+
+  copyCacheAndDir(cache_entry, getDirEntry(address), tbe, initial);
+
+  // model the initial tag array read
+  tbe.actions.pushNB(Event:TagArrayRead);
+
+  incomingTransactionStart(address, curTransitionEvent(), initial, false);
 }
 
 action(CheckCacheFill, desc="") {

@@ -116,10 +116,22 @@ transition({BUSY_INTR,BUSY_BLKD}, StartSnoopFilterFill, BUSY_INTR) {
   Start_SnoopFilterFill;
 }
 
-transition({SC,UC,SC_RSC,UC_RSC,
-            UD_RU,UC_RU,UD_RSD,SD_RSD, RU}, SnoopFilterEviction, BUSY_INTR) {
-  Initiate_SFRepl;
+transition({RSD,RUSC,RUSD,RU,
+            UD_RSC,UC_RSC,
+            UD_RU,UC_RU,UD_RSD}, SnoopFilterEviction, BUSY_INTR) {SfReplTBEAvailable} {
+  Initiate_SnoopFilterReplacement;
+  Initiate_SnoopFilterReplacement_WB_BackInv;
+  // Profile_Eviction; This might be required
+  Deallocate_DirEntry;
+  Pop_SFReplTriggerQueue;
+  ProcessNextState;
+}
+
+transition({RSC, SC_RSC}, SnoopFilterEviction, BUSY_INTR) {SfReplTBEAvailable} {
+  Initiate_SnoopFilterReplacement;
+  Initiate_SnoopFilterReplacement_Evict_BackInv;
   // Profile_Eviction;
+  Deallocate_DirEntry;
   Pop_SFReplTriggerQueue;
   ProcessNextState;
 }
@@ -190,6 +202,7 @@ transition({BUSY_INTR,BUSY_BLKD}, SnpOncePipe) {
 
 transition(I, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
   Initiate_Request;
+  Initiate_SnoopFilterFill;
   Initiate_ReadShared_Miss;
   // Allocate_DirEntry;
   Profile_Miss;
@@ -207,6 +220,7 @@ transition({RSC,RUSC}, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
 
 transition({UD,SD,UC,SC}, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
   Initiate_Request;
+  Initiate_SnoopFilterFill;
   Initiate_ReadShared_Hit;
   // Allocate_DirEntry;
   Profile_Hit;
@@ -261,6 +275,7 @@ transition({UD_RU,UC_RU,RU,RSD,RUSD,RSC,RUSC}, ReadOnce, BUSY_BLKD) {
 
 transition(I, {ReadUnique,ReadUnique_PoC}, BUSY_BLKD) {
   Initiate_Request;
+  Initiate_SnoopFilterFill;
   Initiate_ReadUnique_Miss;
   // Allocate_DirEntry;
   Profile_Miss;
@@ -270,6 +285,7 @@ transition(I, {ReadUnique,ReadUnique_PoC}, BUSY_BLKD) {
 
 transition({UD,UC}, {ReadUnique,ReadUnique_PoC}, BUSY_BLKD) {
   Initiate_Request;
+  Initiate_SnoopFilterFill;
   Initiate_ReadUnique_Hit;
   // Allocate_DirEntry;
   Profile_Hit;
@@ -295,6 +311,7 @@ transition({UD_RU,UC_RU,RU,RUSD,RUSC}, {ReadUnique,ReadUnique_PoC}, BUSY_BLKD) {
 
 transition({SC,SD}, ReadUnique_PoC, BUSY_BLKD) {
   Initiate_Request;
+  Initiate_SnoopFilterFill;
   Initiate_ReadUnique_AutoUpgrade;
   Initiate_ReadUnique_Hit;
   // Allocate_DirEntry;
@@ -324,6 +341,7 @@ transition({RSC,RSD}, ReadUnique_PoC, BUSY_BLKD) {
 
 transition({SC,SD}, ReadUnique, BUSY_BLKD) {
   Initiate_Request;
+  Initiate_SnoopFilterFill;
   Initiate_ReadUnique_Upgrade;
   // Allocate_DirEntry;
   Profile_Miss;

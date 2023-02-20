@@ -1418,6 +1418,35 @@ Event snpToEvent (CHIRequestType type) {
   }
 }
 
+
+TBE allocateSnoopFilterTBE(Addr victim_addr, MachineID requestor, MachineID fwdRequestor), return_by_pointer="yes" {
+  storSFReplTBEs.decrementReserved();
+  assert(storSFReplTBEs.areNSlotsAvailable(1));
+
+  sfReplTBEs.allocate(victim_addr);
+  TBE tbe := sfReplTBEs[victim_addr];
+  initializeTBE(tbe, victim_addr, storSFReplTBEs.addEntryToNewSlot());
+
+  assert(tbe.is_req_tbe == false);
+  assert(tbe.is_repl_tbe == false);
+  assert(tbe.is_dvm_tbe == false);
+  assert(tbe.is_dvm_snp_tbe == false);
+  assert(tbe.is_snp_tbe == false);
+  tbe.is_sfrepl_tbe := true;
+
+  tbe.accAddr := victim_addr;
+  tbe.accSize := blockSize;
+  tbe.requestor := requestor;
+  tbe.fwdRequestor := fwdRequestor;
+  tbe.snpNeedsData := false;
+  tbe.reqType := CHIRequestType:null;
+
+  tbe.use_DMT := false;
+  tbe.use_DCT := false;
+
+  return tbe;
+}
+
 //////////////////////////////////////////
 // Cache bank utilization tracking
 
@@ -1430,6 +1459,8 @@ enumeration(RequestType, desc="To communicate stats from transitions to recordSt
   DestinationAvailable, desc="Check if there is a pending retry from the destination";
 
   ReplTBEAvailable, desc="Check if a replacement TBE is available";
+
+  SfReplTBEAvailable, desc="Check if TBE for SnoopFilter eviction is available";
 }
 
 void recordRequestType(RequestType request_type, Addr addr) {
@@ -1465,6 +1496,8 @@ bool _checkResourceAvailable(RequestType request_type, Addr addr) {
     // if unify_repl_TBEs the replacement uses the same slot as the request
     // that initiated it, so the resource is always available
     return unify_repl_TBEs || storReplTBEs.areNSlotsAvailable(1);
+  } else if (request_type == RequestType:SfReplTBEAvailable) {
+    return storSFReplTBEs.areNSlotsAvailable(1);
   } else {
     error("Invalid RequestType type in checkResourceAvailable");
     return true;
