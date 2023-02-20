@@ -53,7 +53,7 @@ NUM_LLC=16
 NUM_MEM=1
 DEBUG_FLAGS=ProdConsMemLatTest,TxnTrace,TxnLink,RubyCHIDebugStr5,RubyGenerated
 DCT_CONFIGS=(False True) # True) #(False True) #(False True) #(True False)
-LINK_BW_CONFIGS=(32)
+LINK_BW_CONFIGS=(16 24 32 48 64)
 NETWORK="simple"
 MAXNUMLOADS=1
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/C2C_11_${NETWORK}"
@@ -139,7 +139,8 @@ if [ "$C2CBW" != "" ]; then
             for LINK_BW in ${LINK_BW_CONFIGS[@]}; do
               OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_LINKBW${LINK_BW}_Core${NUM_CPUS}_Prod${LOC_PROD}_Cons${LOC_CONS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}"
               grep -E 'ReqBegin=LD|ReqDone=LD' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace 
-              ${PY3} ProdConsStatsParser.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR}
+              echo "DCT  =  ${DCT}, LINK_BW  =  ${LINK_BW}" >> "${OUTPUT_ROOT}/Summary.txt"
+              ${PY3} ProdConsStatsParser.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR}  >> "${OUTPUT_ROOT}/Summary.txt"
             done
           done
         fi
@@ -217,6 +218,7 @@ if [ "$C2CMBW" != "" ]; then
             OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_LINKBW${LINK_BW}_Core${NUM_CPUS}_Prod${LOC_PROD}_NumCons${NUM_CONS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}"
             # ${PY3} draw_config.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR} --draw-ctrl --num-int-router 16
             grep -E 'ReqBegin=LD|ReqDone=LD' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace 
+            echo "DCT  =  ${DCT}, LINK_BW  =  ${LINK_BW}, NUM_CONS  =  ${NUM_CONS}" >> "${OUTPUT_ROOT}/Summary.txt"
             ${PY3} ProdConsStatsParser.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR} >> "${OUTPUT_ROOT}/Summary.txt"
           done
         done
@@ -286,6 +288,7 @@ if [ "$MC2CBW" != "" ]; then
         for LINK_BW in ${LINK_BW_CONFIGS[@]}; do
           OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_LINKBW${LINK_BW}_Core${NUM_CPUS}_PCPairs${NUM_PAIRS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}"
           grep -E 'ReqBegin=LD|ReqDone=LD' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace 
+          echo "DCT  =  ${DCT}, LINK_BW  =  ${LINK_BW}, NUM_PAIRS  =  ${NUM_PAIRS}" >> "${OUTPUT_ROOT}/Summary.txt"
           ${PY3} ProdConsStatsParser.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR} >> "${OUTPUT_ROOT}/Summary.txt"
         done
       done
