@@ -494,7 +494,6 @@ void processNextState(Addr address, TBE tbe, CacheEntry cache_entry) {
     }
     assert(tbe.pendAction != Event:null);
     enqueue(triggerOutPort, TriggerMsg, trigger_latency) {
-      DPRINTF(RubyCHIDebugStr5,"ProcTriggerMessage=%#x,pendAction=%s,lat=%d\n",tbe.addr,tbe.pendAction,trigger_latency);
       out_msg.addr := tbe.addr;
       // TODO - put usesTxnId on the TBE?
       out_msg.usesTxnId := tbe.is_dvm_tbe || tbe.is_dvm_snp_tbe;

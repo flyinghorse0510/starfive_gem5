@@ -137,6 +137,9 @@ transition({UC_RSC, RSC, SC_RSC}, SnoopFilterEviction, BUSY_BLKD) {SfReplTBEAvai
   ProcessNextState;
 }
 
+transition({BUSY_BLKD,BUSY_INTR}, SnoopFilterEviction) {
+  StallSnoopFilterEviction;
+}
 
 transition({BUSY_INTR,BUSY_BLKD}, DataArrayWrite) {DataArrayWrite} {
   Pop_TriggerQueue;

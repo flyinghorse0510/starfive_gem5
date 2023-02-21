@@ -3046,6 +3046,16 @@ action(CheckCacheFill, desc="") {
   }
 }
 
+action(StallSnoopFilterEviction, desc="") {
+  // was stalled because of an existing request
+  assert(is_valid(tbe));
+  assert(tbe.addr == address);
+
+  // Just pop the queue and When this transaction finishes wake-up the original
+  // msgs that caused this eviction
+  tbe.wakeup_pending_tgr := true;
+  sfReplInPort.dequeue(clockEdge());
+}
 
 action(Finalize_DeallocateRequest, desc="") {
   assert(is_valid(tbe));
