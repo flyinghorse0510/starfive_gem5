@@ -261,6 +261,7 @@ class CHI_L1Controller(CHI_Cache_Controller):
         self.number_of_DVM_snoop_TBEs = 4
         self.unify_repl_TBEs = False
         self.allow_infinite_SF_entries = True
+        self.max_dir_size = 100 # Does not matter for non-HNF caches
 
 class CHI_L2Controller(CHI_Cache_Controller):                 
     '''
@@ -296,6 +297,8 @@ class CHI_L2Controller(CHI_Cache_Controller):
         self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
         self.unify_repl_TBEs = False
         self.allow_infinite_SF_entries = True
+        self.max_dir_size = 100 # Does not matter for non-HNF caches
+
 
 class CHI_HNFController(CHI_Cache_Controller):
     '''
@@ -333,6 +336,8 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.unify_repl_TBEs = False
         self.transitions_per_cycle = options.num_trans_per_cycle_llc
         self.allow_infinite_SF_entries = False # [False]: Use a realistic (finite entry) Snoop Filter
+        self.max_dir_size = options.max_dir_size 
+
 
 class CHI_MNController(MiscNode_Controller):
     '''

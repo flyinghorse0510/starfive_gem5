@@ -66,7 +66,11 @@ parser.add_argument("--num-SNF-TBE", default=32, help="number of oustanding in H
 parser.add_argument("--addr-intrlvd-or-tiled",default=False,help="If true the address partitioning across CPUs is interleaved (like [0-N-2N;1-N+1-2N+1;...]). Otherwise Tiled [0:N-1,N:2N-1]")
 parser.add_argument("--sequencer-outstanding-requests",type=int,default=32,help="Max outstanding sequencer requests")
 parser.add_argument("--bench-c2cbw-mode",default=True,help="[True] Producer Consumer BW or [False] C2C Latency Test")
+<<<<<<< HEAD
 parser.add_argument("--inj-interval",default=1,type=int,help="The interval between request packets")
+=======
+parser.add_argument("--max-dir-size",default=2,type=int,help="DirSize, interms of number of entries")
+>>>>>>> Added max-dir-size config parameter to control SnoopFilter size
 """
     The (--producers,--num-producers) are mutually exclusive argument specification 
     as are (--consumers,--num-consumers). --producers an --consumers specify the 
@@ -181,10 +185,6 @@ if num_cpus > block_size:
            % (num_cpus, block_size))
      sys.exit(1)
 
-<<<<<<< HEAD
-=======
-
->>>>>>> Changed Configs for Isolated testing of SnoopFilter...
 
 if num_cpus > 0 :
     cpus = [ MemTestClass(max_loads = args.maxloads,

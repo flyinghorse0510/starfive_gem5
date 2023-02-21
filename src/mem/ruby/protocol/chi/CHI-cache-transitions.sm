@@ -141,6 +141,10 @@ transition({BUSY_BLKD,BUSY_INTR}, SnoopFilterEviction) {
   StallSnoopFilterEviction;
 }
 
+transition(I, SnoopFilterEviction) {
+  Pop_SFReplTriggerQueue;
+}
+
 transition({BUSY_INTR,BUSY_BLKD}, DataArrayWrite) {DataArrayWrite} {
   Pop_TriggerQueue;
   DataArrayWrite;

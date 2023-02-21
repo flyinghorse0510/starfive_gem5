@@ -76,6 +76,8 @@ class PerfectCacheMemory
   public:
     PerfectCacheMemory();
 
+    PerfectCacheMemory(unsigned);
+
     // tests to see if an address is present in the cache
     bool isTagPresent(Addr address) const;
 
@@ -133,10 +135,13 @@ operator<<(std::ostream& out, const PerfectCacheMemory<ENTRY>& obj)
 
 template<class ENTRY>
 inline
-PerfectCacheMemory<ENTRY>::PerfectCacheMemory()
-{
-    m_max_dir_size = 3;
-}
+PerfectCacheMemory<ENTRY>::PerfectCacheMemory(unsigned m_max_dir_size) : m_max_dir_size(m_max_dir_size) {}
+
+template<class ENTRY>
+inline
+PerfectCacheMemory<ENTRY>::PerfectCacheMemory() : m_max_dir_size(100) {}
+
+
 
 // tests to see if an address is present in the cache
 template<class ENTRY>

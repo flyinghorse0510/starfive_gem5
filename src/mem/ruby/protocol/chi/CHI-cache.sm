@@ -207,6 +207,9 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // Allow infinite SnoopFilter entries
   bool allow_infinite_SF_entries;
 
+  // Number of entries in the Directory
+  int max_dir_size;
+
 {
 
   ////////////////////////////////////////////////////////////////////////////
@@ -753,7 +756,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   }
 
   // Directory
-  PerfectCacheMemory directory, template="<Cache_DirEntry>";
+  PerfectCacheMemory directory, template="<Cache_DirEntry>", constructor="m_max_dir_size";
 
   // Tracks unique lines locked after a store miss
   TimerTable useTimerTable;

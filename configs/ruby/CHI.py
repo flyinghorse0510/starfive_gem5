@@ -125,7 +125,7 @@ def create_system(options, full_system, system, dma_ports, bootmem,
         tagAccessLatency = 6
         size = options.l3_size
         assoc = options.l3_assoc
-
+    
     # other functions use system.cache_line_size assuming it has been set
     assert(system.cache_line_size.value == options.cacheline_size)
 

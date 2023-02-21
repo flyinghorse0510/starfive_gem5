@@ -31,7 +31,7 @@ WORKSPACE="$(pwd)/output"
 GEM5_DIR=$(pwd)
 ISA="RISCV"
 CCPROT="CHI"
-NUMCPUS=1
+NUMCPUS=4
 NUM_LLC=1
 NUM_SNF=1
 NETWORK="simple"
@@ -77,6 +77,7 @@ if [ "$RUN1" != "" ]; then
         --size-ws=64 \
         --mem-test-type='isolated_test' \
         --num-cpus=${NUMCPUS} \
-        --num-producers=1
-    grep -E 'system\.ruby\.hnf' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
+        --num-producers=1 \
+        --max-dir-size=50
+    grep -E 'system\.ruby\.hnf[0-9]*' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
 fi
