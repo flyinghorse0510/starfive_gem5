@@ -2975,8 +2975,8 @@ action(Initiate_SnoopFilterReplacement, desc="") {
 
   copyCacheAndDir(cache_entry, getDirEntry(address), tbe, initial);
 
-  // Although SnoopFilter also has tags. Is this correct?
-  tbe.actions.pushNB(Event:TagArrayRead);
+  // Is this correct?
+  // tbe.actions.pushNB(Event:TagArrayRead);
 
   incomingTransactionStart(address, curTransitionEvent(), initial, false);
 }

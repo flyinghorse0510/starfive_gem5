@@ -122,7 +122,7 @@ transition({RSD,RUSC,RUSD,RU,
             UD_RU,UC_RU,UD_RSD}, SnoopFilterEviction, BUSY_BLKD) {SfReplTBEAvailable} {
   Initiate_SnoopFilterReplacement;
   Initiate_SnoopFilterReplacement_WB_BackInv;
-  // Profile_Eviction; This might be required
+  // Profile_Eviction; Is this required
   Deallocate_DirEntry;
   Pop_SFReplTriggerQueue;
   ProcessNextState;
