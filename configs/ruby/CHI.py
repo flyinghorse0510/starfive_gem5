@@ -245,14 +245,17 @@ def create_system(options, full_system, system, dma_ports, bootmem,
          if(options.DDR_side_num <= 1):
               CHI_SNF_MainMem.NoC_Params.router_list = [13,14] 
          elif(options.DDR_side_num == 2):
-              CHI_SNF_MainMem.NoC_Params.router_list = [13,1]
+              #CHI_SNF_MainMem.NoC_Params.router_list = [13,1] #same column
+              CHI_SNF_MainMem.NoC_Params.router_list = [13,2] #different column/row
     elif(options.DDR_loc_num == 4):
          if(options.DDR_side_num <= 1):
               CHI_SNF_MainMem.NoC_Params.router_list = [12,13,14,15] 
          elif(options.DDR_side_num == 2):
               CHI_SNF_MainMem.NoC_Params.router_list = [13,14,1,2] 
          elif(options.DDR_side_num <= 4):
-              CHI_SNF_MainMem.NoC_Params.router_list = [13,11,2,4]
+              #CHI_SNF_MainMem.NoC_Params.router_list = [13,1,11,8] #same column
+              CHI_SNF_MainMem.NoC_Params.router_list = [13,11,2,4] #different column/row
+
     else:
          m5.fatal('no DDR layout configuration available') 
  

@@ -110,6 +110,38 @@ def test_ddr():
         if ddr_search:
             print(f'group0:{ddr_search.group(0)}, group1:{ddr_search.group(1)}, group2:{ddr_search.group(2)}, group3:{ddr_search.group(3)}')
 
+# llc retryack's pattern
+# 2 groups: 1) hnf id 2) # retryack
+llc_reack_pat = re.compile('^system.ruby.hnf(\d*).cntrl.cache.m_RetryAcks\s+(\d+)[\s\S]*$')
+
+def test_hnf_retry_ack():
+    l1 = "system.ruby.hnf7.cntrl.cache.m_RetryAcks         2827                       # Number of HNF retry ack (Unspecified)\n"
+    l2 = "system.ruby.hnf08.cntrl.cache.m_RetryAcks         2827                       # Number of HNF retry ack (Unspecified)\n"
+    l3 = "system.ruby.hnf.cntrl.cache.m_RetryAcks         2827                       # Number of HNF retry ack (Unspecified)\n"
+
+    print("test_retry_ack:")
+    for l in [l1,l2,l3]:
+        reack_search = re.search(llc_reack_pat, l)
+        if reack_search:
+            print(f'group0:{reack_search.group(0)}, group1:{reack_search.group(1)}, group2:{reack_search.group(2)}')
+
+
+# snf retrymsg's pattern
+# 2 groups 1) snf id 2) # retry msg
+snf_remsg_pat = re.compile('^system.ruby.snf(\d*).cntrl.rspOut.m_retry_msgs\s+(\d+)[\s\S]*$')
+
+def test_snf_retry_msgs():
+    l1 = "system.ruby.snf3.cntrl.rspOut.m_retry_msgs          149                       # Number of retry message (Count)\n"
+    l2 = "system.ruby.snf03.cntrl.rspOut.m_retry_msgs          149                       # Number of retry message (Count)\n"
+    l3 = "system.ruby.snf.cntrl.rspOut.m_retry_msgs          149                       # Number of retry message (Count)\n"
+
+    print("test_retrymsg:")
+    for l in [l1,l2,l3]:
+        remsg_search = re.search(snf_remsg_pat, l)
+        if remsg_search:
+            print(f'group0:{remsg_search.group(0)}, group1:{remsg_search.group(1)}, group2:{remsg_search.group(2)}')
+
+
 class CPU:
     def __init__(self,id=0,read=0,write=0):
         self.id = id
@@ -139,8 +171,9 @@ class Cache:
         return f'||{self.id:^16}|{self.hit:^16}|{self.miss:^16}|{self.access:^16}|{self.hit_rate:^16}||'
 
 class LLC(Cache):
-    pass
-
+    def __init__(self,id=0,hit=0,miss=0,access=0,reack=0):
+        super(LLC, self).__init__(id,hit,miss,access)
+        self.reack=reack
 
 class PrivCache(Cache):
     def __init__(self,cpu_id=0,id=0,hit=0,miss=0,access=0):
@@ -172,6 +205,14 @@ class DDR:
         return f'||{self.id:^16}|{self.read:^16}|{self.write:^16}||'
 
 
+class SNF:
+    def __init__(self, id=0, remsg=0):
+        self.id = id
+        self.remsg = remsg
+    
+    def table_print(self):
+        return f'||{self.id:^16}|{self.remsg:^16}||'
+
 def gen_header(name:List[str]):
     width = 16*len(name)+len(name)-1+4
     h1_str = '='*width+'\n'
@@ -199,7 +240,7 @@ def gen_cache_str(caches:List[Cache], name:str):
     cache_str += gen_bottom(cache_table_width)
     return cache_str
 
-def gen_print_str(cpus:List[CPU], llcs, ddrs, l1ds, l1is, l2ps):
+def gen_print_str(cpus:List[CPU], llcs, ddrs, l1ds, l1is, l2ps, snfs):
     # print cpu
     cpu_str,cpu_table_width = gen_header(['CPU','READ','WRITE'])
     cpu_str += '\n'.join([cpu.table_print() for cpu in cpus]) + '\n'
@@ -212,6 +253,14 @@ def gen_print_str(cpus:List[CPU], llcs, ddrs, l1ds, l1is, l2ps):
     # print caches
     llc_str,l1d_str, l1i_str, l2p_str = [gen_cache_str(cache,name) for cache,name in ((llcs,'LLC'), (l1ds,'L1D'), (l1is,'L1I'), (l2ps,'L2P'))]
 
+    # print snfs
+    snf_str, snf_table_width = gen_header(['SNF','RETRY_MSG'])
+    snf_str += '\n'.join([snf.table_print() for snf in snfs]) + '\n'
+    snf_remsg_sum = reduce(lambda x,y:x+y, [snf.remsg for snf in snfs])
+    snf_str += '-'*snf_table_width+'\n'
+    snf_str += f'||{"TOTAL":^16}|{snf_remsg_sum:^16}||\n'
+    snf_str += gen_bottom(snf_table_width)
+
     # print ddr
     ddr_str,ddr_table_width = gen_header(['DDR','READ','WRITE'])
     ddr_str += '\n'.join([ddr.table_print() for ddr in ddrs]) + '\n'
@@ -221,16 +270,18 @@ def gen_print_str(cpus:List[CPU], llcs, ddrs, l1ds, l1is, l2ps):
     ddr_str += f'||{"TOTAL":^16}|{ddr_read_sum:^16}|{ddr_write_sum:^16}\n'
     ddr_str += gen_bottom(ddr_table_width)
 
-    return {'cpu':cpu_str,'llc':llc_str,'ddr':ddr_str,'l1d':l1d_str,'l1i':l1i_str,'l2p':l2p_str} # you can add more options to print
+    return {'cpu':cpu_str,'llc':llc_str,'ddr':ddr_str,'l1d':l1d_str,'l1i':l1i_str,'l2p':l2p_str, 'snf':snf_str} # you can add more options to print
 
 tick = 0
 
 # parse one line each time
-def parse_stats(line, cpus:List[CPU], llcs:List[LLC], ddrs:List[DDR], l1ds:List[L1D], l1is:List[L1I], l2ps:List[L2P]):
+def parse_stats(line, cpus:List[CPU], llcs:List[LLC], ddrs:List[DDR], l1ds:List[L1D], l1is:List[L1I], l2ps:List[L2P], snfs:List[SNF]):
     tick_sch = re.search(tick_pat, line)
     llc_sch = re.search(llc_pat, line)
     ddr_sch = re.search(ddr_pat, line)
     cpu_sch = re.search(cpu_pat, line)
+    snf_remsg_sch = re.search(snf_remsg_pat, line)
+    llc_reack_sch = re.search(llc_reack_pat, line)
     priv_cache_sch = re.search(priv_cache_pat, line)
 
     if tick_sch:
@@ -249,6 +300,16 @@ def parse_stats(line, cpus:List[CPU], llcs:List[LLC], ddrs:List[DDR], l1ds:List[
             llcs[llc_id].miss = llc_num_op
         elif llc_status == 'accesses':
             llcs[llc_id].access = llc_num_op
+    
+    elif llc_reack_sch:
+        llc_id = 0 if len(llcs) == 1 else int(llc_reack_sch.group(1))
+        llc_num_reack = int(llc_reack_sch.group(2))
+        llcs[llc_id].reack = llc_num_reack
+
+    elif snf_remsg_sch:
+        snf_id = 0 if len(snfs) == 1 else int(snf_remsg_sch.group(1))
+        snf_num_remsg = int(snf_remsg_sch.group(2))
+        snfs[snf_id].remsg = snf_num_remsg
 
     elif priv_cache_sch:
         cpu_id:int = 0 if len(cpus) == 1 else int(priv_cache_sch.group(1))
@@ -290,14 +351,15 @@ def parse_stats(line, cpus:List[CPU], llcs:List[LLC], ddrs:List[DDR], l1ds:List[
 
 
 def llc_summary(llcs:List[LLC]):
-    total_hit, total_miss, total_access = 0,0,0
+    total_hit, total_miss, total_access, total_reack = 0,0,0,0
     for llc in llcs:
         total_hit += llc.hit
         total_miss += llc.miss
         total_access += llc.access
-    return f'LLC summary: hit rate:{total_hit/total_access}, miss rate: {total_miss/total_access}'
+        total_reack += llc.reack
+    return f'LLC summary: hit rate:{total_hit/total_access}, miss rate: {total_miss/total_access}, reack: {total_reack}'
 
-def gen_throughput():
+def gen_throughput(cpus:List[CPU]):
     cpu_read_sum = reduce(lambda x,y:x+y, [cpu.read for cpu in cpus])
     cpu_write_sum = reduce(lambda x,y:x+y, [cpu.write for cpu in cpus])
     cpu_read_byte = cpu_read_sum * 64
@@ -316,10 +378,8 @@ if __name__ == '__main__':
     # test_ddr()
     # test_priv_cache_pat()
 
-
     # --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --trans ${TRANS} --snf_tbe ${SNF_TBE} --dmt ${DMT} --linkwidth ${LINKWIDTH} --print l1d,l1i,l2p,llc,cpu,ddr
     import argparse
-    import ast
     parser = argparse.ArgumentParser(description="")
     parser.add_argument('--input', required=True, type=str)
     parser.add_argument('--output', required=True, type=str)
@@ -328,18 +388,18 @@ if __name__ == '__main__':
     parser.add_argument('--num_ddr', required=True, type=int)
     parser.add_argument('--trans', required=True, type=int)
     parser.add_argument('--snf_tbe', required=True, type=int)
-    parser.add_argument('--dmt', required=True, type=ast.literal_eval)
+    parser.add_argument('--dmt', required=True, type=bool)
     parser.add_argument('--linkwidth', required=True, type=int)
     parser.add_argument('--print', required=False,type=str,default='cpu,ddr,llc',help='choose what to print from [cpu,l1d,l1i,l2,llc,ddr] with comma as delimiter. e.g. --print cpu,llc will only print cpu and llc. default options is cpu,llc,ddr')
 
     args = parser.parse_args()
-    
     cpus = [CPU(i) for i in range(args.num_cpu)]
     llcs = [LLC(i) for i in range(args.num_llc)]
     l1ds = [L1D(i) for i in range(args.num_cpu)]
     l1is = [L1I(i) for i in range(args.num_cpu)]
     l2ps = [L2P(i) for i in range(args.num_cpu)]
     ddrs = [DDR(i) for i in range(args.num_ddr)]
+    snfs = [SNF(i) for i in range(args.num_ddr)]
 
     import subprocess
     out = subprocess.getoutput('wc -l %s' % args.input)
@@ -349,12 +409,12 @@ if __name__ == '__main__':
 
     with open(args.input, 'r') as f:
         for line in f:
-            parse_stats(line, cpus, llcs, ddrs, l1ds, l1is, l2ps)
+            parse_stats(line, cpus, llcs, ddrs, l1ds, l1is, l2ps, snfs)
 
     # print tick
     tick_str = f'total cycle is {tick/1000}\n'
     # generate print strings
-    print_dict = gen_print_str(cpus, llcs, ddrs, l1ds, l1is, l2ps)
+    print_dict = gen_print_str(cpus, llcs, ddrs, l1ds, l1is, l2ps, snfs)
     stats_str = tick_str
     
     # parse print option from console
@@ -382,8 +442,11 @@ if __name__ == '__main__':
     # generate the header for throughput.txt
     if not os.path.getsize('throughput.txt'):
         with open('throughput.txt', 'w') as f:
-            f.write(f'{"CPU":^8}{"LLC":^8}{"DDR":^8}{"DMT":^8}{"TRANS":^8}{"SNF_TBE":^8}{"LINKWIDTH":^16}{"READ(B)":^16}{"WRITE(B)":16}{"TICK(ps)":^16}{"THROUGHPUT(GB/s)":^16}\n')
+            f.write(f'{"CPU":^8}{"LLC":^8}{"DDR":^8}{"DMT":^8}{"TRANS":^8}{"SNF_TBE":^8}{"LINKWIDTH":^16}{"READ(B)":^16}{"WRITE(B)":16}{"TICK(ps)":^16}{"THROUGHPUT(GB/s)":^16}{"HNF_RETRY_ACK:":^16}{"SNF_RETRY_MSG":^16}{"PATH"}\n')
     
-    cpu_read_byte, cpu_write_byte, throughput = gen_throughput()
+    cpu_read_byte, cpu_write_byte, throughput = gen_throughput(cpus)
+    total_snf_remsg = reduce(lambda x,y:x+y, [snf.remsg for snf in snfs])
+    total_hnf_reack = reduce(lambda x,y:x+y, [llc.reack for llc in llcs])
+    
     with open('throughput.txt', 'a+') as f:
-        f.write(f'{args.num_cpu:^8}{args.num_llc:^8}{args.num_ddr:^8}{args.dmt:^8}{args.trans:^8}{args.snf_tbe:^8}{args.linkwidth:^16}{cpu_read_byte:^16}{cpu_write_byte:^16}{tick:^16}{throughput:^16}\n')
+        f.write(f'{args.num_cpu:^8}{args.num_llc:^8}{args.num_ddr:^8}{args.dmt:^8}{args.trans:^8}{args.snf_tbe:^8}{args.linkwidth:^16}{cpu_read_byte:^16}{cpu_write_byte:^16}{tick:^16}{throughput:^16}{total_hnf_reack:^16}{total_snf_remsg:^16}{args.input}\n')
