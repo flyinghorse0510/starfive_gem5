@@ -82,7 +82,7 @@ parser.add_argument("--num-producers",type=int,default=-1,help="number of produc
 parser.add_argument("--num-consumers",type=int,default=-1,help="number of consumers")
 parser.add_argument("--chs-1p1c",action='store_true',help='[Test 1] Run isolated 1p 1c coherence sharing benchmarks')
 parser.add_argument("--chs-cons-id",type=int,default=0,help='[Test 1] Consumer Id')
-parser.add_argument("--chs-prod-id",type=int,default=2,help='[Test 1] Producer Id')
+parser.add_argument("--chs-prod-id",type=int,default=0,help='[Test 1] Producer Id')
 parser.add_argument("--chs-1p1c-num-pairs",default=1,type=int,help='[Test 2] Number of coherence sharing pairs')
 parser.add_argument("--chs-1pMc",action='store_true',help='[Test 3] Run 1 producer M > 1 consumers')
 parser.add_argument("--chs-1p-MSharers",default=2,type=int,help='[Test 3] Number of sharers')
@@ -181,6 +181,10 @@ if num_cpus > block_size:
            % (num_cpus, block_size))
      sys.exit(1)
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> Changed Configs for Isolated testing of SnoopFilter...
 
 if num_cpus > 0 :
     cpus = [ MemTestClass(max_loads = args.maxloads,

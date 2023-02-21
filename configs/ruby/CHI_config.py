@@ -332,7 +332,7 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
         self.unify_repl_TBEs = False
         self.transitions_per_cycle = options.num_trans_per_cycle_llc
-        self.allow_infinite_SF_entries = False
+        self.allow_infinite_SF_entries = False # [False]: Use a realistic (finite entry) Snoop Filter
 
 class CHI_MNController(MiscNode_Controller):
     '''

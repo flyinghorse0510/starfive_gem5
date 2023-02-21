@@ -24,8 +24,6 @@ while getopts "hbrsa" options; do
             ;;
         r) RUN1="yes"
            ;;
-        a) ANALYSIS="yes"
-           ;;
     esac
 done
 
@@ -33,19 +31,20 @@ WORKSPACE="$(pwd)/output"
 GEM5_DIR=$(pwd)
 ISA="RISCV"
 CCPROT="CHI"
-NUMCPUS=2
+NUMCPUS=1
 NUM_LLC=1
 NUM_SNF=1
 NETWORK="simple"
 BUILDTYPE="gem5.debug"
 l1d_size="32KiB"
 l1i_size="32KiB"
-l2_size="64KiB"
-l3_size=32KiB #"16KiB" #"1024KiB" #"256KiB"
-l1d_assoc=8
-l1i_assoc=8
+l2_size="256KiB"
+l3_size="1024KiB" #"16KiB" #"1024KiB" #"256KiB"
+l1d_assoc=2
+l1i_assoc=2
 l2_assoc=8
 l3_assoc=16
+DEBUGFLAGS=RubyGenerated,RubyCHIDebugStr5,TxnTrace
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -53,10 +52,10 @@ if [ "$BUILD" != "" ]; then
 fi
 
 if [ "$RUN1" != "" ]; then
-    OUTPUT_DIR="${WORKSPACE}/04_gem5dump/HAS0.5_SnoopFilter"
+    OUTPUT_DIR="${WORKSPACE}/MOD0.5_SnoopFilter_IsoTest"
     mkdir -p $OUTPUT_DIR
     $GEM5_DIR/build/${ISA}_${CCPROT}/${BUILDTYPE} \
-        --debug-flags=RubyGenerated,RubyCHIDebugStr5 --debug-file=debug.trace \
+        --debug-flags=${DEBUGFLAGS} --debug-file=debug.trace \
         -d ${OUTPUT_DIR} \
         ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
         --num-dirs=${NUM_SNF} \
@@ -79,6 +78,5 @@ if [ "$RUN1" != "" ]; then
         --mem-test-type='isolated_test' \
         --num-cpus=${NUMCPUS} \
         --num-producers=1
-    # grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
-    # grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
+    grep -E 'system\.ruby\.hnf' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
 fi
