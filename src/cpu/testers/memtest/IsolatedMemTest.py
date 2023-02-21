@@ -51,7 +51,6 @@ class IsolatedMemTest(ClockedObject):
     interval = Param.Cycles(5, "Interval between request packets")
     size = Param.Unsigned(4194304, "Working set(bytes)")
     working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
-    num_producers = Param.Counter(1, "Number of producers")
     num_cpus = Param.Counter(1, "Total number of CPUs")
     max_loads = Param.Counter(1, "Number of loads to unique address")
 
@@ -69,3 +68,10 @@ class IsolatedMemTest(ClockedObject):
     # accesses as Ruby needs this
     suppress_func_errors = Param.Bool(False, "Suppress panic when "\
                                             "functional accesses fail.")
+    
+    # Extra parameters to comply with seq_mem_ruby_test
+    bench_c2cbw_mode = Param.Bool(False,"[True] Producer Consumer BW or [False] C2C Latency Test")
+    id_producers = VectorParam.Int([], "List of Producer Ids")
+    id_consumers = VectorParam.Int([], "List of Consumer Ids")
+    num_peer_producers = Param.Counter(1, "Number of independent peer producers. Use to partition the working set")
+    addr_intrlvd_or_tiled =  Param.Bool(False,"If true the address partitioning across CPUs is interleaved [0,N,2N;1,N+1,2N+1;...]. Otherwise Tiled [0:N-1,N:2N-1]")

@@ -252,6 +252,7 @@ in_port(triggerInPort, TriggerMsg, triggerQueue, rank=5,
           trigger(Event:ActionStalledOnHazard, in_msg.addr,
                   getCacheEntry(in_msg.addr), tbe);
         } else {
+          DPRINTF(RubyCHIDebugStr5,"ProcTriggerMessage=%#x,pendAction=%s\n",in_msg.addr,tbe.pendAction);
           trigger(tbe.pendAction, in_msg.addr, getCacheEntry(in_msg.addr), tbe);
         }
       }
@@ -285,6 +286,12 @@ in_port(replTriggerInPort, ReplacementMsg, replTriggerQueue, rank=4) {
       if (is_valid(cache_entry) &&
           ((upstreamHasUnique(cache_entry.state) && dealloc_backinv_unique) ||
           (upstreamHasShared(cache_entry.state) && dealloc_backinv_shared))) {
+        /**
+         * [TODO: 21/02/2023][Arka]: Public version of gem5 contains bugs
+         * in this path. Global_Eviction is not
+         * implemented properly. Debug it later
+         * Currently not a priority to fix.
+         */
         trigger := Event:Global_Eviction;
       } else {
         if (is_HN) {

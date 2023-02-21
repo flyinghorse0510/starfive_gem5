@@ -149,15 +149,20 @@ TBE getCurrentActiveTBE(Addr addr), return_by_pointer="yes" {
   if (is_valid(snp_tbe)) {
     return snp_tbe;
   }
+  TBE sfRepl_tbe := sfReplTBEs[addr];
   TBE req_tbe := TBEs[addr];
   TBE repl_tbe := replTBEs[addr];
   if (is_valid(req_tbe)) {
-    assert(is_invalid(repl_tbe));
+    assert((is_invalid(repl_tbe)) && (is_invalid(sfRepl_tbe)));
     return req_tbe;
   }
   if (is_valid(repl_tbe)) {
-    assert(is_invalid(req_tbe));
+    assert((is_invalid(req_tbe)) && (is_invalid(sfRepl_tbe)));
     return repl_tbe;
+  }
+  if (is_valid(sfRepl_tbe)) {
+    assert((is_invalid(req_tbe)) && (is_invalid(repl_tbe)));
+    return sfRepl_tbe;
   }
   return OOD;
 }
@@ -753,14 +758,13 @@ void printResources() {
                 triggerQueue.getSize(curTick()));
 }
 
-bool requiresDirEntry(CHIRequestType reqType, DirEntry dir_entry, bool en) {
-  DPRINTF(RubyCHIDebugStr5,"Requires Dir Entry, reqType=%s,v_dir_entry=%d,en=%d\n",reqType,is_valid(dir_entry),en);
+bool requiresDirEntry(CHIRequestType reqType, DirEntry dir_entry) {
   if (is_valid(dir_entry)) {
     return false;
   } else {
-    return (en && ((reqType == CHIRequestType:ReadShared) ||
+    return ((reqType == CHIRequestType:ReadShared) ||
                    (reqType == CHIRequestType:ReadUnique) ||
-                   (reqType == CHIRequestType:ReadOnce)));
+                   (reqType == CHIRequestType:ReadOnce));
   }
 }
 
@@ -825,22 +829,20 @@ void printTBEState(TBE tbe) {
 void printTBEStateStr5(TBE tbe) {
   if (is_valid(tbe)) {
     DPRINTF(RubyCHIDebugStr5, "addr=%#x,txSeqNum=%#018x,reqTyp=%s\n",tbe.addr,tbe.txSeqNum,tbe.reqType); 
-    DPRINTF(RubyCHIDebugStr5, "addr=%#x,dataBlkValid.isFull=%d valid=%d unique=%d\n",tbe.addr,tbe.dataBlkValid.isFull(), tbe.dataValid,tbe.dataUnique);
-    DPRINTF(RubyCHIDebugStr5, "addr=%#x,dirty=%d mu_dirty=%d\n",tbe.addr,tbe.dataDirty,tbe.dataMaybeDirtyUpstream);
-    DPRINTF(RubyCHIDebugStr5, "addr=%#x,dir ownerExists=%d ownerExcl=%d,sharers=%d\n",tbe.addr,tbe.dir_ownerExists,tbe.dir_ownerIsExcl,tbe.dir_sharers.count());
-    DPRINTF(RubyCHIDebugStr5, "addr=%#x,tobe_I=%d tobe_SC=%d\n",tbe.addr,tbe.dataToBeInvalid,tbe.dataToBeSharedClean);
-    DPRINTF(RubyCHIDebugStr5, "addr=%#x,doCacheFill=%d,pendAction=%s,finalState=%s\n",tbe.addr,tbe.doCacheFill,tbe.pendAction,tbe.finalState);
-    DPRINTF(RubyCHIDebugStr5, "addr=%#x,expected_req_resp.hasExpected=%d\n",tbe.addr,tbe.expected_req_resp.hasExpected());
-    DPRINTF(RubyCHIDebugStr5, "addr=%#x,expected_snp_resp.hasExpected=%d\n",tbe.addr,tbe.expected_snp_resp.hasExpected());
-    DPRINTF(RubyCHIDebugStr5, "addr=%#x,expected_req_resp.hasReceivedData=%d\n",tbe.addr,tbe.expected_req_resp.hasReceivedData());
-    DPRINTF(RubyCHIDebugStr5, "addr=%#x,expected_snp_resp.hasReceivedData=%d\n",tbe.addr,tbe.expected_snp_resp.hasReceivedData());
-    DPRINTF(RubyCHIDebugStr5, "addr=%#x,fwdedState=%s,fwdRequestor=%s,snpNeedsData=%d\n",tbe.addr,tbe.fwdedState,tbe.fwdRequestor,tbe.snpNeedsData);
-    DPRINTF(RubyCHIDebugStr5, "addr=%#x,allow_SD=%d\n",tbe.addr,allow_SD);
-    if (!tbe.actions.empty()) {
-      DPRINTF(RubyCHIDebugStr5, "addr=%#x,actions.front = %s,nb=%d\n",tbe.addr,tbe.actions.front(),tbe.actions.frontNB());
-    } else {
-      DPRINTF(RubyCHIDebugStr5, "addr=%#x,actions queue empty\n",tbe.addr);
-    }
+    DPRINTF(RubyCHIDebugStr5, "dataBlkValid.isFull=%d valid=%d unique=%d\n",tbe.dataBlkValid.isFull(),tbe.dataValid,tbe.dataUnique);
+    DPRINTF(RubyCHIDebugStr5, "dirty=%d mu_dirty=%d\n",tbe.dataDirty,tbe.dataMaybeDirtyUpstream);
+    DPRINTF(RubyCHIDebugStr5, "dir ownerExists=%d ownerExcl=%d,sharers=%d\n",tbe.dir_ownerExists,tbe.dir_ownerIsExcl,tbe.dir_sharers.count());
+    DPRINTF(RubyCHIDebugStr5, "tobe_I=%d tobe_SC=%d\n",tbe.dataToBeInvalid,tbe.dataToBeSharedClean);
+    DPRINTF(RubyCHIDebugStr5, "doCacheFill=%d,pendAction=%s,finalState=%s\n",tbe.doCacheFill,tbe.pendAction,tbe.finalState);
+    DPRINTF(RubyCHIDebugStr5, "expected_req_resp.hasExpected=%d\n",tbe.expected_req_resp.hasExpected());
+    DPRINTF(RubyCHIDebugStr5, "expected_snp_resp.hasExpected=%d\n",tbe.expected_snp_resp.hasExpected());
+    DPRINTF(RubyCHIDebugStr5, "expected_req_resp.hasReceivedData=%d\n",tbe.expected_req_resp.hasReceivedData());
+    DPRINTF(RubyCHIDebugStr5, "expected_snp_resp.hasReceivedData=%d\n",tbe.expected_snp_resp.hasReceivedData());
+    // if (!tbe.actions.empty()) {
+    //   DPRINTF(RubyCHIDebugStr5, "addr=%#x,actions.front = %s,nb=%d\n",tbe.actions.front(),tbe.actions.frontNB());
+    // } else {
+    //   DPRINTF(RubyCHIDebugStr5, "actions queue empty\n");
+    // }
   } else {
     DPRINTF(RubyCHIDebugStr5,"TBE invalid\n");
   }
@@ -971,6 +973,13 @@ void deallocateSnpTBE(TBE tbe) {
   assert(tbe.is_snp_tbe);
   storSnpTBEs.removeEntryFromSlot(tbe.storSlot);
   snpTBEs.deallocate(tbe.addr);
+}
+
+void deallocateSnoopFilterTBE(TBE tbe) {
+  assert(is_valid(tbe));
+  assert(tbe.is_sfrepl_tbe);
+  storSFReplTBEs.removeEntryFromSlot(tbe.storSlot);
+  sfReplTBEs.deallocate(tbe.addr);
 }
 
 void deallocateReplacementTBE(TBE tbe) {
@@ -1420,7 +1429,6 @@ Event snpToEvent (CHIRequestType type) {
 
 
 TBE allocateSnoopFilterTBE(Addr victim_addr, MachineID requestor, MachineID fwdRequestor), return_by_pointer="yes" {
-  storSFReplTBEs.decrementReserved();
   assert(storSFReplTBEs.areNSlotsAvailable(1));
 
   sfReplTBEs.allocate(victim_addr);

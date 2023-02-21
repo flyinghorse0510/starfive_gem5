@@ -400,7 +400,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     CheckCacheFill,   desc="Check if need to write or update the cache and trigger any necessary allocation and evictions";
 
     // Snoop Filter fill
-    StartSnoopFilterFill, desc="Check if need to Snoop filter (directory) entry";
+    CheckSnoopFilterFill, desc="Check if need to Snoop filter (directory) entry";
     SnoopFilterEviction,  desc="";
 
     // Internal requests generated to evict or writeback a local copy
