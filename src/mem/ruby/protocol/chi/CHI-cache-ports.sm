@@ -46,7 +46,7 @@ out_port(retryTriggerOutPort, RetryTriggerMsg, retryTriggerQueue);
 out_port(replTriggerOutPort, TriggerMsg, replTriggerQueue);
 out_port(reqRdyOutPort, CHIRequestMsg, reqRdy);
 out_port(snpRdyOutPort, CHIRequestMsg, snpRdy);
-out_port(sfReplOutPort, SFReplacementMsg, sfReplTriggerQueue);
+out_port(sfReplOutPort, ReplacementMsg, sfReplTriggerQueue);
 
 // Include helper functions here. Some of them require the outports to be
 // already defined
@@ -233,6 +233,7 @@ bool retryTriggerInPort_rsc_stall_handler() {
 // Action triggers
 in_port(triggerInPort, TriggerMsg, triggerQueue, rank=5,
         rsc_stall_handler=triggerInPort_rsc_stall_handler) {
+  
   if (triggerInPort.isReady(clockEdge())) {
     printResources();
     peek(triggerInPort, TriggerMsg) {
@@ -252,7 +253,6 @@ in_port(triggerInPort, TriggerMsg, triggerQueue, rank=5,
           trigger(Event:ActionStalledOnHazard, in_msg.addr,
                   getCacheEntry(in_msg.addr), tbe);
         } else {
-          DPRINTF(RubyCHIDebugStr5,"ProcTriggerMessage=%#x,pendAction=%s\n",in_msg.addr,tbe.pendAction);
           trigger(tbe.pendAction, in_msg.addr, getCacheEntry(in_msg.addr), tbe);
         }
       }
@@ -305,10 +305,10 @@ in_port(replTriggerInPort, ReplacementMsg, replTriggerQueue, rank=4) {
   }
 }
 
-in_port(sfReplInPort, SFReplacementMsg, sfReplTriggerQueue, rank=12) {
+in_port(sfReplInPort, ReplacementMsg, sfReplTriggerQueue, rank=12) {
   if (sfReplInPort.isReady(clockEdge())) {
     printResources();
-    peek(sfReplInPort, SFReplacementMsg) {
+    peek(sfReplInPort, ReplacementMsg) {
       TBE tbe := getCurrentActiveTBE(in_msg.addr); // Fix this to select the Correct SnoopFilterRepl TBE
       CacheEntry cache_entry := getCacheEntry(in_msg.addr);
       trigger(Event:SnoopFilterEviction, in_msg.addr, cache_entry, tbe);
@@ -494,6 +494,7 @@ void processNextState(Addr address, TBE tbe, CacheEntry cache_entry) {
     }
     assert(tbe.pendAction != Event:null);
     enqueue(triggerOutPort, TriggerMsg, trigger_latency) {
+      DPRINTF(RubyCHIDebugStr5,"ProcTriggerMessage=%#x,pendAction=%s,lat=%d\n",tbe.addr,tbe.pendAction,trigger_latency);
       out_msg.addr := tbe.addr;
       // TODO - put usesTxnId on the TBE?
       out_msg.usesTxnId := tbe.is_dvm_tbe || tbe.is_dvm_snp_tbe;

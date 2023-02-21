@@ -829,7 +829,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool functionalWrite(Packet *pkt) { return false; }
   }
 
-  // Internal replacement request
+  // Internal replacement request. The same structure is also used for SnoopFilter replacements
   structure(ReplacementMsg, interface="Message") {
     Addr addr;
     Addr from_addr;
@@ -838,13 +838,6 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool functionalRead(Packet *pkt, WriteMask &mask) { return false; }
     bool functionalWrite(Packet *pkt) { return false; }
   }
-
-  // Internal SF Replacement request
-  structure(SFReplacementMsg, interface="Message") {
-    Addr evicting_addr;
-    Addr addr;
-  }
-
 
   ////////////////////////////////////////////////////////////////////////////
   // Input/output port definitions

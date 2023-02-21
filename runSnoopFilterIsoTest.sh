@@ -44,7 +44,7 @@ l1d_assoc=2
 l1i_assoc=2
 l2_assoc=8
 l3_assoc=16
-DEBUGFLAGS=RubyGenerated,RubyCHIDebugStr5,TxnTrace
+DEBUGFLAGS=RubyGenerated,RubyCHIDebugStr5
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
