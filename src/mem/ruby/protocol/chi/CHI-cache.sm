@@ -757,6 +757,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
 
   // Directory
   PerfectCacheMemory directory, template="<Cache_DirEntry>", constructor="m_max_dir_size";
+  // RubySnoopFilter directory, template="<Cache_DirEntry>";
 
   // Tracks unique lines locked after a store miss
   TimerTable useTimerTable;

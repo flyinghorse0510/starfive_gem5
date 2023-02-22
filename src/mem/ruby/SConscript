@@ -113,6 +113,7 @@ MakeInclude('structures/PerfectCacheMemory.hh')
 MakeInclude('structures/PersistentTable.hh')
 MakeInclude('structures/RubyPrefetcher.hh')
 MakeInclude('structures/TBEStorage.hh')
+MakeInclude('structures/SnoopFilter.hh')
 if env['PROTOCOL'] == 'CHI':
     MakeInclude('structures/MN_TBEStorage.hh')
     MakeInclude('structures/MN_TBETable.hh')
