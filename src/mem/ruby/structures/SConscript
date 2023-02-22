@@ -48,9 +48,6 @@ SimObject('DirectoryMemory.py', sim_objects=['RubyDirectoryMemory'])
 SimObject('RubyPrefetcher.py', sim_objects=['RubyPrefetcher'])
 SimObject('WireBuffer.py', sim_objects=['RubyWireBuffer'])
 
-SimObject('RubySnoopFilter.py', sim_objects=['RubySnoopFilter'])
-
-Source('SnoopFilter.cc')
 Source('DirectoryMemory.cc')
 Source('CacheMemory.cc')
 Source('WireBuffer.cc')

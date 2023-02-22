@@ -750,7 +750,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     void deallocate(Addr);
     DirEntry lookup(Addr);
     bool isTagPresent(Addr);
-    int size();
+    // int size();
     bool cacheAvail(Addr);
     Addr cacheProbe(Addr newAddress);
   }
