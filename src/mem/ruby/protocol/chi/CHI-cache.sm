@@ -756,7 +756,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
 
   // Directory
   // PerfectCacheMemory directory, template="<Cache_DirEntry>", constructor="m_number_snoopfilter_entries";
-  SnoopFilter directory, template="<Cache_DirEntry>", constructor="m_number_snoopfilter_entries, m_number_snoopfilter_assoc, m_allow_infinite_SF_entries";
+  SnoopFilter directory, template="<Cache_DirEntry>", constructor="m_number_snoopfilter_entries, m_number_snoopfilter_assoc, m_allow_infinite_SF_entries, this";
 
   // Tracks unique lines locked after a store miss
   TimerTable useTimerTable;

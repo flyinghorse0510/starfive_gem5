@@ -74,11 +74,12 @@ template<class ENTRY>
 class SnoopFilter
 {
   public:
-    SnoopFilter();
+    SnoopFilter(statistics::Group *parent);
 
     SnoopFilter(unsigned num_entries,\
                 unsigned assoc,\
-                bool allow_infinite_entries);
+                bool allow_infinite_entries, \
+                statistics::Group *parent);
 
     // tests to see if an address is present in the cache
     bool isTagPresent(Addr address) const;
@@ -124,7 +125,41 @@ class SnoopFilter
     int m_start_index_bit;
     bool m_allow_infinite_entries;
     int64_t addressToCacheSet(Addr address) const;
+
+    // 
+    struct SnoopFilterStats : public statistics::Group
+    {
+      SnoopFilterStats(statistics::Group *parent) : statistics::Group(parent),
+       ADD_STAT(m_hits, "Number of SnoopFilter hits"),
+       ADD_STAT(m_misses, "Number of SnoopFilter misses"),
+       ADD_STAT(m_accesses, "Number of SnoopFilter accesses",m_hits+m_misses) {}
+      
+      statistics::Scalar m_hits;
+      statistics::Scalar m_misses;
+      statistics::Formula m_accesses;
+
+    } snoopFilterStats;
+    void profileHit();
+    void profileMiss();
 };
+
+// template<class ENTRY>
+// SnoopFilter<ENTRY>::SnoopFilterStats::SnoopFilterStats(statistics::Group *parent) 
+//      : statistics::Group(parent),
+//        ADD_STAT(m_hits, "Number of SnoopFilter hits"),
+//        ADD_STAT(m_misses, "Number of SnoopFilter misses"),
+//        ADD_STAT(m_accesses, "Number of SnoopFilter accesses",m_hits+m_misses) {}
+
+template<class ENTRY>
+void SnoopFilter<ENTRY>::profileHit() {
+  snoopFilterStats.m_hits++;
+}
+
+template<class ENTRY>
+void SnoopFilter<ENTRY>::profileMiss() {
+  snoopFilterStats.m_misses++;
+}
+
 
 template<class ENTRY>
 inline int SnoopFilter<ENTRY>::size() const {
@@ -142,11 +177,12 @@ operator<<(std::ostream& out, const SnoopFilter<ENTRY>& obj)
 
 
 template<class ENTRY>
-inline SnoopFilter<ENTRY>::SnoopFilter() : 
+inline SnoopFilter<ENTRY>::SnoopFilter(statistics::Group *parent) : 
     m_num_entries(0),
     m_num_sets(0),
     m_assoc(0),
-    m_allow_infinite_entries(false) {
+    m_allow_infinite_entries(false),
+    snoopFilterStats(parent) {
   m_cache.clear();
 }
 
@@ -154,10 +190,12 @@ inline SnoopFilter<ENTRY>::SnoopFilter() :
 template<class ENTRY>
 inline SnoopFilter<ENTRY>::SnoopFilter(unsigned num_entries,\
                 unsigned assoc,\
-                bool allow_infinite_entries) :
+                bool allow_infinite_entries, \
+                statistics::Group *parent) :
     m_num_entries(num_entries),
     m_assoc(assoc),
-    m_allow_infinite_entries(allow_infinite_entries) {
+    m_allow_infinite_entries(allow_infinite_entries),
+    snoopFilterStats(parent) {
     
     assert(m_num_entries%m_assoc==0);
     m_num_sets=m_num_entries/m_assoc;
