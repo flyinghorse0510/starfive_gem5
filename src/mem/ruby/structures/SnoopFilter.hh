@@ -110,6 +110,8 @@ class SnoopFilter
     // Print cache contents
     void print(std::ostream& out) const;
 
+    void profileEviction();
+
   private:
     // Private copy constructor and assignment operator
     SnoopFilter(const SnoopFilter& obj);
@@ -126,40 +128,21 @@ class SnoopFilter
     bool m_allow_infinite_entries;
     int64_t addressToCacheSet(Addr address) const;
 
-    // 
+    // Count the Number of SnoopFilter evictions
     struct SnoopFilterStats : public statistics::Group
     {
       SnoopFilterStats(statistics::Group *parent) : statistics::Group(parent),
-       ADD_STAT(m_hits, "Number of SnoopFilter hits"),
-       ADD_STAT(m_misses, "Number of SnoopFilter misses"),
-       ADD_STAT(m_accesses, "Number of SnoopFilter accesses",m_hits+m_misses) {}
+       ADD_STAT(m_snoopfilter_evictions, "Number of SnoopFilter evictions") {}
       
-      statistics::Scalar m_hits;
-      statistics::Scalar m_misses;
-      statistics::Formula m_accesses;
+      statistics::Scalar m_snoopfilter_evictions;
 
     } snoopFilterStats;
-    void profileHit();
-    void profileMiss();
 };
 
-// template<class ENTRY>
-// SnoopFilter<ENTRY>::SnoopFilterStats::SnoopFilterStats(statistics::Group *parent) 
-//      : statistics::Group(parent),
-//        ADD_STAT(m_hits, "Number of SnoopFilter hits"),
-//        ADD_STAT(m_misses, "Number of SnoopFilter misses"),
-//        ADD_STAT(m_accesses, "Number of SnoopFilter accesses",m_hits+m_misses) {}
-
 template<class ENTRY>
-void SnoopFilter<ENTRY>::profileHit() {
-  snoopFilterStats.m_hits++;
+void SnoopFilter<ENTRY>::profileEviction() {
+  snoopFilterStats.m_snoopfilter_evictions++;
 }
-
-template<class ENTRY>
-void SnoopFilter<ENTRY>::profileMiss() {
-  snoopFilterStats.m_misses++;
-}
-
 
 template<class ENTRY>
 inline int SnoopFilter<ENTRY>::size() const {

@@ -123,6 +123,7 @@ transition({RSD,RUSC,RUSD,RU,
   Initiate_SnoopFilterReplacement;
   Initiate_SnoopFilterReplacement_WB_BackInv;
   // Profile_Eviction; Is this required
+  Profile_SnoopFilterEviction;
   Deallocate_DirEntry;
   Pop_SFReplTriggerQueue;
   ProcessNextState;
@@ -132,6 +133,7 @@ transition({UC_RSC, RSC, SC_RSC}, SnoopFilterEviction, BUSY_BLKD) {SfReplTBEAvai
   Initiate_SnoopFilterReplacement;
   Initiate_SnoopFilterReplacement_Evict_BackInv;
   // Profile_Eviction;
+  Profile_SnoopFilterEviction;
   Deallocate_DirEntry;
   Pop_SFReplTriggerQueue;
   ProcessNextState;

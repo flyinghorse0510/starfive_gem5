@@ -2981,6 +2981,22 @@ action(Initiate_SnoopFilterReplacement, desc="") {
   incomingTransactionStart(address, curTransitionEvent(), initial, false);
 }
 
+action(Profile_SnoopFilterEviction, desc="") {
+  assert(is_valid(tbe));
+  directory.profileEviction();
+}
+
+action(StallSnoopFilterEviction, desc="") {
+  // was stalled because of an existing request
+  assert(is_valid(tbe));
+  assert(tbe.addr == address);
+
+  // Just pop the queue and When this transaction finishes wake-up the original
+  // msgs that caused this eviction
+  tbe.wakeup_pending_tgr := true;
+  sfReplInPort.dequeue(clockEdge());
+}
+
 action(CheckCacheFill, desc="") {
   assert(is_valid(tbe));
 
@@ -3044,17 +3060,6 @@ action(CheckCacheFill, desc="") {
   } else {
     wakeupPendingSnps(tbe); // might have stalled snoops that can execute now
   }
-}
-
-action(StallSnoopFilterEviction, desc="") {
-  // was stalled because of an existing request
-  assert(is_valid(tbe));
-  assert(tbe.addr == address);
-
-  // Just pop the queue and When this transaction finishes wake-up the original
-  // msgs that caused this eviction
-  tbe.wakeup_pending_tgr := true;
-  sfReplInPort.dequeue(clockEdge());
 }
 
 action(Finalize_DeallocateRequest, desc="") {
