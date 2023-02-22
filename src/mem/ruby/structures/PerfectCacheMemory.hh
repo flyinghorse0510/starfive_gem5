@@ -141,8 +141,6 @@ template<class ENTRY>
 inline
 PerfectCacheMemory<ENTRY>::PerfectCacheMemory() : m_max_dir_size(100) {}
 
-
-
 // tests to see if an address is present in the cache
 template<class ENTRY>
 inline bool

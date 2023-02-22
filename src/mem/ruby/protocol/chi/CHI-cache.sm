@@ -206,9 +206,8 @@ machine(MachineType:Cache, "Cache coherency protocol") :
 
   // Allow infinite SnoopFilter entries
   bool allow_infinite_SF_entries;
-
-  // Number of entries in the Directory
-  int max_dir_size;
+  int number_snoopfilter_entries;
+  int number_snoopfilter_assoc;
 
 {
 
@@ -745,7 +744,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   }
 
   // Directory memory definition
-  structure(PerfectCacheMemory, external = "yes") {
+  structure(SnoopFilter, external = "yes") {
     void allocate(Addr);
     void deallocate(Addr);
     DirEntry lookup(Addr);
@@ -756,8 +755,8 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   }
 
   // Directory
-  PerfectCacheMemory directory, template="<Cache_DirEntry>", constructor="m_max_dir_size";
-  // RubySnoopFilter directory, template="<Cache_DirEntry>";
+  // PerfectCacheMemory directory, template="<Cache_DirEntry>", constructor="m_number_snoopfilter_entries";
+  SnoopFilter directory, template="<Cache_DirEntry>", constructor="m_number_snoopfilter_entries, m_number_snoopfilter_assoc, m_allow_infinite_SF_entries";
 
   // Tracks unique lines locked after a store miss
   TimerTable useTimerTable;
