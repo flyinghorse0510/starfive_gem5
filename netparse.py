@@ -227,7 +227,7 @@ def my_draw_networkx_edge_labels(
 class Stats:
     def __init__(self, num_vnet):
         self.vnets = [0]*num_vnet
-        self.latency = [[],float('-inf'),float('inf')] # hisV, maxV, minV
+        self.lat = [[],float('-inf'),float('inf')] # hisV, maxV, minV
 
     def __str__(self):
         return f'{self.__dict__}'
@@ -310,6 +310,8 @@ def parse_json(JSON: Dict):
     num_vnet = JSON['system']['ruby']['number_of_virtual_networks']
     logging.debug(f'num_vnet:{num_vnet}')
     network = JSON['system']['ruby']['network'] # system.ruby.network
+    cyc_tick = JSON['system']['ruby']['clk_domain']['clock'][0] # clk_domain: tick per cycle
+    logging.debug(f'cyc_tick: {cyc_tick}')
     routers = network['routers']
     routers = [Router(path=r,id=i) for i,r in enumerate(routers)]
     logging.debug(f'routers:{routers}')
@@ -322,9 +324,9 @@ def parse_json(JSON: Dict):
     logging.debug(f'int_links:{int_links}')
     logging.debug(f'controllers:{controllers}')
 
-    return ext_links, int_links, routers
+    return ext_links, int_links, routers, cyc_tick
 
-def parse_link_log(log_path: str, routers: List[Router], ext_links: List[ExtLink], int_links: List[IntLink]):
+def parse_link_log(log_path: str, routers: List[Router], ext_links: List[ExtLink], int_links: List[IntLink], cyc_tick: int):
     routers_dict = {r.path:r for r in routers}
     int_links_dict = {l.path:l for l in int_links}
     ext_links_dict = {l.path:l for l in ext_links}
@@ -369,16 +371,16 @@ def parse_link_log(log_path: str, routers: List[Router], ext_links: List[ExtLink
 
             # but we need to collect last link time
             last_link_name, last_link_time = addon_msg.strip('()').split(':')
-            last_link_time = int(last_link_time)
+            last_link_time = round(int(last_link_time)/cyc_tick,1)
             if last_link_name != 'origin': # eg: l2.reqOut->l1d.reqIn. TODO: check if reqOut has no stalls.
                 link_path = 'system.ruby.network.'+last_link_name
-                hisV,maxV,minV = int_links_dict[link_path].stats.latency # hisV first record values, later divided by total # msgs
-                int_links_dict[link_path].stats.latency = [hisV+[last_link_time], max(maxV,last_link_time), min(minV,last_link_time)]
+                hisV,maxV,minV = int_links_dict[link_path].stats.lat # hisV first record values, later divided by total # msgs
+                int_links_dict[link_path].stats.lat = [hisV+[last_link_time], max(maxV,last_link_time), min(minV,last_link_time)]
             logging.debug(f'last_link:{last_link_name}, last_time:{last_link_time}ticks')
 
     for i in int_links:
         if sum(i.stats.vnets) != 0:
-            i.stats.latency[0] = sum(i.stats.latency[0])//len(i.stats.latency[0]) # avgV = sum(hisV)/len(hisV). WARNING: cannot use the sum(vnets) since when maxloads hit simulation shuts down
+            i.stats.lat[0] = sum(i.stats.lat[0])//len(i.stats.lat[0]) # avgV = sum(hisV)/len(hisV). WARNING: cannot use the sum(vnets) since when maxloads hit simulation shuts down
 
 
 def build_network(ext_links:List[ExtLink],int_links:List[IntLink],routers:List[Router],draw_ctrl:bool):
@@ -465,9 +467,9 @@ if __name__ == '__main__':
     ext_links, int_links, routers = None, None, None
     with open(json_file,'r') as f:
         JSON = json.load(f)
-        ext_links, int_links, routers = parse_json(JSON)
+        ext_links, int_links, routers, cyc_tick = parse_json(JSON)
     
-    parse_link_log(link_log, routers, ext_links, int_links)
+    parse_link_log(link_log, routers, ext_links, int_links, cyc_tick)
     dump_log(ext_links, int_links, routers, dump_path)
 
     graph = build_network(ext_links,int_links,routers,draw_ctrl=options.draw_ctrl)
