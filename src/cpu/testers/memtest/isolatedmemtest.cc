@@ -152,6 +152,7 @@ IsolatedMemTest::IsolatedMemTest(const Params &p)
         workingSet.push_back(p.first);
     }
 
+    DPRINTF(IsolatedMemLatTest,"CPU_%d@WorkingSetSize=%d\n",id,workingSet.size());
     // kick things into action
     schedule(tickEvent, curTick());
     schedule(noRequestEvent, clockEdge(progressCheck));

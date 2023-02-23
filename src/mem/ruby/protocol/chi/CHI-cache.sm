@@ -751,7 +751,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool isTagPresent(Addr);
     // int size();
     bool cacheAvail(Addr);
-    Addr cacheProbe(Addr newAddress);
+    Addr cacheProbe(Addr);
     void profileEviction();
     void profileAccesses();
   }

@@ -113,6 +113,8 @@ class SnoopFilter
     void profileEviction();
     void profileAccesses();
 
+    int getCacheSet(Addr address) const;
+
   private:
     // Private copy constructor and assignment operator
     SnoopFilter(const SnoopFilter& obj);
@@ -173,6 +175,7 @@ inline SnoopFilter<ENTRY>::SnoopFilter(statistics::Group *parent) :
     m_num_sets(0),
     m_assoc(0),
     m_allow_infinite_entries(false),
+    m_start_index_bit(6),
     snoopFilterStats(parent) {
   m_cache.clear();
 }
@@ -186,6 +189,7 @@ inline SnoopFilter<ENTRY>::SnoopFilter(unsigned num_entries,\
     m_num_entries(num_entries),
     m_assoc(assoc),
     m_allow_infinite_entries(allow_infinite_entries),
+    m_start_index_bit(6),
     snoopFilterStats(parent) {
     
     assert(m_num_entries%m_assoc==0);
@@ -254,6 +258,11 @@ inline void SnoopFilter<ENTRY>::deallocate(Addr address) {
     assert(num_erased == 1);
 }
 
+template<class ENTRY>
+int SnoopFilter<ENTRY>::getCacheSet(Addr address) const {
+  return addressToCacheSet(address);
+}
+
 static inline int get_rand_between(int min, int max) {
     return rand()%(max-min + 1) + min;
 }
@@ -263,6 +272,7 @@ template<class ENTRY>
 inline Addr SnoopFilter<ENTRY>::cacheProbe(Addr newAddress) const {
     int64_t cacheSet = addressToCacheSet(newAddress);
     auto &set = m_cache.at(cacheSet);
+    assert(m_assoc==set.size());
     auto random_it = std::next(std::begin(set), get_rand_between(0,set.size()-1));
     return makeLineAddress(random_it->first);
 }
