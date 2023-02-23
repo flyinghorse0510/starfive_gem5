@@ -752,8 +752,8 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     // int size();
     bool cacheAvail(Addr);
     Addr cacheProbe(Addr);
-    void profileEviction();
-    void profileAccesses();
+    void profileMiss();
+    void profileHit();
   }
 
   // Directory

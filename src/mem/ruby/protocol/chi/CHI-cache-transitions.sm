@@ -123,7 +123,7 @@ transition({RSD,RUSC,RUSD,RU,
   Initiate_SnoopFilterReplacement;
   Initiate_SnoopFilterReplacement_WB_BackInv;
   // Profile_Eviction; Is this required
-  Profile_SnoopFilterEviction;
+  Profile_SnoopFilterMiss;
   Deallocate_DirEntry;
   Pop_SFReplTriggerQueue;
   ProcessNextState;
@@ -133,7 +133,7 @@ transition({UC_RSC, RSC, SC_RSC}, SnoopFilterEviction, BUSY_BLKD) {SfReplTBEAvai
   Initiate_SnoopFilterReplacement;
   Initiate_SnoopFilterReplacement_Evict_BackInv;
   // Profile_Eviction;
-  Profile_SnoopFilterEviction;
+  Profile_SnoopFilterMiss;
   Deallocate_DirEntry;
   Pop_SFReplTriggerQueue;
   ProcessNextState;
@@ -214,7 +214,6 @@ transition(I, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadShared_Miss;
   // Allocate_DirEntry;
-  Profile_SnoopFilterAccess;
   Profile_Miss;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -232,7 +231,6 @@ transition({UD,SD,UC,SC}, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadShared_Hit;
   // Allocate_DirEntry;
-  Profile_SnoopFilterAccess;
   Profile_Hit;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -287,7 +285,6 @@ transition(I, {ReadUnique,ReadUnique_PoC}, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadUnique_Miss;
   // Allocate_DirEntry;
-  Profile_SnoopFilterAccess;
   Profile_Miss;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -297,7 +294,6 @@ transition({UD,UC}, {ReadUnique,ReadUnique_PoC}, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadUnique_Hit;
   // Allocate_DirEntry;
-  Profile_SnoopFilterAccess;
   Profile_Hit;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -324,7 +320,6 @@ transition({SC,SD}, ReadUnique_PoC, BUSY_BLKD) {
   Initiate_ReadUnique_AutoUpgrade;
   Initiate_ReadUnique_Hit;
   // Allocate_DirEntry;
-  Profile_SnoopFilterAccess;
   Profile_Hit;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -353,7 +348,6 @@ transition({SC,SD}, ReadUnique, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadUnique_Upgrade;
   // Allocate_DirEntry;
-  Profile_SnoopFilterAccess;
   Profile_Miss;
   Pop_ReqRdyQueue;
   ProcessNextState;

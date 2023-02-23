@@ -289,6 +289,20 @@ action(Initiate_Request, desc="") {
   if (tbe.requiresDirEntry) {
     tbe.actions.push(Event:CheckSnoopFilterFill);
   }
+  // Directory access has taken place. Increment the appropriate stats
+  if (is_valid(dir_entry)) {
+    /**
+     * Arka[23/02/2023]: 
+     * 1. Per the CHI SLICC coding conventions. It is not
+     *    a good practice to add the directory hit
+     *    profiling here. There should be a separate function
+     *    to do this. The problem, is that it involves changes
+     *    in many areas of the code. So we do it here.
+     * 2. There are other Initiate_* actions, that also perform
+     *    `copyCacheAndDir`. They might also require this profiling
+     */
+    directory.profileHit();
+  }
 
   // model the initial tag array read
   tbe.actions.pushNB(Event:TagArrayRead);
@@ -437,7 +451,7 @@ action(Initiate_Replacement, desc="") {
   copyCacheAndDir(cache_entry, getDirEntry(address), tbe, initial);
 
   // zhiang: printTBEState here
-  DPRINTF(RubySlicc, "After copyCacheAndDir\n");
+  DPRINTF(RubySlicc, "After CopyCacheAndDir\n");
   if(is_invalid(tbe)) {
     DPRINTF(RubySlicc, "tbe is invalid\n");
   } else {
@@ -2971,10 +2985,12 @@ action(Pop_SFReplTriggerQueue, desc="") {
 
 action(Initiate_SnoopFilterReplacement, desc="") {
   assert(is_invalid(tbe));
+  DirEntry dir_entry := getDirEntry(address);
+  assert(is_valid(dir_entry));
   State initial := getState(tbe, cache_entry, address);
   set_tbe(allocateSnoopFilterTBE(address, machineID, machineID));
 
-  copyCacheAndDir(cache_entry, getDirEntry(address), tbe, initial);
+  copyCacheAndDir(cache_entry, dir_entry, tbe, initial);
 
   // Is this correct?
   // tbe.actions.pushNB(Event:TagArrayRead);
@@ -2982,14 +2998,9 @@ action(Initiate_SnoopFilterReplacement, desc="") {
   incomingTransactionStart(address, curTransitionEvent(), initial, false);
 }
 
-action(Profile_SnoopFilterEviction, desc="") {
+action(Profile_SnoopFilterMiss, desc="") {
   assert(is_valid(tbe)); // Why is this necessary?
-  directory.profileEviction();
-}
-
-action(Profile_SnoopFilterAccess, desc="") {
-  assert(is_valid(tbe)); // Why is this necessary?
-  directory.profileAccesses();
+  directory.profileMiss();
 }
 
 action(StallSnoopFilterEviction, desc="") {

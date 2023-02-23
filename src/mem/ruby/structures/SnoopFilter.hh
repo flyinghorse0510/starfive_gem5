@@ -110,8 +110,8 @@ class SnoopFilter
     // Print cache contents
     void print(std::ostream& out) const;
 
-    void profileEviction();
-    void profileAccesses();
+    void profileMiss();
+    void profileHit();
 
     int getCacheSet(Addr address) const;
 
@@ -135,23 +135,25 @@ class SnoopFilter
     struct SnoopFilterStats : public statistics::Group
     {
       SnoopFilterStats(statistics::Group *parent) : statistics::Group(parent),
-       ADD_STAT(m_snoopfilter_evictions, "Number of SnoopFilter evictions"),
-       ADD_STAT(m_snoopfilter_accesses, "Number of SnoopFilter accesses") {}
+       ADD_STAT(m_snoopfilter_misses, "Number of SnoopFilter misses"),
+       ADD_STAT(m_snoopfilter_hits, "Number of SnoopFilter hits"),
+       ADD_STAT(m_snoopfilter_accesses, "Number of SnoopFilter accesses", m_snoopfilter_hits+m_snoopfilter_misses) {}
       
-      statistics::Scalar m_snoopfilter_evictions;
-      statistics::Scalar m_snoopfilter_accesses;
+      statistics::Scalar m_snoopfilter_misses;
+      statistics::Scalar m_snoopfilter_hits;
+      statistics::Formula m_snoopfilter_accesses;
 
     } snoopFilterStats;
 };
 
 template<class ENTRY>
-void SnoopFilter<ENTRY>::profileEviction() {
-  snoopFilterStats.m_snoopfilter_evictions++;
+void SnoopFilter<ENTRY>::profileMiss() {
+  snoopFilterStats.m_snoopfilter_misses++;
 }
 
 template<class ENTRY>
-void SnoopFilter<ENTRY>::profileAccesses() {
-  snoopFilterStats.m_snoopfilter_accesses++;
+void SnoopFilter<ENTRY>::profileHit() {
+  snoopFilterStats.m_snoopfilter_hits++;
 }
 
 template<class ENTRY>
