@@ -753,6 +753,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool cacheAvail(Addr);
     Addr cacheProbe(Addr newAddress);
     void profileEviction();
+    void profileAccesses();
   }
 
   // Directory

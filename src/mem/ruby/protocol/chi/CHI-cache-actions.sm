@@ -2895,7 +2895,7 @@ action(Check_SnoopFilterFill, desc="") {
    */
   assert(is_valid(tbe));
 
-  bool avail_direntry := directory.cacheAvail(address) && (!directory.isTagPresent(address));
+  bool avail_direntry := directory.cacheAvail(address);
   bool doSnoopFilterFill := is_HN && (!allow_infinite_SF_entries);
   bool execute_next := true;
   
@@ -2982,8 +2982,13 @@ action(Initiate_SnoopFilterReplacement, desc="") {
 }
 
 action(Profile_SnoopFilterEviction, desc="") {
-  assert(is_valid(tbe));
+  assert(is_valid(tbe)); // Why is this necessary?
   directory.profileEviction();
+}
+
+action(Profile_SnoopFilterAccess, desc="") {
+  assert(is_valid(tbe)); // Why is this necessary?
+  directory.profileAccesses();
 }
 
 action(StallSnoopFilterEviction, desc="") {

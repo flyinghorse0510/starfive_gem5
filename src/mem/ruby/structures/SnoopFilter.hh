@@ -111,6 +111,7 @@ class SnoopFilter
     void print(std::ostream& out) const;
 
     void profileEviction();
+    void profileAccesses();
 
   private:
     // Private copy constructor and assignment operator
@@ -132,9 +133,11 @@ class SnoopFilter
     struct SnoopFilterStats : public statistics::Group
     {
       SnoopFilterStats(statistics::Group *parent) : statistics::Group(parent),
-       ADD_STAT(m_snoopfilter_evictions, "Number of SnoopFilter evictions") {}
+       ADD_STAT(m_snoopfilter_evictions, "Number of SnoopFilter evictions"),
+       ADD_STAT(m_snoopfilter_accesses, "Number of SnoopFilter accesses") {}
       
       statistics::Scalar m_snoopfilter_evictions;
+      statistics::Scalar m_snoopfilter_accesses;
 
     } snoopFilterStats;
 };
@@ -142,6 +145,11 @@ class SnoopFilter
 template<class ENTRY>
 void SnoopFilter<ENTRY>::profileEviction() {
   snoopFilterStats.m_snoopfilter_evictions++;
+}
+
+template<class ENTRY>
+void SnoopFilter<ENTRY>::profileAccesses() {
+  snoopFilterStats.m_snoopfilter_accesses++;
 }
 
 template<class ENTRY>
