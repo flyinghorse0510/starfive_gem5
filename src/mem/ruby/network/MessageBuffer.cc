@@ -267,7 +267,12 @@ MessageBuffer::txntrace_print(MsgPtr message, const Tick& arrival_time)
         Tick last_link_time = message->getLastLinkTime();
         std::string last_link = message->getLastLinkName();
         int pos = port_name.rfind(".");
-        message->setLastLinkName(port_name.substr(20,pos-20));
+        // The outier function only accepts following two scenarios, we only do substr to the first one
+        // system.ruby.network.int_links08.buffer08
+        // system.cpu.l2.reqIn // len is only 19, will cause error
+        if(port_name.rfind("In") == std::string::npos){
+            message->setLastLinkName(port_name.substr(20,pos-20));
+        }
         message->setLastLinkTime(arrival_time);
 
         // snprintf(link_info, sizeof(link_info), "<-%lu(%s)", last_link_time, last_link.c_str());
