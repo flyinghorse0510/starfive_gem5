@@ -380,6 +380,7 @@ if __name__ == '__main__':
 
     # --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --trans ${TRANS} --snf_tbe ${SNF_TBE} --dmt ${DMT} --linkwidth ${LINKWIDTH} --print l1d,l1i,l2p,llc,cpu,ddr
     import argparse
+    import ast
     parser = argparse.ArgumentParser(description="")
     parser.add_argument('--input', required=True, type=str)
     parser.add_argument('--output', required=True, type=str)
@@ -388,9 +389,10 @@ if __name__ == '__main__':
     parser.add_argument('--num_ddr', required=True, type=int)
     parser.add_argument('--trans', required=True, type=int)
     parser.add_argument('--snf_tbe', required=True, type=int)
-    parser.add_argument('--dmt', required=True, type=bool)
+    parser.add_argument('--dmt', required=True, type=ast.literal_eval)
     parser.add_argument('--linkwidth', required=True, type=int)
     parser.add_argument('--print', required=False,type=str,default='cpu,ddr,llc',help='choose what to print from [cpu,l1d,l1i,l2,llc,ddr] with comma as delimiter. e.g. --print cpu,llc will only print cpu and llc. default options is cpu,llc,ddr')
+    parser.add_argument('--print_path', required=False, default=False, type=ast.literal_eval)
 
     args = parser.parse_args()
     cpus = [CPU(i) for i in range(args.num_cpu)]
@@ -442,11 +444,19 @@ if __name__ == '__main__':
     # generate the header for throughput.txt
     if not os.path.getsize('throughput.txt'):
         with open('throughput.txt', 'w') as f:
-            f.write(f'{"CPU":^8}{"LLC":^8}{"DDR":^8}{"DMT":^8}{"TRANS":^8}{"SNF_TBE":^8}{"LINKWIDTH":^16}{"READ(B)":^16}{"WRITE(B)":16}{"TICK(ps)":^16}{"THROUGHPUT(GB/s)":^16}{"HNF_RETRY_ACK:":^16}{"SNF_RETRY_MSG":^16}{"PATH"}\n')
+            if args.print_path:
+                f.write(f'{"CPU":^8}{"LLC":^8}{"DDR":^8}{"DMT":^8}{"TRANS":^8}{"SNF_TBE":^8}{"LINKWIDTH":^16}{"READ(B)":^16}{"WRITE(B)":16}{"TICK(ps)":^16}{"THROUGHPUT(GB/s)":^16}{"HNF_RETRY_ACK:":^16}{"SNF_RETRY_MSG":^16}{"PATH"}\n')
+            else:
+                f.write(f'{"CPU":^8}{"LLC":^8}{"DDR":^8}{"DMT":^8}{"TRANS":^8}{"SNF_TBE":^8}{"LINKWIDTH":^16}{"READ(B)":^16}{"WRITE(B)":16}{"TICK(ps)":^16}{"THROUGHPUT(GB/s)":^16}{"HNF_RETRY_ACK:":^16}{"SNF_RETRY_MSG":^16}\n')
     
     cpu_read_byte, cpu_write_byte, throughput = gen_throughput(cpus)
     total_snf_remsg = reduce(lambda x,y:x+y, [snf.remsg for snf in snfs])
     total_hnf_reack = reduce(lambda x,y:x+y, [llc.reack for llc in llcs])
     
     with open('throughput.txt', 'a+') as f:
-        f.write(f'{args.num_cpu:^8}{args.num_llc:^8}{args.num_ddr:^8}{args.dmt:^8}{args.trans:^8}{args.snf_tbe:^8}{args.linkwidth:^16}{cpu_read_byte:^16}{cpu_write_byte:^16}{tick:^16}{throughput:^16}{total_hnf_reack:^16}{total_snf_remsg:^16}{args.input}\n')
+        if args.print_path:
+            f.write(f'{args.num_cpu:^8}{args.num_llc:^8}{args.num_ddr:^8}{args.dmt:^8}{args.trans:^8}{args.snf_tbe:^8}{args.linkwidth:^16}{cpu_read_byte:^16}{cpu_write_byte:^16}{tick:^16}{throughput:^16}{total_hnf_reack:^16}{total_snf_remsg:^16}{args.input}\n')
+        else:
+            f.write(f'{args.num_cpu:^8}{args.num_llc:^8}{args.num_ddr:^8}{args.dmt:^8}{args.trans:^8}{args.snf_tbe:^8}{args.linkwidth:^16}{cpu_read_byte:^16}{cpu_write_byte:^16}{tick:^16}{throughput:^16}{total_hnf_reack:^16}{total_snf_remsg:^16}\n')
+    
+    print(f'written to ./throughput.txt')
