@@ -183,6 +183,15 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
     numWriteTxnGenerated=0;
     TESTER_PRODUCER_IDX = 0;
 
+    /**
+     * If you are producer, the inject interval need NOT to be too large
+     * This assumption may not hold for
+     * all benchmarks
+     */ 
+    if (isProducer) {
+        interval = Cycles(1);
+    }
+
     maxLoads=0;
     if (!isIdle) {
         fatal_if(workingSet%(numPeerProducers*blockSize)!=0,"per producer working set not block aligned\n");
@@ -211,7 +220,8 @@ ProdConsMemTest::ProdConsMemTest(const Params &p)
         fatal_if(maxLoads <= 0, "Requires a minimum of 1 Load/Store for non idle MemTesters");
         writeDataGenerated.clear();
         maxOutStandingTransactions = 1;
-        if (benchmarkC2CBWMode) {
+        if (benchmarkC2CBWMode || isProducer) {
+            /* Producers need to wait for all outstanding writes */
             maxOutStandingTransactions = 100;
         }
         DPRINTF(ProdConsMemLatTest,"CPU_%d(Producer:%d,Idle:%d) WorkingSetRange:[%x,%x], WorkingSetSize=%d, maxTxn=%d\n",id,isProducer,isIdle,perCPUWorkingBlocks.at(0),perCPUWorkingBlocks.at(numPerCPUWorkingBlocks-1),numPerCPUWorkingBlocks,maxLoads);
@@ -368,13 +378,6 @@ ProdConsMemTest::tick()
         }
         // DPRINTF(ProdConsMemLatTest,"All producers finished generating\n");
         assert(writeValsQ.find(id) != writeValsQ.end());
-
-        /* The writer has not finished writing to working set yet. Stall */
-        // if (writeValsQ.find(id) == writeValsQ.end()) {
-        //     schedule(tickEvent, clockEdge(interval));
-        //     reschedule(noRequestEvent, clockEdge(progressCheck), true);
-        //     return;
-        // }
 
         /* The entire working set is outstanding*/
         auto cdata = writeValsQ.at(id);

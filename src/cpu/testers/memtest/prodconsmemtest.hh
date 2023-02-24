@@ -129,7 +129,7 @@ class ProdConsMemTest : public ClockedObject
 
     bool waitResponse;
 
-    const Cycles interval;
+    Cycles interval;
 
     /** Request id for all generated traffic */
     RequestorID requestorId;
