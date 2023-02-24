@@ -61,9 +61,7 @@ class ProdConsMemTest(ClockedObject):
     bench_c2cbw_mode = Param.Bool(False,"[True] Producer Consumer BW or [False] C2C Latency Test")
     id_producers = VectorParam.Int([], "List of Producer Ids")
     id_consumers = VectorParam.Int([], "List of Consumer Ids")
-
     num_peer_producers = Param.Counter(1, "Number of independent peer producers. Use to partition the working set")
-    # removed_consumed_data = Param.Bool(False,"[False] The reader will re-read consumed data several times")
 
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses

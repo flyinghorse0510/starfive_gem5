@@ -98,51 +98,71 @@ args = parser.parse_args()
 
 block_size = 64
 
+MemTestClass=None
+if args.mem_test_type=='bw_test':
+    MemTestClass=SeqMemTest
+elif args.mem_test_type=='prod_cons_test':
+    MemTestClass=ProdConsMemTest
+elif args.mem_test_type=='random_test':
+    MemTestClass=MemRandomTest
+elif args.mem_test_type=='isolated_test':
+    MemTestClass=IsolatedMemTest
+else:
+    raise ValueError(f'MemTest type undefined')
+
 num_cpus=args.num_cpus
 cpuProdListMap=dict([(c,[]) for c in range(num_cpus)])
 cpuConsListMap=dict([(c,[]) for c in range(num_cpus)])
 num_peer_producers=1
-import random
-if (args.chs_1p1c):
-    # 1P-1C with controllable prod_id and cons_id locations
-    assert(args.chs_prod_id != args.chs_cons_id)
-    assert(args.chs_prod_id < num_cpus)
-    assert(args.chs_cons_id < num_cpus)
+
+if args.mem_test_type=='prod_cons_test':
+    import random
+    if (args.chs_1p1c):
+        # 1P-1C with controllable prod_id and cons_id locations
+        assert(args.chs_prod_id != args.chs_cons_id)
+        assert(args.chs_prod_id < num_cpus)
+        assert(args.chs_cons_id < num_cpus)
+        cpuProdListMap[args.chs_prod_id]=[args.chs_prod_id]
+        cpuConsListMap[args.chs_prod_id]=[args.chs_cons_id]
+        cpuProdListMap[args.chs_cons_id]=[args.chs_prod_id]
+        cpuConsListMap[args.chs_cons_id]=[args.chs_cons_id]
+    elif (args.chs_1pMc) :
+        assert(not (args.chs_1p1c)) # Do not set it to true
+        assert(args.chs_prod_id < num_cpus)
+        cpuProdListMap[args.chs_prod_id]=[args.chs_prod_id]
+        assert(args.chs_1p_MSharers > 1)
+        num_cons=0
+        for cons_id in range(num_cpus):
+            if num_cons >= args.chs_1p_MSharers:
+                break
+            if cons_id == args.chs_prod_id:
+                continue
+            else :
+                cpuConsListMap[cons_id].append(cons_id)
+                cpuProdListMap[cons_id].append(args.chs_prod_id)
+                cpuConsListMap[args.chs_prod_id].append(cons_id)
+                num_cons+=1
+    else :
+        # M x (1P-1C) with controllable prod_id and cons_id locations
+        npairs = args.chs_1p1c_num_pairs
+        assert((2*npairs) <= num_cpus)
+        available_cpus = list(range(num_cpus))
+        producer_cpus=available_cpus[:num_cpus//2]
+        consumer_cpus=available_cpus[num_cpus//2:]
+        num_peer_producers=npairs
+        for n in range(npairs) :
+            producer=producer_cpus[n] #random.sample(available_cpus,1)[0]
+            consumer=consumer_cpus[n] #random.sample(available_cpus,1)[0]
+            cpuProdListMap[producer]=[producer]
+            cpuConsListMap[producer]=[consumer]
+            cpuProdListMap[consumer]=[producer]
+            cpuConsListMap[consumer]=[consumer]
+else :
+    # Dont care. Store the default values
     cpuProdListMap[args.chs_prod_id]=[args.chs_prod_id]
     cpuConsListMap[args.chs_prod_id]=[args.chs_cons_id]
     cpuProdListMap[args.chs_cons_id]=[args.chs_prod_id]
     cpuConsListMap[args.chs_cons_id]=[args.chs_cons_id]
-elif (args.chs_1pMc) :
-    assert(not (args.chs_1p1c)) # Do not set it to true
-    assert(args.chs_prod_id < num_cpus)
-    cpuProdListMap[args.chs_prod_id]=[args.chs_prod_id]
-    assert(args.chs_1p_MSharers > 1)
-    num_cons=0
-    for cons_id in range(num_cpus):
-        if num_cons >= args.chs_1p_MSharers:
-            break
-        if cons_id == args.chs_prod_id:
-            continue
-        else :
-            cpuConsListMap[cons_id].append(cons_id)
-            cpuProdListMap[cons_id].append(args.chs_prod_id)
-            cpuConsListMap[args.chs_prod_id].append(cons_id)
-            num_cons+=1
-else :
-    # M x (1P-1C) with controllable prod_id and cons_id locations
-    npairs = args.chs_1p1c_num_pairs
-    assert((2*npairs) <= num_cpus)
-    available_cpus = list(range(num_cpus))
-    producer_cpus=available_cpus[:num_cpus//2]
-    consumer_cpus=available_cpus[num_cpus//2:]
-    num_peer_producers=npairs
-    for n in range(npairs) :
-        producer=producer_cpus[n] #random.sample(available_cpus,1)[0]
-        consumer=consumer_cpus[n] #random.sample(available_cpus,1)[0]
-        cpuProdListMap[producer]=[producer]
-        cpuConsListMap[producer]=[consumer]
-        cpuProdListMap[consumer]=[producer]
-        cpuConsListMap[consumer]=[consumer]
 
 for cpu in range(num_cpus):
     prod=cpuProdListMap[cpu]
@@ -154,21 +174,11 @@ if num_cpus > block_size:
            % (num_cpus, block_size))
      sys.exit(1)
 
-#
-# Currently ruby does not support atomic or uncacheable accesses
-#
-MemTestClass=None
-if args.mem_test_type=='bw_test':
-    MemTestClass=SeqMemTest
-elif args.mem_test_type=='prod_cons_test':
-    MemTestClass=ProdConsMemTest
-elif args.mem_test_type=='random_test':
-    MemTestClass=MemRandomTest
 
 if num_cpus > 0 :
     cpus = [ MemTestClass(max_loads = args.maxloads,
                      working_set = args.size_ws,
-                     interval = options.inj_interval,
+                     interval = args.inj_interval,
                      num_cpus = num_cpus,
                      addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,
                      bench_c2cbw_mode = args.bench_c2cbw_mode,
@@ -185,7 +195,7 @@ system = System(cpu = cpus,
 if args.num_dmas > 0:
     dmas = [ MemTestClass(max_loads = args.maxloads,
                      progress_interval = args.progress,
-                     interval = options.inj_interval,
+                     interval = args.inj_interval,
                      working_set = args.size_ws,
                      num_cpus = num_cpus,
                      bench_c2cbw_mode = args.bench_c2cbw_mode,
