@@ -434,11 +434,11 @@ fi
             OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}"
             OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
           
-          grep -E "^[[:space:]]+[0-9]+: system\.ruby\.network\.int_links[0-9]+\.buffers[0-9]+" ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/link.log
+          # grep -E "^[[:space:]]+[0-9]+: system\.ruby\.network\.int_links[0-9]+\.buffers[0-9]+|^[[:space:]]+[0-9]+: system.*In:" ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/link.log
           # python3 netparse.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR} --num-int-router 16
           # enable --draw-ctrl to draw controllers
           # currently need to manually pass the number of internal routers
-          python3 netparse.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR} --draw-ctrl --num-int-router 16
+          python3 netparse.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR} --num-int-router 16
          done
        done
      done
