@@ -455,7 +455,7 @@ ProdConsMemTest::tick()
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
         pkt_data[0] = data;
-        DPRINTF(ProdConsMemLatTest,"Start,W,%x,%x,%d\n",req->getPaddr(),data,outstandingAddrs.size());
+        DPRINTF(ProdConsMemLatTest,"Start,W,%x,%x,%d\n",req->getPaddr(),data,numWriteTxnGenerated);
         numWriteTxnGenerated++;
     }
 
@@ -485,10 +485,12 @@ ProdConsMemTest::noRequest()
     assert(!isIdle);
     if (isProducer) {
         if (numWriteTxnGenerated < maxLoads) {
+            printf("numWriteTxnGenerated=%d,maxLoads=%d\n",numWriteTxnGenerated,maxLoads);
             panic("%s did not send a request for %d cycles", name(), progressCheck);
         }
     } else {
         if (numReadTxnGenerated < maxLoads) {
+            printf("numReadTxnGenerated=%d,maxLoads=%d\n",numReadTxnGenerated,maxLoads);
             panic("%s did not send a request for %d cycles", name(), progressCheck);
         }
     }

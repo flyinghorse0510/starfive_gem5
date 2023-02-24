@@ -2994,7 +2994,7 @@ action(Initiate_SnoopFilterReplacement, desc="") {
 
   // Is this correct?
   // tbe.actions.pushNB(Event:TagArrayRead);
-  DPRINTF(RubyCHIDebugStr5,"Addr=%#x,CacheState=%s,DirState=%s\n",tbe.addr,cache_entry.state,dir_entry.state);
+  // DPRINTF(RubyCHIDebugStr5,"Addr=%#x,state=%s\n",tbe.addr,initial);
   incomingTransactionStart(address, curTransitionEvent(), initial, false);
 }
 
