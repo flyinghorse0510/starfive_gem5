@@ -85,18 +85,22 @@ def get1P1CStats(statsFile,options):
     totalCyc=endTime-startTime
     avgLat=dX['lat'].mean()
     minLat=dX['lat'].min()
+    medLat=dX['lat'].median()
     maxLat=dX['lat'].max()
     bw=(numReads*64)/totalCyc
     retDict=dict({
-        'benc_name': options.bench_name,
+        'bench_name': options.bench_name,
         'link_bw': options.link_bw,
         'prod_id': options.chs_prod_id,
         'cons_id':  options.chs_cons_id,
+        'num_consumers': options.chs_num_consumers,
+        'num_pairs': options.chs_num_pairs,
         'inj_interval': options.inj_rate,
         'dct': options.dct,
         'bw': bw,
         'min_lat': minLat,
         'avg_lat': avgLat,
+        'med_lat': medLat,
         'max_lat': maxLat
     })
     return retDict
@@ -126,9 +130,11 @@ def main():
     parser.add_argument('--dct',required=True)
     parser.add_argument('--link-bw',required=True,type=int)
     parser.add_argument('--inj-rate',required=True,type=int)
-    parser.add_argument('--chs-prod-id',required=True,type=int)
-    parser.add_argument('--chs-cons-id',required=True,type=int)
     parser.add_argument('--bench-name',required=True,type=str)
+    parser.add_argument('--chs-prod-id',default=-1,type=int)
+    parser.add_argument('--chs-cons-id',default=-1,type=int)
+    parser.add_argument('--chs-num-pairs',default=-1,type=int)
+    parser.add_argument('--chs-num-consumers',default=-1,type=int)
     options = parser.parse_args()
     msgPerfDumFile=os.path.join(options.input,'AllMsgLatDump.csv')
     allMsgLog=os.path.join(options.input,'simple.trace')
