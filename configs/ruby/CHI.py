@@ -241,6 +241,7 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     #CHI_SNF_MainMem.NoC_Params.router_list = [12,13,14,15]
     if(options.DDR_loc_num == 1):
          CHI_SNF_MainMem.NoC_Params.router_list = [13]
+         #CHI_SNF_MainMem.NoC_Params.router_list = [12]
     elif(options.DDR_loc_num == 2): #2 side
          if(options.DDR_side_num <= 1):
               CHI_SNF_MainMem.NoC_Params.router_list = [13,14] 

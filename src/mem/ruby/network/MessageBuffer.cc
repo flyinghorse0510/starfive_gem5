@@ -239,7 +239,7 @@ std::string denseDst(NetDest& dst)
 }
 
 void
-MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time)
+MessageBuffer::txntrace_print(MsgPtr message, const Tick& arrival_time)
 {
 
     const std::type_info& msg_type = typeid(*(message.get()));
@@ -248,8 +248,7 @@ MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time)
 
     // use regex to choose the port_name we want to print
     std::string port_name = name();
-    // std::regex req("^system[\\s\\S]+reqRdy$");
-    // std::regex link("^system.ruby.network.int_links[\\s\\S]*");
+    char link_info[50] = "\0";
 
     // if this line is reqRdy, skip this line
     if(port_name.find("reqRdy") != std::string::npos){
@@ -257,12 +256,34 @@ MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time)
         return;
     }
     // else if this line is link, depends on whether we set TxnLink
-    else if(port_name.find("system.ruby.network.int_links") != std::string::npos){
-        // DPRINTF(TxnTrace, "Matched int_links\n");
-        if(!::gem5::debug::TxnLink){ // if we not enabled txnlink, skip this line
+    // we need the req/snp/dat/rspIn port to print the latency on the last link
+    else if(port_name.find("system.ruby.network.int_links") != std::string::npos || port_name.rfind("In") != std::string::npos){
+        // port names containing src_node or dst_node are intermediate buffers in routers.
+        if(port_name.find("node",29) != std::string::npos){
             return;
         }
+
+        if(!::gem5::debug::TxnLink){ // if we not enabled txnlink, skip the rest calculation and dprintf
+            return;
+        }
+
+        // we only update the link_time and link_name when we are in a link.
+        // this works for both simple and garnet
+        Tick last_link_time = message->getLastLinkTime();
+        std::string last_link = message->getLastLinkName();
+        int pos = port_name.rfind(".");
+        // The outier function only accepts following two scenarios, we only do substr to the first one
+        // system.ruby.network.int_links08.buffer08
+        // system.cpu.l2.reqIn // len is only 19, will cause error
+        if(port_name.rfind("In") == std::string::npos){
+            message->setLastLinkName(port_name.substr(20,pos-20));
+        }
+        message->setLastLinkTime(arrival_time);
+
+        // snprintf(link_info, sizeof(link_info), "<-%lu(%s)", last_link_time, last_link.c_str());
+        snprintf(link_info, sizeof(link_info), "(%s:%lu)", last_link.c_str(), arrival_time - last_link_time);
     }
+
     // else we always print this line
     // zhiang: we added txSeqNum to CHI protocol msgs so that can print txSeqNum
     uint64_t txSeqNum = 0; 
@@ -287,10 +308,10 @@ MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time)
         // NetDest const & dest = msg->getDestination();
         CHIRequestType const & typ = msg->gettype();
         NetDest dst = msg->getDestination();
-        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, %s->%s type: %s, req: %p, accA: %s, addr: %s\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld%s, %s->%s type: %s:%d, req: %p, accA: %s, addr: %s\n", 
             txSeqNum, 
-            arrival_time, 
-            reqtor, denseDst(dst), typ,
+            arrival_time, link_info,
+            reqtor, denseDst(dst), typ, this->getVnet(),
             msg->getreqPtr(),
             printAddress(msg->getaccAddr()),
             printAddress(msg->getaddr()));
@@ -305,10 +326,10 @@ MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time)
         // NetDest const & dest = msg->getDestination();
         CHIResponseType const & typ = msg->gettype();
         NetDest dst = msg->getDestination();
-        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, %s->%s type: %s, req: %p, addr: %s\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld%s, %s->%s type: %s:%d, req: %p, addr: %s\n", 
             txSeqNum, 
-            arrival_time, 
-            rspder, denseDst(dst), typ,
+            arrival_time, link_info,
+            rspder, denseDst(dst), typ, this->getVnet(),
             msg->getreqPtr(),
             printAddress(msg->getaddr()));
         // assert(msg->getreqPtr() != nullptr); // requestPtr should not be nullptr
@@ -322,10 +343,10 @@ MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time)
         // NetDest const & dest = msg->getDestination();
         CHIDataType const & typ = msg->gettype();
         NetDest dst = msg->getDestination();
-        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, %s->%s type: %s, req: %p, addr: %s\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld%s, %s->%s type: %s:%d, req: %p, addr: %s\n", 
             txSeqNum, 
-            arrival_time, 
-            rspder, denseDst(dst), typ,
+            arrival_time, link_info,
+            rspder, denseDst(dst), typ, this->getVnet(),
             msg->getreqPtr(),
             printAddress(msg->getaddr()));
         // assert(msg->getreqPtr() != nullptr); // requestPtr should not be nullptr

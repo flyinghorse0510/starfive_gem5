@@ -124,7 +124,7 @@ class MessageBuffer : public SimObject
     const MsgPtr &peekMsgPtr() const { return m_prio_heap.front(); }
 
     void profileRetry(MsgPtr message);
-    void txntrace_print(MsgPtr message, const gem5::Tick& arrival_time);
+    void txntrace_print(MsgPtr message, const Tick& arrival_time);
     void enqueue(MsgPtr message, Tick curTime, Tick delta);
 
     // Defer enqueueing a message to a later cycle by putting it aside and not

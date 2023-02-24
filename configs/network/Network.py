@@ -80,8 +80,8 @@ def define_options(parser):
         "--garnet-deadlock-threshold", action="store",
         type=int, default=50000,
         help="network-level deadlock threshold.")
-    parser.add_argument("--simple-physical-channels", action="store_true",
-        default=False,
+    parser.add_argument("--simple-physical-channels",
+        default=True,
         help="""SimpleNetwork links uses a separate physical
             channel for each virtual network""")
     parser.add_argument("--simple-link-bw-factor", action="store", type=int, 
@@ -195,7 +195,7 @@ def init_network(options, network, InterfaceClass):
             extLink.int_cred_bridge = int_cred_bridges
 
     if options.network == "simple":
-        if options.simple_physical_channels:
+        if options.simple_physical_channels == True:
             network.physical_vnets_channels = \
                 [1] * int(network.number_of_virtual_networks)
         network.setup_buffers()
