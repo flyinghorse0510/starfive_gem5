@@ -48,7 +48,7 @@ class IsolatedMemTest(ClockedObject):
 
     # Interval of packet injection, the size of the memory range
     # touched, and an optional stop condition
-    interval = Param.Cycles(5, "Interval between request packets")
+    interval = Param.Cycles(100, "Interval between request packets")
     size = Param.Unsigned(4194304, "Working set(bytes)")
     working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
     num_cpus = Param.Counter(1, "Total number of CPUs")
