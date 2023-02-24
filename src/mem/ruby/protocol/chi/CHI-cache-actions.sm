@@ -1534,7 +1534,7 @@ action(Send_SnpSharedFwd_ToOwner, desc="") {
   bool allowFwdSD := tbe.reqType != CHIRequestType:ReadNotSharedDirty;
 
   // get us a copy if we have allocated a cache entry for this block
-  bool retToSrc := tbe.doCacheFill && (tbe.dataToBeInvalid == false);
+  bool retToSrc := false; //tbe.doCacheFill && (tbe.dataToBeInvalid == false);
 
   if (allowFwdSD) {
     if (retToSrc) {
@@ -1580,7 +1580,7 @@ action(Send_SnpSharedFwd_ToSharer, desc="") {
   clearExpectedSnpResp(tbe);
   // if we have a block allocated for this line, asks snoopee to forward
   // data to us as well
-  bool retToSrc := tbe.doCacheFill;
+  bool retToSrc := false; //tbe.doCacheFill;
   if (retToSrc) {
     tbe.expected_snp_resp.addExpectedDataType(CHIDataType:SnpRespData_SC_Fwded_SC);
   } else {
@@ -2154,6 +2154,7 @@ action(UpdateDirState_FromSnpResp, desc="") {
 }
 
 action(Receive_ReqResp, desc="") {
+  printTBEStateStr5(tbe);
   assert(tbe.expected_req_resp.hasExpected());
   peek(rspInPort, CHIResponseMsg) {
     // Decrement pending

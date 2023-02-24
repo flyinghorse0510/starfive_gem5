@@ -249,7 +249,6 @@ SeqMemTest::tick()
     assert(!waitResponse);
 
     // create a new request
-    unsigned offset=0;
     Request::Flags flags;
     Addr paddr = 0;
 
@@ -340,3 +339,4 @@ SeqMemTest::recvRetry()
 }
 
 } // namespace gem5
+

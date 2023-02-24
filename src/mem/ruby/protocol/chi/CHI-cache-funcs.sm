@@ -813,14 +813,23 @@ void printTBEState(TBE tbe) {
 
 void printTBEStateStr5(TBE tbe) {
   if (is_valid(tbe)) {
-    DPRINTF(RubyCHIDebugStr5, "txSeqNum=%#018x addr=%#x reqTyp=%s\n",tbe.txSeqNum, tbe.addr, tbe.reqType); 
-    DPRINTF(RubyCHIDebugStr5, "dataBlkValid.isFull=%d valid=%d unique=%d\n",tbe.dataBlkValid.isFull(), tbe.dataValid, tbe.dataUnique);
-    DPRINTF(RubyCHIDebugStr5, "dirty=%d mu_dirty=%d\n",tbe.dataDirty, tbe.dataMaybeDirtyUpstream);
-    DPRINTF(RubyCHIDebugStr5, "dir ownerExists=%d ownerExcl=%d, sharers=%d\n",tbe.dir_ownerExists,tbe.dir_ownerIsExcl,tbe.dir_sharers.count());
-    DPRINTF(RubyCHIDebugStr5, "tobe_I=%d tobe_SC=%d\n",tbe.dataToBeInvalid, tbe.dataToBeSharedClean);
-    DPRINTF(RubyCHIDebugStr5, "doFill=%d pendAction=%s, finalState=%s\n",tbe.doCacheFill,tbe.pendAction,tbe.finalState);
-    DPRINTF(RubyCHIDebugStr5, "expected_req_resp.hasReceivedData = %d\n",tbe.expected_req_resp.hasReceivedData());
-    DPRINTF(RubyCHIDebugStr5, "expected_snp_resp.hasReceivedData = %d\n",tbe.expected_snp_resp.hasReceivedData());
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,txSeqNum=%#018x,reqTyp=%s\n",tbe.addr,tbe.txSeqNum,tbe.reqType); 
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,dataBlkValid.isFull=%d valid=%d unique=%d\n",tbe.addr,tbe.dataBlkValid.isFull(), tbe.dataValid,tbe.dataUnique);
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,dirty=%d mu_dirty=%d\n",tbe.addr,tbe.dataDirty,tbe.dataMaybeDirtyUpstream);
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,dir ownerExists=%d ownerExcl=%d,sharers=%d\n",tbe.addr,tbe.dir_ownerExists,tbe.dir_ownerIsExcl,tbe.dir_sharers.count());
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,tobe_I=%d tobe_SC=%d\n",tbe.addr,tbe.dataToBeInvalid,tbe.dataToBeSharedClean);
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,doCacheFill=%d,pendAction=%s,finalState=%s\n",tbe.addr,tbe.doCacheFill,tbe.pendAction,tbe.finalState);
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,expected_req_resp.hasExpected=%d\n",tbe.addr,tbe.expected_req_resp.hasExpected());
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,expected_snp_resp.hasExpected=%d\n",tbe.addr,tbe.expected_snp_resp.hasExpected());
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,expected_req_resp.hasReceivedData=%d\n",tbe.addr,tbe.expected_req_resp.hasReceivedData());
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,expected_snp_resp.hasReceivedData=%d\n",tbe.addr,tbe.expected_snp_resp.hasReceivedData());
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,fwdedState=%s,fwdRequestor=%s,snpNeedsData=%d\n",tbe.addr,tbe.fwdedState,tbe.fwdRequestor,tbe.snpNeedsData);
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,allow_SD=%d\n",tbe.addr,allow_SD);
+    if (!tbe.actions.empty()) {
+      DPRINTF(RubyCHIDebugStr5, "addr=%#x,actions.front = %s,nb=%d\n",tbe.addr,tbe.actions.front(),tbe.actions.frontNB());
+    } else {
+      DPRINTF(RubyCHIDebugStr5, "addr=%#x,actions queue empty\n",tbe.addr);
+    }
   } else {
     DPRINTF(RubyCHIDebugStr5,"TBE invalid");
   }

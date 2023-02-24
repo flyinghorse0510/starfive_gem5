@@ -109,7 +109,7 @@ class NoC_Params:
     router_latency = 1
     router_buffer_size = 4
     cntrl_msg_size = 8
-    data_width = 16
+    data_width = 64
     cross_links = []
     cross_link_latency = 0
 
@@ -308,7 +308,7 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.allow_SD = True
         self.is_HN = True
         self.enable_DMT = options.enable_DMT #False #True #args.enable_DMT #False
-        self.enable_DCT = False
+        self.enable_DCT = options.enable_DCT
         self.send_evictions = False
         # MOESI / Mostly inclusive for shared / Exclusive for unique
         self.alloc_on_seq_acc = False
