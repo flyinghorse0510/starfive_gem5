@@ -10,7 +10,6 @@ def main():
     options = parser.parse_args()
     df=pd.read_json(options.input)
     df.to_csv(options.output,index=False)
-    # print(df)
 
 if __name__=="__main__":
     main()
