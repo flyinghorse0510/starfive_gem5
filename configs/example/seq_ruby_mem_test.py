@@ -65,7 +65,7 @@ parser.add_argument("--num-SNF-TBE", default=32, help="number of oustanding in H
 parser.add_argument("--addr-intrlvd-or-tiled",default=False,help="If true the address partitioning across CPUs is interleaved (like [0-N-2N;1-N+1-2N+1;...]). Otherwise Tiled [0:N-1,N:2N-1]")
 parser.add_argument("--sequencer-outstanding-requests",type=int,default=32,help="Max outstanding sequencer requests")
 parser.add_argument("--bench-c2cbw-mode",default=True,help="[True] Producer Consumer BW or [False] C2C Latency Test")
-
+parser.add_argument("--inj-interval",default=1,type=int,help="The interval between request packets")
 """
     The (--producers,--num-producers) are mutually exclusive argument specification 
     as are (--consumers,--num-consumers). --producers an --consumers specify the 
@@ -168,6 +168,7 @@ elif args.mem_test_type=='random_test':
 if num_cpus > 0 :
     cpus = [ MemTestClass(max_loads = args.maxloads,
                      working_set = args.size_ws,
+                     interval = options.inj_interval,
                      num_cpus = num_cpus,
                      addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,
                      bench_c2cbw_mode = args.bench_c2cbw_mode,
@@ -184,6 +185,7 @@ system = System(cpu = cpus,
 if args.num_dmas > 0:
     dmas = [ MemTestClass(max_loads = args.maxloads,
                      progress_interval = args.progress,
+                     interval = options.inj_interval,
                      working_set = args.size_ws,
                      num_cpus = num_cpus,
                      bench_c2cbw_mode = args.bench_c2cbw_mode,

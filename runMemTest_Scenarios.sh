@@ -278,8 +278,8 @@ if [ "$RUN1" != "" ]; then
               --num_trans_per_cycle_llc=${TRANS} \
               --num-cpus=${NUMCPUS} \
               --num-producers=1 &
-       grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
-       grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
+              grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
+              grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
            done
          done
        done
