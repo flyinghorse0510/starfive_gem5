@@ -51,12 +51,13 @@ l2_assoc=8
 l3_assoc=16
 NUM_LLC=16
 NUM_MEM=1
-DEBUG_FLAGS=ProdConsMemLatTest,TxnTrace,TxnLink,RubyCHIDebugStr5,RubyGenerated
-DCT_CONFIGS=(False True) # True) #(False True) #(False True) #(True False)
-LINK_BW_CONFIGS=(16 24 32 48 64)
+DEBUG_FLAGS=TxnTrace #ProdConsMemLatTest,TxnTrace,TxnLink,RubyCHIDebugStr5,RubyGenerated
+DCT_CONFIGS=(False True) #(False True) #(False True) #(True False)
+LINK_BW_CONFIGS=(32 40) #(16 24 32 48 64)
+INJ_INTERVAL_CONFIGS=(1 5 8 10 15 20 25 40 50 80 100)
 NETWORK="simple"
 MAXNUMLOADS=1
-OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/C2C_11_${NETWORK}"
+OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/C2C_12_${NETWORK}"
 PY3=/home/arka.maity/anaconda3/bin/python3
 
 if [ "$BUILD" != "" ]; then
@@ -65,82 +66,95 @@ if [ "$BUILD" != "" ]; then
 fi
 
 
-echo "Starting coherence sharing benchmarks" > "${OUTPUT_ROOT}/Summary.txt"
-
 if [ "$C2CBW" != "" ]; then
   echo "1P1C BW test"
   NUM_CPUS=16
   CONSUMER_SET_CONFIGS=(1)
   PRODUCER_SET_CONFIGS=(0)
   WKSETLIST=(65536)
-  OUTPUT_PREFIX="PRODCONS_1P1C_BW"
+  OUTPUT_PREFIX="PRODCONS_1P1C_BW_INJRATE"
   
+  # for DCT in ${DCT_CONFIGS[@]}; do
+  #   for LOC_PROD in ${PRODUCER_SET_CONFIGS[@]}; do
+  #     for LOC_CONS in ${CONSUMER_SET_CONFIGS[@]}; do
+  #       if [[ $LOC_PROD -ne $LOC_CONS ]]; then
+  #         for WKSET in ${WKSETLIST[@]}; do
+  #           for LINK_BW in ${LINK_BW_CONFIGS[@]}; do
+  #             for INJ_INTERVAL in ${INJ_INTERVAL_CONFIGS[@]}; do
+  #               OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_LINKBW${LINK_BW}_Core${NUM_CPUS}_Prod${LOC_PROD}_Cons${LOC_CONS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}_INJRATE_${INJ_INTERVAL}"
+  #               echo $OUTPUT_DIR
+  #               mkdir -p $OUTPUT_DIR
+  #               $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
+  #                  --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
+  #                  -d $OUTPUT_DIR \
+  #                  ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
+  #                  --ruby \
+  #                  --num-dirs=${NUM_MEM} \
+  #                  --num-l3caches=${NUM_LLC} \
+  #                  --l1d_size=${l1d_size} \
+  #                  --l1i_size=${l1i_size} \
+  #                  --l2_size=${l2_size} \
+  #                  --l3_size=${l3_size} \
+  #                  --l1d_assoc=${l1d_assoc} \
+  #                  --l1i_assoc=${l1i_assoc} \
+  #                  --l2_assoc=${l2_assoc} \
+  #                  --l3_assoc=${l3_assoc} \
+  #                  --network=${NETWORK} \
+  #                  --topology=CustomMesh \
+  #                  --simple-physical-channels \
+  #                  --simple-link-bw-factor=${LINK_BW} \
+  #                  --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
+  #                  --mem-size="16GB" \
+  #                  --mem-type=DDR4_3200_8x8 \
+  #                  --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
+  #                  --mem-test-type='prod_cons_test' \
+  #                  --inj-interval=${INJ_INTERVAL} \
+  #                  --disable-gclk-set \
+  #                  --enable-DMT=False \
+  #                  --enable-DCT=${DCT} \
+  #                  --num_trans_per_cycle_llc=4 \
+  #                  --addr-intrlvd-or-tiled=True \
+  #                  --bench-c2cbw-mode=True \
+  #                  --maxloads=${MAXNUMLOADS} \
+  #                  --size-ws=${WKSET} \
+  #                  --num-cpus=${NUM_CPUS} \
+  #                  --sequencer-outstanding-requests=32 \
+  #                  --chs-1p1c \
+  #                  --chs-cons-id=${LOC_CONS} \
+  #                  --chs-prod-id=${LOC_PROD} &
+  #             done
+  #           done
+  #         done
+  #       fi
+  #     done
+  #   done
+  # done
+  # wait
+
+
+  echo "[" > "${OUTPUT_ROOT}/Summary.json"
   for DCT in ${DCT_CONFIGS[@]}; do
     for LOC_PROD in ${PRODUCER_SET_CONFIGS[@]}; do
       for LOC_CONS in ${CONSUMER_SET_CONFIGS[@]}; do
         if [[ $LOC_PROD -ne $LOC_CONS ]]; then
           for WKSET in ${WKSETLIST[@]}; do
             for LINK_BW in ${LINK_BW_CONFIGS[@]}; do
-              OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_LINKBW${LINK_BW}_Core${NUM_CPUS}_Prod${LOC_PROD}_Cons${LOC_CONS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}"
-              echo $OUTPUT_DIR
-              mkdir -p $OUTPUT_DIR
-              $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
-                 --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
-                 -d $OUTPUT_DIR \
-                 ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
-                 --ruby \
-                 --num-dirs=${NUM_MEM} \
-                 --num-l3caches=${NUM_LLC} \
-                 --l1d_size=${l1d_size} \
-                 --l1i_size=${l1i_size} \
-                 --l2_size=${l2_size} \
-                 --l3_size=${l3_size} \
-                 --l1d_assoc=${l1d_assoc} \
-                 --l1i_assoc=${l1i_assoc} \
-                 --l2_assoc=${l2_assoc} \
-                 --l3_assoc=${l3_assoc} \
-                 --network=${NETWORK} \
-                 --topology=CustomMesh \
-                 --simple-physical-channels \
-                 --simple-link-bw-factor=${LINK_BW} \
-                 --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
-                 --mem-size="16GB" \
-                 --mem-type=DDR4_3200_8x8 \
-                 --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
-                 --mem-test-type='prod_cons_test' \
-                 --disable-gclk-set \
-                 --enable-DMT=False \
-                 --enable-DCT=${DCT} \
-                 --num_trans_per_cycle_llc=4 \
-                 --addr-intrlvd-or-tiled=True \
-                 --bench-c2cbw-mode=True \
-                 --maxloads=${MAXNUMLOADS} \
-                 --size-ws=${WKSET} \
-                 --num-cpus=${NUM_CPUS} \
-                 --sequencer-outstanding-requests=32 \
-                 --chs-1p1c \
-                 --chs-cons-id=${LOC_CONS} \
-                 --chs-prod-id=${LOC_PROD} &
-            done
-          done
-        fi
-      done
-    done
-  done
-  wait
-
-
-  echo "Test Case 1: Single producer single consumer " >> "${OUTPUT_ROOT}/Summary.txt"
-  for DCT in ${DCT_CONFIGS[@]}; do
-    for LOC_PROD in ${PRODUCER_SET_CONFIGS[@]}; do
-      for LOC_CONS in ${CONSUMER_SET_CONFIGS[@]}; do
-        if [[ $LOC_PROD -ne $LOC_CONS ]]; then
-          for WKSET in ${WKSETLIST[@]}; do
-            for LINK_BW in ${LINK_BW_CONFIGS[@]}; do
-              OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_LINKBW${LINK_BW}_Core${NUM_CPUS}_Prod${LOC_PROD}_Cons${LOC_CONS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}"
-              grep -E 'ReqBegin=LD|ReqDone=LD' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace 
-              echo "DCT  =  ${DCT}, LINK_BW  =  ${LINK_BW}" >> "${OUTPUT_ROOT}/Summary.txt"
-              ${PY3} ProdConsStatsParser.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR}  >> "${OUTPUT_ROOT}/Summary.txt"
+              for INJ_INTERVAL in ${INJ_INTERVAL_CONFIGS[@]}; do
+                OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_LINKBW${LINK_BW}_Core${NUM_CPUS}_Prod${LOC_PROD}_Cons${LOC_CONS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}_INJRATE_${INJ_INTERVAL}"
+                if [ -d ${OUTPUT_DIR} ]; then
+                  grep -E 'ReqBegin=LD|ReqDone=LD' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace 
+                  ${PY3} ProdConsStatsParser.py \
+                         --input=${OUTPUT_DIR} \
+                         --output=${OUTPUT_DIR} \
+                         --dct=${DCT} \
+                         --link-bw=${LINK_BW} \
+                         --inj-rate=${INJ_INTERVAL} \
+                         --bench-name='chs-1pc1' \
+                         --chs-cons-id=${LOC_CONS} \
+                         --chs-prod-id=${LOC_PROD} >> "${OUTPUT_ROOT}/Summary.json"
+                  echo "," >> "${OUTPUT_ROOT}/Summary.json"
+                fi
+              done
             done
           done
         fi
@@ -295,3 +309,10 @@ if [ "$MC2CBW" != "" ]; then
     done
   done
 fi
+
+head -n -1 ${OUTPUT_ROOT}/Summary.json > ${OUTPUT_ROOT}/Summary2.json # Remove the last comma
+echo "]" >> ${OUTPUT_ROOT}/Summary2.json
+${PY3} processProdCons.py \
+       --input=${OUTPUT_ROOT}/Summary2.json \
+       --output=${OUTPUT_ROOT}/Summary.csv
+rm ${OUTPUT_ROOT}/Summary2.json ${OUTPUT_ROOT}/Summary.json
