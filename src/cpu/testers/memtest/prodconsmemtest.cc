@@ -431,11 +431,13 @@ ProdConsMemTest::tick()
         referenceData[req->getPaddr()] = data;
         pkt->dataDynamic(pkt_data);
         DPRINTF(ProdConsMemLatTest,"Start,R,%x,%x,%d/%d\n",req->getPaddr(),data,outstandingAddrs.size(),readWorkingSetSize);
+        numReadTxnGenerated++;
     } else {
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
         pkt_data[0] = data;
         DPRINTF(ProdConsMemLatTest,"Start,W,%x,%x,%d\n",req->getPaddr(),data,outstandingAddrs.size());
+        numWriteTxnGenerated++;
     }
 
     txSeqNum++; // for each transaction,increate 1 to generate a new txSeqNum
@@ -449,12 +451,6 @@ ProdConsMemTest::tick()
         // finally shift the timeout for sending of requests forwards
         // as we have successfully sent a packet
         reschedule(noRequestEvent, clockEdge(progressCheck), true);
-
-        if (readOrWrite) {
-            numReadTxnGenerated++;
-        } else {
-            numWriteTxnGenerated++;
-        }
     } else {
         DPRINTF(ProdConsMemLatTest, "Waiting for retry\n");
     }
