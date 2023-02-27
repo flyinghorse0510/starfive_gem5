@@ -146,6 +146,8 @@ def addNoISAOptions(parser):
     parser.add_argument("--caches", action="store_true")
     parser.add_argument("--l2cache", action="store_true")
     parser.add_argument("--num-dirs", type=int, default=1)
+    parser.add_argument("--DDR-loc-num", type=int, default=1)
+    parser.add_argument("--DDR-side-num", type=int, default=1)
     parser.add_argument("--num-l2caches", type=int, default=1)
     parser.add_argument("--num-l3caches", type=int, default=1)
     parser.add_argument("--l1d_size", type=str, default="64kB")
