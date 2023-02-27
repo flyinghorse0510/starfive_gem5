@@ -357,7 +357,7 @@ if [ "$RUN1" != "" ]; then
               --sequencer-outstanding-requests=${SEQ_TBE} \
               --num_trans_per_cycle_llc=${TRANS} \
               --num-cpus=${NUMCPUS} \
-              --inj-interval=2 \
+              --inj-interval=1 \
               --num-producers=1 &
       #  grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
       #  grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
