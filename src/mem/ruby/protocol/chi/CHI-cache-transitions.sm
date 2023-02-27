@@ -147,6 +147,12 @@ transition(I, SnoopFilterEviction) {
   Pop_SFReplTriggerQueue;
 }
 
+transition(BUSY_BLKD, SnoopFilterHNCacheFill) {
+  Pop_TriggerQueue;
+  Start_SnoopFilterHNCacheFill;
+  ProcessNextState_ClearPending;
+}
+
 transition({BUSY_INTR,BUSY_BLKD}, DataArrayWrite) {DataArrayWrite} {
   Pop_TriggerQueue;
   DataArrayWrite;
