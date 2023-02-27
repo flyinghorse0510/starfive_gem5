@@ -295,7 +295,7 @@ action(Initiate_Request, desc="") {
      * Arka[23/02/2023]: 
      * 1. Per the CHI SLICC coding conventions. It is not
      *    a good practice to add the directory hit
-     *    profiling here. There should be a separate function
+     *    profiling here. There should be a separate action
      *    to do this. The problem, is that it involves changes
      *    in many areas of the code. So we do it here.
      * 2. There are other Initiate_* actions, that also perform
