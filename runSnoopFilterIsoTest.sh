@@ -47,7 +47,7 @@ l1d_assoc=2
 l1i_assoc=2
 l2_assoc=8
 l3_assoc=16
-DEBUGFLAGS=RubyGenerated,RubyCHIDebugStr5,ProdConsMemLatTest,TxnTrace
+DEBUGFLAGS=RubyGenerated,RubyCHIDebugStr5,TxnTrace,IsolatedMemLatTest
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -82,20 +82,21 @@ if [ "$ISOMEMTEST" != "" ]; then
         --mem-test-type='isolated_test' \
         --num-cpus=${NUMCPUS} \
         --num-producers=1 \
-        --num-snoopfilter-entries=64 \
-        --num-snoopfilter-assoc=8
+        --num-snoopfilter-entries=4 \
+        --num-snoopfilter-assoc=2
     grep -E 'system\.ruby\.hnf[0-9]*' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
 fi
 
 if [ "$PRODCONSTEST" != "" ]; then
     LOC_CONS=1
     LOC_PROD=0
-    MAXNUMLOADS=10
+    MAXNUMLOADS=1
     WKSET=65536
     DCT=False
     LINK_BW=16
     OUTPUT_DIR="${WORKSPACE}/MOD0.5_SnoopFilter_ProdConsTest"
     mkdir -p $OUTPUT_DIR
+    DEBUGFLAGS=RubyGenerated,RubyCHIDebugStr5,ProdConsMemLatTest,TxnTrace
     $GEM5_DIR/build/${ISA}_${CCPROT}/${BUILDTYPE} \
         --debug-flags=$DEBUGFLAGS --debug-file=debug.trace \
         -d $OUTPUT_DIR \
@@ -133,7 +134,7 @@ if [ "$PRODCONSTEST" != "" ]; then
         --chs-1p1c \
         --chs-cons-id=${LOC_CONS} \
         --chs-prod-id=${LOC_PROD} \
-        --num-snoopfilter-entries=4 \
+        --num-snoopfilter-entries=1024 \
         --num-snoopfilter-assoc=2
-    grep -E 'ReqDone=ST|ReqDone=LD' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.ReqBegin.trace
+    grep -E 'system.cpu0:|system.cpu0.data_sequencer:' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
 fi
