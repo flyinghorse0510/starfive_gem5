@@ -90,11 +90,11 @@ args = parser.parse_args()
 # args.l3_assoc=2
 
 block_size = 64
-offset = 0x10000
+offset = 0x0
 max_outstanding = 100
 scale = 3.0
 
-lsq_policy = {'round_robin':0, 'st_first':1}
+arbi_policy = {'round_robin':0, 'st_first':1}
 
 if args.num_cpus > block_size:
      print("Error: Number of testers %d limited to %d because of false sharing"
@@ -133,6 +133,8 @@ if args.mem_test_type=='stream_test':
     assert ws_size >= min_ws_size, f'working set is too small, should be larger than 4*num_llc*l3size:{min_ws_size}!'
     req_mem_size = 3*ws_size
     assert mem_size >= req_mem_size, "mem size is too small!"
+
+    ws_size = 128
     
     logging.info(f'eventual ws_size:{ws_size}')
     MemTestClass=StreamMemTest
@@ -141,8 +143,8 @@ else:
     logging.critical(f'Test name not found: {args.mem_test_type}! Current support tests: triad_test')
 
 if args.num_cpus > 0 :
-    cpus = [ MemTestClass(id = i, num_cpus = args.num_cpus, max_iter = args.maxloads, 
-                          max_outstanding = max_outstanding, ws_size = ws_size, lsq_policy = lsq_policy['round_robin'], 
+    cpus = [ MemTestClass(id = i, num_cpus = args.num_cpus, maxloads = args.maxloads, 
+                          max_outstanding = max_outstanding, ws_size = ws_size, arbi_policy = arbi_policy['round_robin'], 
                           addr_a = offset, addr_b = ws_size+offset, addr_c = ws_size*2+offset, scale=scale,
                           suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
@@ -152,8 +154,8 @@ system = System(cpu = cpus,
                 mem_ranges = [AddrRange(args.mem_size)])
 
 if args.num_dmas > 0:
-    dmas = [ MemTestClass(id = i, num_cpus = args.num_cpus, max_iter = args.maxloads, 
-                          max_outstanding = max_outstanding, ws_size = ws_size, lsq_policy = lsq_policy['round_robin'], 
+    dmas = [ MemTestClass(id = i, num_cpus = args.num_cpus, maxloads = args.maxloads, 
+                          max_outstanding = max_outstanding, ws_size = ws_size, arbi_policy = arbi_policy['round_robin'], 
                           addr_a = offset, addr_b = ws_size+offset, addr_c = ws_size*2+offset, scale=scale,
                           suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_dmas) ]

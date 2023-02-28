@@ -43,9 +43,8 @@
 
 #include <unordered_map>
 #include <unordered_set>
-#include <queue>
-#include <utility>
-
+#include <list>
+#include "base/trace.hh"
 #include "base/statistics.hh"
 #include "mem/port.hh"
 #include "params/StreamMemTest.hh"
@@ -72,6 +71,87 @@ namespace gem5
  * both requests and responses, thus checking that the memory-system
  * is making progress.
  */
+
+enum class STState {INIT, WAIT_B, WAIT_C, PREP, SENT, CMPL};
+enum class LDState {INIT, PREP, SENT, CMPL};
+
+class STMReq {
+public:
+  uint64_t iter;
+  double val;
+  Addr addr;
+  STMReq(uint64_t iter, double val, Addr addr):iter(iter), val(val), addr(addr) {}
+  virtual ~STMReq(){}
+};
+
+class STReq: public STMReq{
+public:
+  double b;
+  double c;
+  Addr addr_b;
+  Addr addr_c;
+  uint64_t wsSize;
+  STState state;
+
+  void wakeup(Addr addr, double data){
+    printf("In ST[%lu].wakeup: state:%d, addr:%lu, data:%f\n", iter, int(state), addr, data);
+    if(addr>=addr_b && addr<addr_b+wsSize)
+    {
+      b = data;
+      switch(state){
+        case STState::INIT : state = STState::WAIT_C; break;
+        case STState::WAIT_B : state = STState::PREP; break;
+        default: 
+          panic("STReq[%lu](addr:%lu) woke up by LD B in state %d\n", iter, this->addr, int(state));
+      }
+    }
+    else if(addr>=addr_c && addr<addr_c+wsSize)
+    {
+      c = data;
+      switch(state){
+        case STState::INIT : state = STState::WAIT_B; break;
+        case STState::WAIT_C : state = STState::PREP; break;
+        default: 
+          panic("STReq[%lu](addr:%#lx) woke up by in state %d\n", iter, this->addr, int(state));
+      }
+    }
+    else
+    {
+      panic("STReq[%lu](addr:%#lx) recv wired addr %#lx\n", iter, this->addr, addr);
+    }
+    // TODO: here prepare to send out st req
+    if(state == STState::PREP){
+      val = b + c*1.0;
+      printf("In ST[%lu].wakeup: PREP to send, val:%f\n", iter, val);
+    }
+  }
+
+  STReq(uint64_t iter, double val, Addr addr, Addr addr_b, Addr addr_c, uint64_t wsSize, STState state)
+      :STMReq(iter, val, addr), state(state), b(0), c(0), addr_b(addr_b), addr_c(addr_c), wsSize(wsSize)
+  {
+    printf("STReq[%lu](%p) ctor, val:%f, addr:%#lx, state:%d\n", iter, this, val, addr, int(state));
+  }
+};
+
+class LDReq : public STMReq {
+public:
+    LDState state;
+    STReq* streq; // observer
+    
+    void wakeupST(double data){
+      streq->wakeup(addr, data);
+    }
+    
+    LDReq(uint64_t iter, double val, Addr addr, LDState state, STReq* streq)
+        :STMReq(iter, val, addr), state(state), streq(streq)
+    {
+      printf("LDReq[%lu](%p) ctor, val:%f, addr:%#lx, state:%d, streq:%p\n", iter, this, val, addr, int(state), streq);
+    }
+};
+
+enum class ArbiPolicy {RoundRobin=0, StoreFirst};
+
+
 class StreamMemTest : public ClockedObject
 {
 
@@ -142,7 +222,6 @@ class StreamMemTest : public ClockedObject
     }
 
     const uint64_t maxOutstanding;
-    std::unordered_set<Addr> outstandingAddrs;
 
     const unsigned progressInterval;  // frequency of progress reports
     const Cycles progressCheck;
@@ -164,35 +243,12 @@ class StreamMemTest : public ClockedObject
     uint64_t maxIters;
     uint64_t numIters;
 
-    typedef Addr offset_t;
-    enum LSType{LD, ST, UKWN};
-    struct StreamReq{
-        uint64_t iter;
-        offset_t offset;
-        LSType typ;
-        double data;
-        Addr addr;
-        StreamReq():iter(0),offset(0), typ(LSType::UKWN), data(0), addr(0){}
-        StreamReq(uint64_t iter, offset_t offset, LSType typ, double data, Addr addr)
-            :iter(iter), offset(offset), typ(typ), data(data), addr(addr){}
-    };
+    ArbiPolicy arbiPolicy;
+    std::unordered_map<Addr, std::list<STReq*>::iterator> outstandingSTAddrs;
+    std::unordered_map<Addr, std::list<LDReq*>::iterator> outstandingLDAddrs;
 
-    enum WaitState{None=0, RecvB, RecvC, Ready};
-    struct WaitData{
-        uint64_t iter;
-        offset_t offset;
-        double b;
-        double c;
-        WaitState state;
-        WaitData():iter(0),offset(0),b(0),c(0),state(WaitState::None){}
-        WaitData(uint64_t iter, offset_t offset, WaitState state): iter(iter), offset(offset), b(0), c(0), state(state){}
-    };
-
-    enum LSQPolicy {RoundRobin=0, StoreFirst};
-    LSQPolicy lsqPolicy;
-    std::queue<StreamReq> loadq; // command queue for load requests
-    std::queue<StreamReq> storeq; // command queue for store requests
-    std::unordered_map<offset_t, WaitData> waitTable; // outstanding list
+    std::list<LDReq*> LDList; // list for LD reqs
+    std::list<STReq*> STList; // list for ST reqs
 
     uint64_t numReads;
     uint64_t numWrites;
@@ -219,10 +275,6 @@ class StreamMemTest : public ClockedObject
     void completeRequest(PacketPtr pkt, bool functional = false);
     bool sendPkt(PacketPtr pkt);
     void recvRetry();
-    double triad(double data_b, double data_c);
-    StreamReq arbitration(std::queue<StreamReq> loadq, std::queue<StreamReq> storeq);
-    void checkRdy();
-    void issueCmd();
 
 };
 
