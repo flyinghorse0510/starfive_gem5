@@ -21,7 +21,7 @@ TXNTRACE=""
 
 TEST=""
 
-while getopts "hbr:s:a:t:p:" options; do
+while getopts "hbr:s:a:t:p:g:" options; do
     case $options in
        h) Help
           exit;;
@@ -52,6 +52,12 @@ while getopts "hbr:s:a:t:p:" options; do
          STATS="yes"
          TEST=${OPTARG}
          echo "Running STATS parser"
+         ;;
+       g)
+        GRAPH="yes"
+        DEBUG_FLAGS=TxnLink
+        TEST=${OPTARG}
+        echo "Running link graphing, need to turn on TxnLink"
     esac
 done
 
@@ -87,6 +93,14 @@ l3_assoc=16
 NUM_LLC=16
 NETWORK="garnet" #"garnet" #"simple"
 
+#Garnet configurations 
+Router_Lat=1
+Link_Lat_SET=(1 2)
+Link_Width=128
+VC_per_VNET=2
+
+#
+
 DMT_Config=(True False)
 #NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
 NUM_CPU_SET=(4 8 16) # = #2 #4 #16
@@ -96,7 +110,7 @@ NUM_MEM=1
 TRANS_SET=(1 2 4)
 SNF_TBE_SET=(32 64)
 HNF_TBE=32
-NUM_LOAD_SET=(100)
+NUM_LOAD_SET=(200)
 
 #DEBUG_FLAGS=SeqMemLatTest,TxnTrace 
 #DEBUG_FLAGS=SeqMemLatTest
@@ -120,7 +134,8 @@ l3_assoc=16
 NUM_LLC=16
 NETWORK="simple" #"garnet" #"simple"
 
-DMT_Config=(True False)
+#DMT_Config=(True False)
+DMT_Config=(True)
 #NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
 #NUM_CPU_SET=(4 8 16) # = #2 #4 #16
 NUM_CPU_SET=(1) # = #2 #4 #16
@@ -130,7 +145,7 @@ NUM_MEM=1
 TRANS_SET=(1 2 4)
 SNF_TBE_SET=(32 64)
 HNF_TBE=32
-NUM_LOAD_SET=(100) #no eviction/writeback. if more than 5000, more writeback/eviction
+NUM_LOAD_SET=(2) #no eviction/writeback. if more than 5000, more writeback/eviction
 
 DEBUG_FLAGS=PseudoInst
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEMBW"
@@ -139,16 +154,16 @@ fi
 if [ "$TEST" == "L3_Hit" ]; then
   echo "Test $TEST"
 
-l1d_size="2KiB"
-l1i_size="2KiB"
-l2_size="8KiB"
+l1d_size="1KiB"
+l1i_size="1KiB"
+l2_size="2KiB"
 l3_size="64KiB" #"32KiB" #"16KiB" #"1024KiB" #"256KiB"
 l1d_assoc=8
 l1i_assoc=8
 l2_assoc=8
 l3_assoc=16
 NUM_LLC=16
-NETWORK="simple" #"garnet" #"simple"
+NETWORK="garnet" #"garnet" #"simple"
 
 DMT_Config=(False)
 #NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
@@ -157,7 +172,7 @@ WKSET=65536 #262144 #131072 #8192 #16384 #524288 #(32768) #
 #NUM_MEM_SET=(1 2)
 NUM_MEM=1
 TRANS_SET=(1 2 4)
-SNF_TBE_SET=(32 64)
+SNF_TBE_SET=(32)
 HNF_TBE=32
 
 ##Set Working set size and Load set carefully!
@@ -183,7 +198,7 @@ l3_assoc=16
 NUM_LLC=1
 NETWORK="simple" #"garnet" #"simple"
 
-DMT_Config=(False)
+#DMT_Config=(True False)
 #NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
 NUM_CPU_SET=(4 8 16) # = #2 #4 #16
 WKSET=524288 #8192 #16384 #524288 #(32768) #Total working set shared by all CPUs
@@ -192,7 +207,7 @@ NUM_MEM=1
 TRANS_SET=(1 2 4)
 SNF_TBE_SET=(32)
 HNF_TBE=32
-NUM_LOAD_SET=(50)
+NUM_LOAD_SET=(100)
 
 #DEBUG_FLAGS=SeqMemLatTest,TxnTrace 
 #DEBUG_FLAGS=SeqMemLatTest
@@ -200,29 +215,47 @@ DEBUG_FLAGS=PseudoInst
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEMBW"
 fi
 
-DMT_Config=(False)
+#DMT_Config=(True False)
+#NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
+#NUM_CPU_SET=(4 8 16) # = #2 #4 #16
+##NUM_CPU_SET=(2 4 8 16) # = #2 #4 #16
+
+#Sinlge Core
+#NUM_CPU_SET=(1) # = #2 #4 #16
 
 #Multi Core
-NUM_CPU_SET=(1) # = #2 #4 #16
+NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
+#NUM_CPU_SET=(16) # = #2 #4 #16
 
-WKSET=16384 #8192 #16384 #524288 #(32768) #
-#NUM_MEM_SET=(1 2)
-NUM_MEM=1
+
+WKSET=786432 #8192 #16384 #524288 #(32768) #
+NUM_MEM_SET=(4 8)
+#NUM_MEM=1
+NUM_LLC=16
 TRANS_SET=(4)
 HNF_TBE=32
 SNF_TBE_SET=(32)
-NUM_LLC=1
+SEQ_TBE=32 #1
 NUM_LOAD_SET=(10)
 
-#DEBUG_FLAGS="SeqMemLatTest,TxnTrace"
-#DEBUG_FLAGS=TxnTrace
-#DEBUG_FLAGS=RubySlicc
+#Network/Garnet
+LINKWIDTH_SET=(128) #(128 256 512)
+NETWORK="simple"
+LINK_LAT=1
+ROUTER_LAT=0
+VC_PER_VNET=4
+
+# use FlitHop to print only Head/HeadTail Flit msg
+# use FlitHopFull to print all Flit msg, body, credit ...
+#DEBUG_FLAGS="SeqMemLatTest,TxnTrace,FlitHop,FlitHopFull"
 DEBUG_FLAGS="StreamTest"
+DMT_Config=(False)
 
-MultiCoreAddrMode=False #False #False #True #--addr-intrlvd-or-tiled true then interleaved 
+MultiCoreAddrMode=True #False #False #True #--addr-intrlvd-or-tiled true then interleaved 
 
-OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEM_Hier_MEMADDInterL_PHYVNET"
-OUTPUT_PREFIX="TEST_${TEST}/NETWK${NETWORK}_LinkFactor40_SysClk2GHz"
+#OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/Garnet_PHYVNET_SEQTBE1_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}"
+#OUTPUT_PREFIX="NETWK${NETWORK}"
+OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/PHYVNET_SEQTBE1"
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -237,7 +270,11 @@ if [ "$RUN1" != "" ]; then
           for TRANS in ${TRANS_SET[@]}; do
              for  SNF_TBE in ${SNF_TBE_SET[@]}; do
                 for NUM_LOAD in ${NUM_LOAD_SET[@]}; do 
-            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
+                   for LINKWIDTH in ${LINKWIDTH_SET[@]}; do
+                      for NUM_MEM in ${NUM_MEM_SET[@]}; do
+
+            OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}"
+            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
             $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
               --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
               -d $OUTPUT_DIR \
@@ -253,6 +290,10 @@ if [ "$RUN1" != "" ]; then
               --l2_assoc=${l2_assoc} \
               --l3_assoc=${l3_assoc} \
               --network=${NETWORK} \
+              --link-width-bits=${LINKWIDTH} \
+              --vcs-per-vnet=${VC_PER_VNET} \
+              --link-latency=${LINK_LAT} \
+              --router-latency=${ROUTER_LAT} \
               --topology=CustomMesh \
               --simple-physical-channels \
               --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
@@ -268,16 +309,19 @@ if [ "$RUN1" != "" ]; then
               --enable-DMT=${DMT} \
               --num-HNF-TBE=${HNF_TBE}  \
               --num-SNF-TBE=${SNF_TBE}  \
+              --sequencer-outstanding-requests=${SEQ_TBE} \
               --num_trans_per_cycle_llc=${TRANS} \
               --num-cpus=${NUMCPUS} \
               --num-producers=1 &
        grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
        grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
+              done
            done
          done
        done
      done
    done
+ done
 fi
 
   if [ "$ANALYSIS" != "" ]; then
@@ -287,8 +331,11 @@ fi
           for TRANS in ${TRANS_SET[@]}; do
              for  SNF_TBE in ${SNF_TBE_SET[@]}; do 
                 for NUM_LOAD in ${NUM_LOAD_SET[@]}; do 
- 
-          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
+                    for LINKWIDTH in ${LINKWIDTH_SET[@]}; do
+
+
+            OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}"
+            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
  
 
       #grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
@@ -317,6 +364,7 @@ fi
      done
    done
   done
+ done
 fi
 
   if [ "$TXNTRACE" != "" ]; then
@@ -326,32 +374,74 @@ fi
           for TRANS in ${TRANS_SET[@]}; do
              for  SNF_TBE in ${SNF_TBE_SET[@]}; do 
                 for NUM_LOAD in ${NUM_LOAD_SET[@]}; do 
+                   for LINKWIDTH in ${LINKWIDTH_SET[@]}; do
+                      for NUM_MEM in ${NUM_MEM_SET[@]}; do
+
+            OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}"
+            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
  
-          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
-          grep -E 'Req Begin|Req Done|requestToMemory|responseFromMemory' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace
-          python3 logparser.py --input ${OUTPUT_DIR}/simple.trace --output ${OUTPUT_DIR} --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_mem ${NUM_MEM} --num_load ${NUM_LOAD}
+
+          grep -E 'Req Begin|Req Done|requestToMemory|responseFromMemory' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace 
+          python3 logparser.py --input ${OUTPUT_DIR}/simple.trace --output ${OUTPUT_DIR} --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_mem ${NUM_MEM} --num_load ${NUM_LOAD} 
+            done
          done
        done
      done
    done
   done
+ done
 fi
 
   if [ "$STATS" != "" ]; then
+    # generate throughput.txt to summarize all throughput from stats.log. Each time will generate new throughput.txt
+    touch throughput.txt
+    dd if=/dev/null of=throughput.txt
     #OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
     for DMT in ${DMT_Config[@]}; do
        for NUMCPUS in ${NUM_CPU_SET[@]}; do
           for TRANS in ${TRANS_SET[@]}; do
              for  SNF_TBE in ${SNF_TBE_SET[@]}; do 
                 for NUM_LOAD in ${NUM_LOAD_SET[@]}; do 
-          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
+                   for LINKWIDTH in ${LINKWIDTH_SET[@]}; do
+                      for NUM_MEM in ${NUM_MEM_SET[@]}; do
+            OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}"
+            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
+ 
           ## by default will only print cpu,ddr,llc
           ## python3 stats_parser.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM}
           ## also print l2p,l1d,l1i
-          python3 stats_parser.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --print l1d,l1i,l2p,llc,cpu,ddr
+          python3 stats_parser.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --trans ${TRANS} --snf_tbe ${SNF_TBE} --dmt ${DMT} --linkwidth ${LINKWIDTH} --print l1d,l1i,l2p,llc,cpu,ddr
+            done
          done
        done
      done
    done
   done
+ done
+fi
+
+  if [ "$GRAPH" != "" ]; then
+    #OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
+    for DMT in ${DMT_Config[@]}; do
+       for NUMCPUS in ${NUM_CPU_SET[@]}; do
+          for TRANS in ${TRANS_SET[@]}; do
+             for  SNF_TBE in ${SNF_TBE_SET[@]}; do 
+                for NUM_LOAD in ${NUM_LOAD_SET[@]}; do 
+                   for LINKWIDTH in ${LINKWIDTH_SET[@]}; do
+                      for NUM_MEM in ${NUM_MEM_SET[@]}; do
+            OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}"
+            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
+          
+          # grep -E "^[[:space:]]+[0-9]+: system\.ruby\.network\.int_links[0-9]+\.buffers[0-9]+|^[[:space:]]+[0-9]+: system.*In:" ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/link.log
+          # python3 netparse.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR} --num-int-router 16
+          # enable --draw-ctrl to draw controllers
+          # currently need to manually pass the number of internal routers
+          python3 netparse.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR} --num-int-router 16
+            done
+         done
+       done
+     done
+   done
+  done
+ done
 fi
