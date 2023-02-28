@@ -96,10 +96,10 @@ StreamMemTest::StreamMemTest(const Params &p)
       b(p.addr_b),
       c(p.addr_c),
       scale(p.scale),
-      maxLoads(p.max_loads),
+      maxLoads(p.maxloads),
       wsSize(p.ws_size),
       maxOutstanding(p.max_outstanding),
-      lsqPolicy(static_cast<LSQPolicy>(p.lsq_policy)),
+      arbiPolicy(static_cast<ArbiPolicy>(p.arbi_policy)),
       interval(p.interval),
       requestorId(p.system->getRequestorId(this)),
       blockSize(p.system->cacheLineSize()), // 64 byte
@@ -117,16 +117,22 @@ StreamMemTest::StreamMemTest(const Params &p)
     numIters = 0;
     maxIters = wsSize*maxLoads/numCpus/blockSize;
 
-    // generate the LSQ
+    // generate the cmd list
     for (uint64_t it=0; it<maxIters; it++){
-        offset_t offset = (id+numCpus*it)*blockSize%wsSize;
+        uint64_t offset = (id+numCpus*it)*blockSize%wsSize;
         assert(blockAlign(b+offset) == b+offset);
-        loadq.emplace(it, offset, LSType::LD, 1, b+offset); // TODO: hardcoded data to be 1 in b
-        loadq.emplace(it, offset, LSType::LD, 2, c+offset); // TODO: hardcoded data to be 2 in c
+        STReq* streq = new STReq(it, 0, a+offset, b, c, wsSize, STState::INIT); // must use shared_ptr, otherwise LDReq cannot ref to this obj
+        STList.push_back(streq); // STReq(uint64_t iter, double val, Addr addr, Addr addr_b, Addr addr_c, uint64_t wsSize, STState state)
+
+        // TODO: hardcoded val = 1 for b and val = 2 for c
+        LDReq* ldreq = new LDReq(it, 1, b+offset, LDState::PREP, streq);
+        LDList.push_back(ldreq); // LDReq(uint64_t iter, double val, Addr addr, LDState state, STReq* streq)
+        ldreq = new LDReq(it, 2, c+offset, LDState::PREP, streq);
+        LDList.push_back(ldreq); // LDReq(uint64_t iter, double val, Addr addr, LDState state, STReq* streq)
     }
     
-    DPRINTF(StreamTest, "id:%u, numCpus:%u, blkSize: %u, maxiter:%lu, maxOutstanding:%lu, wsSize:%lu, a:%s, b:%s, c:%s, lsqPolicy:%d\n", 
-            id, numCpus, blockSize, maxIter, maxOutstanding, wsSize, a, b, c, lsqPolicy);
+    printf("StreamMemTest(%p) ctor: id:%u, numCpus:%u, blkSize: %u, maxLoads:%lu, maxiter:%lu, maxOutstanding:%lu, wsSize:%lu, a:%#lx, b:%#lx, c:%#lx, arbiPolicy:%d\n", 
+            this, id, numCpus, blockSize, maxLoads, maxIters, maxOutstanding, wsSize, a, b, c, int(arbiPolicy));
 
     // kick things into action
     schedule(tickEvent, curTick());
@@ -146,62 +152,73 @@ void
 StreamMemTest::completeRequest(PacketPtr pkt, bool functional)
 {
     const RequestPtr &req = pkt->req;
-    assert(req->getSize() == 2); // TODO: what does this check?
+    assert(req->getSize() == 8); // TODO: what does this check?
 
     // this memTxnId is no longer outstanding
-    auto remove_paddr = req->getPaddr();
-    auto remove_addr = outstandingAddrs.find(req->getPaddr());
-    assert(remove_addr != outstandingAddrs.end());
-    outstandingAddrs.erase(remove_addr);
+    auto rspAddr = req->getPaddr();
 
     const double *pkt_data = pkt->getConstPtr<double>();
 
     if (pkt->isError()) {
         if (!functional || !suppressFuncErrors)
-            panic( "%s access failed at %#x\n",
+            panic( "%s access failed at %#lx\n",
                 pkt->isWrite() ? "Write" : "Read", req->getPaddr());
     } else {
-        if (pkt->isRead()) {
-            Addr addr = req->getPaddr();
-            if(addr>=b && addr<c){
-                offset_t offset = addr-b;
-                assert(waitTable.find(offset) != waitTable.end());
-                assert(!(uint32_t(waitTable[offset].state) & (1<<0))); // 00:None, 01:RecvB, 10:RecvC, 11:Ready; cannot be RecvB or Ready
-                waitTable[offset].state = WaitState(uint32_t(waitTable[offset].state) | WaitState::RecvB);
-                waitTable[offset].b = *pkt_data;
-            }
-            else if(addr>=c && addr<c+wsSize){
-                offset_t offset = addr-c;
-                assert(waitTable.find(offset) != waitTable.end());
-                assert(!(uint32_t(waitTable[offset].state) & (1<<1))); // 00:None, 01:RecvB, 10:RecvC, 11:Ready; cannot be RecvC or Ready
-                waitTable[offset].state = WaitState(uint32_t(waitTable[offset].state) | WaitState::RecvC);
-                waitTable[offset].c = *pkt_data;
-            }
-            else{
-                panic("Recv addr out of range: %u\n", addr);
-            }
+        if (pkt->isRead()) { // must be LDReq
+            auto remove_addr = outstandingLDAddrs.find(req->getPaddr());
+            assert(remove_addr != outstandingLDAddrs.end());
+            assert((rspAddr >=b && rspAddr < b+wsSize) || (rspAddr >=c && rspAddr < c+wsSize)); // boundary check, [b,b+wsSize) or [c,c+wsSize)
 
-            DPRINTF(StreamTest, "Complete,%x,R,%x\n", req->getPaddr(), *pkt_data);
+            std::list<LDReq*>::iterator ldReqIt = remove_addr->second;
+
+            printf("In tick %lu: Recv response for LDReq[%lu](addr:%#lx, state:%d), updated outstandingLDAddrs:\n", curTick(), (*ldReqIt)->iter, (*ldReqIt)->addr, int((*ldReqIt)->state));
+            outstandingLDAddrs.erase(remove_addr);
+
+            for(auto it = outstandingLDAddrs.begin(); it != outstandingLDAddrs.end(); it++){
+                LDReq* req = (*(*it).second);
+                printf("outstandingLDAddrs[%#lx] = LDReq[%lu](addr:%#lx, state:%d)\n", (*it).first, req->iter, req->addr, int(req->state));
+            }
             
+            (*ldReqIt)->wakeupST(*pkt_data);
+            LDList.erase(ldReqIt); // TODO: here we directly copy data to ST and thus can delete LD. Otherwise need to wait for ST to delete LD
+            delete (*ldReqIt);
+
+            DPRINTF(StreamTest, "Complete,%#lx,R,%lu\n", req->getPaddr(), *pkt_data);
+
             numReads++;
             stats.numReads++;
 
-            if (numReads == (uint64_t)nextProgressMessage) {
-                ccprintf(std::cerr,
-                        "%s: completed %lu read, %lu write accesses @%d\n",
-                        name(), numReads, numWrites, curTick());
-                nextProgressMessage += progressInterval;
-            }
-        } else {
+        } else { // must be STReq
             assert(pkt->isWrite());
-            DPRINTF(StreamTest, "Complete,%x,W,%x\n", req->getPaddr(), *pkt_data);
+            
+            auto remove_addr = outstandingSTAddrs.find(req->getPaddr());
+            assert(remove_addr != outstandingSTAddrs.end());
+            assert(rspAddr >=a && rspAddr <a+wsSize); // boundary check, [a,a+wsSize)
+
+            std::list<STReq*>::iterator stReqIt = remove_addr->second;
+
+            printf("In tick %lu: Recv response for STReq[%lu](addr:%#lx, state:%d), updated outstandingSTAddrs:\n", curTick(), (*stReqIt)->iter, (*stReqIt)->addr, int((*stReqIt)->state));
+            outstandingSTAddrs.erase(remove_addr);
+            
+
+            for(auto it = outstandingSTAddrs.begin(); it != outstandingSTAddrs.end(); it++){
+                STReq* req = (*(*it).second);
+                printf("outstandingSTAddrs[%#lx] = STReq[%lu](addr:%#lx, state:%d)\n", (*it).first, req->iter, req->addr, int(req->state));
+            }
+            
+            STList.erase(stReqIt); // TODO: here we directly copy data to ST and thus can delete LD. Otherwise need to wait for ST to delete LD
+            delete (*stReqIt);
+
+            DPRINTF(StreamTest, "Complete,%#lx,W,%lu\n", req->getPaddr(), *pkt_data);
 
             numWrites++;
             stats.numWrites++;
 
-            numIter++;
-            if (numIter >= maxIter) {
-                printf("Reach MaxLoads, maxLoad:%lu, numReads:%lu numWrites:%lu \n", maxIter, numReads, numWrites);
+            numIters++; // here we actually complete the iteration
+            if (numIters >= maxIters) {
+                // sanity check
+                assert(STList.empty() && LDList.empty());
+                printf("in tick %lu: Reach MaxLoads, maxLoad:%lu, numReads:%lu numWrites:%lu \n", curTick(), maxIters, numReads, numWrites);
                 exitSimLoop("maximum number of loads/stores reached");
             }
         }
@@ -212,7 +229,8 @@ StreamMemTest::completeRequest(PacketPtr pkt, bool functional)
 
     // finally shift the response timeout forward if we are still
     // expecting responses; deschedule it otherwise
-    if (outstandingAddrs.size() != 0)
+    std::size_t outstandingAddrs = outstandingLDAddrs.size() + outstandingSTAddrs.size();
+    if (outstandingAddrs != 0)
         reschedule(noResponseEvent, clockEdge(progressCheck));
     else if (noResponseEvent.scheduled())
         deschedule(noResponseEvent);
@@ -233,93 +251,153 @@ StreamMemTest::MemTestStats::MemTestStats(statistics::Group *parent)
 
 }
 
-double
-StreamMemTest::triad(double data_b, double data_c)
-{
-    return data_b + scale*data_c;
-}
 
 void
-StreamMemTest::checkRdy()
+StreamMemTest::tick()
 {
-    for(auto it=waitTable.begin(); it != waitTable.end(); it++){
-        double data = triad(it->second.b, it->second.c);
-        Addr addr = a + it->second.offset;
-        storeq.emplace(it->second.iter, it->second.offset, LSType::ST, data, addr);
-        it = waitTable.erase(it); // must update it to the next it
+    printf("Enter tick %lu\n", curTick());
+    // we should never tick if we are waiting for a retry
+    assert(!retryPkt);
+    assert(!waitResponse);
+
+    /* Too many outstanding transactions */
+    size_t outstandingAddrs = outstandingLDAddrs.size() + outstandingSTAddrs.size();
+    // LD+ST >= maxOutstanding, TODO: do we need another maxOutstanding check like seqmemtest
+    // the reason for seqmemtest to check if outstandingAddrs exceed the address map is if it does,
+    // further sending is meaningless and can cause deadlock.
+    // sendLD and sendST is to avoid deadlock. LD can have twice the size of numIters in one wkset since we have B and C
+    bool sendLD = outstandingLDAddrs.size() < wsSize*2/numCpus/blockSize;
+    bool sendST = outstandingSTAddrs.size() < wsSize/numCpus/blockSize;
+
+    if ((outstandingAddrs >= maxOutstanding) || (!sendST && !sendLD)) {
+        waitResponse = true;
+        printf("Exit tick %lu with too many outstanding\n", curTick());
+        return;
     }
-}
 
+    
+    // first choose an available req from both LDList and STList
+    std::list<STReq*>::iterator stReqIt = STList.end();
+    std::list<LDReq*>::iterator ldReqIt = LDList.end();
 
-StreamMemTest::StreamReq
-StreamMemTest::arbitration(std::queue<StreamReq> loadq, std::queue<StreamReq> storeq)
-{
-    StreamReq stmReq;
-    switch(lsqPolicy){
-    case LSQPolicy::RoundRobin:
-        if(storeq.empty()){
-            assert(!loadq.empty()); // if loadq is also empty, need to check
-            stmReq = loadq.front();
-            loadq.pop();
+    printf("In tick %lu: sendLD=%d sendST=%d\n",curTick(), sendLD, sendST);
+    
+    if(sendLD){
+        for(auto it=LDList.begin(); it != LDList.end(); it++){
+            printf("LDList[%lu]: addr:%#lx, state:%d\n", (*it)->iter, (*it)->addr, int((*it)->state));
+            if((*it)->state == LDState::PREP){
+                if(outstandingLDAddrs.find((*it)->addr) == outstandingLDAddrs.end())
+                {
+                    ldReqIt = it;
+                    break;
+                } // if addr not appears in outstaningLDAddrs, break the loop
+            } // if not PREP, we need to skip this
+        }
+        if(ldReqIt != LDList.end()){
+            printf("LDList[%lu] is chosen.\n", (*ldReqIt)->iter);
         }
         else{
-            stmReq = storeq.front();
-            storeq.pop();
+            printf("No LD chosen\n");
         }
-        break;
-    case LSQPolicy::StoreFirst:
-        if(storeq.empty()){
-            assert(!loadq.empty()); // if loadq is also empty, need to check
-            stmReq = loadq.front();
-            loadq.pop();
+    }
+    
+    if(sendST){
+        for(auto it=STList.begin(); it != STList.end(); it++){
+            printf("STList[%lu]: addr:%#lx, state:%d\n", (*it)->iter, (*it)->addr, int((*it)->state));
+            if((*it)->state == STState::PREP){
+                if(outstandingSTAddrs.find((*it)->addr) == outstandingSTAddrs.end())
+                {
+                    stReqIt = it;
+                    break;
+                } // if addr not appears in outstaningSTAddrs, break the loop
+            } // if not PREP, we need to skip this
+        }
+        if(stReqIt != STList.end()){
+            printf("STList[%lu] is chosen.\n", (*stReqIt)->iter);
         }
         else{
-            stmReq = storeq.front();
-            storeq.pop();
+            printf("No ST chosen\n");
         }
-        break;
-    default:
-        panic("Current LSQ arbitration only supports RoundRobin and StoreFirst\n");
-        break;
     }
-}
 
-void
-StreamMemTest::issueCmd()
-{
+    // meaning in this loop we cannot select an addr
+    if(stReqIt == STList.end() && ldReqIt == LDList.end()){
+        for(auto it = outstandingLDAddrs.begin(); it != outstandingLDAddrs.end(); it++){
+            LDReq* req = (*(*it).second);
+            printf("outstandingLDAddrs[%#lx] = LDReq[%lu](addr:%#lx, state:%d)\n", (*it).first, req->iter, req->addr, int(req->state));
+        }
+        for(auto it = outstandingSTAddrs.begin(); it != outstandingSTAddrs.end(); it++){
+            STReq* req = (*(*it).second);
+            printf("outstandingSTAddrs[%#lx] = STReq[%lu](addr:%#lx, state:%d)\n", (*it).first, req->iter, req->addr, int(req->state));
+        }
+        printf("In tick %lu: Cannot find an available request\n", curTick());
+
+        std::size_t outstandingAddrs = outstandingLDAddrs.size() + outstandingSTAddrs.size();
+
+        // 1) oustandingAddrs is not empty, meaning all PREP requests's addrs are outstanding
+        //    need to wait for response, thus we need to rerun pickCmd until we pick a cmd
+        if(outstandingAddrs != 0){
+            // DPRINTF(StreamTest, "All PREP requests' addrs are outstanding.\n");
+        }
+        // 2) outstandingAddrs is empty, meaning all PREP requests are sent
+        // (a). the last request is sent.  (b). all requests are not PREP.but ld is always PREP.
+        // just wait for response to end this simulation
+        // both situations need us to wait.
+        else{
+            // DPRINTF(StreamTest, "No available requests in PREP state. LDList are all PREP, meaning LDList all sent out and STList wait for LDs.\n");
+        }
+        waitResponse = true;
+        printf("Exit tick %lu with no available addr\n", curTick());
+        return;
+    }
+
     // create a new request
     Request::Flags flags;
-
-    StreamReq stmreq = arbitration(loadq, storeq);
-    
-    RequestPtr req = std::make_shared<Request>(stmreq.addr, 8, flags, requestorId);
-
-    assert(req->getPaddr() == stmreq.addr);
-
-    req->setContext(id);
-    req->setReqInstSeqNum(txSeqNum); // zhiang: TODO: here we test InstSeqNum, maybe changed by controllers downstream, let's see
-
-    outstandingAddrs.insert(stmreq.addr);
-    
     PacketPtr pkt = nullptr;
     double *pkt_data = new double;
 
-    if (stmreq.typ == LSType::LD) {
-        pkt = new Packet(req, MemCmd::ReadReq);
-        pkt->dataDynamic(pkt_data);
-        WaitData waitData = WaitData(it, offset, WaitState::None);
-        waitTable[offset] = waitData; // we choose offset as key since when we receive response we can get offset easily
-        DPRINTF(StreamTest,"Start,%x,R,%x\n",req->getPaddr(), stmreq.data);
-    } else {
+    // second choose a req
+    // current only implement ST goes first
+    if(stReqIt != STList.end()){ // ST goes first
+
+        Addr addr = (*stReqIt)->addr;
+        assert(outstandingSTAddrs.find(addr) == outstandingSTAddrs.end());
+        outstandingSTAddrs[addr] = stReqIt;
+
+        RequestPtr req = std::make_shared<Request>(addr, 8, flags, requestorId);
+        assert(req->getPaddr() == addr);
+
+        req->setContext(id);
+        req->setReqInstSeqNum(txSeqNum); // zhiang: TODO: here we test InstSeqNum, maybe changed by controllers downstream, let's see
+
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
-        *pkt_data = stmreq.data;
-        DPRINTF(StreamTest,"Start,%x,W,%x\n",req->getPaddr(),stmreq.data);
+        *pkt_data = (*stReqIt)->val;
+        DPRINTF(StreamTest,"Start,%#lx,W,%lu\n",req->getPaddr(),(*stReqIt)->val);
+        printf("In tick %lu: send ST[%lu](addr: %#lx, val: %f)\n", curTick(), (*stReqIt)->iter, addr, (*stReqIt)->val);
+    }
+    else {
+        assert(ldReqIt != LDList.end());
+        Addr addr = (*ldReqIt)->addr;
+        assert(outstandingLDAddrs.find(addr) == outstandingLDAddrs.end());
+        outstandingLDAddrs[addr] = ldReqIt;
+
+        RequestPtr req = std::make_shared<Request>(addr, 8, flags, requestorId);
+        assert(req->getPaddr() == addr);
+
+        req->setContext(id);
+        req->setReqInstSeqNum(txSeqNum); // zhiang: TODO: here we test InstSeqNum, maybe changed by controllers downstream, let's see
+
+        pkt = new Packet(req, MemCmd::ReadReq);
+        pkt->dataDynamic(pkt_data);
+        DPRINTF(StreamTest,"Start,%#lx,R,%lu\n",req->getPaddr(), (*ldReqIt)->val);
+        printf("In tick %lu: send LD[%lu](addr: %#lx, val: %f)\n", curTick(), (*ldReqIt)->iter, addr, (*ldReqIt)->val);
     }
     
     // there is no point in ticking if we are waiting for a retry
     bool keep_ticking = sendPkt(pkt);
     if (keep_ticking) {
+        printf("In tick %lu: Scheduled next tick at %lu\n", curTick(), clockEdge(interval));
         // schedule the next tick
         schedule(tickEvent, clockEdge(interval));
 
@@ -327,31 +405,17 @@ StreamMemTest::issueCmd()
         // as we have successfully sent a packet
         reschedule(noRequestEvent, clockEdge(progressCheck), true);
     } else {
+        printf("In tick %lu: waiting for retry\n", curTick());
         DPRINTF(StreamTest, "Waiting for retry\n");
     }
 
     txSeqNum++; // for each transaction,increase 1 to generate a new txSeqNum
-}
-
-void
-StreamMemTest::tick()
-{
-    // we should never tick if we are waiting for a retry
-    assert(!retryPkt);
-    assert(!waitResponse);
-
-    /* Too many outstanding transactions */
-    if ((outstandingAddrs.size() >= maxOutstanding) || (outstandingAddrs.size() >= maxIter)) {
-        waitResponse = true;
-        return;
-    }
-
-    checkRdy();
-    issueCmd();
 
     // Schedule noResponseEvent now if we are not expecting a response
-    if (!noResponseEvent.scheduled() && (outstandingAddrs.size() != 0))
+    if (!noResponseEvent.scheduled() && (outstandingAddrs != 0))
         schedule(noResponseEvent, clockEdge(progressCheck));
+    
+    printf("Exit tick %lu normally\n", curTick());
 }
 
 void

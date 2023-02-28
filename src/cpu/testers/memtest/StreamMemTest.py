@@ -48,10 +48,10 @@ class StreamMemTest(ClockedObject):
 
     id = Param.Counter(0, "ID of the cpu")
     num_cpus = Param.Counter(1, "Total number of CPUs")
-    max_iter = Param.Counter(1, "Number of loads to execute before exiting")
+    maxloads = Param.Counter(1, "Number of loads to execute before exiting")
     max_outstanding = Param.UInt64(0, "Maximum outstanding request")
     ws_size = Param.UInt64(0, "Size of working set")
-    lsq_policy = Param.UInt8(0, "round robin by default")
+    arbi_policy = Param.UInt8(0, "round robin by default")
  
     addr_a = Param.Addr(0x0, "starting address of array A")
     addr_b = Param.Addr(0x0, "starting address of array B")
@@ -62,7 +62,7 @@ class StreamMemTest(ClockedObject):
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses
     interval = Param.Cycles(1, "Interval between request packets")
-    progress_interval = Param.Counter(1000000,
+    progress_interval = Param.Counter(1,
         "Progress report interval (in accesses)")
     progress_check = Param.Cycles(5000000, "Cycles before exiting " \
                                       "due to lack of progress")
