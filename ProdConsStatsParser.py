@@ -1,5 +1,6 @@
 import re 
 import os
+import json
 import argparse
 import numpy as np
 import pprint as pp
@@ -73,7 +74,7 @@ def parseReadWriteTxn(logfile,dumpfile):
             else :
                 print(f'{k},{StartTime},,{Addr},{ReqCount}',file=fw)
 
-def get1P1CStats(statsFile):
+def get1P1CStats(statsFile,options):
     dX2=pd.read_csv(statsFile)
     dX2.dropna(inplace=True)
     dX=dX2.query(f'ReqCount <= 1')
@@ -84,11 +85,25 @@ def get1P1CStats(statsFile):
     totalCyc=endTime-startTime
     avgLat=dX['lat'].mean()
     minLat=dX['lat'].min()
+    medLat=dX['lat'].median()
     maxLat=dX['lat'].max()
     bw=(numReads*64)/totalCyc
-    print(f'numReads={numReads},totalCyc={totalCyc},Bandwidth={bw}')
-    print(f'Lat=({minLat,avgLat,maxLat})')
-    return (startTime,endTime)
+    retDict=dict({
+        'bench_name': options.bench_name,
+        'link_bw': options.link_bw,
+        'prod_id': options.chs_prod_id,
+        'cons_id':  options.chs_cons_id,
+        'num_consumers': options.chs_num_consumers,
+        'num_pairs': options.chs_num_pairs,
+        'inj_interval': options.inj_rate,
+        'dct': options.dct,
+        'bw': bw,
+        'min_lat': minLat,
+        'avg_lat': avgLat,
+        'med_lat': medLat,
+        'max_lat': maxLat
+    })
+    return retDict
 
 def getMsgTrace(msgTraceFile,msgCSVFile):
     tickPerCyc=500
@@ -112,25 +127,21 @@ def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--input', required=True, type=str)
     parser.add_argument('--output',required=True, type=str)
+    parser.add_argument('--dct',required=True)
+    parser.add_argument('--link-bw',required=True,type=int)
+    parser.add_argument('--inj-rate',required=True,type=int)
+    parser.add_argument('--bench-name',required=True,type=str)
+    parser.add_argument('--chs-prod-id',default=-1,type=int)
+    parser.add_argument('--chs-cons-id',default=-1,type=int)
+    parser.add_argument('--chs-num-pairs',default=-1,type=int)
+    parser.add_argument('--chs-num-consumers',default=-1,type=int)
     options = parser.parse_args()
     msgPerfDumFile=os.path.join(options.input,'AllMsgLatDump.csv')
     allMsgLog=os.path.join(options.input,'simple.trace')
-    # bottleNeckInfoFile=os.path.join(options.output, 'bottleneck.csv')
-    # msgTraceFile=os.path.join(options.input,'txsn1.txt')
-    # statsFile=os.path.join(options.input,'profile_stat.csv')
-    # link_log=os.path.join(options.input,'link.log')
-    # msgCSVFile=os.path.join(options.output,'MsgTrace.csv')
-    # bestBottleNeckAnalyses=os.path.join(options.output,'SortedBottleneck.csv')
-    # getMsgTrace(msgTraceFile,msgCSVFile)
     parseReadWriteTxn(allMsgLog,msgPerfDumFile)
-    # parseLinkLog(link_log, bottleNeckInfoFile)
     if os.path.isfile(msgPerfDumFile):
-        get1P1CStats(msgPerfDumFile)
-        
-    #     bX=pd.read_csv(bottleNeckInfoFile,index_col=False)
-    #     bX3=bX.query(f'CurCyc >= @startTime').sort_values(by='StallTime',ascending=False)
-    #     bX3.groupby(by=[''])
-        # bX3.to_csv(bestBottleNeckAnalyses,index=False)
+        retDict=get1P1CStats(msgPerfDumFile,options)
+        print(json.dumps(retDict))
 
 
 if __name__=="__main__":
