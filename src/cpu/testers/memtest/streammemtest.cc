@@ -45,6 +45,7 @@
 #include "base/statistics.hh"
 #include "base/trace.hh"
 #include "debug/StreamTest.hh"
+#include "debug/StreamDBG.hh"
 #include "sim/sim_exit.hh"
 #include "sim/stats.hh"
 #include "sim/system.hh"
@@ -171,13 +172,8 @@ StreamMemTest::completeRequest(PacketPtr pkt, bool functional)
 
             std::list<LDReq*>::iterator ldReqIt = remove_addr->second;
 
-            printf("In tick %lu: Recv response for LDReq[%lu](addr:%#lx, state:%d), updated outstandingLDAddrs:\n", curTick(), (*ldReqIt)->iter, (*ldReqIt)->addr, int((*ldReqIt)->state));
+            DPRINTF(StreamDBG,"Recv response for LDReq[%lu](addr:%#lx, state:%d), updated outstandingLDAddrs:\n", (*ldReqIt)->iter, (*ldReqIt)->addr, int((*ldReqIt)->state));
             outstandingLDAddrs.erase(remove_addr);
-
-            for(auto it = outstandingLDAddrs.begin(); it != outstandingLDAddrs.end(); it++){
-                LDReq* req = (*(*it).second);
-                printf("outstandingLDAddrs[%#lx] = LDReq[%lu](addr:%#lx, state:%d)\n", (*it).first, req->iter, req->addr, int(req->state));
-            }
             
             (*ldReqIt)->wakeupST(*pkt_data);
             LDList.erase(ldReqIt); // TODO: here we directly copy data to ST and thus can delete LD. Otherwise need to wait for ST to delete LD
@@ -197,14 +193,9 @@ StreamMemTest::completeRequest(PacketPtr pkt, bool functional)
 
             std::list<STReq*>::iterator stReqIt = remove_addr->second;
 
-            printf("In tick %lu: Recv response for STReq[%lu](addr:%#lx, state:%d), updated outstandingSTAddrs:\n", curTick(), (*stReqIt)->iter, (*stReqIt)->addr, int((*stReqIt)->state));
+            DPRINTF(StreamDBG, "Recv response for STReq[%lu](addr:%#lx, state:%d), updated outstandingSTAddrs:\n", (*stReqIt)->iter, (*stReqIt)->addr, int((*stReqIt)->state));
             outstandingSTAddrs.erase(remove_addr);
             
-
-            for(auto it = outstandingSTAddrs.begin(); it != outstandingSTAddrs.end(); it++){
-                STReq* req = (*(*it).second);
-                printf("outstandingSTAddrs[%#lx] = STReq[%lu](addr:%#lx, state:%d)\n", (*it).first, req->iter, req->addr, int(req->state));
-            }
             
             STList.erase(stReqIt); // TODO: here we directly copy data to ST and thus can delete LD. Otherwise need to wait for ST to delete LD
             delete (*stReqIt);
@@ -218,9 +209,19 @@ StreamMemTest::completeRequest(PacketPtr pkt, bool functional)
             if (numIters >= maxIters) {
                 // sanity check
                 assert(STList.empty() && LDList.empty());
-                printf("in tick %lu: Reach MaxLoads, maxLoad:%lu, numReads:%lu numWrites:%lu \n", curTick(), maxIters, numReads, numWrites);
+                DPRINTF(StreamDBG, "Reach MaxLoads, maxLoad:%lu, numReads:%lu numWrites:%lu \n", maxIters, numReads, numWrites);
                 exitSimLoop("maximum number of loads/stores reached");
             }
+        }
+
+        for(auto it = outstandingLDAddrs.begin(); it != outstandingLDAddrs.end(); it++){
+            LDReq* req = (*(*it).second);
+            DPRINTF(StreamDBG, "outstandingLDAddrs[%#lx] = LDReq[%lu](addr:%#lx, state:%d)\n", (*it).first, req->iter, req->addr, int(req->state));
+        }
+
+        for(auto it = outstandingSTAddrs.begin(); it != outstandingSTAddrs.end(); it++){
+            STReq* req = (*(*it).second);
+            DPRINTF(StreamDBG, "outstandingSTAddrs[%#lx] = STReq[%lu](addr:%#lx, state:%d)\n", (*it).first, req->iter, req->addr, int(req->state));
         }
     }
 
@@ -255,7 +256,7 @@ StreamMemTest::MemTestStats::MemTestStats(statistics::Group *parent)
 void
 StreamMemTest::tick()
 {
-    printf("Enter tick %lu\n", curTick());
+    DPRINTF(StreamDBG, "Enter tick %lu\n", curTick());
     // we should never tick if we are waiting for a retry
     assert(!retryPkt);
     assert(!waitResponse);
@@ -271,7 +272,7 @@ StreamMemTest::tick()
 
     if ((outstandingAddrs >= maxOutstanding) || (!sendST && !sendLD)) {
         waitResponse = true;
-        printf("Exit tick %lu with too many outstanding\n", curTick());
+        DPRINTF(StreamDBG, "Exit tick %lu with too many outstanding\n", curTick());
         return;
     }
 
@@ -280,11 +281,11 @@ StreamMemTest::tick()
     std::list<STReq*>::iterator stReqIt = STList.end();
     std::list<LDReq*>::iterator ldReqIt = LDList.end();
 
-    printf("In tick %lu: sendLD=%d sendST=%d\n",curTick(), sendLD, sendST);
+    DPRINTF(StreamDBG, "sendLD=%d sendST=%d\n", sendLD, sendST);
     
     if(sendLD){
         for(auto it=LDList.begin(); it != LDList.end(); it++){
-            printf("LDList[%lu]: addr:%#lx, state:%d\n", (*it)->iter, (*it)->addr, int((*it)->state));
+            DPRINTF(StreamDBG, "LDList[%lu]: addr:%#lx, state:%d\n", (*it)->iter, (*it)->addr, int((*it)->state));
             if((*it)->state == LDState::PREP){
                 if(outstandingLDAddrs.find((*it)->addr) == outstandingLDAddrs.end())
                 {
@@ -294,16 +295,16 @@ StreamMemTest::tick()
             } // if not PREP, we need to skip this
         }
         if(ldReqIt != LDList.end()){
-            printf("LDList[%lu] is chosen.\n", (*ldReqIt)->iter);
+            DPRINTF(StreamDBG, "LDList[%lu] is chosen.\n", (*ldReqIt)->iter);
         }
         else{
-            printf("No LD chosen\n");
+            DPRINTF(StreamDBG, "No LD chosen\n");
         }
     }
     
     if(sendST){
         for(auto it=STList.begin(); it != STList.end(); it++){
-            printf("STList[%lu]: addr:%#lx, state:%d\n", (*it)->iter, (*it)->addr, int((*it)->state));
+            DPRINTF(StreamDBG, "STList[%lu]: addr:%#lx, state:%d\n", (*it)->iter, (*it)->addr, int((*it)->state));
             if((*it)->state == STState::PREP){
                 if(outstandingSTAddrs.find((*it)->addr) == outstandingSTAddrs.end())
                 {
@@ -313,10 +314,10 @@ StreamMemTest::tick()
             } // if not PREP, we need to skip this
         }
         if(stReqIt != STList.end()){
-            printf("STList[%lu] is chosen.\n", (*stReqIt)->iter);
+            DPRINTF(StreamDBG, "STList[%lu] is chosen.\n", (*stReqIt)->iter);
         }
         else{
-            printf("No ST chosen\n");
+            DPRINTF(StreamDBG, "No ST chosen\n");
         }
     }
 
@@ -324,17 +325,17 @@ StreamMemTest::tick()
     if(stReqIt == STList.end() && ldReqIt == LDList.end()){
         for(auto it = outstandingLDAddrs.begin(); it != outstandingLDAddrs.end(); it++){
             LDReq* req = (*(*it).second);
-            printf("outstandingLDAddrs[%#lx] = LDReq[%lu](addr:%#lx, state:%d)\n", (*it).first, req->iter, req->addr, int(req->state));
+            DPRINTF(StreamDBG, "outstandingLDAddrs[%#lx] = LDReq[%lu](addr:%#lx, state:%d)\n", (*it).first, req->iter, req->addr, int(req->state));
         }
         for(auto it = outstandingSTAddrs.begin(); it != outstandingSTAddrs.end(); it++){
             STReq* req = (*(*it).second);
-            printf("outstandingSTAddrs[%#lx] = STReq[%lu](addr:%#lx, state:%d)\n", (*it).first, req->iter, req->addr, int(req->state));
+            DPRINTF(StreamDBG, "outstandingSTAddrs[%#lx] = STReq[%lu](addr:%#lx, state:%d)\n", (*it).first, req->iter, req->addr, int(req->state));
         }
-        printf("In tick %lu: Cannot find an available request\n", curTick());
+        DPRINTF(StreamDBG, "Cannot find an available request\n");
 
         std::size_t outstandingAddrs = outstandingLDAddrs.size() + outstandingSTAddrs.size();
 
-        // 1) oustandingAddrs is not empty, meaning all PREP requests's addrs are outstanding
+        // 1) outstandingAddrs is not empty, meaning all PREP requests's addrs are outstanding
         //    need to wait for response, thus we need to rerun pickCmd until we pick a cmd
         if(outstandingAddrs != 0){
             // DPRINTF(StreamTest, "All PREP requests' addrs are outstanding.\n");
@@ -347,7 +348,7 @@ StreamMemTest::tick()
             // DPRINTF(StreamTest, "No available requests in PREP state. LDList are all PREP, meaning LDList all sent out and STList wait for LDs.\n");
         }
         waitResponse = true;
-        printf("Exit tick %lu with no available addr\n", curTick());
+        DPRINTF(StreamDBG, "Exit with no available addr\n");
         return;
     }
 
@@ -374,7 +375,7 @@ StreamMemTest::tick()
         pkt->dataDynamic(pkt_data);
         *pkt_data = (*stReqIt)->val;
         DPRINTF(StreamTest,"Start,%#lx,W,%lu\n",req->getPaddr(),(*stReqIt)->val);
-        printf("In tick %lu: send ST[%lu](addr: %#lx, val: %f)\n", curTick(), (*stReqIt)->iter, addr, (*stReqIt)->val);
+        DPRINTF(StreamDBG, "send ST[%lu](addr: %#lx, val: %f)\n", (*stReqIt)->iter, addr, (*stReqIt)->val);
     }
     else {
         assert(ldReqIt != LDList.end());
@@ -391,13 +392,13 @@ StreamMemTest::tick()
         pkt = new Packet(req, MemCmd::ReadReq);
         pkt->dataDynamic(pkt_data);
         DPRINTF(StreamTest,"Start,%#lx,R,%lu\n",req->getPaddr(), (*ldReqIt)->val);
-        printf("In tick %lu: send LD[%lu](addr: %#lx, val: %f)\n", curTick(), (*ldReqIt)->iter, addr, (*ldReqIt)->val);
+        DPRINTF(StreamDBG, "Send LD[%lu](addr: %#lx, val: %f)\n", (*ldReqIt)->iter, addr, (*ldReqIt)->val);
     }
     
     // there is no point in ticking if we are waiting for a retry
     bool keep_ticking = sendPkt(pkt);
     if (keep_ticking) {
-        printf("In tick %lu: Scheduled next tick at %lu\n", curTick(), clockEdge(interval));
+        DPRINTF(StreamDBG, "Scheduled next tick at %lu\n", clockEdge(interval));
         // schedule the next tick
         schedule(tickEvent, clockEdge(interval));
 
@@ -405,7 +406,7 @@ StreamMemTest::tick()
         // as we have successfully sent a packet
         reschedule(noRequestEvent, clockEdge(progressCheck), true);
     } else {
-        printf("In tick %lu: waiting for retry\n", curTick());
+        DPRINTF(StreamDBG, "Waiting for retry\n");
         DPRINTF(StreamTest, "Waiting for retry\n");
     }
 
@@ -415,7 +416,7 @@ StreamMemTest::tick()
     if (!noResponseEvent.scheduled() && (outstandingAddrs != 0))
         schedule(noResponseEvent, clockEdge(progressCheck));
     
-    printf("Exit tick %lu normally\n", curTick());
+    DPRINTF(StreamDBG, "Exit normally\n");
 }
 
 void

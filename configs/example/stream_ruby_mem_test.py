@@ -133,8 +133,6 @@ if args.mem_test_type=='stream_test':
     assert ws_size >= min_ws_size, f'working set is too small, should be larger than 4*num_llc*l3size:{min_ws_size}!'
     req_mem_size = 3*ws_size
     assert mem_size >= req_mem_size, "mem size is too small!"
-
-    ws_size = 128
     
     logging.info(f'eventual ws_size:{ws_size}')
     MemTestClass=StreamMemTest

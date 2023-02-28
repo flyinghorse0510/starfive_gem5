@@ -45,6 +45,7 @@
 #include <unordered_set>
 #include <list>
 #include "base/trace.hh"
+#include "debug/StreamDBG.hh"
 #include "base/statistics.hh"
 #include "mem/port.hh"
 #include "params/StreamMemTest.hh"
@@ -94,7 +95,7 @@ public:
   STState state;
 
   void wakeup(Addr addr, double data){
-    printf("In ST[%lu].wakeup: state:%d, addr:%lu, data:%f\n", iter, int(state), addr, data);
+    DPRINTF(StreamDBG, "In ST[%lu].wakeup: state:%d, addr:%lu, data:%f\n", iter, int(state), addr, data);
     if(addr>=addr_b && addr<addr_b+wsSize)
     {
       b = data;
@@ -122,14 +123,14 @@ public:
     // TODO: here prepare to send out st req
     if(state == STState::PREP){
       val = b + c*1.0;
-      printf("In ST[%lu].wakeup: PREP to send, val:%f\n", iter, val);
+      DPRINTF(StreamDBG, "In ST[%lu].wakeup: PREP to send, val:%f\n", iter, val);
     }
   }
 
   STReq(uint64_t iter, double val, Addr addr, Addr addr_b, Addr addr_c, uint64_t wsSize, STState state)
       :STMReq(iter, val, addr), state(state), b(0), c(0), addr_b(addr_b), addr_c(addr_c), wsSize(wsSize)
   {
-    printf("STReq[%lu](%p) ctor, val:%f, addr:%#lx, state:%d\n", iter, this, val, addr, int(state));
+    DPRINTF(StreamDBG, "STReq[%lu](%p) ctor, val:%f, addr:%#lx, state:%d\n", iter, this, val, addr, int(state));
   }
 };
 
@@ -145,7 +146,7 @@ public:
     LDReq(uint64_t iter, double val, Addr addr, LDState state, STReq* streq)
         :STMReq(iter, val, addr), state(state), streq(streq)
     {
-      printf("LDReq[%lu](%p) ctor, val:%f, addr:%#lx, state:%d, streq:%p\n", iter, this, val, addr, int(state), streq);
+      DPRINTF(StreamDBG, "LDReq[%lu](%p) ctor, val:%f, addr:%#lx, state:%d, streq:%p\n", iter, this, val, addr, int(state), streq);
     }
 };
 
