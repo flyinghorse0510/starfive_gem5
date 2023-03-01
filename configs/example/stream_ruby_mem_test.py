@@ -62,12 +62,14 @@ parser.add_argument("--mem-test-type",type=str,default='bw_test',help="The type 
 parser.add_argument("--size-ws",type=int,default=1024,help='Working set size in bytes. Must be a multiple of Cacheline size')
 parser.add_argument("--num-producers",type=int,default=1,help='Number of producer')
 parser.add_argument("--enable-DMT", default=False, help="enable DMT")
+parser.add_argument("--enable-DCT", default=False, help="enable DCT")
 parser.add_argument("--num-HNF-TBE", default=16, help="number of oustanding in HN-F")
 parser.add_argument("--num_HNF_ReplTBE", default=16, help="number of replacement oustanding in HN-F")
 parser.add_argument("--num_trans_per_cycle_llc", default=4, help="number of transitions per cycle in HN-F")
 parser.add_argument("--num-SNF-TBE", default=32, help="number of oustanding in HN-F")
 parser.add_argument("--addr-intrlvd-or-tiled",default=False,help="If true the address partitioning across CPUs is interleaved (like [0-N-2N;1-N+1-2N+1;...]). Otherwise Tiled [0:N-1,N:2N-1]")
 parser.add_argument("--sequencer-outstanding-requests",type=int,default=32,help="Max outstanding sequencer requests")
+parser.add_argument("--inj-interval",default=1,type=int,help="The interval between request packets")
 
 #
 # Add the ruby specific and protocol specific options
@@ -138,7 +140,7 @@ if args.mem_test_type=='stream_test':
     MemTestClass=StreamMemTest
 
 else:
-    logging.critical(f'Test name not found: {args.mem_test_type}! Current support tests: triad_test')
+    logging.critical(f'Test name not found: {args.mem_test_type}! Current support tests: stream_test')
 
 if args.num_cpus > 0 :
     cpus = [ MemTestClass(id = i, num_cpus = args.num_cpus, maxloads = args.maxloads, 

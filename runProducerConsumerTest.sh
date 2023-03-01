@@ -171,59 +171,59 @@ if [ "$C2CMBW" != "" ]; then
   WKSETLIST=(65536)
   OUTPUT_PREFIX="PRODCONS_1PMC_BW_INJRATE"
   
-  # for DCT in ${DCT_CONFIGS[@]}; do
-  #   for LOC_PROD in ${PRODUCER_SET_CONFIGS[@]}; do
-  #     for NUM_CONS in ${NUM_CONSUMER_SET_CONFIGS[@]}; do
-  #         for WKSET in ${WKSETLIST[@]}; do
-  #           for LINK_BW in ${LINK_BW_CONFIGS[@]}; do
-  #             for INJ_INTERVAL in ${INJ_INTERVAL_CONFIGS[@]}; do
-  #               OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_LINKBW${LINK_BW}_Core${NUM_CPUS}_Prod${LOC_PROD}_NumCons${NUM_CONS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}_INJRATE_${INJ_INTERVAL}"
-  #               mkdir -p $OUTPUT_DIR
-  #               $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
-  #                  --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
-  #                  -d $OUTPUT_DIR \
-  #                  ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
-  #                  --ruby \
-  #                  --num-dirs=${NUM_MEM} \
-  #                  --num-l3caches=${NUM_LLC} \
-  #                  --l1d_size=${l1d_size} \
-  #                  --l1i_size=${l1i_size} \
-  #                  --l2_size=${l2_size} \
-  #                  --l3_size=${l3_size} \
-  #                  --l1d_assoc=${l1d_assoc} \
-  #                  --l1i_assoc=${l1i_assoc} \
-  #                  --l2_assoc=${l2_assoc} \
-  #                  --l3_assoc=${l3_assoc} \
-  #                  --network=${NETWORK} \
-  #                  --topology=CustomMesh \
-  #                  --simple-link-bw-factor=${LINK_BW} \
-  #                  --simple-physical-channels \
-  #                  --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
-  #                  --mem-size="16GB" \
-  #                  --mem-type=DDR4_3200_8x8 \
-  #                  --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
-  #                  --mem-test-type='prod_cons_test' \
-  #                  --inj-interval=${INJ_INTERVAL} \
-  #                  --disable-gclk-set \
-  #                  --enable-DMT=False \
-  #                  --enable-DCT=${DCT} \
-  #                  --num_trans_per_cycle_llc=4 \
-  #                  --addr-intrlvd-or-tiled=True \
-  #                  --bench-c2cbw-mode=True \
-  #                  --maxloads=${MAXNUMLOADS} \
-  #                  --size-ws=${WKSET} \
-  #                  --num-cpus=${NUM_CPUS} \
-  #                  --sequencer-outstanding-requests=32 \
-  #                  --chs-1pMc \
-  #                  --chs-1p-MSharers=${NUM_CONS} \
-  #                  --chs-prod-id=${LOC_PROD} &
-  #               done
-  #           done
-  #         done
-  #     done
-  #   done
-  # done
-  # wait
+  for DCT in ${DCT_CONFIGS[@]}; do
+    for LOC_PROD in ${PRODUCER_SET_CONFIGS[@]}; do
+      for NUM_CONS in ${NUM_CONSUMER_SET_CONFIGS[@]}; do
+          for WKSET in ${WKSETLIST[@]}; do
+            for LINK_BW in ${LINK_BW_CONFIGS[@]}; do
+              for INJ_INTERVAL in ${INJ_INTERVAL_CONFIGS[@]}; do
+                OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_LINKBW${LINK_BW}_Core${NUM_CPUS}_Prod${LOC_PROD}_NumCons${NUM_CONS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}_INJRATE_${INJ_INTERVAL}"
+                mkdir -p $OUTPUT_DIR
+                $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
+                   --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
+                   -d $OUTPUT_DIR \
+                   ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
+                   --ruby \
+                   --num-dirs=${NUM_MEM} \
+                   --num-l3caches=${NUM_LLC} \
+                   --l1d_size=${l1d_size} \
+                   --l1i_size=${l1i_size} \
+                   --l2_size=${l2_size} \
+                   --l3_size=${l3_size} \
+                   --l1d_assoc=${l1d_assoc} \
+                   --l1i_assoc=${l1i_assoc} \
+                   --l2_assoc=${l2_assoc} \
+                   --l3_assoc=${l3_assoc} \
+                   --network=${NETWORK} \
+                   --topology=CustomMesh \
+                   --simple-link-bw-factor=${LINK_BW} \
+                   --simple-physical-channels \
+                   --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
+                   --mem-size="16GB" \
+                   --mem-type=DDR4_3200_8x8 \
+                   --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
+                   --mem-test-type='prod_cons_test' \
+                   --inj-interval=${INJ_INTERVAL} \
+                   --disable-gclk-set \
+                   --enable-DMT=False \
+                   --enable-DCT=${DCT} \
+                   --num_trans_per_cycle_llc=4 \
+                   --addr-intrlvd-or-tiled=True \
+                   --bench-c2cbw-mode=True \
+                   --maxloads=${MAXNUMLOADS} \
+                   --size-ws=${WKSET} \
+                   --num-cpus=${NUM_CPUS} \
+                   --sequencer-outstanding-requests=32 \
+                   --chs-1pMc \
+                   --chs-1p-MSharers=${NUM_CONS} \
+                   --chs-prod-id=${LOC_PROD} &
+                done
+            done
+          done
+      done
+    done
+  done
+  wait
 
   for DCT in ${DCT_CONFIGS[@]}; do
     for LOC_PROD in ${PRODUCER_SET_CONFIGS[@]}; do
@@ -242,8 +242,8 @@ if [ "$C2CMBW" != "" ]; then
                              --link-bw=${LINK_BW} \
                              --inj-rate=${INJ_INTERVAL} \
                              --bench-name='chs-1pMc' \
-                             --chs-num-consumers=${NUM_CONS} # >> "${OUTPUT_ROOT}/Summary.json"
-                # echo "," >> "${OUTPUT_ROOT}/Summary.json"
+                             --chs-num-consumers=${NUM_CONS} >> "${OUTPUT_ROOT}/Summary.json"
+                echo "," >> "${OUTPUT_ROOT}/Summary.json"
               fi
             done
           done
@@ -335,9 +335,9 @@ if [ "$MC2CBW" != "" ]; then
   done
 fi
 
-# head -n -1 ${OUTPUT_ROOT}/Summary.json > ${OUTPUT_ROOT}/Summary2.json # Remove the last comma
-# echo "]" >> ${OUTPUT_ROOT}/Summary2.json
-# ${PY3} getCsvFromJson.py \
-#        --input=${OUTPUT_ROOT}/Summary2.json \
-#        --output=${OUTPUT_ROOT}/Summary.csv
-# rm ${OUTPUT_ROOT}/Summary2.json ${OUTPUT_ROOT}/Summary.json
+head -n -1 ${OUTPUT_ROOT}/Summary.json > ${OUTPUT_ROOT}/Summary2.json # Remove the last comma
+echo "]" >> ${OUTPUT_ROOT}/Summary2.json
+${PY3} getCsvFromJson.py \
+       --input=${OUTPUT_ROOT}/Summary2.json \
+       --output=${OUTPUT_ROOT}/Summary.csv
+rm ${OUTPUT_ROOT}/Summary2.json ${OUTPUT_ROOT}/Summary.json
