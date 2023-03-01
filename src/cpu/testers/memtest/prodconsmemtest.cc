@@ -373,10 +373,8 @@ ProdConsMemTest::tick()
             /* Wait for all writes to finish before generating a read*/
             schedule(tickEvent, clockEdge(interval));
             reschedule(noRequestEvent, clockEdge(progressCheck), true);
-            // DPRINTF(ProdConsMemLatTest,"Reader waiting for %d/%d\n",numProdCompleted,numPeerProducers);
             return;
         }
-        // DPRINTF(ProdConsMemLatTest,"All producers finished generating\n");
         assert(writeValsQ.find(id) != writeValsQ.end());
 
         /* The entire working set is outstanding*/
