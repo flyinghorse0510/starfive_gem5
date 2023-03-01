@@ -210,3 +210,4 @@ class SeqMemTest : public ClockedObject
 } // namespace gem5
 
 #endif // __CPU_MEMTEST_MEMTEST_HH__
+

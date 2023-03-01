@@ -393,6 +393,7 @@ if __name__ == '__main__':
     parser.add_argument('--linkwidth', required=True, type=int)
     parser.add_argument('--print', required=False,type=str,default='cpu,ddr,llc',help='choose what to print from [cpu,l1d,l1i,l2,llc,ddr] with comma as delimiter. e.g. --print cpu,llc will only print cpu and llc. default options is cpu,llc,ddr')
     parser.add_argument('--print_path', required=False, default=False, type=ast.literal_eval)
+    parser.add_argument('--injintv', required=True, type=int)
 
     args = parser.parse_args()
     cpus = [CPU(i) for i in range(args.num_cpu)]
@@ -445,9 +446,9 @@ if __name__ == '__main__':
     if not os.path.getsize('throughput.txt'):
         with open('throughput.txt', 'w') as f:
             if args.print_path:
-                f.write(f'{"CPU":^8}{"LLC":^8}{"DDR":^8}{"DMT":^8}{"TRANS":^8}{"SNF_TBE":^8}{"LINKWIDTH":^16}{"READ(B)":^16}{"WRITE(B)":16}{"TICK(ps)":^16}{"THROUGHPUT(GB/s)":^16}{"HNF_RETRY_ACK:":^16}{"SNF_RETRY_MSG":^16}{"PATH"}\n')
+                f.write(f'{"CPU":^8}{"LLC":^8}{"DDR":^8}{"DMT":^8}{"TRANS":^8}{"SNF_TBE":^8}{"LINKWD":^8}{"INJINTV":^8}{"READ(B)":^16}{"WRITE(B)":16}{"TICK(ps)":^16}{"THROUGHPUT(GB/s)":^16}{"HNF_RETRY_ACK:":^16}{"SNF_RETRY_MSG":^16}{"PATH"}\n')
             else:
-                f.write(f'{"CPU":^8}{"LLC":^8}{"DDR":^8}{"DMT":^8}{"TRANS":^8}{"SNF_TBE":^8}{"LINKWIDTH":^16}{"READ(B)":^16}{"WRITE(B)":16}{"TICK(ps)":^16}{"THROUGHPUT(GB/s)":^16}{"HNF_RETRY_ACK:":^16}{"SNF_RETRY_MSG":^16}\n')
+                f.write(f'{"CPU":^8}{"LLC":^8}{"DDR":^8}{"DMT":^8}{"TRANS":^8}{"SNF_TBE":^8}{"LINKWD":^8}{"INJINTV":^8}{"READ(B)":^16}{"WRITE(B)":16}{"TICK(ps)":^16}{"THROUGHPUT(GB/s)":^16}{"HNF_RETRY_ACK:":^16}{"SNF_RETRY_MSG":^16}\n')
     
     cpu_read_byte, cpu_write_byte, throughput = gen_throughput(cpus)
     total_snf_remsg = reduce(lambda x,y:x+y, [snf.remsg for snf in snfs])
@@ -455,8 +456,8 @@ if __name__ == '__main__':
     
     with open('throughput.txt', 'a+') as f:
         if args.print_path:
-            f.write(f'{args.num_cpu:^8}{args.num_llc:^8}{args.num_ddr:^8}{args.dmt:^8}{args.trans:^8}{args.snf_tbe:^8}{args.linkwidth:^16}{cpu_read_byte:^16}{cpu_write_byte:^16}{tick:^16}{throughput:^16}{total_hnf_reack:^16}{total_snf_remsg:^16}{args.input}\n')
+            f.write(f'{args.num_cpu:^8}{args.num_llc:^8}{args.num_ddr:^8}{args.dmt:^8}{args.trans:^8}{args.snf_tbe:^8}{args.linkwidth:^8}{args.injintv:^8}{cpu_read_byte:^16}{cpu_write_byte:^16}{tick:^16}{throughput:^16}{total_hnf_reack:^16}{total_snf_remsg:^16}{args.input}\n')
         else:
-            f.write(f'{args.num_cpu:^8}{args.num_llc:^8}{args.num_ddr:^8}{args.dmt:^8}{args.trans:^8}{args.snf_tbe:^8}{args.linkwidth:^16}{cpu_read_byte:^16}{cpu_write_byte:^16}{tick:^16}{throughput:^16}{total_hnf_reack:^16}{total_snf_remsg:^16}\n')
+            f.write(f'{args.num_cpu:^8}{args.num_llc:^8}{args.num_ddr:^8}{args.dmt:^8}{args.trans:^8}{args.snf_tbe:^8}{args.linkwidth:^8}{args.injintv:^8}{cpu_read_byte:^16}{cpu_write_byte:^16}{tick:^16}{throughput:^16}{total_hnf_reack:^16}{total_snf_remsg:^16}\n')
     
     print(f'written to ./throughput.txt')

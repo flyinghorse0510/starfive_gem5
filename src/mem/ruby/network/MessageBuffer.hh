@@ -123,8 +123,11 @@ class MessageBuffer : public SimObject
 
     const MsgPtr &peekMsgPtr() const { return m_prio_heap.front(); }
 
-    void txntrace_print(MsgPtr message, const Tick& arrival_time);
+    void profileRetry(MsgPtr message);
+    void txntrace_print(MsgPtr message, const Tick& arrival_time, const bool arrivalOrDep);
     void enqueue(MsgPtr message, Tick curTime, Tick delta);
+
+    std::string getCHITypeStr(const MsgPtr& message);
 
     // Defer enqueueing a message to a later cycle by putting it aside and not
     // enqueueing it in this cycle
@@ -285,6 +288,7 @@ class MessageBuffer : public SimObject
     statistics::Scalar m_not_avail_count;
     statistics::Scalar m_msg_count;
     statistics::Average m_buf_msgs;
+    statistics::Scalar m_retry_msgs; //chi retry
     statistics::Scalar m_stall_time;
     statistics::Scalar m_stall_count;
     statistics::Formula m_avg_stall_time;

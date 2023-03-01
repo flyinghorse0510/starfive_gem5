@@ -209,7 +209,7 @@ fi
 #NUM_CPU_SET=(1) # = #2 #4 #16
 
 #Multi Core
-NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
+NUM_CPU_SET=(1) #(1 2 4 8 16) # = #2 #4 #16
 #NUM_CPU_SET=(16) # = #2 #4 #16
 
 
@@ -276,15 +276,16 @@ if [ "$RUN1" != "" ]; then
               --num-HNF-TBE=${HNF_TBE}  \
               --num-SNF-TBE=${SNF_TBE}  \
               --num_trans_per_cycle_llc=${TRANS} \
-              --num-cpus=${NUMCPUS} \
-              --num-producers=1 &
-       grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
-       grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
+              --inj-interval=20 \
+              --num-cpus=${NUMCPUS} &
+              # grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
+              # grep -rwI -e 'system\.cpu1' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu1.trace
            done
          done
        done
      done
    done
+  wait
 fi
 
   if [ "$ANALYSIS" != "" ]; then

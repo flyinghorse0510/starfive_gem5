@@ -197,7 +197,7 @@ l1d_assoc=8
 l1i_assoc=8
 l2_assoc=8
 l3_assoc=16
-NUM_LLC=4
+NUM_LLC=16
 NETWORK="simple" #"garnet" #"simple"
 
 #DMT_Config=(True False)
@@ -219,7 +219,7 @@ DEBUG_FLAGS=PseudoInst
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEMBW"
 fi
 
-DMT_Config=(False) #(True False)
+DMT_Config=(True False) #(True False)
 ##NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
 
 NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
@@ -248,9 +248,9 @@ NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
 #NUM_DDR_SIDE_SET=(1 2)
 
 #Memory Retry Test
-NUM_MEM_SET=(8)
-NUM_DDR_XP_SET=(4)
-NUM_DDR_SIDE_SET=(2)
+NUM_MEM_SET=(2 4)
+NUM_DDR_XP_SET=(2)
+NUM_DDR_SIDE_SET=(1)
 
 ##Memory location exploration
 #NUM_DDR_XP_SET=(2 4)
@@ -262,7 +262,7 @@ TRANS_SET=(4)
 HNF_TBE=32
 SNF_TBE_SET=(32) #(32 64) #(32)
 SEQ_TBE=32 #1
-NUM_LOAD_SET=(10)
+#NUM_LOAD_SET=(80000)
 
 #Network/Garnet
 LINKWIDTH_SET=(256) #(128 256 512)
@@ -273,14 +273,14 @@ VC_PER_VNET=2
 PHYVNET=True #True #False
 #
 
-INJ_INTV_SET=(4)
+INJ_INTV_SET=(2,4,8,16,20,24,32)
 
 #DEBUG_FLAGS="SeqMemLatTest,TxnTrace"
 #DEBUG_FLAGS="SeqMemLatTest,TxnTrace,TxnLink"
 
 #DEBUG_FLAGS=TxnTrace
 #DEBUG_FLAGS=RubySlicc
-DEBUG_FLAGS="StreamTest"
+DEBUG_FLAGS="SeqMemLatTest"
 
 MultiCoreAddrMode=True #False #False #True #--addr-intrlvd-or-tiled true then interleaved 
 
@@ -321,7 +321,7 @@ if [ "$RUN1" != "" ]; then
             $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
               --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
               -d $OUTPUT_DIR \
-              ${GEM5_DIR}/configs/example/stream_ruby_mem_test.py \
+              ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
               --num-dirs=${NUM_MEM} \
               --DDR-loc-num=${NUM_DDR_XP} \
               --DDR-side-num=${NUM_DDR_Side} \
@@ -348,7 +348,7 @@ if [ "$RUN1" != "" ]; then
               --size-ws=${WKSET} \
               --mem-type=DDR4_3200_8x8 \
               --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
-              --mem-test-type='stream_test' \
+              --mem-test-type='bw_test' \
               --addr-intrlvd-or-tiled=$MultiCoreAddrMode  \
               --disable-gclk-set \
               --enable-DMT=${DMT} \

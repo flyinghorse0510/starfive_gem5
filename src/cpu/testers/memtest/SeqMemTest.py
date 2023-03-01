@@ -51,6 +51,9 @@ class SeqMemTest(ClockedObject):
     interval = Param.Cycles(1, "Interval between request packets")
     size = Param.Unsigned(4194304, "Size of memory region to use (bytes)")
     base_addr_1 = Param.Addr(0x0, "Start of the first testing region")
+    
+    mod_stream_triad = Param.Bool(False, "Generate Stream TRIAD like Mem requestes. 2 independent loads, 1 dependent stores")
+    
     working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
     max_loads = Param.Counter(1, "Number of loads to execute before exiting")
     #percent_reads = Param.Percent(65, "Percentage reads")
@@ -58,7 +61,11 @@ class SeqMemTest(ClockedObject):
     addr_intrlvd_or_tiled = Param.Bool(False,"If true the address partitioning across CPUs is interleaved [0,N,2N;1,N+1,2N+1;...]. Otherwise Tiled [0:N-1,N:2N-1]")
 
     num_cpus = Param.Counter(1, "Total number of CPUs")
-    num_producers = Param.Counter(1, "Number of (write) producers")
+
+    bench_c2cbw_mode = Param.Bool(False,"[True] Producer Consumer BW or [False] C2C Latency Test")
+    id_producers = VectorParam.Int([], "List of Producer Ids")
+    id_consumers = VectorParam.Int([], "List of Consumer Ids")
+    num_peer_producers = Param.Counter(1, "Number of independent peer producers. Use to partition the working set")
 
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses

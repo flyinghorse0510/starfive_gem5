@@ -384,10 +384,10 @@ machine(MachineType:Memory, "Memory controller interface") :
       peek(memQueue_in, MemoryMsg) {
         Addr addr := makeLineAddress(in_msg.addr);
         if (in_msg.Type == MemoryRequestType:MEMORY_READ) {
-          DPRINTF(RubyTxnTrace, "Received MemMsg Data from Mem, MemMsg.txsn is %#018x\n", in_msg.txSeqNum);
+          DPRINTF(TxnTrace, "Received MemMsg Data from Mem, MemMsg.txsn is %#018x\n", in_msg.txSeqNum);
           trigger(Event:MemoryData, addr, TBEs[addr]);
         } else if (in_msg.Type == MemoryRequestType:MEMORY_WB) {
-          DPRINTF(RubyTxnTrace, "Received MemMsg Ack from Mem, MemMsg.txsn is %#018x\n", in_msg.txSeqNum);
+          DPRINTF(TxnTrace, "Received MemMsg Ack from Mem, MemMsg.txsn is %#018x\n", in_msg.txSeqNum);
           trigger(Event:MemoryAck, addr, TBEs[addr]);
         } else {
           error("Invalid message");
@@ -707,6 +707,9 @@ machine(MachineType:Memory, "Memory controller interface") :
 
   action(sendRetryAck, desc="") {
     peek(triggerInPort, TriggerMsg) {
+//      DPRINTF(RubyTxnTrace, "MemRetry: seqn %#018x\n", tbe.txSeqNum);
+      DPRINTF(RubyTxnTrace, "MemRetry: \n");
+ 
       enqueue(rspOutPort, CHIResponseMsg, response_latency) {
         out_msg.addr := in_msg.addr;
         out_msg.type := CHIResponseType:RetryAck;
