@@ -119,10 +119,12 @@ class flit
     int m_id;
     int m_vnet;
     int m_vc;
+    int start_router;
     RouteInfo m_route;
     int m_size;
     Tick m_enqueue_time, m_dequeue_time;
     Tick m_time;
+    Tick start_time;
     flit_type m_type;
     MsgPtr m_msg_ptr;
     int m_outport;
