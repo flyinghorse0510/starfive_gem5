@@ -37,7 +37,20 @@ from topologies.BaseTopology import SimpleTopology
 # XY routing is enforced (using link weights)
 # to guarantee deadlock freedom.
 
-#is Mesh_XY but with 2 extra links per node
+# This is Mesh_XY but every link has been duplicated twice.
+
+# Each link is in charge of its own vnet and each link has its own port,
+# so the number of winners from SA for a particular direction
+# is equal to the number of links for that direction instead of 1.
+
+# use supported_vnets=[x] parameter for each link to specify a vnet of
+# type x for the link to support.
+
+# Default is [] which means it supports all vnets.
+
+# One link can support multiple vnets but
+# one Router cannot make different links which have the same vnet.
+
 class CustomMeshXY(SimpleTopology):
     description = "CustomMeshXY"
 
@@ -97,8 +110,10 @@ class CustomMeshXY(SimpleTopology):
                     int_node=routers[router_id],
                     latency=link_latency,
                     supported_vnets=[0],
+                    #vnet specified, default is [] which is all vnets
                 )
             )
+            #additional links added here
             ext_links.append(
                 ExtLink(
                     link_id=link_count+1,
