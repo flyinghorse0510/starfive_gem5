@@ -63,32 +63,52 @@ namespace gem5
 class ConsumerReadData_t {
     private:
         std::unordered_map<Addr,writeSyncData_t> addr_and_data;
-        std::vector<Addr> all_addr;
+        // std::vector<Addr> all_addr;
+        std::unordered_set<Addr> all_addr;
         unsigned seqIdx;
+        unsigned addrSetSize;
     public:
         ConsumerReadData_t(const std::unordered_map<Addr,writeSyncData_t> &addrData) : seqIdx(0) {
             std::copy(addrData.begin(), addrData.end(), std::inserter(addr_and_data,addr_and_data.end()));
             for (auto it = addrData.begin(); it != addrData.end(); it++) {
-                all_addr.push_back(it->first);
+                all_addr.insert(it->first);
             }
+            addrSetSize=all_addr.size();
         }
-        Addr getNextAddr();
+        Addr getNextAddr(const std::unordered_set<Addr>&);
         writeSyncData_t getRefData(const Addr addr) const { 
             assert(addr_and_data.find(addr) != addr_and_data.end());
             return addr_and_data.at(addr); 
         }
-        unsigned getWorkingSetSize() const { return all_addr.size(); }
+        unsigned getWorkingSetSize() const { return addr_and_data.size(); }
+        bool isAddrSetEmpty() const { return all_addr.empty(); }
+        unsigned getAddrSetSize() const { return all_addr.size(); }
+        void removeAddr(const Addr& paddr, const std::string& name2) {
+            DPRINTF(ProdConsMemLatTest,"Removing Addr_%s: %x,%d\n",name2,paddr,getAddrSetSize());
+            all_addr.erase(paddr);
+        }
+
 };
 
-Addr ConsumerReadData_t::getNextAddr() {
-    Addr addr = all_addr.at(seqIdx);
-    seqIdx = (seqIdx+1)%(all_addr.size());
+Addr ConsumerReadData_t::getNextAddr(const std::unordered_set<uint64_t>& outstandingAddrs) {
+    // Addr addr = all_addr.at(seqIdx);
+    // seqIdx = (seqIdx+1)%(all_addr.size());
+    bool foundAddr=false;
+    Addr addr;
+    for (auto caddr : all_addr) {
+        if (outstandingAddrs.find(caddr) == outstandingAddrs.end()) {
+            foundAddr=true;
+            addr=caddr;
+            break;
+        }
+    }
+    assert(foundAddr);
     return addr;
 }
 
 
 static unsigned int TESTER_ALLOCATOR = 0;
-static std::unordered_map<unsigned,std::shared_ptr<ConsumerReadData_t>> writeValsQ;
+static std::unordered_map<unsigned,std::unique_ptr<ConsumerReadData_t>> writeValsQ;
 static unsigned int TESTER_PRODUCER_IDX; // Pass Index of the writer. Only written by sole producer
 // static unsigned int numCPUTransactionsCompleted = 0; // Number of CPUs that have completed their transactions
 // static unsigned int 
@@ -296,8 +316,8 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
             stats.numWrites++;
             if (isProducer && ((referenceData.size())>=workingSetSize)) {
                 DPRINTF(ProdConsMemLatTest,"id=(%d,%d) Completed all writes resp=%d,%d,numProdCompleted=%d\n",id,producer_peer_id,referenceData.size(),workingSetSize,numProdCompleted);
-                auto consumer_data = std::make_shared<ConsumerReadData_t>(referenceData);
                 for (auto c : id_consumers) {
+                    auto consumer_data = std::make_unique<ConsumerReadData_t>(referenceData);
                     writeValsQ[c] = consumer_data;
                 }
                 TESTER_PRODUCER_IDX++;
@@ -385,11 +405,20 @@ ProdConsMemTest::tick()
             return;
         }
 
+        /* If you have generated all addresses in the working set. do not generate any more */
+        if (cdata->isAddrSetEmpty()) {
+            DPRINTF(ProdConsMemLatTest,"Reader finished generating workingset %d/%d/%d\n",numReadTxnGenerated,maxLoads,cdata->getAddrSetSize());
+            waitResponse = true;
+            return;
+        }
+
         /* Pick an address to generate a read request */
-        do {
-            paddr = cdata->getNextAddr();
-            data = cdata->getRefData(paddr);
-        } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
+        // do {
+        //     paddr = cdata->getNextAddr();
+        //     data = cdata->getRefData(paddr);
+        // } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
+        paddr = cdata->getNextAddr(outstandingAddrs);
+        data = cdata->getRefData(paddr);
 
     } else {
         /* Skip if you generated workingSetSize write transactions */
@@ -428,8 +457,12 @@ ProdConsMemTest::tick()
         pkt = new Packet(req, MemCmd::ReadReq);
         referenceData[req->getPaddr()] = data;
         pkt->dataDynamic(pkt_data);
-        DPRINTF(ProdConsMemLatTest,"Start,R,%x,%x,%d/%d\n",req->getPaddr(),data,outstandingAddrs.size(),readWorkingSetSize);
         numReadTxnGenerated++;
+        // Remove the address from the reader's working set
+        assert(writeValsQ.find(id) != writeValsQ.end());
+        auto cdata = writeValsQ.at(id);
+        cdata->removeAddr(paddr,name());
+        DPRINTF(ProdConsMemLatTest,"Start,R,%x,%x,%d/%d/%d\n",req->getPaddr(),data,numReadTxnGenerated,readWorkingSetSize,cdata->getAddrSetSize());
     } else {
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
