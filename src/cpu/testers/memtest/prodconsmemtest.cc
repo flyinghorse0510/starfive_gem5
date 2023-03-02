@@ -63,12 +63,10 @@ namespace gem5
 class ConsumerReadData_t {
     private:
         std::unordered_map<Addr,writeSyncData_t> addr_and_data;
-        // std::vector<Addr> all_addr;
         std::unordered_set<Addr> all_addr;
-        unsigned seqIdx;
         unsigned addrSetSize;
     public:
-        ConsumerReadData_t(const std::unordered_map<Addr,writeSyncData_t> &addrData) : seqIdx(0) {
+        ConsumerReadData_t(const std::unordered_map<Addr,writeSyncData_t> &addrData) {
             std::copy(addrData.begin(), addrData.end(), std::inserter(addr_and_data,addr_and_data.end()));
             for (auto it = addrData.begin(); it != addrData.end(); it++) {
                 all_addr.insert(it->first);
@@ -84,15 +82,12 @@ class ConsumerReadData_t {
         bool isAddrSetEmpty() const { return all_addr.empty(); }
         unsigned getAddrSetSize() const { return all_addr.size(); }
         void removeAddr(const Addr& paddr, const std::string& name2) {
-            DPRINTF(ProdConsMemLatTest,"Removing Addr_%s: %x,%d\n",name2,paddr,getAddrSetSize());
             all_addr.erase(paddr);
         }
 
 };
 
 Addr ConsumerReadData_t::getNextAddr(const std::unordered_set<uint64_t>& outstandingAddrs) {
-    // Addr addr = all_addr.at(seqIdx);
-    // seqIdx = (seqIdx+1)%(all_addr.size());
     bool foundAddr=false;
     Addr addr;
     for (auto caddr : all_addr) {
@@ -108,10 +103,8 @@ Addr ConsumerReadData_t::getNextAddr(const std::unordered_set<uint64_t>& outstan
 
 
 static unsigned int TESTER_ALLOCATOR = 0;
-static std::unordered_map<unsigned,std::unique_ptr<ConsumerReadData_t>> writeValsQ;
+static std::unordered_map<unsigned,std::shared_ptr<ConsumerReadData_t>> writeValsQ;
 static unsigned int TESTER_PRODUCER_IDX; // Pass Index of the writer. Only written by sole producer
-// static unsigned int numCPUTransactionsCompleted = 0; // Number of CPUs that have completed their transactions
-// static unsigned int 
 static unsigned int numProdCompleted = 0;
 static unsigned int numConsCompleted = 0;
 static unsigned int TOTAL_REQ_AGENTS = 0;  // Used to hold the agents capable of generating Read/Write requests
@@ -317,8 +310,7 @@ ProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
             if (isProducer && ((referenceData.size())>=workingSetSize)) {
                 DPRINTF(ProdConsMemLatTest,"id=(%d,%d) Completed all writes resp=%d,%d,numProdCompleted=%d\n",id,producer_peer_id,referenceData.size(),workingSetSize,numProdCompleted);
                 for (auto c : id_consumers) {
-                    auto consumer_data = std::make_unique<ConsumerReadData_t>(referenceData);
-                    writeValsQ[c] = consumer_data;
+                    writeValsQ[c] = std::make_shared<ConsumerReadData_t>(referenceData);
                 }
                 TESTER_PRODUCER_IDX++;
 
@@ -413,10 +405,6 @@ ProdConsMemTest::tick()
         }
 
         /* Pick an address to generate a read request */
-        // do {
-        //     paddr = cdata->getNextAddr();
-        //     data = cdata->getRefData(paddr);
-        // } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
         paddr = cdata->getNextAddr(outstandingAddrs);
         data = cdata->getRefData(paddr);
 
