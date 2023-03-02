@@ -41,26 +41,33 @@ from m5.proxy import *
 
 from m5.objects.ClockedObject import ClockedObject
 
-class ReplayMemTest(ClockedObject):
-    type = 'ReplayMemTest'
-    cxx_header = "cpu/testers/memtest/replaymemtest.hh"
-    cxx_class = 'gem5::ReplayMemTest'
+class ProdConsMemTest(ClockedObject):
+    type = 'ProdConsMemTest'
+    cxx_header = "cpu/testers/memtest/prodconsmemtest.hh"
+    cxx_class = 'gem5::ProdConsMemTest'
 
     # Interval of packet injection, the size of the memory range
     # touched, and an optional stop condition
-    interval = Param.Cycles(5, "Interval between request packets")
-    size = Param.Unsigned(65536, "Size of memory region to use (bytes)")
-    max_loads = Param.Counter(0, "Number of loads to execute before exiting")
+    interval = Param.Cycles(1, "Interval between request packets")
+    size = Param.Unsigned(4194304, "[Deprecated] Working set(bytes)")
+    base_addr_1 = Param.Addr(0x0, "Start of the testing region for writes")
+    working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
+    max_loads = Param.Counter(1, "Number of loads to unique address")
 
-    # Control the mix of packets and if functional accesses are part of
-    # the mix or not
-    percent_reads = Param.Percent(65, "Percentage reads")
+    addr_intrlvd_or_tiled = Param.Bool(False,"If true the address partitioning across CPUs is interleaved [0,N,2N;1,N+1,2N+1;...]. Otherwise Tiled [0:N-1,N:2N-1]")
+
+    num_cpus = Param.Counter(1, "Total number of CPUs")
+
+    bench_c2cbw_mode = Param.Bool(False,"[True] Producer Consumer BW or [False] C2C Latency Test")
+    id_producers = VectorParam.Int([], "List of Producer Ids")
+    id_consumers = VectorParam.Int([], "List of Consumer Ids")
+    num_peer_producers = Param.Counter(1, "Number of independent peer producers. Use to partition the working set")
 
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses
     progress_interval = Param.Counter(1000000,
         "Progress report interval (in accesses)")
-    progress_check = Param.Cycles(5000000, "Cycles before exiting " \
+    progress_check = Param.Cycles(50000, "Cycles before exiting " \
                                       "due to lack of progress")
 
     port = RequestPort("Port to the memory system")

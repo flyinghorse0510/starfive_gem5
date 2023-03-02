@@ -224,6 +224,8 @@ class CacheMemory : public SimObject
           statistics::Scalar numTagArrayStalls;
           statistics::Scalar numDataArrayStalls;
 
+          //statistics::Scalar m_RetryAcks;
+
           // hardware transactional memory
           statistics::Histogram htmTransCommitReadSet;
           statistics::Histogram htmTransCommitWriteSet;
@@ -238,6 +240,9 @@ class CacheMemory : public SimObject
           statistics::Scalar m_prefetch_misses;
           statistics::Formula m_prefetch_accesses;
 
+          statistics::Scalar m_RetryAcks;
+
+
           statistics::Vector m_accessModeType;
       } cacheMemoryStats;
 
@@ -248,6 +253,7 @@ class CacheMemory : public SimObject
       void profileDemandMiss();
       void profilePrefetchHit();
       void profilePrefetchMiss();
+      void profileRetryAck();
 };
 
 std::ostream& operator<<(std::ostream& out, const CacheMemory& obj);

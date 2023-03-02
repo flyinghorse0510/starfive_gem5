@@ -109,7 +109,7 @@ def addNoISAOptions(parser):
                         help="""Top-level voltage for blocks running at system
                       power supply""")
     parser.add_argument("--sys-clock", action="store", type=str,
-                        default='1GHz',
+                        default='2GHz',
                         help="""Top-level clock for blocks running at system
                       speed""")
 
@@ -133,6 +133,10 @@ def addNoISAOptions(parser):
                         help="Memory channels interleave")
 
     parser.add_argument("--memchecker", action="store_true")
+    parser.add_argument("--addr-mapping", default="RoRaBaCoCh",
+                        help="User address to memory address mapping")
+    parser.add_argument("--disable-ref", action="store_true")
+    parser.add_argument("--disable-gclk-set", action="store_true")
 
     # Cache Options
     parser.add_argument("--external-memory-system", type=str,
@@ -142,6 +146,8 @@ def addNoISAOptions(parser):
     parser.add_argument("--caches", action="store_true")
     parser.add_argument("--l2cache", action="store_true")
     parser.add_argument("--num-dirs", type=int, default=1)
+    parser.add_argument("--DDR-loc-num", type=int, default=1)
+    parser.add_argument("--DDR-side-num", type=int, default=1)
     parser.add_argument("--num-l2caches", type=int, default=1)
     parser.add_argument("--num-l3caches", type=int, default=1)
     parser.add_argument("--l1d_size", type=str, default="64kB")

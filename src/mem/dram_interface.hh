@@ -526,6 +526,7 @@ class DRAMInterface : public MemInterface
 
     // timestamp offset
     uint64_t timeStampOffset;
+    Tick last_col_at;
 
     // Holds the value of the DRAM rank of burst issued
     uint8_t activeRank;
@@ -731,7 +732,7 @@ class DRAMInterface : public MemInterface
      */
     std::pair<Tick, Tick>
     doBurstAccess(MemPacket* mem_pkt, Tick next_burst_at,
-                  const std::vector<MemPacketQueue>& queue) override;
+                  const std::vector<MemPacketQueue>& queue, uint64_t totalReadQueueSize) override;
 
     /**
      * Check if a burst operation can be issued to the DRAM

@@ -57,6 +57,7 @@
 #include "mem/ruby/slicc_interface/RubyRequest.hh"
 #include "mem/ruby/slicc_interface/RubySlicc_Util.hh"
 #include "mem/ruby/system/RubySystem.hh"
+#include "debug/TxnTrace.hh"
 #include "sim/system.hh"
 
 namespace gem5
@@ -392,6 +393,13 @@ Sequencer::recordMissLatency(SequencerRequest* srequest, bool llscSuccess,
         total_lat = Cycles(0);
     }
 
+    // zhiang: print TxSeqNum as TxnTrace flag.
+    DPRINTF(TxnTrace, "txsn: %#018x, ReqDone=%s, addr: %#x, %d cycles, %d hops\n", 
+            srequest->pkt->req->getReqInstSeqNum(), 
+            RubyRequestType_to_string(type),
+            srequest->pkt->getAddr(),
+            total_lat, srequest->pkt->req->getHops());
+                
     DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %s %d cycles\n",
              curTick(), m_version, "Seq", llscSuccess ? "Done" : "SC_Failed",
              "", "", printAddress(srequest->pkt->getAddr()), total_lat);
@@ -914,6 +922,12 @@ Sequencer::issueRequest(PacketPtr pkt, RubyRequestType secondary_type)
                                             pkt->getSize(), pc, secondary_type,
                                             RubyAccessMode_Supervisor, pkt,
                                             PrefetchBit_No, proc_id, core_id);
+
+        // zhiang: print TxSeqNum as TxnTrace flag.
+        DPRINTF(TxnTrace, "txsn: %#018x, ReqBegin=%s, addr: %#x\n", 
+                pkt->req->getReqInstSeqNum(), 
+                RubyRequestType_to_string(secondary_type),
+                msg->getPhysicalAddress());
 
         DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %#x %s\n",
                 curTick(), m_version, "Seq", "Begin", "", "",

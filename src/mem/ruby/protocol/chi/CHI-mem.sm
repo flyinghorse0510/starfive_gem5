@@ -171,6 +171,10 @@ machine(MachineType:Memory, "Memory controller interface") :
     MachineID requestor, desc="Requestor that originated this request";
     MachineID destination, desc="Where we are sending data";
     bool useDataSepResp, desc="Replies with DataSepResp instead of CompData";
+
+    // zhiang: add txSeqNum to TBE, we assign txSeqNum with 0
+    uint64_t txSeqNum, default="0", desc="Store txSeqNum from CHIRequestMsg to CHIDataMsg and CHIResponseMsg";
+    RequestPtr reqPtr, default="nullptr", desc="Pointer to original request";
   }
 
   structure(TBETable, external ="yes") {
@@ -194,7 +198,7 @@ machine(MachineType:Memory, "Memory controller interface") :
   }
 
   TBETable TBEs, template="<Memory_TBE>", constructor="m_number_of_TBEs";
-  TBEStorage storTBEs, constructor="this, m_number_of_TBEs";
+  TBEStorage storTBEs, constructor="this, TBEType_to_string(TBEType_Request), m_number_of_TBEs";
 
   // Tracks all pending MemoryAcks (debug purposes only)
   int pendingWrites, default="0";
@@ -380,8 +384,10 @@ machine(MachineType:Memory, "Memory controller interface") :
       peek(memQueue_in, MemoryMsg) {
         Addr addr := makeLineAddress(in_msg.addr);
         if (in_msg.Type == MemoryRequestType:MEMORY_READ) {
+          DPRINTF(TxnTrace, "Received MemMsg Data from Mem, MemMsg.txsn is %#018x\n", in_msg.txSeqNum);
           trigger(Event:MemoryData, addr, TBEs[addr]);
         } else if (in_msg.Type == MemoryRequestType:MEMORY_WB) {
+          DPRINTF(TxnTrace, "Received MemMsg Ack from Mem, MemMsg.txsn is %#018x\n", in_msg.txSeqNum);
           trigger(Event:MemoryAck, addr, TBEs[addr]);
         } else {
           error("Invalid message");
@@ -495,6 +501,12 @@ machine(MachineType:Memory, "Memory controller interface") :
   action(initializeFromReqTBE, "itbe", desc="Initialize TBE fields") {
     peek(reqRdyInPort, CHIRequestMsg) {
       tbe.requestor := in_msg.requestor;
+
+      // zhiang: we need to pass seqNum from CHIRequestMsg to CHIDataMsg/CHIResponseMsg
+      // so we need to add seqNum here
+      tbe.txSeqNum := in_msg.txSeqNum;
+      tbe.reqPtr := in_msg.reqPtr;
+
       if (in_msg.dataToFwdRequestor) {
         tbe.destination := in_msg.fwdRequestor;
       } else {
@@ -536,6 +548,10 @@ machine(MachineType:Memory, "Memory controller interface") :
       out_msg.type := CHIResponseType:ReadReceipt;
       out_msg.responder := machineID;
       out_msg.Destination.add(tbe.requestor);
+
+      // zhiang: CHIResponseMsg will carry the seqNum from tbe
+      out_msg.txSeqNum := tbe.txSeqNum;
+      out_msg.reqPtr := tbe.reqPtr;
     }
     // also send different type of data when ready
     tbe.useDataSepResp := true;
@@ -548,22 +564,30 @@ machine(MachineType:Memory, "Memory controller interface") :
       out_msg.type := CHIResponseType:CompDBIDResp;
       out_msg.responder := machineID;
       out_msg.Destination.add(tbe.requestor);
+
+      // zhiang: CHIResponseMsg will carry the seqNum from tbe
+      out_msg.txSeqNum := tbe.txSeqNum;
+      out_msg.reqPtr := tbe.reqPtr;
     }
   }
 
   action(sendMemoryRead, "smr", desc="Send request to memory") {
     assert(is_valid(tbe));
+    DPRINTF(RubyTxnTrace, "Memctl is sending read request to memory, tbe seqnum is %#018x\n", tbe.txSeqNum);
     enqueue(memQueue_out, MemoryMsg, to_memory_controller_latency) {
       out_msg.addr := address;
       out_msg.Type := MemoryRequestType:MEMORY_READ;
       out_msg.Sender := tbe.requestor;
       out_msg.MessageSize := MessageSizeType:Request_Control;
       out_msg.Len := 0;
+      out_msg.txSeqNum := tbe.txSeqNum;
+      out_msg.reqPtr := tbe.reqPtr;
     }
   }
 
   action(sendMemoryWrite, "smw", desc="Send request to memory") {
     assert(is_valid(tbe));
+    DPRINTF(RubyTxnTrace, "Memctl is sending write request to memory, tbe seqnum is %#018x\n", tbe.txSeqNum);
     enqueue(memQueue_out, MemoryMsg, to_memory_controller_latency) {
       out_msg.addr := tbe.accAddr;
       out_msg.Type := MemoryRequestType:MEMORY_WB;
@@ -571,6 +595,8 @@ machine(MachineType:Memory, "Memory controller interface") :
       out_msg.MessageSize := MessageSizeType:Writeback_Data;
       out_msg.DataBlk := tbe.dataBlk;
       out_msg.Len := tbe.accSize;
+      out_msg.txSeqNum := tbe.txSeqNum;
+      out_msg.reqPtr := tbe.reqPtr;
     }
     tbe.dataBlkValid.clear();
     pendingWrites := pendingWrites + 1;
@@ -578,6 +604,7 @@ machine(MachineType:Memory, "Memory controller interface") :
 
   action(prepareSend, "ps", desc="Copies received memory data to TBE") {
     assert(is_valid(tbe));
+    DPRINTF(RubyTxnTrace, "Memctl Read received data, tbe seqnum is %#018x\n", tbe.txSeqNum);
     peek(memQueue_in, MemoryMsg) {
       tbe.dataBlk := in_msg.DataBlk;
     }
@@ -591,6 +618,10 @@ machine(MachineType:Memory, "Memory controller interface") :
       tbe.dataBlk.copyPartial(in_msg.dataBlk, in_msg.bitMask);
       tbe.dataBlkValid.orMask(in_msg.bitMask);
       tbe.rxtxBytes := tbe.rxtxBytes + in_msg.bitMask.count();
+
+      // zhiang: CHIResponseMsg will carry the seqNum from tbe
+      tbe.txSeqNum := in_msg.txSeqNum;
+      tbe.reqPtr := in_msg.reqPtr;
     }
   }
 
@@ -605,6 +636,11 @@ machine(MachineType:Memory, "Memory controller interface") :
         out_msg.type := CHIDataType:CompData_UC;
       }
       out_msg.dataBlk := tbe.dataBlk;
+
+      // zhiang: pass seqNum to CHIDataMsg
+      out_msg.txSeqNum := tbe.txSeqNum;
+      out_msg.reqPtr := tbe.reqPtr;
+
       // Called in order for the whole block so use rxtxBytes as offset
       out_msg.bitMask.setMask(tbe.rxtxBytes, data_channel_size);
       out_msg.Destination.add(tbe.destination);
@@ -671,6 +707,9 @@ machine(MachineType:Memory, "Memory controller interface") :
 
   action(sendRetryAck, desc="") {
     peek(triggerInPort, TriggerMsg) {
+//      DPRINTF(RubyTxnTrace, "MemRetry: seqn %#018x\n", tbe.txSeqNum);
+      DPRINTF(RubyTxnTrace, "MemRetry: \n");
+ 
       enqueue(rspOutPort, CHIResponseMsg, response_latency) {
         out_msg.addr := in_msg.addr;
         out_msg.type := CHIResponseType:RetryAck;
@@ -711,6 +750,7 @@ machine(MachineType:Memory, "Memory controller interface") :
   }
 
   transition(READING_MEM, MemoryData, SENDING_NET_DATA) {
+    // DPRINTF(RubyTxnTrace, "Memctl Read received data, tbe seqnum is %#018x\n", tbe.txSeqNum);
     prepareSend;
     sendDataAndCheck;
     popMemoryQueue;
@@ -757,6 +797,7 @@ machine(MachineType:Memory, "Memory controller interface") :
   // Just sanity check against counter of pending acks
   transition({READING_MEM,WAITING_NET_DATA,SENDING_NET_DATA,READY},
               MemoryAck) {
+    // DPRINTF(RubyTxnTrace, "Memctl Read received ack, tbe seqnum is %#018x\n", tbe.txSeqNum);
     decWritePending;
     popMemoryQueue;
   }

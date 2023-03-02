@@ -85,6 +85,9 @@ action(AllocateTBE_Request_WithCredit, desc="") {
 }
 
 action(AllocateTBE_Snoop, desc="") {
+  // zhiang: 
+  // DPRINTF(RubySlicc, "Enter AllocateTBE_Snoop\n");
+
   // No retry for snoop requests; just create resource stall
   check_allocate(storSnpTBEs);
 
@@ -105,6 +108,8 @@ action(AllocateTBE_Snoop, desc="") {
     destsWaitingRetry.remove(in_msg.requestor);
   }
   snpInPort.dequeue(clockEdge());
+  // zhiang: 
+  // DPRINTF(RubySlicc, "Exit AllocateTBE_Snoop\n");
 }
 
 action(AllocateTBE_DvmSnoop, desc="") {
@@ -145,6 +150,12 @@ action(AllocateTBE_SeqRequest, desc="") {
       assert(in_msg.Prefetch == PrefetchBit:No);
       out_msg.is_local_pf := false;
       out_msg.is_remote_pf := false;
+
+      // zhiang: now pass txSeqNum of rubyrequest from mandatoryqueue
+      // to reqRdy as CHIRequestMsg. Otherwise CHIRequestMsg won't have correct txSeqNum
+      // this function also have a DVM sibling, we need to do this the same way there
+      out_msg.txSeqNum := getTxSeqNum(in_msg.getRequestPtr());
+      out_msg.reqPtr := in_msg.getRequestPtr();
 
       if ((in_msg.Type == RubyRequestType:LD) ||
           (in_msg.Type == RubyRequestType:IFETCH)) {
@@ -191,6 +202,9 @@ action(AllocateTBE_SeqDvmRequest, desc="") {
       out_msg.seqReq := in_msg.getRequestPtr();
       out_msg.isSeqReqValid := true;
 
+      // zhiang: pass txseqnum to out_msg
+      out_msg.txSeqNum := getTxSeqNum(in_msg.getRequestPtr());
+      out_msg.reqPtr := in_msg.getRequestPtr();
 
       if (in_msg.Type == RubyRequestType:TLBI) {
         out_msg.type := CHIRequestType:DvmTlbi_Initiate;
@@ -227,6 +241,10 @@ action(AllocateTBE_PfRequest, desc="Allocate TBE for prefetch request") {
       assert(in_msg.Prefetch != PrefetchBit:No);
       out_msg.is_local_pf := true;
       out_msg.is_remote_pf := false;
+
+      // zhiang: pass txSeqnum to out_msg
+      out_msg.txSeqNum := getTxSeqNum(in_msg.getRequestPtr());
+      out_msg.reqPtr := in_msg.getRequestPtr();
 
       if (in_msg.Type == RubyRequestType:LD) {
         out_msg.type := CHIRequestType:Load;
@@ -316,6 +334,9 @@ action(Initiate_Snoop, desc="") {
   tbe.actions.pushNB(Event:TagArrayRead);
 
   incomingTransactionStart(address, curTransitionEvent(), initial, false);
+
+  DPRINTF(RubySlicc, "Exit Initiate_Snoop\n");
+  printTBEState(tbe);
 }
 
 action(Initiate_Snoop_Hazard, desc="") {
@@ -380,6 +401,15 @@ action(RestoreFromHazard, desc="") {
 action(Initiate_Replacement, desc="") {
   assert(is_invalid(tbe));
   State initial := getState(tbe, cache_entry, address);
+
+  // zhiang: printTBEState here
+  DPRINTF(RubySlicc, "Enter Initiate_Replacement\n");
+  if(is_invalid(tbe)) {
+    DPRINTF(RubySlicc, "tbe is invalid\n");
+  } else {
+    printTBEState(tbe);
+  }
+
   if (unify_repl_TBEs) {
     peek(replTriggerInPort, ReplacementMsg) {
       set_tbe(allocateReplacementTBEOnSlot(address, in_msg.slot));
@@ -389,7 +419,24 @@ action(Initiate_Replacement, desc="") {
     set_tbe(allocateReplacementTBE(address));
     DPRINTF(RubySlicc, "Allocated replacement TBE on new slot %d\n", tbe.storSlot);
   }
+
+  // zhiang: printTBEState here
+  DPRINTF(RubySlicc, "After allocateReplacementTBE\n");
+  if(is_invalid(tbe)) {
+    DPRINTF(RubySlicc, "tbe is invalid\n");
+  } else {
+    printTBEState(tbe);
+  }
+
   copyCacheAndDir(cache_entry, getDirEntry(address), tbe, initial);
+
+  // zhiang: printTBEState here
+  DPRINTF(RubySlicc, "After copyCacheAndDir\n");
+  if(is_invalid(tbe)) {
+    DPRINTF(RubySlicc, "tbe is invalid\n");
+  } else {
+    printTBEState(tbe);
+  }
 
   // model the initial tag array read
   tbe.actions.pushNB(Event:TagArrayRead);
@@ -997,6 +1044,9 @@ action(Initiate_InvalidationSnoop, desc="") {
   }
 
   tbe.dataToBeInvalid := true;
+
+  DPRINTF(RubySlicc, "Exit Initiate_InvalidationSnoop\n");
+  printTBEState(tbe);
 }
 
 action(Initiate_SnpShared, desc="") {
@@ -1484,7 +1534,7 @@ action(Send_SnpSharedFwd_ToOwner, desc="") {
   bool allowFwdSD := tbe.reqType != CHIRequestType:ReadNotSharedDirty;
 
   // get us a copy if we have allocated a cache entry for this block
-  bool retToSrc := tbe.doCacheFill && (tbe.dataToBeInvalid == false);
+  bool retToSrc := false; //tbe.doCacheFill && (tbe.dataToBeInvalid == false);
 
   if (allowFwdSD) {
     if (retToSrc) {
@@ -1530,7 +1580,7 @@ action(Send_SnpSharedFwd_ToSharer, desc="") {
   clearExpectedSnpResp(tbe);
   // if we have a block allocated for this line, asks snoopee to forward
   // data to us as well
-  bool retToSrc := tbe.doCacheFill;
+  bool retToSrc := false; //tbe.doCacheFill;
   if (retToSrc) {
     tbe.expected_snp_resp.addExpectedDataType(CHIDataType:SnpRespData_SC_Fwded_SC);
   } else {
@@ -2104,6 +2154,7 @@ action(UpdateDirState_FromSnpResp, desc="") {
 }
 
 action(Receive_ReqResp, desc="") {
+  printTBEStateStr5(tbe);
   assert(tbe.expected_req_resp.hasExpected());
   peek(rspInPort, CHIResponseMsg) {
     // Decrement pending
@@ -2453,6 +2504,10 @@ action(Send_FwdSnpResp, desc="") {
     out_msg.responder := machineID;
     out_msg.Destination.add(tbe.requestor);
 
+    // zhiang: pass txSeqNum to CHIResponseMsg
+    out_msg.txSeqNum := tbe.txSeqNum;
+    out_msg.reqPtr := tbe.reqPtr;
+
     // We have the data (locally or upstream) or are dropping it
     bool keepData := (tbe.dir_sharers.count() > 0) ||
                      (tbe.dataToBeInvalid == false);
@@ -2502,6 +2557,10 @@ action(Send_Data, desc="") {
     out_msg.addr := tbe.addr;
     out_msg.type := tbe.snd_msgType;
 
+    // zhiang: pass txSeqNum to CHIDataMsg
+    out_msg.txSeqNum := tbe.txSeqNum;
+    out_msg.reqPtr := tbe.reqPtr;
+
     int offset := tbe.snd_pendBytes.firstBitSet(true);
     assert(offset < blockSize);
     int range := tbe.snd_pendBytes.firstBitSet(false, offset) - offset;
@@ -2530,6 +2589,10 @@ action(Send_RespSepData, desc="") {
     out_msg.type := CHIResponseType:RespSepData;
     out_msg.responder := machineID;
     out_msg.Destination.add(tbe.requestor);
+
+    // zhiang: pass txSeqNum to CHIResponseMsg
+    out_msg.txSeqNum := tbe.txSeqNum;
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2547,6 +2610,10 @@ action(Send_CompI, desc="") {
     out_msg.type := CHIResponseType:Comp_I;
     out_msg.responder := machineID;
     out_msg.Destination.add(tbe.requestor);
+
+    // zhiang: pass txSeqNum to CHIResponseMsg
+    out_msg.txSeqNum := tbe.txSeqNum;
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2557,6 +2624,10 @@ action(Send_CompUC, desc="") {
     out_msg.type := CHIResponseType:Comp_UC;
     out_msg.responder := machineID;
     out_msg.Destination.add(tbe.requestor);
+
+    // zhiang: pass txSeqNum to CHIResponseMsg
+    out_msg.txSeqNum := tbe.txSeqNum;
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2570,6 +2641,10 @@ action(Send_CompUC_Stale, desc="") {
     // We don't know if this is a stale clean unique or a bug, so flag the
     // reponse so the requestor can make further checks
     out_msg.stale := true;
+
+    // zhiang: pass txSeqNum to CHIResponseMsg
+    out_msg.txSeqNum := tbe.txSeqNum;
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2580,6 +2655,10 @@ action(Send_CompAck, desc="") {
     out_msg.type := CHIResponseType:CompAck;
     out_msg.responder := machineID;
     out_msg.Destination.add(mapAddressToDownstreamMachine(tbe.addr));
+
+    // zhiang: pass reqPtr to CHIResponseMsg
+    out_msg.txSeqNum := tbe.txSeqNum;
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2593,6 +2672,10 @@ action(Send_CompI_Stale, desc="") {
     // We don't know if this is a stale writeback or a bug, so flag the
     // reponse so the requestor can make further checks
     out_msg.stale := true;
+
+    // zhiang: pass txSeqNum to CHIResponseMsg
+    out_msg.txSeqNum := tbe.txSeqNum;
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2603,6 +2686,10 @@ action(Send_CompDBIDResp, desc="") {
     out_msg.type := CHIResponseType:CompDBIDResp;
     out_msg.responder := machineID;
     out_msg.Destination.add(tbe.requestor);
+
+    // zhiang: pass txSeqNum to CHIResponseMsg
+    out_msg.txSeqNum := tbe.txSeqNum;
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2616,6 +2703,10 @@ action(Send_CompDBIDResp_Stale, desc="") {
     // We don't know if this is a stale writeback or a bug, so flag the
     // reponse so the requestor can make further checks
     out_msg.stale := true;
+
+    // zhiang: pass seqReq to CHIResponseMsg
+    out_msg.txSeqNum := tbe.txSeqNum;
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2626,6 +2717,10 @@ action(Send_DBIDResp, desc="") {
     out_msg.type := CHIResponseType:DBIDResp;
     out_msg.responder := machineID;
     out_msg.Destination.add(tbe.requestor);
+
+    // zhiang: pass seqReq to CHIResponseMsg
+    out_msg.txSeqNum := tbe.txSeqNum;
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2636,6 +2731,10 @@ action(Send_Comp_WU, desc="") {
     out_msg.type := CHIResponseType:Comp;
     out_msg.responder := machineID;
     out_msg.Destination.add(tbe.requestor);
+
+    // zhiang: pass txSeqNum to CHIResponseMsg
+    out_msg.txSeqNum := tbe.txSeqNum;
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
@@ -2649,11 +2748,19 @@ action(Send_SnpRespI, desc="") {
     out_msg.type := CHIResponseType:SnpResp_I;
     out_msg.responder := machineID;
     out_msg.Destination.add(tbe.requestor);
+
+    // zhiang: pass txSeqNum to CHIResponseMsg
+    out_msg.txSeqNum := tbe.txSeqNum;
+    out_msg.reqPtr := tbe.reqPtr;
   }
 }
 
 action(Send_RetryAck, desc="") {
   peek(retryTriggerInPort, RetryTriggerMsg) {
+//    DPRINTF(RubyTxnTrace, "HNFRetry: seqn %#018x\n", tbe.txSeqNum);
+    DPRINTF(RubyTxnTrace, "HNFRetry: \n");
+    cache.profileRetryAck();
+ 
     enqueue(rspOutPort, CHIResponseMsg, response_latency) {
       out_msg.addr := in_msg.addr;
       out_msg.usesTxnId := in_msg.usesTxnId;

@@ -224,6 +224,7 @@ structure (CacheMemory, external = "yes") {
   void profileDemandMiss();
   void profilePrefetchHit();
   void profilePrefetchMiss();
+  void profileRetryAck();
 }
 
 structure (WireBuffer, inport="yes", outport="yes", external = "yes") {
@@ -249,4 +250,13 @@ structure (RubyPrefetcher, external = "yes") {
     void observeMiss(Addr, RubyRequestType);
     void observePfHit(Addr);
     void observePfMiss(Addr);
+}
+
+// Definitions of the TBE tables
+enumeration(TBEType, desc="...") {
+  Request,   desc="Request TBE";
+  Repl,      desc="Replacement TBE";
+  Snp,       desc="Snp Request TBE";
+  Dvm,       desc="DVM Request TBE";
+  DvmSnp,    desc="DVM Snp request TBE";
 }

@@ -45,7 +45,7 @@
 #include "base/statistics.hh"
 #include "base/trace.hh"
 #include "debug/IsolatedMemTest.hh"
-#include "debug/SeqMemLatTest.hh"
+#include "debug/IsolatedMemLatTest.hh"
 #include "sim/sim_exit.hh"
 #include "sim/stats.hh"
 #include "sim/system.hh"
@@ -102,10 +102,9 @@ IsolatedMemTest::IsolatedMemTest(const Params &p)
       nextProgressMessage(p.progress_interval),
       maxLoads(p.max_loads),
       atomic(p.system->isAtomicMode()),
-      lastGenReqId(0),
-      lastGenRespId(0),
       numIters(p.num_iters),
       seqIdx(0),
+      txSeqNum((static_cast<uint64_t>(p.system->getRequestorId(this))) << 48), // zhiang: init txSeqNum to ReqId(16-bit)_0000_0000_0000
       suppressFuncErrors(p.suppress_func_errors), stats(this)
 {
     id = TESTER_ALLOCATOR++;
@@ -115,9 +114,46 @@ IsolatedMemTest::IsolatedMemTest(const Params &p)
     // set up counters
     numReads = 0;
     numWrites = 0;
-    maxLoads2 = maxLoads*numIters;
-    DPRINTFR(SeqMemLatTest,"CSVDUMP, reqId, respId, Addr, issueTick, compTick, readOrWrite\n");
-    
+    bool readOrWriteVal = false; // true: read, false: write
+    readWriteMap = { \
+                    {0x40000, readOrWriteVal}, \
+                    {0x40040, readOrWriteVal}, \
+                    {0x40080, readOrWriteVal}, \
+                    {0x400c0, readOrWriteVal}, \
+                    {0x40140, readOrWriteVal}, \
+                    {0x40180, readOrWriteVal}, \
+                    {0x401c0, readOrWriteVal}, \
+                    {0x40240, readOrWriteVal}, \
+                    {0x40280, readOrWriteVal}, \
+                    {0x402c0, readOrWriteVal}, \
+                    {0x40340, readOrWriteVal}, \
+                    {0x40380, readOrWriteVal}, \
+                    {0x403c0, readOrWriteVal}, \
+                    {0x40440, readOrWriteVal}, \
+                    {0x40480, readOrWriteVal}, \
+                    {0x404c0, readOrWriteVal}, \
+                    {0x40540, readOrWriteVal}, \
+                    {0x40580, readOrWriteVal}, \
+                    {0x405c0, readOrWriteVal}, \
+                    {0x40640, readOrWriteVal}, \
+                    {0x40680, readOrWriteVal}, \
+                    {0x406c0, readOrWriteVal}, \
+                    {0x40740, readOrWriteVal}, \
+                    {0x40780, readOrWriteVal}, \
+                    {0x407c0, readOrWriteVal}, \
+                    {0x40840, readOrWriteVal}, \
+                    {0x40880, readOrWriteVal}, \
+                    {0x408c0, readOrWriteVal}, \
+                    {0x40940, readOrWriteVal}, \
+                    {0x40980, readOrWriteVal}, \
+                    {0x409c0, readOrWriteVal}, \
+                    {0x40a40, readOrWriteVal}, \
+                    {0x40a80, readOrWriteVal}, \
+                    {0x40ac0, readOrWriteVal}};
+    for (const auto &p : readWriteMap) {
+        workingSet.push_back(p.first);
+    }
+
     // kick things into action
     schedule(tickEvent, curTick());
     schedule(noRequestEvent, clockEdge(progressCheck));
@@ -139,26 +175,17 @@ IsolatedMemTest::completeRequest(PacketPtr pkt, bool functional)
     assert(req->getSize() == 1);
 
     // this address is no longer outstanding
-    uint64_t memTestTxnId = req->getMemTestTxnId();
-    auto removeMemTestTxnId = outstandingTxnIds.find(memTestTxnId);
-    assert(removeMemTestTxnId != outstandingTxnIds.end());
-    outstandingTxnIds.erase(removeMemTestTxnId);
+    auto remove_addr = outstandingAddrs.find(req->getPaddr());
+    assert(remove_addr != outstandingAddrs.end());
+    outstandingAddrs.erase(remove_addr);
 
-    // Printing per request latency
-    auto removeMemTestTxnId2 = memTxnAttr.find(memTestTxnId);
-    assert(removeMemTestTxnId2 != memTxnAttr.end());
-    // reqId, respId, Addr, issueTick, compTick, readOrWrite
-    DPRINTFR(SeqMemLatTest,"CSVDUMP, %d, %d, %x, %d, %d, %s\n",
-                        memTxnAttr[memTestTxnId].reqId,
-                        lastGenRespId++,
-                        req->getPaddr(),
-                        memTxnAttr[memTestTxnId].reqStartTime,
-                        curTick(),
-                        memTxnAttr[memTestTxnId].readOrWrite);
-    memTxnAttr.erase(removeMemTestTxnId2);
+    DPRINTF(IsolatedMemLatTest, "TxSeqNum: %#018x, Completing %s at address %x (blk %x) %s\n",
+            pkt->req->getReqInstSeqNum(),
+            pkt->isWrite() ? "write" : "read",
+            req->getPaddr(), blockAlign(req->getPaddr()),
+            pkt->isError() ? "error" : "success");
 
     const uint8_t *pkt_data = pkt->getConstPtr<uint8_t>();
-
 
     if (pkt->isError()) {
         if (!functional || !suppressFuncErrors)
@@ -191,7 +218,7 @@ IsolatedMemTest::completeRequest(PacketPtr pkt, bool functional)
             numWrites++;
             stats.numWrites++;
         }
-        if (maxLoads != 0 && (numReads+numWrites) >= maxLoads2)
+        if (maxLoads != 0 && (numWrites+numReads) >= maxLoads)
             exitSimLoop("maximum number of loads/stores reached");
     }
 
@@ -200,7 +227,7 @@ IsolatedMemTest::completeRequest(PacketPtr pkt, bool functional)
 
     // finally shift the response timeout forward if we are still
     // expecting responses; deschedule it otherwise
-    if (outstandingTxnIds.size() != 0)
+    if (outstandingAddrs.size() != 0)
         reschedule(noResponseEvent, clockEdge(progressCheck));
     else if (noResponseEvent.scheduled())
         deschedule(noResponseEvent);
@@ -233,42 +260,55 @@ IsolatedMemTest::tick()
     Request::Flags flags;
     Addr paddr = 0;
 
-    // generate addresses
-    if (outstandingTxnIds.size() < 100) {
-        offset = blockAlign((seqIdx<<6)%size)+id;
-        seqIdx = (seqIdx+1)%maxLoads ;
-        paddr = baseAddr1 + offset;
-    } else {
+    // Skip if you have outstanding transactions
+    if (outstandingAddrs.size() >= 1) {
         waitResponse = true;
-        DPRINTF(IsolatedMemTest, "Waiting for completion of outstanding requests\n");
-        return; // Do not schedule or generate anything
+        return;
     }
+
+    bool readOrWrite = true;  // true: read, false: write
+    uint8_t data = random_mt.random<uint8_t>(); // random write data
+    do {
+        paddr = workingSet.at(seqIdx);
+        readOrWrite = readWriteMap[paddr];
+        seqIdx = (seqIdx+1)%(workingSet.size());
+    } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
     
-    RequestPtr req = std::make_shared<Request>(paddr, lastGenReqId, 1, flags, requestorId);
+    RequestPtr req = std::make_shared<Request>(paddr, 1, flags, requestorId);
     req->setContext(id);
-    outstandingTxnIds.insert(lastGenReqId);
+    req->setReqInstSeqNum(txSeqNum); // zhiang: TODO: here we test InstSeqNum, maybe changed by controllers downstream, let's see
+
+    outstandingAddrs.insert(paddr);
     
     PacketPtr pkt = nullptr;
     uint8_t *pkt_data = new uint8_t[1];
 
-    std::string readOrWriteReq = "read";
-    [[maybe_unused]] uint8_t ref_data = 0;
-    auto ref = referenceData.find(req->getPaddr());
-    if (ref == referenceData.end()) {
-        referenceData[req->getPaddr()] = 0;
+    if (readOrWrite) {
+        // start by ensuring there is a reference value if we have not
+        // seen this address before
+        [[maybe_unused]] uint8_t ref_data = 0;
+        auto ref = referenceData.find(req->getPaddr());
+        if (ref == referenceData.end()) {
+            referenceData[req->getPaddr()] = 0;
+        } else {
+            ref_data = ref->second;
+        }
+
+        DPRINTF(IsolatedMemLatTest,"TxSeqNum: %#018x, Initiating at addr %x read\n", req->getReqInstSeqNum(), req->getPaddr());
+
+        pkt = new Packet(req, MemCmd::ReadReq);
+        pkt->dataDynamic(pkt_data);
+        
     } else {
-        ref_data = ref->second;
+        pkt = new Packet(req, MemCmd::WriteReq);
+        pkt->dataDynamic(pkt_data);
+        pkt_data[0] = data;
+
+        DPRINTF(IsolatedMemLatTest,"TxSeqNum: %#018x, Initiating at addr %x write\n", req->getReqInstSeqNum(), req->getPaddr());
     }
-    DPRINTF(IsolatedMemTest,
-            "TxnId@%d: Initiating read at addr %x\n",
-            req->getMemTestTxnId(), req->getPaddr());
-    pkt = new Packet(req, MemCmd::ReadReq);
-    pkt->dataDynamic(pkt_data);
-    readOrWriteReq = "read";
-  
-    memTxnAttr[lastGenReqId] = {curTick(), lastGenReqId, lastGenRespId, paddr, readOrWriteReq};
-    lastGenReqId++; // Increment the txnId
     
+    txSeqNum++; // for each transaction, we increate 1 to generate a new txSeqNum
+
     // there is no point in ticking if we are waiting for a retry
     bool keep_ticking = sendPkt(pkt);
     if (keep_ticking) {
@@ -283,7 +323,7 @@ IsolatedMemTest::tick()
     }
 
     // Schedule noResponseEvent now if we are not expecting a response
-    if (!noResponseEvent.scheduled() && (outstandingTxnIds.size() != 0))
+    if (!noResponseEvent.scheduled() && (outstandingAddrs.size() != 0))
         schedule(noResponseEvent, clockEdge(progressCheck));
 }
 

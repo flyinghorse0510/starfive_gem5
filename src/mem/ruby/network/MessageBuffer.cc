@@ -49,6 +49,18 @@
 #include "debug/RubyQueue.hh"
 #include "mem/ruby/system/RubySystem.hh"
 
+#include "typeinfo"
+#include "mem/ruby/protocol/CHIRequestMsg.hh"
+#include "mem/ruby/protocol/CHIResponseMsg.hh"
+#include "mem/ruby/protocol/CHIDataMsg.hh"
+#include "mem/ruby/protocol/MemoryMsg.hh"
+#include "mem/ruby/slicc_interface/RubyRequest.hh"
+#include "debug/MsgBufDebug.hh"
+#include "debug/TxnTrace.hh"
+#include "debug/TxnLink.hh"
+#include <set>
+#include <regex>
+
 namespace gem5
 {
 
@@ -73,6 +85,8 @@ MessageBuffer::MessageBuffer(const Params &p)
     ADD_STAT(m_buf_msgs, statistics::units::Rate<
                 statistics::units::Count, statistics::units::Tick>::get(),
              "Average number of messages in buffer"),
+    ADD_STAT(m_retry_msgs, statistics::units::Count::get(),
+             "Number of retry message"), 
     ADD_STAT(m_stall_time, statistics::units::Tick::get(),
              "Total number of ticks messages were stalled in this buffer"),
     ADD_STAT(m_stall_count, statistics::units::Count::get(),
@@ -109,6 +123,9 @@ MessageBuffer::MessageBuffer(const Params &p)
         .flags(statistics::nozero);
 
     m_buf_msgs
+        .flags(statistics::nozero);
+
+    m_retry_msgs
         .flags(statistics::nozero);
 
     m_stall_count
@@ -213,6 +230,142 @@ random_time()
     return time;
 }
 
+std::string denseDst(NetDest& dst)
+{
+    std::vector<NodeID> nodes = dst.getAllDest();
+    std::stringstream ss;
+    std::copy(nodes.begin(), nodes.end(), std::ostream_iterator<int>(ss, ","));
+    return ss.str();
+}
+
+void
+MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time, const bool arrivalOrDep)
+{
+
+    const std::type_info& msg_type = typeid(*(message.get()));
+
+    // use regex to choose the port_name we want to print
+    std::string port_name = name();
+    char link_info[50] = "\0";
+
+    // if this line is reqRdy, skip this line
+    if(port_name.find("reqRdy") != std::string::npos){
+        return;
+    }
+    // else if this line is link, depends on whether we set TxnLink
+    // we need the req/snp/dat/rspIn port to print the latency on the last link
+    else if(port_name.find("system.ruby.network.int_links") != std::string::npos || port_name.rfind("In") != std::string::npos){
+        // port names containing src_node or dst_node are intermediate buffers in routers.
+        if(port_name.find("node",29) != std::string::npos){
+            return;
+        }
+
+        if(!::gem5::debug::TxnLink){ // if we not enabled txnlink, skip the rest calculation and dprintf
+            return;
+        }
+
+        // we only update the link_time and link_name when we are in a link.
+        // this works for both simple and garnet
+        Tick last_link_time = message->getLastLinkTime();
+        std::string last_link = message->getLastLinkName();
+        int pos = port_name.rfind(".");
+        // The outier function only accepts following two scenarios, we only do substr to the first one
+        // system.ruby.network.int_links08.buffer08
+        // system.cpu.l2.reqIn // len is only 19, will cause error
+        if(port_name.rfind("In") == std::string::npos){
+            message->setLastLinkName(port_name.substr(20,pos-20));
+        }
+        message->setLastLinkTime(arrival_time);
+
+        // snprintf(link_info, sizeof(link_info), "<-%lu(%s)", last_link_time, last_link.c_str());
+        snprintf(link_info, sizeof(link_info), "(%s:%lu)", last_link.c_str(), arrival_time - last_link_time);
+    }
+
+    // else we always print this line
+    // zhiang: we added txSeqNum to CHI protocol msgs so that can print txSeqNum
+    uint64_t txSeqNum = 0; 
+    if (msg_type == typeid(RubyRequest)){
+        const RubyRequest* msg = dynamic_cast<RubyRequest*>(message.get());
+        txSeqNum = msg->getRequestPtr()->getReqInstSeqNum();
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, req: %p, Arrival: %d, PA: %#x\n", 
+                txSeqNum, 
+                arrival_time, 
+                msg->getRequestPtr(),
+                arrivalOrDep,
+                msg->getPhysicalAddress());
+        assert(txSeqNum != 0); // txsn should not be 0
+        assert(msg->getRequestPtr() != nullptr); // requestPtr should not be nullptr
+    }
+    else if(msg_type == typeid(CHIRequestMsg)){
+        const CHIRequestMsg* msg = dynamic_cast<CHIRequestMsg*>(message.get());
+        txSeqNum = msg->gettxSeqNum();
+        MachineID const & reqtor = msg->getrequestor();
+        // NetDest const & dest = msg->getDestination();
+        CHIRequestType const & typ = msg->gettype();
+        NetDest dst = msg->getDestination();
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld%s, %s->%s type: %s:%d, req: %p, Arrival: %d, addr: %#x\n", 
+            txSeqNum, 
+            arrival_time, link_info,
+            reqtor, denseDst(dst), typ, this->getVnet(),
+            msg->getreqPtr(),
+            arrivalOrDep,
+            msg->getaddr());
+    }
+    else if (msg_type == typeid(CHIResponseMsg)){
+        const CHIResponseMsg* msg = dynamic_cast<CHIResponseMsg*>(message.get());
+        txSeqNum = msg->gettxSeqNum();
+        MachineID const & rspder = msg->getresponder();
+        // NetDest const & dest = msg->getDestination();
+        CHIResponseType const & typ = msg->gettype();
+        NetDest dst = msg->getDestination();
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld%s, %s->%s type: %s:%d, req: %p, Arrival: %d, addr: %#x\n", 
+            txSeqNum, 
+            arrival_time, link_info,
+            rspder, denseDst(dst), typ, this->getVnet(),
+            msg->getreqPtr(),
+            arrivalOrDep,
+            msg->getaddr());
+        // assert(msg->getreqPtr() != nullptr); // requestPtr should not be nullptr
+        // DPRINTF(MsgBufDebug, "txsn: %#018x, arr: %lld, Message: %s\n", txSeqNum, arrival_time, *msg);
+        // assert(reqTxSeqNums.find(txSeqNum) != reqTxSeqNums.end()); // txsn should be the same as in RubyRequest
+    }
+    else if (msg_type == typeid(CHIDataMsg)){
+        const CHIDataMsg* msg = dynamic_cast<CHIDataMsg*>(message.get());
+        txSeqNum = msg->gettxSeqNum();
+        MachineID const & rspder = msg->getresponder();
+        // NetDest const & dest = msg->getDestination();
+        CHIDataType const & typ = msg->gettype();
+        NetDest dst = msg->getDestination();
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld%s, %s->%s type: %s:%d, req: %p, Arrival: %d, addr: %#x\n", 
+            txSeqNum, 
+            arrival_time, link_info,
+            rspder, denseDst(dst), typ, this->getVnet(),
+            msg->getreqPtr(),
+            arrivalOrDep,
+            msg->getaddr());
+        // assert(msg->getreqPtr() != nullptr); // requestPtr should not be nullptr
+        // DPRINTF(MsgBufDebug, "txsn: %#018x, arr: %lld, Message: %s\n", txSeqNum, arrival_time, *msg);
+        // assert(reqTxSeqNums.find(txSeqNum) != reqTxSeqNums.end()); // txsn should be the same as in RubyRequest
+    }
+    else if (msg_type == typeid(MemoryMsg)){
+        const MemoryMsg* msg = dynamic_cast<MemoryMsg*>(message.get());
+        txSeqNum = msg->gettxSeqNum();
+        MachineID const & sender = msg->getSender();
+        // NetDest const & dest = msg->getDestination();
+        MemoryRequestType const & typ = msg->getType();
+        DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, %s->, type: %s, req: %p, Arrival: %d, addr: %#x\n", 
+            txSeqNum, 
+            arrival_time, 
+            sender, typ,
+            msg->getreqPtr(),
+            arrivalOrDep,
+            msg->getaddr());
+        // assert(msg->getreqPtr() != nullptr); // requestPtr should not be nullptr
+        // DPRINTF(MsgBufDebug, "txsn: %#018x, arr: %lld, Message: %s\n", txSeqNum, arrival_time, *msg);
+        // assert(reqTxSeqNums.find(txSeqNum) != reqTxSeqNums.end()); // txsn should be the same as in RubyRequest
+    }
+}
+
 void
 MessageBuffer::enqueue(MsgPtr message, Tick current_time, Tick delta)
 {
@@ -289,6 +442,10 @@ MessageBuffer::enqueue(MsgPtr message, Tick current_time, Tick delta)
     DPRINTF(RubyQueue, "Enqueue arrival_time: %lld, delta:%lld, Message: %s\n",
             arrival_time, delta, *(message.get()));
 
+    profileRetry(message);
+
+    // zhiang: print the txntrace message
+    txntrace_print(message, arrival_time, true);
     // Schedule the wakeup
     assert(m_consumer != NULL);
     m_consumer->scheduleEventAbsolute(arrival_time);
@@ -328,7 +485,9 @@ MessageBuffer::dequeue(Tick current_time, bool decrement_messages)
         // If the message will be removed from the queue, decrement the
         // number of message in the queue.
         m_buf_msgs--;
+        txntrace_print(message, curTick(), false);
     }
+    // txntrace_print(message,curTick()-message->getLastEnqueueTime());
 
     // if a dequeue callback was requested, call it now
     if (m_dequeue_callback) {
@@ -336,6 +495,22 @@ MessageBuffer::dequeue(Tick current_time, bool decrement_messages)
     }
 
     return delay;
+}
+
+std::string MessageBuffer::getCHITypeStr(const MsgPtr& message) {
+    const std::type_info& msg_type = typeid(*(message.get()));
+    if (msg_type==typeid(CHIRequestMsg)) {
+        const CHIRequestMsg* msg = dynamic_cast<CHIRequestMsg*>(message.get());
+        return CHIRequestType_to_string(msg->gettype());
+    } else if (msg_type==typeid(CHIResponseMsg)) {
+        const CHIResponseMsg* msg = dynamic_cast<CHIResponseMsg*>(message.get());
+        return CHIResponseType_to_string(msg->gettype());
+    } else if (msg_type==typeid(CHIDataMsg)) {
+        const CHIDataMsg* msg = dynamic_cast<CHIDataMsg*>(message.get());
+        return CHIDataType_to_string(msg->gettype());
+    } else {
+        return std::string("");
+    }
 }
 
 void
@@ -457,6 +632,7 @@ MessageBuffer::stallMessage(Addr addr, Tick current_time)
     (m_stall_msg_map[addr]).push_back(message);
     m_stall_map_size++;
     m_stall_count++;
+
 }
 
 bool
@@ -493,6 +669,18 @@ bool
 MessageBuffer::isDeferredMsgMapEmpty(Addr addr) const
 {
     return m_deferred_msg_map.count(addr) == 0;
+}
+
+void
+MessageBuffer::profileRetry(MsgPtr message)
+{
+    const std::type_info& msg_type = typeid(*(message.get()));
+    if(msg_type == typeid(CHIResponseMsg)) {
+         const CHIResponseMsg* msg = dynamic_cast<CHIResponseMsg*>(message.get());
+         CHIResponseType const & typ = msg->gettype();
+         if(CHIResponseType_RetryAck == typ)
+             m_retry_msgs++;
+    }
 }
 
 void

@@ -75,6 +75,9 @@ void notifyPfFill(RequestPtr req, DataBlock blk, bool from_pf) { }
 void notifyPfEvict(Addr blkAddr, bool hwPrefetched) { }
 void notifyPfComplete(Addr addr) { }
 
+// zhiang: external function to operate on the RequestPtr
+uint64_t getTxSeqNum(RequestPtr req);
+
 ////////////////////////////////////////////////////////////////////////////
 // Interface functions required by SLICC
 
@@ -427,6 +430,9 @@ TBE allocateRequestTBE(Addr addr, CHIRequestMsg in_msg), return_by_pointer="yes"
 
   tbe.hasUseTimeout := false;
 
+  // zhiang: assign tbe.txSeqNum = in_msg.txSeqNum
+  tbe.txSeqNum := in_msg.txSeqNum;
+  tbe.reqPtr := in_msg.reqPtr;
   return tbe;
 }
 
@@ -486,6 +492,10 @@ TBE allocateSnoopTBE(Addr addr, CHIRequestMsg in_msg), return_by_pointer="yes" {
   tbe.requestor := in_msg.requestor;
   tbe.fwdRequestor := in_msg.fwdRequestor;
   tbe.reqType := in_msg.type;
+
+  // zhiang: pass CHIRequestMsg.txSeqNum to TBE
+  tbe.txSeqNum := in_msg.txSeqNum;
+  tbe.reqPtr := in_msg.reqPtr;
 
   tbe.snpNeedsData := in_msg.retToSrc;
 
@@ -624,6 +634,10 @@ void prepareRequest(TBE tbe, CHIRequestType type, CHIRequestMsg & out_msg) {
   out_msg.seqReq := tbe.seqReq;
   out_msg.is_local_pf := false;
   out_msg.is_remote_pf := tbe.is_local_pf || tbe.is_remote_pf;
+
+  // zhiang: here we need to pass the txSeqNum to downstream nodes 
+  out_msg.txSeqNum := tbe.txSeqNum;
+  out_msg.reqPtr := tbe.reqPtr;
 }
 
 void allowRequestRetry(TBE tbe, CHIRequestMsg & out_msg) {
@@ -654,6 +668,10 @@ void prepareRequestRetry(TBE tbe, CHIRequestMsg & out_msg) {
   out_msg.seqReq := tbe.seqReq;
   out_msg.is_local_pf := false;
   out_msg.is_remote_pf := tbe.is_local_pf || tbe.is_remote_pf;
+
+  // zhiang: here we need to pass the txSeqNum to downstream nodes 
+  out_msg.txSeqNum := tbe.txSeqNum;
+  out_msg.reqPtr := tbe.reqPtr;
 }
 
 void prepareRequestRetryDVM(TBE tbe, CHIRequestMsg & out_msg) {
@@ -676,6 +694,10 @@ void prepareRequestRetryDVM(TBE tbe, CHIRequestMsg & out_msg) {
   out_msg.seqReq := tbe.seqReq;
   out_msg.is_local_pf := false;
   out_msg.is_remote_pf := tbe.is_local_pf || tbe.is_remote_pf;
+
+  // zhiang: here we need to pass the txSeqNum to downstream nodes 
+  out_msg.txSeqNum := tbe.txSeqNum;
+  out_msg.reqPtr := tbe.reqPtr;
 }
 
 void enqueueDoRetry(TBE tbe) {
@@ -780,14 +802,39 @@ bool upstreamHasShared(State state) {
 }
 
 void printTBEState(TBE tbe) {
-  DPRINTF(RubySlicc, "STATE: addr: %#x data present=%d valid=%d unique=%d dirty=%d mu_dirty=%d dir ownerV=%d ownerE=%d sharers=%d tobe_I=%d tobe_SC=%d doFill=%d pendAction=%s\n",
-                      tbe.addr, tbe.dataBlkValid.isFull(), tbe.dataValid, tbe.dataUnique,
+  DPRINTF(RubySlicc, "STATE: txSeqNum=%#018x addr=%#x data_present=%d valid=%d unique=%d dirty=%d mu_dirty=%d dir ownerV=%d ownerE=%d sharers=%d tobe_I=%d tobe_SC=%d doFill=%d pendAction=%s\n",
+                      tbe.txSeqNum, tbe.addr, tbe.dataBlkValid.isFull(), tbe.dataValid, tbe.dataUnique,
                       tbe.dataDirty, tbe.dataMaybeDirtyUpstream, tbe.dir_ownerExists,
                       tbe.dir_ownerIsExcl,tbe.dir_sharers.count(),
                       tbe.dataToBeInvalid, tbe.dataToBeSharedClean,
                       tbe.doCacheFill, tbe.pendAction);
   DPRINTF(RubySlicc, "dataBlkValid = %s\n", tbe.dataBlkValid);
 }
+
+void printTBEStateStr5(TBE tbe) {
+  if (is_valid(tbe)) {
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,txSeqNum=%#018x,reqTyp=%s\n",tbe.addr,tbe.txSeqNum,tbe.reqType); 
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,dataBlkValid.isFull=%d valid=%d unique=%d\n",tbe.addr,tbe.dataBlkValid.isFull(), tbe.dataValid,tbe.dataUnique);
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,dirty=%d mu_dirty=%d\n",tbe.addr,tbe.dataDirty,tbe.dataMaybeDirtyUpstream);
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,dir ownerExists=%d ownerExcl=%d,sharers=%d\n",tbe.addr,tbe.dir_ownerExists,tbe.dir_ownerIsExcl,tbe.dir_sharers.count());
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,tobe_I=%d tobe_SC=%d\n",tbe.addr,tbe.dataToBeInvalid,tbe.dataToBeSharedClean);
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,doCacheFill=%d,pendAction=%s,finalState=%s\n",tbe.addr,tbe.doCacheFill,tbe.pendAction,tbe.finalState);
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,expected_req_resp.hasExpected=%d\n",tbe.addr,tbe.expected_req_resp.hasExpected());
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,expected_snp_resp.hasExpected=%d\n",tbe.addr,tbe.expected_snp_resp.hasExpected());
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,expected_req_resp.hasReceivedData=%d\n",tbe.addr,tbe.expected_req_resp.hasReceivedData());
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,expected_snp_resp.hasReceivedData=%d\n",tbe.addr,tbe.expected_snp_resp.hasReceivedData());
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,fwdedState=%s,fwdRequestor=%s,snpNeedsData=%d\n",tbe.addr,tbe.fwdedState,tbe.fwdRequestor,tbe.snpNeedsData);
+    DPRINTF(RubyCHIDebugStr5, "addr=%#x,allow_SD=%d\n",tbe.addr,allow_SD);
+    if (!tbe.actions.empty()) {
+      DPRINTF(RubyCHIDebugStr5, "addr=%#x,actions.front = %s,nb=%d\n",tbe.addr,tbe.actions.front(),tbe.actions.frontNB());
+    } else {
+      DPRINTF(RubyCHIDebugStr5, "addr=%#x,actions queue empty\n",tbe.addr);
+    }
+  } else {
+    DPRINTF(RubyCHIDebugStr5,"TBE invalid");
+  }
+}
+
 
 void printDvmTBEState(TBE tbe) {
   DPRINTF(RubySlicc, "STATE: addr=%#x reqType=%d state=%d pendAction=%s isDvmTBE=%d isReplTBE=%d isReqTBE=%d isSnpTBE=%d\n",

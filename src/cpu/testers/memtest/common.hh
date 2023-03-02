@@ -15,7 +15,7 @@ namespace gem5
 
 struct MemTestTxnAttr_t {
   Tick reqStartTime;
-  uint64_t reqId;             /* Request Ordering. Also servers as the TxnId */
+  uint64_t reqId;             /* Request Ordering. Also serves as the TxnId */
   uint64_t respId;            /* Response Ordering */
   Addr pAddr;                 /* physical (byte) address */
   std::string readOrWrite;

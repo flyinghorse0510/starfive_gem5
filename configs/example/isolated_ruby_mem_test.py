@@ -54,10 +54,6 @@ parser.add_argument("--functional", type=int, default=0,
                     help="percentage of accesses that should be functional")
 parser.add_argument("--suppress-func-errors", action="store_true",
                     help="suppress panic when functional accesses fail")
-parser.add_argument("--enable-DMT", default=False, help="enable DMT")
-parser.add_argument("--num-HNF-TBE", default=16, help="number of oustanding in HN-F")
-parser.add_argument("--num_HNF_ReplTBE", default=16, help="number of replacement oustanding in HN-F")
-
 
 #
 # Add the ruby specific and protocol specific options
@@ -91,7 +87,7 @@ if args.num_cpus > block_size:
 #
 
 if args.num_cpus > 0 :
-    cpus = [ MemTest(max_loads = args.maxloads,
+    cpus = [ IsolatedMemTest(max_loads = args.maxloads,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
 
@@ -100,7 +96,7 @@ system = System(cpu = cpus,
                 mem_ranges = [AddrRange(args.mem_size)])
 
 if args.num_dmas > 0:
-    dmas = [ MemTest(max_loads = args.maxloads,
+    dmas = [ IsolatedMemTest(max_loads = args.maxloads,
                      progress_interval = args.progress,
                      suppress_func_errors = not args.suppress_func_errors) \
              for i in range(args.num_dmas) ]
@@ -149,10 +145,7 @@ root = Root( full_system = False, system = system )
 root.system.mem_mode = 'timing'
 
 # Not much point in this being higher than the L1 latency
-if (args.disable_gclk_set):
-    print ("No setGlobalFrequency\n")
-else:
-    m5.ticks.setGlobalFrequency('1ns')
+m5.ticks.setGlobalFrequency('1ns')
 
 # instantiate configuration
 m5.instantiate()

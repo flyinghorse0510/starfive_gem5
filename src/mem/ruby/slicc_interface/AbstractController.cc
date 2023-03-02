@@ -274,6 +274,11 @@ AbstractController::serviceMemoryQueue()
 
     RequestPtr req
         = std::make_shared<Request>(mem_msg->m_addr, req_size, 0, m_id);
+    
+    // need to pass the txseqnum from memmsg to pkt, but now use req for convenience.
+    req->setTraceTxsn(mem_msg->gettxSeqNum());
+    // we cannot use the reqPtr, cause this req is nothing same with our sequencer's request
+
     PacketPtr pkt;
     if (mem_msg->getType() == MemoryRequestType_MEMORY_WB) {
         pkt = Packet::createWrite(req);
@@ -378,6 +383,10 @@ AbstractController::recvTimingResp(PacketPtr pkt)
     std::shared_ptr<MemoryMsg> msg = std::make_shared<MemoryMsg>(clockEdge());
     (*msg).m_addr = pkt->getAddr();
     (*msg).m_Sender = m_machineID;
+
+    // copy the txsn from pkt to memmsg, now use req for convenience
+    (*msg).m_txSeqNum = pkt->req->getTraceTxsn();
+    // but we cannot use this req's address as reqPtr, since this is not the same seqReq we want.
 
     SenderState *s = dynamic_cast<SenderState *>(pkt->senderState);
     (*msg).m_OriginalRequestorMachId = s->id;

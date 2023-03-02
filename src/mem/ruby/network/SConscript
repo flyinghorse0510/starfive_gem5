@@ -43,3 +43,8 @@ Source('BasicRouter.cc')
 Source('MessageBuffer.cc')
 Source('Network.cc')
 Source('Topology.cc')
+
+DebugFlag('MsgBufDebug', "For Packet DataFlow Tracing.")
+
+DebugFlag("TxnTrace", "Print TxnSeqNum Info.")
+DebugFlag("TxnLink", "Enable TxnSeqNum Info for Link Node.")

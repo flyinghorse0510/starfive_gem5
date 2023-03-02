@@ -201,7 +201,7 @@ NVMInterface::decodePacket(const PacketPtr pkt, Addr pkt_addr,
     uint16_t bank_id = banksPerRank * rank + bank;
 
     return new MemPacket(pkt, is_read, false, pseudo_channel, rank, bank, row,
-                   bank_id, pkt_addr, size);
+                0, bank_id, pkt_addr, size);
 }
 
 std::pair<MemPacketQueue::iterator, Tick>
@@ -411,7 +411,8 @@ NVMInterface::burstReady(MemPacket* pkt) const {
 
     std::pair<Tick, Tick>
 NVMInterface::doBurstAccess(MemPacket* pkt, Tick next_burst_at,
-                  const std::vector<MemPacketQueue>& queue)
+                  const std::vector<MemPacketQueue>& queue,
+                  uint64_t totalReadQueueSize)
 {
     DPRINTF(NVM, "NVM Timing access to addr %#x, rank/bank/row %d %d %d\n",
             pkt->addr, pkt->rank, pkt->bank, pkt->row);

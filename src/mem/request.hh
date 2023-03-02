@@ -472,6 +472,13 @@ class Request
 
     /** The transaction Id punched in by Memtester CPU */
     uint64_t _memTestTxnId = 0;
+
+    /** The transaction Id used by TxnTrace between snf and ddrctl **/
+    uint64_t _traceTxsn = 0;
+
+    /** Number of hops in RubyNetwork **/
+    uint64_t _hops = 0;
+
   public:
 
     /**
@@ -652,6 +659,24 @@ class Request
 
     uint64_t getMemTestTxnId() const {
         return _memTestTxnId;
+    }
+
+    uint64_t getTraceTxsn() const {
+        // assert(_traceTxsn != 0);
+        return _traceTxsn;
+    }
+
+    void setTraceTxsn(uint64_t txsn){
+        // assert(txsn != 0);
+        _traceTxsn = txsn;
+    }
+
+    uint64_t getHops() const {
+        return _hops;
+    }
+
+    void setHops(uint64_t hops){
+        _hops = hops;
     }
 
     /**

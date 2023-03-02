@@ -81,6 +81,8 @@ class TBEStorage
   public:
     TBEStorage(statistics::Group *parent, int number_of_TBEs);
 
+    TBEStorage(statistics::Group *parent, std::string tbeDesc, int number_of_TBEs);
+
     // Returns the current number of slots allocated
     int size() const { return m_slots_used.size(); }
 
@@ -127,6 +129,7 @@ class TBEStorage
     struct TBEStorageStats : public statistics::Group
     {
         TBEStorageStats(statistics::Group *parent);
+        TBEStorageStats(statistics::Group *parent, std::string tbeDesc);
 
         // Statistical variables
         statistics::Average avg_size;
