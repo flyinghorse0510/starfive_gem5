@@ -238,7 +238,7 @@ def gen_cache_str(caches:List[Cache], name:str):
     cache_str += '-'*cache_table_width+'\n'
     cache_str += f'||{"TOTAL":^16}|{cache_hit_sum:^16}|{cache_miss_sum:^16}|{cache_access_sum:^16}|{cache_hit_rate:^16}||\n'
     cache_str += gen_bottom(cache_table_width)
-    return cache_str
+    return cache_str, cache_hit_rate
 
 def gen_print_str(cpus:List[CPU], llcs, ddrs, l1ds, l1is, l2ps, snfs):
     # print cpu
@@ -251,7 +251,8 @@ def gen_print_str(cpus:List[CPU], llcs, ddrs, l1ds, l1is, l2ps, snfs):
     cpu_str += gen_bottom(cpu_table_width)
 
     # print caches
-    llc_str,l1d_str, l1i_str, l2p_str = [gen_cache_str(cache,name) for cache,name in ((llcs,'LLC'), (l1ds,'L1D'), (l1is,'L1I'), (l2ps,'L2P'))]
+    (llc_str,llc_hit), (l1d_str,l1d_hit), (l1i_str,l1i_hit), (l2p_str,l2p_hit) = \
+        [gen_cache_str(cache,name) for cache,name in ((llcs,'LLC'), (l1ds,'L1D'), (l1is,'L1I'), (l2ps,'L2P'))]
 
     # print snfs
     snf_str, snf_table_width = gen_header(['SNF','RETRY_MSG'])
@@ -270,7 +271,7 @@ def gen_print_str(cpus:List[CPU], llcs, ddrs, l1ds, l1is, l2ps, snfs):
     ddr_str += f'||{"TOTAL":^16}|{ddr_read_sum:^16}|{ddr_write_sum:^16}\n'
     ddr_str += gen_bottom(ddr_table_width)
 
-    return {'cpu':cpu_str,'llc':llc_str,'ddr':ddr_str,'l1d':l1d_str,'l1i':l1i_str,'l2p':l2p_str, 'snf':snf_str} # you can add more options to print
+    return {'cpu':cpu_str,'llc':llc_str,'ddr':ddr_str,'l1d':l1d_str,'l1i':l1i_str,'l2p':l2p_str, 'snf':snf_str}, {'llc':llc_hit, 'l1d':l1d_hit, 'l1i':l1i_hit, 'l2p':l2p_hit} # you can add more options to print
 
 tick = 0
 
@@ -364,7 +365,7 @@ def gen_throughput(cpus:List[CPU]):
     cpu_write_sum = reduce(lambda x,y:x+y, [cpu.write for cpu in cpus])
     cpu_read_byte = cpu_read_sum * 64
     cpu_write_byte = cpu_write_sum * 64
-    throughput = round(cpu_read_byte * 1000 / tick, 4)
+    throughput = round(cpu_read_byte * 1000 / tick, 4) # Z GB/s = X/Y GB/s = (XB/1e9) / (Yps/1e12) = X*1000 GB / Ys
     return cpu_read_byte, cpu_write_byte, throughput
 
 if __name__ == '__main__':
@@ -391,9 +392,11 @@ if __name__ == '__main__':
     parser.add_argument('--snf_tbe', required=True, type=int)
     parser.add_argument('--dmt', required=True, type=ast.literal_eval)
     parser.add_argument('--linkwidth', required=True, type=int)
-    parser.add_argument('--print', required=False,type=str,default='cpu,ddr,llc',help='choose what to print from [cpu,l1d,l1i,l2,llc,ddr] with comma as delimiter. e.g. --print cpu,llc will only print cpu and llc. default options is cpu,llc,ddr')
+    parser.add_argument('--print', required=False,type=str,default='',help='choose what to print from [cpu,l1d,l1i,l2,llc,ddr] with comma as delimiter. e.g. --print cpu,llc will only print cpu and llc. default options is cpu,llc,ddr')
     parser.add_argument('--print_path', required=False, default=False, type=ast.literal_eval)
     parser.add_argument('--injintv', required=True, type=int)
+    parser.add_argument('--seq_tbe', required=True, type=int) # SEQ_TBE
+    parser.add_argument('--working-set',required=True,type=int)
 
     args = parser.parse_args()
     cpus = [CPU(i) for i in range(args.num_cpu)]
@@ -417,7 +420,7 @@ if __name__ == '__main__':
     # print tick
     tick_str = f'total cycle is {tick/1000}\n'
     # generate print strings
-    print_dict = gen_print_str(cpus, llcs, ddrs, l1ds, l1is, l2ps, snfs)
+    print_dict, hit_dict = gen_print_str(cpus, llcs, ddrs, l1ds, l1is, l2ps, snfs)
     stats_str = tick_str
     
     # parse print option from console
@@ -437,27 +440,25 @@ if __name__ == '__main__':
     with open(args.output,'w+') as f:
         f.write(stats_str)
         f.write(llc_summary(llcs))
-    print(f'written to {args.output}')
+    # print(f'written to {args.output}')
 
-    # need to create a new file by .sh to avoid historical data from last run
-    # --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --dmt ${DMT} --trans ${TRANS} --snf_tbe ${SNF_TBE} --linkwidth ${LINKWIDTH}
-
-    # generate the header for throughput.txt
-    if not os.path.getsize('throughput.txt'):
-        with open('throughput.txt', 'w') as f:
-            if args.print_path:
-                f.write(f'{"CPU":^8}{"LLC":^8}{"DDR":^8}{"DMT":^8}{"TRANS":^8}{"SNF_TBE":^8}{"LINKWD":^8}{"INJINTV":^8}{"READ(B)":^16}{"WRITE(B)":16}{"TICK(ps)":^16}{"THROUGHPUT(GB/s)":^16}{"HNF_RETRY_ACK:":^16}{"SNF_RETRY_MSG":^16}{"PATH"}\n')
-            else:
-                f.write(f'{"CPU":^8}{"LLC":^8}{"DDR":^8}{"DMT":^8}{"TRANS":^8}{"SNF_TBE":^8}{"LINKWD":^8}{"INJINTV":^8}{"READ(B)":^16}{"WRITE(B)":16}{"TICK(ps)":^16}{"THROUGHPUT(GB/s)":^16}{"HNF_RETRY_ACK:":^16}{"SNF_RETRY_MSG":^16}\n')
-    
     cpu_read_byte, cpu_write_byte, throughput = gen_throughput(cpus)
     total_snf_remsg = reduce(lambda x,y:x+y, [snf.remsg for snf in snfs])
     total_hnf_reack = reduce(lambda x,y:x+y, [llc.reack for llc in llcs])
-    
-    with open('throughput.txt', 'a+') as f:
-        if args.print_path:
-            f.write(f'{args.num_cpu:^8}{args.num_llc:^8}{args.num_ddr:^8}{args.dmt:^8}{args.trans:^8}{args.snf_tbe:^8}{args.linkwidth:^8}{args.injintv:^8}{cpu_read_byte:^16}{cpu_write_byte:^16}{tick:^16}{throughput:^16}{total_hnf_reack:^16}{total_snf_remsg:^16}{args.input}\n')
-        else:
-            f.write(f'{args.num_cpu:^8}{args.num_llc:^8}{args.num_ddr:^8}{args.dmt:^8}{args.trans:^8}{args.snf_tbe:^8}{args.linkwidth:^8}{args.injintv:^8}{cpu_read_byte:^16}{cpu_write_byte:^16}{tick:^16}{throughput:^16}{total_hnf_reack:^16}{total_snf_remsg:^16}\n')
-    
-    print(f'written to ./throughput.txt')
+    outParams=dict()
+    outParams={
+        "CPU":args.num_cpu,
+        "LLC":args.num_llc,
+        "DDR":args.num_ddr,
+        "SEQTBE": args.seq_tbe,
+        "READ":cpu_read_byte,
+        "WRITE":cpu_write_byte,
+        "BW":throughput,
+        "WS":args.working_set,
+        "LAT":round(1/throughput,2),
+        "L1HitRate":hit_dict["l1d"],
+        "L2HitRate":hit_dict["l2p"],
+        "LLCHitRate":hit_dict["llc"]
+    }
+    import json
+    print(json.dumps(outParams))
