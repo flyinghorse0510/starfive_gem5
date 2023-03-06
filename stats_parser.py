@@ -26,6 +26,12 @@ fi
 import re
 from typing import List
 import logging
+import argparse
+import ast
+import os
+import subprocess
+import ProdConsStatsParser as pcutils
+import pandas as pd
 
 # add a new log level
 LOG_MSG = 60
@@ -360,6 +366,30 @@ def llc_summary(llcs:List[LLC]):
         total_reack += llc.reack
     return f'LLC summary: hit rate:{total_hit/total_access}, miss rate: {total_miss/total_access}, reack: {total_reack}'
 
+def getLatAndBWFromDebug(statsFile):
+    dX=pd.read_csv(statsFile)
+    dX.dropna(inplace=True)
+    numReads=len(dX.index)
+    endTime=dX['EndTime'].max()
+    startTime=dX['StartTime'].min()
+    dX['lat']=dX['EndTime']-dX['StartTime']
+    totalCyc=endTime-startTime
+    avgLat=dX['lat'].mean()
+    minLat=dX['lat'].min()
+    medLat=dX['lat'].median()
+    maxLat=dX['lat'].max()
+    bw=(numReads*64)/totalCyc
+    retDict=dict({
+        'StartTime': startTime,
+        'EndTime': endTime,
+        'bw': bw,
+        'min_lat': minLat,
+        'avg_lat': avgLat,
+        'med_lat': medLat,
+        'max_lat': maxLat
+    })
+    return retDict
+
 def gen_throughput(cpus:List[CPU]):
     cpu_read_sum = reduce(lambda x,y:x+y, [cpu.read for cpu in cpus])
     cpu_write_sum = reduce(lambda x,y:x+y, [cpu.write for cpu in cpus])
@@ -381,10 +411,10 @@ if __name__ == '__main__':
     # test_priv_cache_pat()
 
     # --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --trans ${TRANS} --snf_tbe ${SNF_TBE} --dmt ${DMT} --linkwidth ${LINKWIDTH} --print l1d,l1i,l2p,llc,cpu,ddr
-    import argparse
-    import ast
+    
+
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument('--input', required=True, type=str)
+    parser.add_argument('--input-dir',required=True,type=str)
     parser.add_argument('--output', required=True, type=str)
     parser.add_argument('--num_cpu', required=True, type=int)
     parser.add_argument('--num_llc', required=True, type=int)
@@ -408,14 +438,21 @@ if __name__ == '__main__':
     l2ps = [L2P(i) for i in range(args.num_cpu)]
     ddrs = [DDR(i) for i in range(args.num_ddr)]
     snfs = [SNF(i) for i in range(args.num_ddr)]
+    
+    statsFile=os.path.join(args.input_dir,'stats.txt')
 
-    import subprocess
-    out = subprocess.getoutput('wc -l %s' % args.input)
+    out = subprocess.getoutput('wc -l %s' % statsFile)
     if int(out.split()[0]) == 0:
-        logging.critical(f'{args.input} has no content. Please check if your test has finished.')
+        logging.critical(f'{statsFile} has no content. Please check if your test has finished.')
         exit()
 
-    with open(args.input, 'r') as f:
+    # Get the latency from debugtrace
+    allMsgLog=os.path.join(args.input_dir,'simple.trace')
+    msgPerfDumFile=os.path.join(args.input_dir,'AllMsgLatDump.csv')
+    pcutils.parseReadWriteTxn(allMsgLog,msgPerfDumFile)
+    retDict=getLatAndBWFromDebug(msgPerfDumFile)
+
+    with open(statsFile, 'r') as f:
         for line in f:
             parse_stats(line, cpus, llcs, ddrs, l1ds, l1is, l2ps, snfs)
 
@@ -431,7 +468,6 @@ if __name__ == '__main__':
         if k in print_args:
             stats_str += v
         
-    import os
     if args.print:
         print(f'Stats for configuration {os.path.basename(os.path.dirname(args.input))}')
         print(stats_str)
@@ -441,7 +477,6 @@ if __name__ == '__main__':
     with open(args.output,'w+') as f:
         f.write(stats_str)
         f.write(llc_summary(llcs))
-    # print(f'written to {args.output}')
 
     cpu_read_byte, cpu_write_byte, throughput, lat = gen_throughput(cpus)
     total_snf_remsg = reduce(lambda x,y:x+y, [snf.remsg for snf in snfs])
@@ -455,9 +490,9 @@ if __name__ == '__main__':
         "MAXOUTSTANDINGMEMTEST": args.max_outstanding_requests,
         "READ":cpu_read_byte,
         "WRITE":cpu_write_byte,
-        "BW":throughput,
+        "BW":retDict['bw'],
         "WS":args.working_set,
-        "LAT":lat,
+        "LAT":retDict['avg_lat'],
         "L1HitRate":hit_dict["l1d"],
         "L2HitRate":hit_dict["l2p"],
         "LLCHitRate":hit_dict["llc"]

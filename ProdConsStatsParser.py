@@ -56,7 +56,7 @@ def parseReadWriteTxn(logfile,dumpfile):
                 if TxSeqNum in msgDict:
                     msgDict[TxSeqNum]['EndTime'] = time
                 else :
-                    raise KeyError(f'{TxSeqNum} does not exist')
+                    raise KeyError(f'{TxSeqNum} does not exist \n {line}')
             else:
                 print(f'DOES NOT MATCH')
                 print(line)

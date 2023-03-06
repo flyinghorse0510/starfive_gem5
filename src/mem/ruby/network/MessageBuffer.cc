@@ -355,8 +355,7 @@ MessageBuffer::txntrace_print(MsgPtr message, \
             typ,
             arrivalOrDep,
             msg->getaddr(),
-            reqtor,
-            std::string("---"));
+            reqtor);
     }
 }
 

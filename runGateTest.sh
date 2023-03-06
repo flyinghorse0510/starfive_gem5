@@ -46,18 +46,18 @@ fi
 # Constant Parameters
 l1d_size="4KiB"
 l1i_size="4KiB"
-l2_size="16KiB"
-l3_size="32KiB"
+l2_size="8KiB"
+l3_size="1KiB"
 l1d_assoc=4
 l1i_assoc=4
 l2_assoc=8
-l3_assoc=16
+l3_assoc=8
 NUM_LLC=16
 TRANS=4
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/GateTest"
 # PY3=$(which python3)
 PY3=/home/arka.maity/anaconda3/bin/python3
-DEBUG_FLAGS=TxnTrace,ProdConsMemLatTest,RubyGenerated
+DEBUG_FLAGS=TxnTrace,ProdConsMemLatTest
 DCT_CONFIGS=(False)
 DMT_CONFIGS=(False)
 LoadFactor=100   # Set it to large value to ameliorate the effect of cold caches
@@ -82,7 +82,7 @@ VC_PER_VNET=2
 LINKWIDTH=256
 PHYVNET=True #True #False
 
-WKSETLIST=(2048 5120 10240 20480)
+WKSETLIST=(2048 8192 16384 32768)
 NUM_CPU_SET=(1) #(1 16) # For LLC and DDR bw tests, numcpus must be 16
 
 if [ "$GATETEST" != "" ]; then
@@ -157,8 +157,9 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
           for MAX_MEMTEST_OUTSTANDING in ${MAX_MEMTEST_OUTSTANDING_SET[@]}; do
           OUTPUT_PREFIX="${NETWORK}"
           OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_MTOUTSTANDING${MAX_MEMTEST_OUTSTANDING}_LoadFactor${LoadFactor}" 
+          grep -E 'ReqBegin=LD|ReqDone=LD' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace
           ${PY3} stats_parser.py \
-             --input ${OUTPUT_DIR}/stats.txt \
+             --input-dir ${OUTPUT_DIR} \
              --output ${OUTPUT_DIR}/stats.log\
              --num_cpu ${NUMCPUS} \
              --num_llc ${NUM_LLC} \
