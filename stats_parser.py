@@ -273,7 +273,7 @@ def gen_print_str(cpus:List[CPU], llcs, ddrs, l1ds, l1is, l2ps, snfs):
 
     return {'cpu':cpu_str,'llc':llc_str,'ddr':ddr_str,'l1d':l1d_str,'l1i':l1i_str,'l2p':l2p_str, 'snf':snf_str}, {'llc':llc_hit, 'l1d':l1d_hit, 'l1i':l1i_hit, 'l2p':l2p_hit} # you can add more options to print
 
-tick = 0
+simCyc = 0
 
 # parse one line each time
 def parse_stats(line, cpus:List[CPU], llcs:List[LLC], ddrs:List[DDR], l1ds:List[L1D], l1is:List[L1I], l2ps:List[L2P], snfs:List[SNF]):
@@ -286,8 +286,8 @@ def parse_stats(line, cpus:List[CPU], llcs:List[LLC], ddrs:List[DDR], l1ds:List[
     priv_cache_sch = re.search(priv_cache_pat, line)
 
     if tick_sch:
-        global tick
-        tick = int(tick_sch.group(1))
+        global simCyc
+        simCyc = int(tick_sch.group(1))/500 # Assuming each cycle is 500 ticks
     
     elif llc_sch:
         llc_id = 0 if len(llcs) == 1 else int(llc_sch.group(1))
@@ -365,8 +365,9 @@ def gen_throughput(cpus:List[CPU]):
     cpu_write_sum = reduce(lambda x,y:x+y, [cpu.write for cpu in cpus])
     cpu_read_byte = cpu_read_sum * 64
     cpu_write_byte = cpu_write_sum * 64
-    throughput = round(cpu_read_byte * 1000 / tick, 4) # Z GB/s = X/Y GB/s = (XB/1e9) / (Yps/1e12) = X*1000 GB / Ys
-    return cpu_read_byte, cpu_write_byte, throughput
+    throughput = round(cpu_read_byte / simCyc, 4) # Z GB/s = X/Y GB/s = (XB/1e9) / (Yps/1e12) = X*1000 GB / Ys
+    lat = round(simCyc / cpu_read_byte, 4)
+    return cpu_read_byte, cpu_write_byte, throughput, lat
 
 if __name__ == '__main__':
 
@@ -397,6 +398,7 @@ if __name__ == '__main__':
     parser.add_argument('--injintv', required=True, type=int)
     parser.add_argument('--seq_tbe', required=True, type=int) # SEQ_TBE
     parser.add_argument('--working-set',required=True,type=int)
+    parser.add_argument('--max-outstanding-requests',required=True,type=int)
 
     args = parser.parse_args()
     cpus = [CPU(i) for i in range(args.num_cpu)]
@@ -417,8 +419,7 @@ if __name__ == '__main__':
         for line in f:
             parse_stats(line, cpus, llcs, ddrs, l1ds, l1is, l2ps, snfs)
 
-    # print tick
-    tick_str = f'total cycle is {tick/1000}\n'
+    tick_str = f'total cycle is {simCyc}\n'
     # generate print strings
     print_dict, hit_dict = gen_print_str(cpus, llcs, ddrs, l1ds, l1is, l2ps, snfs)
     stats_str = tick_str
@@ -442,7 +443,7 @@ if __name__ == '__main__':
         f.write(llc_summary(llcs))
     # print(f'written to {args.output}')
 
-    cpu_read_byte, cpu_write_byte, throughput = gen_throughput(cpus)
+    cpu_read_byte, cpu_write_byte, throughput, lat = gen_throughput(cpus)
     total_snf_remsg = reduce(lambda x,y:x+y, [snf.remsg for snf in snfs])
     total_hnf_reack = reduce(lambda x,y:x+y, [llc.reack for llc in llcs])
     outParams=dict()
@@ -451,11 +452,12 @@ if __name__ == '__main__':
         "LLC":args.num_llc,
         "DDR":args.num_ddr,
         "SEQTBE": args.seq_tbe,
+        "MAXOUTSTANDINGMEMTEST": args.max_outstanding_requests,
         "READ":cpu_read_byte,
         "WRITE":cpu_write_byte,
         "BW":throughput,
         "WS":args.working_set,
-        "LAT":round(1/throughput,2),
+        "LAT":lat,
         "L1HitRate":hit_dict["l1d"],
         "L2HitRate":hit_dict["l2p"],
         "LLCHitRate":hit_dict["llc"]

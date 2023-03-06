@@ -63,6 +63,7 @@ class SeqMemTest(ClockedObject):
     num_cpus = Param.Counter(1, "Total number of CPUs")
 
     bench_c2cbw_mode = Param.Bool(False,"[True] Producer Consumer BW or [False] C2C Latency Test")
+    max_outstanding_requests = Param.Int(1,"Maximumum number of outstanding requests produced")
     id_producers = VectorParam.Int([], "List of Producer Ids")
     id_consumers = VectorParam.Int([], "List of Consumer Ids")
     num_peer_producers = Param.Counter(1, "Number of independent peer producers. Use to partition the working set")

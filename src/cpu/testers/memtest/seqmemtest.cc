@@ -145,6 +145,12 @@ SeqMemTest::SeqMemTest(const Params &p)
     numWrites = 0;
     writeSyncDataBase=0x8f1;
 
+    // Maximum number of outstanding transactions
+    maxOutStandingTransactions=p.max_outstanding_requests;
+    if (maxOutStandingTransactions > perCPUWorkingBlocks.size()) {
+        maxOutStandingTransactions = perCPUWorkingBlocks.size();
+    }
+
     // kick things into action
     schedule(tickEvent, curTick());
     schedule(noRequestEvent, clockEdge(progressCheck));
@@ -253,7 +259,8 @@ SeqMemTest::tick()
     Addr paddr = 0;
 
     /* Too many outstanding transactions */
-    if ((outstandingAddrs.size() >= 100) || (outstandingAddrs.size() >= perCPUWorkingBlocks.size())) {
+    // if ((outstandingAddrs.size() >= 100) || (outstandingAddrs.size() >= perCPUWorkingBlocks.size())) {
+    if (outstandingAddrs.size() >= maxOutStandingTransactions) {
         waitResponse = true;
         return;
     }
