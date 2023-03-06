@@ -180,8 +180,6 @@ class SeqMemTest : public ClockedObject
     //const uint64_t maxLoads;
     uint64_t maxLoads;
 
-    unsigned maxOutStandingTransactions;
-
     uint64_t txSeqNum; // requestorID + txSeqNum should be the unique ID
 
     const bool atomic;

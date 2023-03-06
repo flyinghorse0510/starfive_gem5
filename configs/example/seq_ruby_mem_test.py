@@ -185,7 +185,6 @@ if num_cpus > 0 :
                      id_producers = cpuProdListMap[i],
                      id_consumers = cpuConsListMap[i],
                      num_peer_producers = num_peer_producers,
-                     max_outstanding_requests = args.max_outstanding_requests,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
 
@@ -203,7 +202,6 @@ if args.num_dmas > 0:
                      id_producers = cpuProdListMap[i],
                      id_consumers = cpuConsListMap[i],
                      num_peer_producers = num_peer_producers,
-                     max_outstanding_requests = args.max_outstanding_requests,
                      addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,
                      suppress_func_errors = not args.suppress_func_errors) \
              for i in range(args.num_dmas) ]
