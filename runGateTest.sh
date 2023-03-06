@@ -62,7 +62,6 @@ NUM_MEM=1
 NUM_DDR_XP=2
 NUM_DDR_Side=1
 MultiCoreAddrMode=True
-SEQ_TBE_SET=(32)
 MAX_MEMTEST_OUTSTANDING_SET=(1 32)
 HNF_TBE=32
 SNF_TBE=32
@@ -90,6 +89,7 @@ l1i_assoc=4
 l2_assoc=8
 l3_assoc=8
 NUM_LLC=16
+SEQ_TBE_SET=(1 32)
 WKSETLIST=(2048 8192)
 NUM_CPU_SET=(1) # For LLC and DDR bw tests, numcpus must be 16
 LoadFactor=100 # Set it to large value to ameliorate the effect of cold caches
@@ -194,6 +194,7 @@ l2_assoc=8
 l3_assoc=8
 NUM_LLC=16
 WKSETLIST=(65536)
+SEQ_TBE_SET=(32)
 NUM_CPU_SET=(16) # For LLC and DDR bw tests, numcpus must be 16
 LoadFactor=100 # Set it to large value to ameliorate the effect of cold caches
 
@@ -291,17 +292,18 @@ l1d_size="4KiB"
 l1i_size="4KiB"
 l2_size="8KiB"
 l3_size="4KiB" #"16KiB" #"1024KiB" #"256KiB"
-l1d_assoc=4
-l1i_assoc=4
+l1d_assoc=8
+l1i_assoc=8
 l2_assoc=8
-l3_assoc=8
+l3_assoc=16
 NUM_LLC=16
 WKSETLIST=(524288)
 NUM_CPU_SET=(16) # For LLC and DDR bw tests, numcpus must be 16
 LoadFactor=10
+SEQ_TBE_SET=(32)
 NUM_MEM=4
-NUM_DDR_XP=4
-NUM_DDR_Side=2
+NUM_DDR_XP=2
+NUM_DDR_Side=1
 MultiCoreAddrMode=True
 
 for NUMCPUS in ${NUM_CPU_SET[@]}; do
@@ -395,6 +397,6 @@ fi
 
 head -n -1 ${OUTPUT_ROOT}/Summary.json > ${OUTPUT_ROOT}/Summary2.json # Remove the last comma
 echo "]" >> ${OUTPUT_ROOT}/Summary2.json
-${PY3} processProdCons.py \
+${PY3} getLatBWAll.py \
        --input=${OUTPUT_ROOT}/Summary2.json \
-       --output=${OUTPUT_ROOT}/Summary.csv
+       --output=RegTestSummary.csv
