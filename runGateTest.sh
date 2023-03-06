@@ -90,81 +90,77 @@ l1i_assoc=4
 l2_assoc=8
 l3_assoc=8
 NUM_LLC=16
-WKSETLIST=(2048 8192 16384 32768)
+WKSETLIST=(2048 8192)
 NUM_CPU_SET=(1) # For LLC and DDR bw tests, numcpus must be 16
 LoadFactor=100 # Set it to large value to ameliorate the effect of cold caches
-
-# for NUMCPUS in ${NUM_CPU_SET[@]}; do
-#   for WKSET in ${WKSETLIST[@]}; do
-#     for DMT in ${DMT_CONFIGS[@]}; do
-#       for DCT in ${DCT_CONFIGS[@]}; do
-#         for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
-#           for MAX_MEMTEST_OUTSTANDING in ${MAX_MEMTEST_OUTSTANDING_SET[@]}; do
-#           # Latency Tests
-#           OUTPUT_PREFIX="L1L2_${NETWORK}"
-#           OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_MTOUTSTANDING${MAX_MEMTEST_OUTSTANDING}_LoadFactor${LoadFactor}" 
-#           $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
-#             --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
-#             -d $OUTPUT_DIR \
-#             ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
-#             --num-dirs=${NUM_MEM} \
-#             --DDR-loc-num=${NUM_DDR_XP} \
-#             --DDR-side-num=${NUM_DDR_Side} \
-#             --num-l3caches=${NUM_LLC} \
-#             --l1d_size=${l1d_size} \
-#             --l1i_size=${l1i_size} \
-#             --l2_size=${l2_size} \
-#             --l3_size=${l3_size} \
-#             --l1d_assoc=${l1d_assoc} \
-#             --l1i_assoc=${l1i_assoc} \
-#             --l2_assoc=${l2_assoc} \
-#             --l3_assoc=${l3_assoc} \
-#             --network=${NETWORK} \
-#             --simple-link-bw-factor=${LINK_BW} \
-#             --link-width-bits=${LINKWIDTH} \
-#             --vcs-per-vnet=${VC_PER_VNET} \
-#             --link-latency=${LINK_LAT} \
-#             --router-latency=${ROUTER_LAT} \
-#             --topology=CustomMesh \
-#             --simple-physical-channels \
-#             --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
-#             --ruby \
-#             --maxloads=${LoadFactor} \
-#             --mem-size="16GB" \
-#             --size-ws=${WKSET} \
-#             --mem-type=DDR4_3200_8x8 \
-#             --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
-#             --mem-test-type='bw_test' \
-#             --max-outstanding-requests=${MAX_MEMTEST_OUTSTANDING} \
-#             --addr-intrlvd-or-tiled=$MultiCoreAddrMode  \
-#             --disable-gclk-set \
-#             --enable-DMT=${DMT} \
-#             --enable-DCT=${DCT} \
-#             --num-HNF-TBE=${HNF_TBE}  \
-#             --num-SNF-TBE=${SNF_TBE}  \
-#             --sequencer-outstanding-requests=${SEQ_TBE} \
-#             --num_trans_per_cycle_llc=${TRANS} \
-#             --num-cpus=${NUMCPUS} \
-#             --inj-interval=1 \
-#             --num-producers=1 &
-#           done
-#         done
-#       done
-#     done
-#   done
-# done
-# wait
 
 for NUMCPUS in ${NUM_CPU_SET[@]}; do
   for WKSET in ${WKSETLIST[@]}; do
     for DMT in ${DMT_CONFIGS[@]}; do
       for DCT in ${DCT_CONFIGS[@]}; do
         for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
-          for MAX_MEMTEST_OUTSTANDING in ${MAX_MEMTEST_OUTSTANDING_SET[@]}; do
+          # Latency Tests
           OUTPUT_PREFIX="L1L2_${NETWORK}"
-          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_MTOUTSTANDING${MAX_MEMTEST_OUTSTANDING}_LoadFactor${LoadFactor}" 
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}" 
+          $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
+            --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
+            -d $OUTPUT_DIR \
+            ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
+            --num-dirs=${NUM_MEM} \
+            --DDR-loc-num=${NUM_DDR_XP} \
+            --DDR-side-num=${NUM_DDR_Side} \
+            --num-l3caches=${NUM_LLC} \
+            --l1d_size=${l1d_size} \
+            --l1i_size=${l1i_size} \
+            --l2_size=${l2_size} \
+            --l3_size=${l3_size} \
+            --l1d_assoc=${l1d_assoc} \
+            --l1i_assoc=${l1i_assoc} \
+            --l2_assoc=${l2_assoc} \
+            --l3_assoc=${l3_assoc} \
+            --network=${NETWORK} \
+            --simple-link-bw-factor=${LINK_BW} \
+            --link-width-bits=${LINKWIDTH} \
+            --vcs-per-vnet=${VC_PER_VNET} \
+            --link-latency=${LINK_LAT} \
+            --router-latency=${ROUTER_LAT} \
+            --topology=CustomMesh \
+            --simple-physical-channels \
+            --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
+            --ruby \
+            --maxloads=${LoadFactor} \
+            --mem-size="16GB" \
+            --size-ws=${WKSET} \
+            --mem-type=DDR4_3200_8x8 \
+            --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
+            --mem-test-type='bw_test' \
+            --addr-intrlvd-or-tiled=$MultiCoreAddrMode  \
+            --disable-gclk-set \
+            --enable-DMT=${DMT} \
+            --enable-DCT=${DCT} \
+            --num-HNF-TBE=${HNF_TBE}  \
+            --num-SNF-TBE=${SNF_TBE}  \
+            --sequencer-outstanding-requests=${SEQ_TBE} \
+            --num_trans_per_cycle_llc=${TRANS} \
+            --num-cpus=${NUMCPUS} \
+            --inj-interval=1 \
+            --num-producers=1 &
+        done
+      done
+    done
+  done
+done
+wait
+
+for NUMCPUS in ${NUM_CPU_SET[@]}; do
+  for WKSET in ${WKSETLIST[@]}; do
+    for DMT in ${DMT_CONFIGS[@]}; do
+      for DCT in ${DCT_CONFIGS[@]}; do
+        for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
+          OUTPUT_PREFIX="L1L2_${NETWORK}"
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}" 
           grep -E 'ReqBegin=LD|ReqDone=LD' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace
-          ${PY3} stats_parser.py \
+          ${PY3} stats_parser_new.py \
              --input-dir ${OUTPUT_DIR} \
              --output ${OUTPUT_DIR}/stats.log \
              --num_cpu ${NUMCPUS} \
@@ -175,12 +171,10 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
              --dmt ${DMT} \
              --linkwidth ${LINKWIDTH} \
              --injintv 1 \
-             --max-outstanding-requests=${MAX_MEMTEST_OUTSTANDING} \
              --seq_tbe ${SEQ_TBE} \
              --bench L1L2Hit \
              --working-set ${WKSET} >> "${OUTPUT_ROOT}/Summary.json"
           echo "," >> "${OUTPUT_ROOT}/Summary.json"
-          done
         done
       done
     done
@@ -203,76 +197,72 @@ WKSETLIST=(65536)
 NUM_CPU_SET=(16) # For LLC and DDR bw tests, numcpus must be 16
 LoadFactor=100 # Set it to large value to ameliorate the effect of cold caches
 
-# for NUMCPUS in ${NUM_CPU_SET[@]}; do
-#   for WKSET in ${WKSETLIST[@]}; do
-#     for DMT in ${DMT_CONFIGS[@]}; do
-#       for DCT in ${DCT_CONFIGS[@]}; do
-#         for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
-#           for MAX_MEMTEST_OUTSTANDING in ${MAX_MEMTEST_OUTSTANDING_SET[@]}; do
-#           OUTPUT_PREFIX="L3Hit_${NETWORK}"
-#           OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_MTOUTSTANDING${MAX_MEMTEST_OUTSTANDING}_LoadFactor${LoadFactor}" 
-#           $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
-#             --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
-#             -d $OUTPUT_DIR \
-#             ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
-#             --num-dirs=${NUM_MEM} \
-#             --DDR-loc-num=${NUM_DDR_XP} \
-#             --DDR-side-num=${NUM_DDR_Side} \
-#             --num-l3caches=${NUM_LLC} \
-#             --l1d_size=${l1d_size} \
-#             --l1i_size=${l1i_size} \
-#             --l2_size=${l2_size} \
-#             --l3_size=${l3_size} \
-#             --l1d_assoc=${l1d_assoc} \
-#             --l1i_assoc=${l1i_assoc} \
-#             --l2_assoc=${l2_assoc} \
-#             --l3_assoc=${l3_assoc} \
-#             --network=${NETWORK} \
-#             --simple-link-bw-factor=${LINK_BW} \
-#             --link-width-bits=${LINKWIDTH} \
-#             --vcs-per-vnet=${VC_PER_VNET} \
-#             --link-latency=${LINK_LAT} \
-#             --router-latency=${ROUTER_LAT} \
-#             --topology=CustomMesh \
-#             --simple-physical-channels \
-#             --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
-#             --ruby \
-#             --maxloads=${LoadFactor} \
-#             --mem-size="16GB" \
-#             --size-ws=${WKSET} \
-#             --mem-type=DDR4_3200_8x8 \
-#             --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
-#             --mem-test-type='bw_test' \
-#             --max-outstanding-requests=${MAX_MEMTEST_OUTSTANDING} \
-#             --addr-intrlvd-or-tiled=$MultiCoreAddrMode  \
-#             --disable-gclk-set \
-#             --enable-DMT=${DMT} \
-#             --enable-DCT=${DCT} \
-#             --num-HNF-TBE=${HNF_TBE}  \
-#             --num-SNF-TBE=${SNF_TBE}  \
-#             --sequencer-outstanding-requests=${SEQ_TBE} \
-#             --num_trans_per_cycle_llc=${TRANS} \
-#             --num-cpus=${NUMCPUS} \
-#             --inj-interval=1 \
-#             --num-producers=1 &
-#           done
-#         done
-#       done
-#     done
-#   done
-# done
-# wait
+for NUMCPUS in ${NUM_CPU_SET[@]}; do
+  for WKSET in ${WKSETLIST[@]}; do
+    for DMT in ${DMT_CONFIGS[@]}; do
+      for DCT in ${DCT_CONFIGS[@]}; do
+        for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
+          OUTPUT_PREFIX="L3Hit_${NETWORK}"
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}" 
+          $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
+            --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
+            -d $OUTPUT_DIR \
+            ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
+            --num-dirs=${NUM_MEM} \
+            --DDR-loc-num=${NUM_DDR_XP} \
+            --DDR-side-num=${NUM_DDR_Side} \
+            --num-l3caches=${NUM_LLC} \
+            --l1d_size=${l1d_size} \
+            --l1i_size=${l1i_size} \
+            --l2_size=${l2_size} \
+            --l3_size=${l3_size} \
+            --l1d_assoc=${l1d_assoc} \
+            --l1i_assoc=${l1i_assoc} \
+            --l2_assoc=${l2_assoc} \
+            --l3_assoc=${l3_assoc} \
+            --network=${NETWORK} \
+            --simple-link-bw-factor=${LINK_BW} \
+            --link-width-bits=${LINKWIDTH} \
+            --vcs-per-vnet=${VC_PER_VNET} \
+            --link-latency=${LINK_LAT} \
+            --router-latency=${ROUTER_LAT} \
+            --topology=CustomMesh \
+            --simple-physical-channels \
+            --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
+            --ruby \
+            --maxloads=${LoadFactor} \
+            --mem-size="16GB" \
+            --size-ws=${WKSET} \
+            --mem-type=DDR4_3200_8x8 \
+            --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
+            --mem-test-type='bw_test' \
+            --addr-intrlvd-or-tiled=$MultiCoreAddrMode  \
+            --disable-gclk-set \
+            --enable-DMT=${DMT} \
+            --enable-DCT=${DCT} \
+            --num-HNF-TBE=${HNF_TBE}  \
+            --num-SNF-TBE=${SNF_TBE}  \
+            --sequencer-outstanding-requests=${SEQ_TBE} \
+            --num_trans_per_cycle_llc=${TRANS} \
+            --num-cpus=${NUMCPUS} \
+            --inj-interval=1 \
+            --num-producers=1 &
+        done
+      done
+    done
+  done
+done
+wait
 
 for NUMCPUS in ${NUM_CPU_SET[@]}; do
   for WKSET in ${WKSETLIST[@]}; do
     for DMT in ${DMT_CONFIGS[@]}; do
       for DCT in ${DCT_CONFIGS[@]}; do
         for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
-          for MAX_MEMTEST_OUTSTANDING in ${MAX_MEMTEST_OUTSTANDING_SET[@]}; do
           OUTPUT_PREFIX="L3Hit_${NETWORK}"
-          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_MTOUTSTANDING${MAX_MEMTEST_OUTSTANDING}_LoadFactor${LoadFactor}" 
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}" 
           grep -E 'ReqBegin=LD|ReqDone=LD' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace
-          ${PY3} stats_parser.py \
+          ${PY3} stats_parser_new.py \
              --input-dir ${OUTPUT_DIR} \
              --output ${OUTPUT_DIR}/stats.log \
              --num_cpu ${NUMCPUS} \
@@ -283,12 +273,10 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
              --dmt ${DMT} \
              --linkwidth ${LINKWIDTH} \
              --injintv 1 \
-             --max-outstanding-requests=${MAX_MEMTEST_OUTSTANDING} \
              --seq_tbe ${SEQ_TBE} \
              --bench L3Hit \
              --working-set ${WKSET} >> "${OUTPUT_ROOT}/Summary.json"
           echo "," >> "${OUTPUT_ROOT}/Summary.json"
-          done
         done
       done
     done
@@ -311,78 +299,78 @@ NUM_LLC=16
 WKSETLIST=(524288)
 NUM_CPU_SET=(16) # For LLC and DDR bw tests, numcpus must be 16
 LoadFactor=10
-
-# for NUMCPUS in ${NUM_CPU_SET[@]}; do
-#   for WKSET in ${WKSETLIST[@]}; do
-#     for DMT in ${DMT_CONFIGS[@]}; do
-#       for DCT in ${DCT_CONFIGS[@]}; do
-#         for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
-#           for MAX_MEMTEST_OUTSTANDING in ${MAX_MEMTEST_OUTSTANDING_SET[@]}; do
-#           # Latency Tests
-#           OUTPUT_PREFIX="DDR_${NETWORK}"
-#           OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_MTOUTSTANDING${MAX_MEMTEST_OUTSTANDING}_LoadFactor${LoadFactor}" 
-#           $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
-#             --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
-#             -d $OUTPUT_DIR \
-#             ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
-#             --num-dirs=${NUM_MEM} \
-#             --DDR-loc-num=${NUM_DDR_XP} \
-#             --DDR-side-num=${NUM_DDR_Side} \
-#             --num-l3caches=${NUM_LLC} \
-#             --l1d_size=${l1d_size} \
-#             --l1i_size=${l1i_size} \
-#             --l2_size=${l2_size} \
-#             --l3_size=${l3_size} \
-#             --l1d_assoc=${l1d_assoc} \
-#             --l1i_assoc=${l1i_assoc} \
-#             --l2_assoc=${l2_assoc} \
-#             --l3_assoc=${l3_assoc} \
-#             --network=${NETWORK} \
-#             --simple-link-bw-factor=${LINK_BW} \
-#             --link-width-bits=${LINKWIDTH} \
-#             --vcs-per-vnet=${VC_PER_VNET} \
-#             --link-latency=${LINK_LAT} \
-#             --router-latency=${ROUTER_LAT} \
-#             --topology=CustomMesh \
-#             --simple-physical-channels \
-#             --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
-#             --ruby \
-#             --maxloads=${LoadFactor} \
-#             --mem-size="16GB" \
-#             --size-ws=${WKSET} \
-#             --mem-type=DDR4_3200_8x8 \
-#             --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
-#             --mem-test-type='bw_test' \
-#             --max-outstanding-requests=${MAX_MEMTEST_OUTSTANDING} \
-#             --addr-intrlvd-or-tiled=$MultiCoreAddrMode  \
-#             --disable-gclk-set \
-#             --enable-DMT=${DMT} \
-#             --enable-DCT=${DCT} \
-#             --num-HNF-TBE=${HNF_TBE}  \
-#             --num-SNF-TBE=${SNF_TBE}  \
-#             --sequencer-outstanding-requests=${SEQ_TBE} \
-#             --num_trans_per_cycle_llc=${TRANS} \
-#             --num-cpus=${NUMCPUS} \
-#             --inj-interval=1 \
-#             --num-producers=1 &
-#           done
-#         done
-#       done
-#     done
-#   done
-# done
-# wait
+NUM_MEM=4
+NUM_DDR_XP=4
+NUM_DDR_Side=2
+MultiCoreAddrMode=True
 
 for NUMCPUS in ${NUM_CPU_SET[@]}; do
   for WKSET in ${WKSETLIST[@]}; do
     for DMT in ${DMT_CONFIGS[@]}; do
       for DCT in ${DCT_CONFIGS[@]}; do
         for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
-          for MAX_MEMTEST_OUTSTANDING in ${MAX_MEMTEST_OUTSTANDING_SET[@]}; do
+          # Latency Tests
           OUTPUT_PREFIX="DDR_${NETWORK}"
-          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_MTOUTSTANDING${MAX_MEMTEST_OUTSTANDING}_LoadFactor${LoadFactor}" 
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}" 
+          $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
+            --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
+            -d $OUTPUT_DIR \
+            ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
+            --num-dirs=${NUM_MEM} \
+            --DDR-loc-num=${NUM_DDR_XP} \
+            --DDR-side-num=${NUM_DDR_Side} \
+            --num-l3caches=${NUM_LLC} \
+            --l1d_size=${l1d_size} \
+            --l1i_size=${l1i_size} \
+            --l2_size=${l2_size} \
+            --l3_size=${l3_size} \
+            --l1d_assoc=${l1d_assoc} \
+            --l1i_assoc=${l1i_assoc} \
+            --l2_assoc=${l2_assoc} \
+            --l3_assoc=${l3_assoc} \
+            --network=${NETWORK} \
+            --simple-link-bw-factor=${LINK_BW} \
+            --link-width-bits=${LINKWIDTH} \
+            --vcs-per-vnet=${VC_PER_VNET} \
+            --link-latency=${LINK_LAT} \
+            --router-latency=${ROUTER_LAT} \
+            --topology=CustomMesh \
+            --simple-physical-channels \
+            --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
+            --ruby \
+            --maxloads=${LoadFactor} \
+            --mem-size="16GB" \
+            --size-ws=${WKSET} \
+            --mem-type=DDR4_3200_8x8 \
+            --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
+            --mem-test-type='bw_test' \
+            --addr-intrlvd-or-tiled=$MultiCoreAddrMode  \
+            --disable-gclk-set \
+            --enable-DMT=${DMT} \
+            --enable-DCT=${DCT} \
+            --num-HNF-TBE=${HNF_TBE}  \
+            --num-SNF-TBE=${SNF_TBE}  \
+            --sequencer-outstanding-requests=${SEQ_TBE} \
+            --num_trans_per_cycle_llc=${TRANS} \
+            --num-cpus=${NUMCPUS} \
+            --inj-interval=1 \
+            --num-producers=1 &
+        done
+      done
+    done
+  done
+done
+wait
+
+for NUMCPUS in ${NUM_CPU_SET[@]}; do
+  for WKSET in ${WKSETLIST[@]}; do
+    for DMT in ${DMT_CONFIGS[@]}; do
+      for DCT in ${DCT_CONFIGS[@]}; do
+        for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
+          OUTPUT_PREFIX="DDR_${NETWORK}"
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}" 
           grep -E 'ReqBegin=LD|ReqDone=LD' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace
-          ${PY3} stats_parser.py \
+          ${PY3} stats_parser_new.py \
              --input-dir ${OUTPUT_DIR} \
              --output ${OUTPUT_DIR}/stats.log \
              --num_cpu ${NUMCPUS} \
@@ -393,12 +381,10 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
              --dmt ${DMT} \
              --linkwidth ${LINKWIDTH} \
              --injintv 1 \
-             --max-outstanding-requests=${MAX_MEMTEST_OUTSTANDING} \
              --seq_tbe ${SEQ_TBE} \
              --bench DDR \
              --working-set ${WKSET} >> "${OUTPUT_ROOT}/Summary.json"
           echo "," >> "${OUTPUT_ROOT}/Summary.json"
-          done
         done
       done
     done
