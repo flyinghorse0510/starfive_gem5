@@ -429,6 +429,7 @@ if __name__ == '__main__':
     parser.add_argument('--seq_tbe', required=True, type=int) # SEQ_TBE
     parser.add_argument('--working-set',required=True,type=int)
     parser.add_argument('--max-outstanding-requests',required=True,type=int)
+    parser.add_argument('--bench',required=True,type=str)
 
     args = parser.parse_args()
     cpus = [CPU(i) for i in range(args.num_cpu)]
@@ -483,6 +484,7 @@ if __name__ == '__main__':
     total_hnf_reack = reduce(lambda x,y:x+y, [llc.reack for llc in llcs])
     outParams=dict()
     outParams={
+        "BENCH":args.bench,
         "CPU":args.num_cpu,
         "LLC":args.num_llc,
         "DDR":args.num_ddr,
