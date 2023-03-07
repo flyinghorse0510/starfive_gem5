@@ -284,7 +284,7 @@ void MigratoryMemTest::completeRequest(PacketPtr pkt, bool functional) {
         if (pkt->isRead()) {
             assert(migratoryObject.getState() == READ_RECV);
             writeSyncData_t ref_data = migratoryObject.getData();
-            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%x,Iter:%d,Reqtor:%d,isStarter:%d,Complete:R,misMatch:%d\n",\
+            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%#x,Iter:%d,Reqtor:%d,isStarter:%d,Complete:R,misMatch:%d\n",\
                 remove_paddr,\
                 migratoryObject.getIter(), \
                 id,isStarter,(pkt_data[0] != ref_data));
@@ -302,7 +302,7 @@ void MigratoryMemTest::completeRequest(PacketPtr pkt, bool functional) {
         } else {
             assert(pkt->isWrite());
             assert(migratoryObject.getState() == WRITE_RECV);
-            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%x,Iter:%d,Reqtor:%d,isStarter:%d,Complete:W,misMatch:0\n",\
+            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%#x,Iter:%d,Reqtor:%d,isStarter:%d,Complete:W,misMatch:0\n",\
                     remove_paddr,\
                     migratoryObject.getIter(), \
                     id,isStarter);
@@ -387,7 +387,7 @@ void MigratoryMemTest::tick() {
             generateRequest = true;
             paddr = migratoryObject.getAddr();
             data = migratoryObject.getData();
-            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%x,Iter:%d,Reqtor:%d,isStarter:%d,Start:R\n",\
+            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%#x,Iter:%d,Reqtor:%d,isStarter:%d,Start:R\n",\
                     paddr,\
                     migratoryObject.getIter(), \
                     id,isStarter);
@@ -398,7 +398,7 @@ void MigratoryMemTest::tick() {
             generateRequest = true;
             paddr = migratoryObject.getAddr();
             data = migratoryObject.getData();
-            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%x,Iter:%d,Reqtor:%d,isStarter:%d,Start:W\n",\
+            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%#x,Iter:%d,Reqtor:%d,isStarter:%d,Start:W\n",\
                     paddr,\
                     migratoryObject.getIter(), \
                     id,isStarter);
