@@ -1,5 +1,6 @@
 import re
 import os
+import json
 import pandas as pd
 import argparse
 
@@ -63,15 +64,35 @@ def parseTxns(logFile, dumpFile):
             WriteEnd=v['write_end']
             print(f'{addr},{it},{ReadStart},{ReadEnd},{WriteStart},{WriteEnd}',file=fw)
 
+def analyzeCsv(options,msgDumpCsv):
+    dfX = pd.read_csv(msgDumpCsv)
+    dfX['lat'] = dfX['WriteEnd']-dfX['ReadStart']
+    minLat = dfX['lat'].min()
+    maxLat = dfX['lat'].max()
+    medLat = dfX['lat'].median()
+    avgLat = dfX['lat'].mean()
+    retDict = dict({
+        'dct': options.dct,
+        'num_cpus': options.num_cpus,
+        'min_lat': minLat,
+        'avg_lat': avgLat,
+        'med_lat': medLat,
+        'max_lat': maxLat
+    })
+    return retDict
+
 def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--input', required=True, type=str)
     parser.add_argument('--output',required=True, type=str)
+    parser.add_argument('--num-cpus',required=True, type=int)
+    parser.add_argument('--dct',required=True)
     options = parser.parse_args()
     allMsgLog=os.path.join(options.input,'debug.trace')
     msgDumpCsv=os.path.join(options.output,'AllMsgLatDump.csv')
     parseTxns(allMsgLog,msgDumpCsv)
-    print(f'Finished parsing dump')
+    retDict = analyzeCsv(options,msgDumpCsv)
+    print(json.dumps(retDict))
 
 if __name__=="__main__":
     main()
