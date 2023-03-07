@@ -60,24 +60,108 @@
 namespace gem5
 {
 
+enum MigratoryStructureState {
+    READ_GENERATE,
+    READ_RECV,
+    WRITE_GENERATE,
+    WRITE_RECV,
+    DONE
+};
 
+class MigratoryStructure_t {
+    private:
+        const Addr addr; // Must be cache line aligned
+        const writeSyncData_t data;
+        const unsigned start_id;   // The first requestor
+        const unsigned iter_count;
+        unsigned current_id;
+        std::queue<unsigned> subsequent_ids_q; // Where to push next
+        MigratoryStructureState state;
+        bool isEmpty;
+    public:
+        MigratoryStructure_t(unsigned j, \
+                             unsigned start_id,\
+                             Addr addr, \
+                             writeSyncData_t data,\
+                             unsigned num_sharers)
+          : iter_count(j), 
+            start_id(start_id),
+            addr(addr),
+            data(data) {
 
-static unsigned int TESTER_PRODUCER_IDX; // Pass Index of the writer. Only written by sole producer
+            state = READ_GENERATE; // Initial state
+            current_id = start_id;
+            for (unsigned sharer = 0; sharer < num_sharers; sharer++) {
+                if (sharer != start_id) {
+                    subsequent_ids_q.push(sharer);
+                }
+            }
+            isEmpty = subsequent_ids_q.empty();
+            fatal_if(isEmpty,"Inital migratory queue empty. Needs atleast one additional sharer");
+        }
 
-bool ParsecMemTest::CpuPort::recvTimingResp(PacketPtr pkt)
+        MigratoryStructureState getState() const { return state; }
+        Addr getAddr() const { return addr; }
+        writeSyncData_t getData() const { return data; }
+        void updateState() {
+            switch (state) {
+                case READ_GENERATE : {
+                    state = READ_RECV;
+                    break;
+                }
+                case READ_RECV : {
+                    state = WRITE_GENERATE;
+                    break;
+                }
+                case WRITE_GENERATE : {
+                    state = WRITE_RECV;
+                    break;
+                }
+                case WRITE_RECV : {
+                    state = DONE;
+                    break;
+                }
+                case DONE : {
+                    if (subsequent_ids_q.empty()) {
+                        isEmpty = true;
+                    } else {
+                        current_id = subsequent_ids_q.front();
+                        subsequent_ids_q.pop();
+                        isEmpty = false;
+                    }
+                    break;
+                }
+                default : {
+                    DPRINTF(MigratoryMemLatTest,"Invalid State=%d\n",state);
+                    assert(false);
+                }
+            }
+        }
+        bool isDone() const { return (state == DONE); }
+        unsigned getCurrentId() const { return current_id; }
+        bool allSharersFinished() const { return isEmpty; }
+        unsigned getIter() const { return iter_count; }
+};
+
+static unsigned int num_txn_generated=0;
+static unsigned int TESTER_ALLOCATOR=0; // Pass Index of the writer. Only written by sole producer
+static std::queue<MigratoryStructure_t> migratoryPendRequests;
+static bool migStructInitialized=false;
+
+bool MigratoryMemTest::CpuPort::recvTimingResp(PacketPtr pkt)
 {
     seqmemtest.completeRequest(pkt);
     return true;
 }
 
 void
-ParsecMemTest::CpuPort::recvReqRetry()
+MigratoryMemTest::CpuPort::recvReqRetry()
 {
     seqmemtest.recvRetry();
 }
 
 bool
-ParsecMemTest::sendPkt(PacketPtr pkt) {
+MigratoryMemTest::sendPkt(PacketPtr pkt) {
     if (atomic) {
         port.sendAtomic(pkt);
         completeRequest(pkt);
@@ -90,7 +174,7 @@ ParsecMemTest::sendPkt(PacketPtr pkt) {
     return true;
 }
 
-ParsecMemTest::ParsecMemTest(const Params &p)
+MigratoryMemTest::MigratoryMemTest(const Params &p)
     : ClockedObject(p),
       tickEvent([this]{ tick(); }, name()),
       noRequestEvent([this]{ noRequest(); }, name()),
@@ -108,6 +192,7 @@ ParsecMemTest::ParsecMemTest(const Params &p)
       progressCheck(p.progress_check),
       nextProgressMessage(p.progress_interval),
       maxLoadFactor(p.max_loads),
+      id_starter(p.id_starter),
       atomic(p.system->isAtomicMode()),
       seqIdx(0),
       baseAddr(p.base_addr_1),
@@ -118,28 +203,40 @@ ParsecMemTest::ParsecMemTest(const Params &p)
     id = TESTER_ALLOCATOR++;
 
     // Initialize the txn counters
-    numReadTxnGenerated=0;
+    num_txn_generated=0;
     numReadTxnCompleted=0;
-    numWriteTxnGenerated=0;
     numWriteTxnCompleted=0;
-    maxLoads=0;
+    maxOutStandingTransactions=100;
 
-    // Create the working set
-    bool isWarmupPhase;
-    bool isIdle;
-    std::vector<Addr> sharedWorkingSet;
-    std::vector<Addr> privateWorkingSet; // Used to store lock-like variables
-    std::set<Addr> totalWorkingSet; // Used for warmup
-
-    state=MemTestStatus::Idle;
-
+    /* Initialize the working set. 
+     * The same workingSet is shared by everyone.
+     * But only the starting requestor initializes
+     * the working set array
+     */
+    bool isStarter = (id == id_starter);
+    fatal_if((workingSet%blockSize)!=0,"The working set is not cache line aligned");
+    unsigned totalWorkingSetInBlocks=(workingSet/blockSize);
+    maxLoads = maxLoadFactor * (totalWorkingSetInBlocks);
+    if (isStarter) {
+        for (unsigned j = 0; j < maxLoadFactor; j++) {
+            for (unsigned i=0; i < totalWorkingSetInBlocks; i++) {
+                /* Create the Initial migratory stucture for each block in the working set */
+                Addr addr = (baseAddr+i)<<(static_cast<uint64_t>(std::log2(blockSize)));
+                writeSyncData_t data = 0x873a; // Append some random data
+                migratoryPendRequests.push(MigratoryStructure_t(j,id,addr,data,num_cpus));
+            }
+        }
+        migStructInitialized=true;
+    }
+    
+    
     // Generate the initial tick
     schedule(tickEvent, curTick());
     schedule(noRequestEvent, clockEdge(progressCheck));
 }
 
 Port &
-ParsecMemTest::getPort(const std::string &if_name, PortID idx)
+MigratoryMemTest::getPort(const std::string &if_name, PortID idx)
 {
     if (if_name == "port")
         return port;
@@ -147,10 +244,14 @@ ParsecMemTest::getPort(const std::string &if_name, PortID idx)
         return ClockedObject::getPort(if_name, idx);
 }
 
-void ParsecMemTest::completeRequest(PacketPtr pkt, bool functional) {
-    assert(!isIdle); // An idle MemTester cannot receive a response. It has never generated a request
+void MigratoryMemTest::completeRequest(PacketPtr pkt, bool functional) {
     const RequestPtr &req = pkt->req;
     assert(req->getSize() == 2);
+
+    // Obtain the migratory object
+    assert(!migratoryPendRequests.empty());
+    MigratoryStructure_t& migratoryObject = migratoryPendRequests.front();
+    assert(id == migratoryObject.getCurrentId()); // Id mismatch
 
     // this address is no longer outstanding
     auto remove_paddr = req->getPaddr();
@@ -160,59 +261,40 @@ void ParsecMemTest::completeRequest(PacketPtr pkt, bool functional) {
 
     const writeSyncData_t *pkt_data = pkt->getConstPtr<writeSyncData_t>();
 
-    unsigned workingSetSize=perCPUWorkingBlocks.size();
-
     if (pkt->isError()) {
         if (!functional || !suppressFuncErrors)
             panic( "%s access failed at %#x\n",
                 pkt->isWrite() ? "Write" : "Read", req->getPaddr());
     } else {
         if (pkt->isRead()) {
-            assert(writeValsQ.find(id) != writeValsQ.end());
-            auto cdata = writeValsQ.at(id);
-            writeSyncData_t ref_data = cdata->getRefData(remove_paddr);
-            if (pkt_data[0] != ref_data) {
-                // Incorrect data read. Probably due to unhandled race conditions
-                panic("Read of %x returns %x, expected %x\n", remove_paddr,pkt_data[0], ref_data);
-            } else {
-                DPRINTF(MigratoryMemLatTest, "Complete,R,%x,%x\n", req->getPaddr(),pkt_data[0]);
-                numReadTxnCompleted++;
-                stats.numReads++;
+            assert(migratoryObject.getState() == READ_RECV);
+            writeSyncData_t ref_data = migratoryObject.getData();
+            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%x,Iter:%d,Reqtor:%d,isStarter:%d,Complete:R,misMatch:%d\n",\
+                remove_paddr,\
+                migratoryObject.getIter(), \
+                id,isStarter,(pkt_data[0] != ref_data));
+            numReadTxnCompleted++;
+            stats.numReads++;
 
-                if (numReadTxnCompleted == (uint64_t)nextProgressMessage) {
-                    ccprintf(std::cerr,
-                            "%s: completed %d read, %d write accesses @%d\n",
-                            name(), numReadTxnCompleted, numWriteTxnCompleted, curTick());
-                    nextProgressMessage += progressInterval;
-                }
+            if (numReadTxnCompleted == (uint64_t)nextProgressMessage) {
+                ccprintf(std::cerr,
+                        "%s: completed %d read, %d write accesses @%d\n",
+                        name(), numReadTxnCompleted, numWriteTxnCompleted, curTick());
+                nextProgressMessage += progressInterval;
             }
+            migratoryObject.updateState();
 
-            if (numReadTxnCompleted >= maxLoads) {
-                DPRINTF(MigratoryMemLatTest,"id=(%d/%d) Completed all read resp=%d,%d\n",id,numConsCompleted,numReadTxnCompleted,maxLoads);
-                numConsCompleted++;
-            }
         } else {
             assert(pkt->isWrite());
-
-            DPRINTF(MigratoryMemLatTest, "Complete,W,%x,%x\n", req->getPaddr(),pkt_data[0]);
+            assert(migratoryObject.getState() == WRITE_RECV);
+            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%x,Iter:%d,Reqtor:%d,isStarter:%d,Complete:W,misMatch:0\n",\
+                    remove_paddr,\
+                    migratoryObject.getIter(), \
+                    id,isStarter);
+            
             referenceData[req->getPaddr()] = pkt_data[0];
             stats.numWrites++;
-            if (isProducer && ((referenceData.size())>=workingSetSize)) {
-                DPRINTF(MigratoryMemLatTest,"id=(%d,%d) Completed all writes resp=%d,%d,numProdCompleted=%d\n",id,producer_peer_id,referenceData.size(),workingSetSize,numProdCompleted);
-                auto consumer_data = std::make_shared<ConsumerReadData_t>(referenceData);
-                for (auto c : id_consumers) {
-                    writeValsQ[c] = consumer_data;
-                }
-                TESTER_PRODUCER_IDX++;
-
-                numProdCompleted++;
-            }
-
-        }
-        
-        if ((numConsCompleted+numProdCompleted) >= TOTAL_REQ_AGENTS) {
-            DPRINTF(MigratoryMemLatTest, "id=%d,num_consumers=%d,num_producers=%d,numConsCompleted=%d,numProdCompleted=%d,TOTAL_REQ_AGENTS=%d\n", id, num_consumers, num_producers, numConsCompleted,numProdCompleted,TOTAL_REQ_AGENTS);
-            exitSimLoop("maximum number of loads/stores reached");
+            migratoryObject.updateState();
         }
     }
 
@@ -233,7 +315,7 @@ void ParsecMemTest::completeRequest(PacketPtr pkt, bool functional) {
     }
 }
 
-ParsecMemTest::MemTestStats::MemTestStats(statistics::Group *parent)
+MigratoryMemTest::MemTestStats::MemTestStats(statistics::Group *parent)
       : statistics::Group(parent),
       ADD_STAT(numReads, statistics::units::Count::get(),
                "number of read accesses completed"),
@@ -243,20 +325,17 @@ ParsecMemTest::MemTestStats::MemTestStats(statistics::Group *parent)
 
 }
 
-void
-ParsecMemTest::tick()
-{
+void MigratoryMemTest::tick() {
     // we should never tick if we are waiting for a retry
     assert(!retryPkt);
     assert(!waitResponse);
-    assert(!isIdle);
 
     // create a new request
     Request::Flags flags;
     Addr paddr = 0;
-    bool readOrWrite = (isProducer)?false:true;  // Only producer can write
-    unsigned workingSetSize=perCPUWorkingBlocks.size();
-    unsigned readWorkingSetSize=0;
+    bool readOrWrite = false;
+    bool generateRequest = false;
+    writeSyncData_t data = 0x0;
 
     // Skip if you have outstanding Too many outstanding transactions
     if (outstandingAddrs.size() >= maxOutStandingTransactions) {
@@ -264,131 +343,146 @@ ParsecMemTest::tick()
         return;
     }
 
-    writeSyncData_t data;
-    if (!isProducer) {
-        /* Skip if you generated maxLoads transactions */
-        if (numReadTxnGenerated >= maxLoads) {
-            DPRINTF(MigratoryMemLatTest,"Reader finished generating %d\n",numReadTxnGenerated);
-            waitResponse = true;
-            return;
-        }
-
-        if (numProdCompleted < numPeerProducers) {
-            /* Wait for all writes to finish before generating a read*/
+    if (migratoryPendRequests.empty()) {
+        if (migStructInitialized) {
+            /* All transactions completed. Exit ? */
+            exitSimLoop("All migratory transactions completed");
+        } else {
+            /* No mig transaction created. Keep 'polling' */
             schedule(tickEvent, clockEdge(interval));
             reschedule(noRequestEvent, clockEdge(progressCheck), true);
-            // DPRINTF(MigratoryMemLatTest,"Reader waiting for %d/%d\n",numProdCompleted,numPeerProducers);
             return;
         }
-        // DPRINTF(MigratoryMemLatTest,"All producers finished generating\n");
-        assert(writeValsQ.find(id) != writeValsQ.end());
-
-        /* The entire working set is outstanding*/
-        auto cdata = writeValsQ.at(id);
-        readWorkingSetSize = cdata->getWorkingSetSize();
-        if (outstandingAddrs.size() >= readWorkingSetSize) {
-            waitResponse = true;
-            return;
-        }
-
-        /* Pick an address to generate a read request */
-        do {
-            paddr = cdata->getNextAddr();
-            data = cdata->getRefData(paddr);
-        } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
-
-    } else {
-        /* Skip if you generated workingSetSize write transactions */
-        if (writeDataGenerated.size() >= workingSetSize) {
-            DPRINTF(MigratoryMemLatTest,"id=(%d,%d) Completed all writes reqs=%d,%d\n",producer_peer_id,id,writeDataGenerated.size(),workingSetSize);
-            waitResponse = true;
-            return;
-        }
-        
-        /* No free addresses to generate from this producer. Stall */
-        /* Should have an assertions that? outstandingAddrs.size() <= workingSetSize*/
-        if (outstandingAddrs.size() >= workingSetSize) {
-            waitResponse = true;
-            return;
-        }
-
-        /* Search for an address within the workingSetSize cacheline */
-        do {
-            paddr = perCPUWorkingBlocks.at(seqIdx);
-            seqIdx = (seqIdx+1)%(workingSetSize);
-        } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
-        data = (TESTER_PRODUCER_IDX << 8) + (writeSyncDataBase++);
-
-        writeDataGenerated.insert(paddr);
     }
-
-    outstandingAddrs.insert(paddr);
-    RequestPtr req = std::make_shared<Request>(paddr, 2, flags, requestorId);
-    req->setContext(id);
-    req->setReqInstSeqNum(txSeqNum);
+    MigratoryStructure_t& migratoryObject = migratoryPendRequests.front();
     
-    PacketPtr pkt = nullptr;
-    writeSyncData_t *pkt_data = new writeSyncData_t[1];
-
-    if (readOrWrite) {
-        pkt = new Packet(req, MemCmd::ReadReq);
-        referenceData[req->getPaddr()] = data;
-        pkt->dataDynamic(pkt_data);
-        DPRINTF(MigratoryMemLatTest,"Start,R,%x,%x,%d/%d\n",req->getPaddr(),data,outstandingAddrs.size(),readWorkingSetSize);
-        numReadTxnGenerated++;
-    } else {
-        pkt = new Packet(req, MemCmd::WriteReq);
-        pkt->dataDynamic(pkt_data);
-        pkt_data[0] = data;
-        DPRINTF(MigratoryMemLatTest,"Start,W,%x,%x,%d\n",req->getPaddr(),data,outstandingAddrs.size());
-        numWriteTxnGenerated++;
-    }
-
-    txSeqNum++; // for each transaction,increate 1 to generate a new txSeqNum
-    
-    // there is no point in ticking if we are waiting for a retry
-    bool keep_ticking = sendPkt(pkt);
-    if (keep_ticking) {
-        // schedule the next tick
+    /* You are not the requestor yet. Keep 'polling' */
+    if (id != migratoryObject.getCurrentId()) {
         schedule(tickEvent, clockEdge(interval));
-
-        // finally shift the timeout for sending of requests forwards
-        // as we have successfully sent a packet
         reschedule(noRequestEvent, clockEdge(progressCheck), true);
+        return;
+    }
+
+    auto state = migratoryObject.getState();
+    switch (state) {
+        case READ_GENERATE: {
+            readOrWrite = true;
+            generateRequest = true;
+            paddr = migratoryObject.getAddr();
+            data = migratoryObject.getData();
+            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%x,Iter:%d,Reqtor:%d,isStarter:%d,Start:R\n",\
+                    paddr,\
+                    migratoryObject.getIter(), \
+                    id,isStarter);
+            break;
+        }
+        case WRITE_GENERATE: {
+            readOrWrite = false;
+            generateRequest = true;
+            paddr = migratoryObject.getAddr();
+            data = migratoryObject.getData();
+            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%x,Iter:%d,Reqtor:%d,isStarter:%d,Start:W\n",\
+                    paddr,\
+                    migratoryObject.getIter(), \
+                    id,isStarter);
+            break;
+        }
+        case READ_RECV:
+        case WRITE_RECV: {
+            /* 
+             * Nothing new to generate. Waiting on response. 
+             * Will be handled while completing request. Remember
+             * to schedule a tick, so that this can fire again.
+             */
+            waitResponse = true;
+            return;
+        }
+        case DONE: {
+            num_txn_generated++;
+            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|id(%d) %d Transactions completed\n",id,num_txn_generated);
+        }
+    }
+    
+    if (generateRequest) {
+        outstandingAddrs.insert(paddr);
+        RequestPtr req = std::make_shared<Request>(paddr, 2, flags, requestorId);
+        req->setContext(id);
+        req->setReqInstSeqNum(txSeqNum);
+    
+        PacketPtr pkt = nullptr;
+        writeSyncData_t *pkt_data = new writeSyncData_t[1];
+
+        if (readOrWrite) {
+            pkt = new Packet(req, MemCmd::ReadReq);
+            referenceData[req->getPaddr()] = data;
+            pkt->dataDynamic(pkt_data);
+        } else {
+            pkt = new Packet(req, MemCmd::WriteReq);
+            pkt->dataDynamic(pkt_data);
+            pkt_data[0] = data;
+        }
+
+        txSeqNum++; // for each transaction,increate 1 to generate a new txSeqNum
+    
+        // there is no point in ticking if we are waiting for a retry
+        bool keep_ticking = sendPkt(pkt);
+        if (keep_ticking) {
+            // schedule the next tick
+            schedule(tickEvent, clockEdge(interval));
+            // finally shift the timeout for sending of requests forwards
+            // as we have successfully sent a packet
+            reschedule(noRequestEvent, clockEdge(progressCheck), true);
+        } else {
+            DPRINTF(MigratoryMemLatTest, "Waiting for retry\n");
+        }
     } else {
-        DPRINTF(MigratoryMemLatTest, "Waiting for retry\n");
+        /* Just schedule a tick */
+        schedule(tickEvent, clockEdge(interval));
+        reschedule(noRequestEvent, clockEdge(progressCheck), true);
     }
 
     // Schedule noResponseEvent now if we are not expecting a response
     if (!noResponseEvent.scheduled() && (outstandingAddrs.size() != 0))
         schedule(noResponseEvent, clockEdge(progressCheck));
-}
-
-void
-ParsecMemTest::noRequest()
-{
-    assert(!isIdle);
-    if (isProducer) {
-        if (numWriteTxnGenerated < maxLoads) {
-            panic("%s did not send a request for %d cycles", name(), progressCheck);
-        }
-    } else {
-        if (numReadTxnGenerated < maxLoads) {
-            panic("%s did not send a request for %d cycles", name(), progressCheck);
-        }
-    }
     
+    /* 
+     * Update the internal state of the migratory object 
+     * and signal the next CPU to initiate the transactions
+     * Find subsequent_ids_q becomes empty, pop this object
+     * Remember to call this after receiving response.
+     */
+    migratoryObject.updateState();
+    bool completeAllTxnsForthisObj = migratoryObject.allSharersFinished();
+    if (completeAllTxnsForthisObj) {
+        migratoryPendRequests.pop();
+    }
 }
 
 void
-ParsecMemTest::noResponse()
+MigratoryMemTest::noRequest()
 {
-    assert(!isIdle);
+    // assert(!isIdle);
+    // if (isProducer) {
+    //     if (numWriteTxnGenerated < maxLoads) {
+    //         panic("%s did not send a request for %d cycles", name(), progressCheck);
+    //     }
+    // } else {
+    //     if (numReadTxnGenerated < maxLoads) {
+    //         panic("%s did not send a request for %d cycles", name(), progressCheck);
+    //     }
+    // }
+    panic("%s did not send a request for %d cycles", name(), progressCheck);
+}
+
+void
+MigratoryMemTest::noResponse()
+{
+    // assert(!isIdle);
     panic("%s did not see a response for %d cycles", name(), progressCheck);
 }
 
 void
-ParsecMemTest::recvRetry()
+MigratoryMemTest::recvRetry()
 {
     assert(retryPkt);
     if (port.sendTimingReq(retryPkt)) {

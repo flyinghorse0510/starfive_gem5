@@ -55,8 +55,6 @@
 namespace gem5
 {
 
-enum MemTestStatus {Idle, WarmUp, InsideCritSec, OutsideCritSec};
-
 typedef uint16_t writeSyncData_t;
 
 /**
@@ -77,7 +75,7 @@ class MigratoryMemTest : public ClockedObject
 
   public:
 
-    typedef ProdConsMemTestParams Params;
+    typedef MigratoryMemTestParams Params;
     
     MigratoryMemTest(const Params &p);
 
@@ -85,8 +83,6 @@ class MigratoryMemTest : public ClockedObject
                   PortID idx=InvalidPortID) override;
 
   protected:
-
-    MemTestStatus state;
 
     uint64_t seqIdx;
 
@@ -164,14 +160,6 @@ class MigratoryMemTest : public ClockedObject
     
     Tick nextProgressMessage;   // access # for next progress report
 
-    uint64_t numReadTxnGenerated;
-
-    uint64_t numReadTxnCompleted;
-
-    uint64_t numWriteTxnGenerated;
-
-    uint64_t numWriteTxnCompleted;
-
     const double maxLoadFactor;
 
     uint64_t maxLoads;
@@ -184,8 +172,23 @@ class MigratoryMemTest : public ClockedObject
 
     unsigned maxOutStandingTransactions;
 
+    // Counter variables
+    unsigned int numReadTxnCompleted;
+
+    unsigned int numWriteTxnCompleted;
+
     unsigned id; // my_id
 
+    bool isStarter; // Initializes the 
+
+    unsigned id_starter; // Id of the starter
+
+    const uint64_t workingSet; // Working Set size in bytes
+
+    Addr baseAddr;
+
+    uint64_t num_cpus;
+    
   protected:
     struct MemTestStats : public statistics::Group
     {

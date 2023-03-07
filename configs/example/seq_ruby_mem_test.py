@@ -86,6 +86,7 @@ parser.add_argument("--chs-1p1c-num-pairs",default=1,type=int,help='[Test 2] Num
 parser.add_argument("--chs-1pMc",action='store_true',help='[Test 3] Run 1 producer M > 1 consumers')
 parser.add_argument("--chs-1p-MSharers",default=2,type=int,help='[Test 3] Number of sharers')
 parser.add_argument('--max-outstanding-requests',default=1,type=int,help='Maximumum number of outstanding requests produced')
+parser.add_argument('--id-starter',default=0,type=int,help='Starter id of the migratory sharing patterns')
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]
 
@@ -107,6 +108,8 @@ elif args.mem_test_type=='random_test':
     MemTestClass=MemRandomTest
 elif args.mem_test_type=='isolated_test':
     MemTestClass=IsolatedMemTest
+elif args.mem_test_type=='migratory_test':
+    MemTestClass=MigratoryMemTest
 else:
     raise ValueError(f'MemTest type undefined')
 
@@ -184,6 +187,7 @@ if num_cpus > 0 :
                      bench_c2cbw_mode = args.bench_c2cbw_mode,
                      id_producers = cpuProdListMap[i],
                      id_consumers = cpuConsListMap[i],
+                     id_starter = args.id_starter,
                      num_peer_producers = num_peer_producers,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
@@ -201,6 +205,7 @@ if args.num_dmas > 0:
                      bench_c2cbw_mode = args.bench_c2cbw_mode,
                      id_producers = cpuProdListMap[i],
                      id_consumers = cpuConsListMap[i],
+                     id_starter = args.id_starter,
                      num_peer_producers = num_peer_producers,
                      addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,
                      suppress_func_errors = not args.suppress_func_errors) \
