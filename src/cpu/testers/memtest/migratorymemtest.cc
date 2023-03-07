@@ -125,9 +125,12 @@ class MigratoryStructure_t {
                     if (subsequent_ids_q.empty()) {
                         isEmpty = true;
                     } else {
+                        /* Pop-up the next sharer and restart */
                         current_id = subsequent_ids_q.front();
                         subsequent_ids_q.pop();
                         isEmpty = false;
+                        state = READ_GENERATE;
+                        // DPRINTF(MigratoryMemLatTest,"Switching to user=%d\n",current_id);
                     }
                     break;
                 }
@@ -141,6 +144,18 @@ class MigratoryStructure_t {
         unsigned getCurrentId() const { return current_id; }
         bool allSharersFinished() const { return isEmpty; }
         unsigned getIter() const { return iter_count; }
+        std::string to_string() const {
+            std::stringstream ss;
+            ss << "Addr:" << addr
+               << ",Data:" << data
+               << ",start_id:" << start_id
+               << ",iter_count:" << iter_count
+               << ",current_id:" << current_id
+               << ",subsequent_ids_q_size:" <<subsequent_ids_q.size()
+               << ",state:" << state;
+            return ss.str();
+        }
+
 };
 
 static unsigned int num_txn_generated=0;
@@ -224,11 +239,11 @@ MigratoryMemTest::MigratoryMemTest(const Params &p)
                 Addr addr = (baseAddr+i)<<(static_cast<uint64_t>(std::log2(blockSize)));
                 writeSyncData_t data = 0x873a; // Append some random data
                 migratoryPendRequests.push(MigratoryStructure_t(j,id,addr,data,num_cpus));
+                // DPRINTF(MigratoryMemLatTest,"Pushing addr=%x,iter=%d\n",addr,j);
             }
         }
         migStructInitialized=true;
     }
-    
     
     // Generate the initial tick
     schedule(tickEvent, curTick());
@@ -347,10 +362,12 @@ void MigratoryMemTest::tick() {
         if (migStructInitialized) {
             /* All transactions completed. Exit ? */
             exitSimLoop("All migratory transactions completed");
+            return;
         } else {
             /* No mig transaction created. Keep 'polling' */
             schedule(tickEvent, clockEdge(interval));
             reschedule(noRequestEvent, clockEdge(progressCheck), true);
+            DPRINTF(MigratoryMemLatTest,"Queue Empty: Polling\n");
             return;
         }
     }
@@ -402,7 +419,7 @@ void MigratoryMemTest::tick() {
             DPRINTF(MigratoryMemLatTest,"MiGMemLaT|id(%d) %d Transactions completed\n",id,num_txn_generated);
         }
     }
-    
+
     if (generateRequest) {
         outstandingAddrs.insert(paddr);
         RequestPtr req = std::make_shared<Request>(paddr, 2, flags, requestorId);
