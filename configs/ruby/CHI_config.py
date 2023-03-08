@@ -231,7 +231,7 @@ class CHI_L1Controller(CHI_Cache_Controller):
     Default parameters for a L1 Cache controller
     '''
 
-    def __init__(self, ruby_system, sequencer, cache, prefetcher):  #modification
+    def __init__(self, options, ruby_system, sequencer, cache, prefetcher):  #modification
         super(CHI_L1Controller, self).__init__(ruby_system)
         self.sequencer = sequencer
         self.cache = cache
@@ -241,7 +241,7 @@ class CHI_L1Controller(CHI_Cache_Controller):
         self.enable_DMT = False
         self.enable_DCT = False
         # Strict inclusive MOESI
-        self.allow_SD = True
+        self.allow_SD = options.allow_SD
         self.alloc_on_seq_acc = True
         self.alloc_on_seq_line_write = False
         self.alloc_on_readshared = True
@@ -265,12 +265,12 @@ class CHI_L2Controller(CHI_Cache_Controller):
     Default parameters for a L2 Cache controller
     '''
 
-    def __init__(self, ruby_system, cache, prefetcher):         #New modification
+    def __init__(self, options, ruby_system, cache, prefetcher):         #New modification
         super(CHI_L2Controller, self).__init__(ruby_system)
         self.sequencer = NULL
         self.cache = cache
         self.use_prefetcher = False
-        self.allow_SD = True
+        self.allow_SD = options.allow_SD
         self.is_HN = False
         self.enable_DMT = False
         self.enable_DCT = False
@@ -305,7 +305,7 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.cache = cache
         self.use_prefetcher = False
         self.addr_ranges = addr_ranges
-        self.allow_SD = True
+        self.allow_SD = options.allow_SD
         self.is_HN = True
         self.enable_DMT = options.enable_DMT #False #True #args.enable_DMT #False
         self.enable_DCT = options.enable_DCT
@@ -488,10 +488,10 @@ class CHI_RNF(CHI_Node):
             l1d_pf = NULL
 
             # cache controllers
-            cpu.l1i = CHI_L1Controller(ruby_system, cpu.inst_sequencer,
+            cpu.l1i = CHI_L1Controller(options, ruby_system, cpu.inst_sequencer,
                                        l1i_cache, l1i_pf)
 
-            cpu.l1d = CHI_L1Controller(ruby_system, cpu.data_sequencer,
+            cpu.l1d = CHI_L1Controller(options, ruby_system, cpu.data_sequencer,
                                        l1d_cache, l1d_pf)
 
             cpu.inst_sequencer.dcache = NULL
@@ -522,7 +522,7 @@ class CHI_RNF(CHI_Node):
         return self._cpus
 
     # Adds a private L2 for each cpu
-    def addPrivL2Cache(self, cache_type, pf_type=None):
+    def addPrivL2Cache(self, options, cache_type, pf_type=None):
         self._ll_cntrls = []
         for cpu in self._cpus:
             l2_cache = cache_type(start_index_bit = self._block_size_bits,
@@ -531,7 +531,7 @@ class CHI_RNF(CHI_Node):
                 m5.fatal('Prefetching not supported yet')
             l2_pf = NULL
 
-            cpu.l2 = CHI_L2Controller(self._ruby_system, l2_cache, l2_pf)
+            cpu.l2 = CHI_L2Controller(options, self._ruby_system, l2_cache, l2_pf)
 
             self._cntrls.append(cpu.l2)
             self.connectController(cpu.l2)

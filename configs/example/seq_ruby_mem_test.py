@@ -58,6 +58,7 @@ parser.add_argument("--mem-test-type",type=str,default='bw_test',help="The type 
 parser.add_argument("--size-ws",type=int,default=1024,help='Working set size in bytes. Must be a multiple of Cacheline size')
 parser.add_argument("--enable-DMT", default=False, help="enable DMT")
 parser.add_argument("--enable-DCT", default=False, help="enable DCT")
+parser.add_argument('--allow-SD',default=True, help="allow SD state") # True for MOESI, False for MESI
 parser.add_argument("--num-HNF-TBE", default=16, help="number of oustanding in HN-F")
 parser.add_argument("--num_HNF_ReplTBE", default=16, help="number of replacement oustanding in HN-F")
 parser.add_argument("--num_trans_per_cycle_llc", default=4, help="number of transitions per cycle in HN-F")

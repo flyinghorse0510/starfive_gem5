@@ -73,6 +73,7 @@ def analyzeCsv(options,msgDumpCsv):
     avgLat = dfX['lat'].mean()
     retDict = dict({
         'dct': options.dct,
+        'allowSD': options.allow_SD,
         'num_cpus': options.num_cpus,
         'min_lat': minLat,
         'avg_lat': avgLat,
@@ -86,6 +87,7 @@ def main():
     parser.add_argument('--input', required=True, type=str)
     parser.add_argument('--output',required=True, type=str)
     parser.add_argument('--num-cpus',required=True, type=int)
+    parser.add_argument('--allow-SD',required=True, help="allow SD state") # True for MOESI, False for MESI
     parser.add_argument('--dct',required=True)
     options = parser.parse_args()
     allMsgLog=os.path.join(options.input,'debug.trace')
