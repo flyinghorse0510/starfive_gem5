@@ -85,7 +85,7 @@ parser.add_argument("--chs-prod-id",type=int,default=2,help='[Test 1] Producer I
 parser.add_argument("--chs-1p1c-num-pairs",default=1,type=int,help='[Test 2] Number of coherence sharing pairs')
 parser.add_argument("--chs-1pMc",action='store_true',help='[Test 3] Run 1 producer M > 1 consumers')
 parser.add_argument("--chs-1p-MSharers",default=2,type=int,help='[Test 3] Number of sharers')
-
+parser.add_argument('--max-outstanding-requests',default=1,type=int,help='Maximumum number of outstanding requests produced')
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]
 
