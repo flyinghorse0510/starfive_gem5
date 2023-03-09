@@ -121,7 +121,7 @@ cpuProdListMap=dict([(c,[]) for c in range(num_cpus)])
 cpuConsListMap=dict([(c,[]) for c in range(num_cpus)])
 num_peer_producers=1
 
-if args.mem_test_type=='prod_cons_test':
+if (args.mem_test_type=='prod_cons_test') or (args.mem_test_type=='true_prod_cons'):
     import random
     if (args.chs_1p1c):
         # 1P-1C with controllable prod_id and cons_id locations
