@@ -111,6 +111,8 @@ elif args.mem_test_type=='isolated_test':
     MemTestClass=IsolatedMemTest
 elif args.mem_test_type=='migratory_test':
     MemTestClass=MigratoryMemTest
+elif args.mem_test_type=='true_prod_cons':
+    MemTestClass=TrueProdConsMemTest
 else:
     raise ValueError(f'MemTest type undefined')
 
