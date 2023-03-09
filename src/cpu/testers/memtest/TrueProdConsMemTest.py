@@ -57,12 +57,13 @@ class TrueProdConsMemTest(ClockedObject):
     addr_intrlvd_or_tiled = Param.Bool(False,"If true the address partitioning across CPUs is interleaved [0,N,2N;1,N+1,2N+1;...]. Otherwise Tiled [0:N-1,N:2N-1]")
 
     num_cpus = Param.Counter(1, "Total number of CPUs")
+    num_producers = Param.Counter(1, "[Deprecated] Number of producers")
 
     bench_c2cbw_mode = Param.Bool(False,"[True] Producer Consumer BW or [False] C2C Latency Test")
     id_producers = VectorParam.Int([], "List of Producer Ids")
     id_consumers = VectorParam.Int([], "List of Consumer Ids")
-    id_starter = Param.Int(0,'Start CPU id of Migratory patter')
-    num_peer_producers = Param.Counter(1, "Number of independent peer producers. Use to partition the working set")
+
+    removed_consumed_data = Param.Bool(False,"[False] The reader will re-read consumed data several times")
 
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses
@@ -78,3 +79,4 @@ class TrueProdConsMemTest(ClockedObject):
     # accesses as Ruby needs this
     suppress_func_errors = Param.Bool(False, "Suppress panic when "\
                                             "functional accesses fail.")
+
