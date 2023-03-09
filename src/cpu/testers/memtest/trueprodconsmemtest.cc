@@ -292,7 +292,7 @@ TrueProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
             }
         } else {
             assert(pkt->isWrite());
-            DPRINTF(TrueProdConsMemLatTest,"TrPrdCnsLaT|Addr:%x,Iter:%d,ConsId:%d,WriteEnd\n", \
+            DPRINTF(TrueProdConsMemLatTest,"TrPrdCnsLaT|Addr:%x,Iter:%d,ProdId:%d,WriteEnd\n", \
                         req->getPaddr(), \
                         addrIterCountMap[req->getPaddr()], \
                         id);
