@@ -34,20 +34,21 @@ WORKSPACE="$(pwd)/output"
 GEM5_DIR=$(pwd)
 ISA="RISCV"
 CCPROT="CHI"
-NUMCPUS=4
+NUMCPUS=1
 NUM_LLC=1
 NUM_SNF=1
 NETWORK="simple"
 BUILDTYPE="gem5.debug"
-l1d_size="32KiB"
-l1i_size="32KiB"
-l2_size="256KiB"
+l1d_size="128B"
+l1i_size="128B"
+l2_size="4KiB"
 l3_size="1024KiB" #"16KiB" #"1024KiB" #"256KiB"
-l1d_assoc=2
-l1i_assoc=2
-l2_assoc=8
+l1d_assoc=1
+l1i_assoc=1
+l2_assoc=1
 l3_assoc=16
-DEBUGFLAGS=RubyGenerated,RubyCHIDebugStr5,TxnTrace,IsolatedMemLatTest
+REPL="RandomRP"
+DEBUGFLAGS=RubyGenerated,RubyCHIDebugStr5,IsolatedMemLatTest
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -57,7 +58,7 @@ fi
 if [ "$ISOMEMTEST" != "" ]; then
     OUTPUT_DIR="${WORKSPACE}/MOD0.5_SnoopFilter_IsoTest"
     mkdir -p $OUTPUT_DIR
-    DEBUGFLAGS=RubyGenerated,RubyCHIDebugStr5
+    DEBUGFLAGS=${DEBUGFLAGS}
     $GEM5_DIR/build/${ISA}_${CCPROT}/${BUILDTYPE} \
         --debug-flags=${DEBUGFLAGS} --debug-file=debug.trace \
         -d ${OUTPUT_DIR} \
@@ -72,6 +73,9 @@ if [ "$ISOMEMTEST" != "" ]; then
         --l1i_assoc=${l1i_assoc} \
         --l2_assoc=${l2_assoc} \
         --l3_assoc=${l3_assoc} \
+        --l1repl=${REPL} \
+        --l2repl=${REPL} \
+        --l3repl=${REPL} \
         --network=${NETWORK} \
         --topology=CustomMesh \
         --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_2x2Mesh.py \
@@ -82,8 +86,8 @@ if [ "$ISOMEMTEST" != "" ]; then
         --mem-test-type='isolated_test' \
         --num-cpus=${NUMCPUS} \
         --num-producers=1 \
-        --num-snoopfilter-entries=4 \
-        --num-snoopfilter-assoc=2
+        --num-snoopfilter-entries=8 \
+        --num-snoopfilter-assoc=1
     grep -E 'system\.ruby\.hnf[0-9]*' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
 fi
 
