@@ -88,6 +88,7 @@ parser.add_argument("--chs-1pMc",action='store_true',help='[Test 3] Run 1 produc
 parser.add_argument("--chs-1p-MSharers",default=2,type=int,help='[Test 3] Number of sharers')
 parser.add_argument('--max-outstanding-requests',default=1,type=int,help='Maximumum number of outstanding requests produced')
 parser.add_argument('--id-starter',default=0,type=int,help='Starter id of the migratory sharing patterns')
+parser.add_argument('--outstanding-req',default=100,type=int,help='Number of oustanding requests')
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]
 
@@ -190,6 +191,7 @@ if num_cpus > 0 :
                      bench_c2cbw_mode = args.bench_c2cbw_mode,
                      id_producers = cpuProdListMap[i],
                      id_consumers = cpuConsListMap[i],
+                     outstanding_req = args.outstanding_req,
                      id_starter = args.id_starter,
                      num_peer_producers = num_peer_producers,
                      suppress_func_errors = args.suppress_func_errors) \
@@ -208,6 +210,7 @@ if args.num_dmas > 0:
                      bench_c2cbw_mode = args.bench_c2cbw_mode,
                      id_producers = cpuProdListMap[i],
                      id_consumers = cpuConsListMap[i],
+                     outstanding_req = args.outstanding_req,
                      id_starter = args.id_starter,
                      num_peer_producers = num_peer_producers,
                      addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,

@@ -53,7 +53,7 @@ TRANS=4
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/GateTest"
 # PY3=$(which python3)
 PY3=/home/arka.maity/anaconda3/bin/python3
-DEBUG_FLAGS=TxnTrace,ProdConsMemLatTest
+DEBUG_FLAGS=TxnTrace,ProdConsMemLatTest,RubyGenerated
 DCT_CONFIGS=(False)
 DMT_CONFIGS=(False)
 

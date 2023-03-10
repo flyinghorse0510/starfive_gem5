@@ -209,7 +209,7 @@ TrueProdConsMemTest::TrueProdConsMemTest(const Params &p)
             maxLoads = static_cast<uint64_t>(std::ceil(num_producers * maxLoadFactor * (static_cast<double>(perCPUWorkingBlocks.size()))));        
         }
         fatal_if(maxLoads <= 0, "Requires a minimum of 1 Load/Store for non idle MemTesters");
-        maxOutStandingTransactions = std::min((int)(perCPUWorkingBlocks.size()),100);
+        maxOutStandingTransactions = std::min((int)(perCPUWorkingBlocks.size()),p.outstanding_req);
         DPRINTF(TrueProdConsMemLatTest,"CPU_%d(Producer:%d,Idle:%d) WorkingSetRange:[%x,%x], WorkingSetSize=%d, maxTxn=%d\n",id,isProducer,isIdle,perCPUWorkingBlocks.at(0),perCPUWorkingBlocks.at(numPerCPUWorkingBlocks-1),numPerCPUWorkingBlocks,maxLoads);
     
         // kick things into action
@@ -333,7 +333,8 @@ TrueProdConsMemTest::completeRequest(PacketPtr pkt, bool functional)
     // schedule the next tick
     if (waitResponse) {
         waitResponse = false;
-        schedule(tickEvent, clockEdge(interval));
+        // schedule(tickEvent, clockEdge(interval));
+        schedule(tickEvent, curTick());
     }
 }
 
@@ -423,13 +424,7 @@ TrueProdConsMemTest::tick()
             return;
         }
         
-        /* Too many outsanding addresses */
-        if (outstandingAddrs.size() >= maxOutStandingTransactions) {
-            waitResponse = true;
-            return;
-        }
-
-        /* Search for an address within the workingSetSize cacheline */
+        /* Search for an address within the workingSet */
         bool addrFound = false;
         for (const auto waddr : perCPUWorkingBlocks) {
             paddr = waddr;

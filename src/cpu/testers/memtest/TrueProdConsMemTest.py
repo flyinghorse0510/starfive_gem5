@@ -60,6 +60,7 @@ class TrueProdConsMemTest(ClockedObject):
     num_producers = Param.Counter(1, "[Deprecated] Number of producers")
 
     bench_c2cbw_mode = Param.Bool(False,"[True] Producer Consumer BW or [False] C2C Latency Test")
+    outstanding_req = Param.Int(1,"Number of outstanding requests. Set 1 if you want to measure latency or to a very large value if you want measure bw")
     id_producers = VectorParam.Int([], "List of Producer Ids")
     id_consumers = VectorParam.Int([], "List of Consumer Ids")
     id_starter = Param.Int(0,'Start CPU id of Migratory pattern. [Unused] here')
