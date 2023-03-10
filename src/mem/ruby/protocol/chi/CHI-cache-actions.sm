@@ -2916,11 +2916,9 @@ action(Check_SnoopFilterFill, desc="") {
   // Remember that this action will be entered again
   // once the eviction is complete so need to impl the
   // Start SFEntry eviction
-  // DPRINTF(RubyCHIDebugStr5,"SnoopFilterCheckRepl=%x\n",tbe.addr);
   if (tbe.requiresDirEntry && !avail_direntry && doSnoopFilterFill) {
     execute_next := false;
     Addr victim_addr := directory.cacheProbe(address);
-    // DPRINTF(RubyCHIDebugStr5,"SnoopFilterRepl=%#x,by=%#x\n",victim_addr,tbe.addr);
     DirEntry victim_dir_entry := getDirEntry(victim_addr);
     assert(is_valid(victim_dir_entry));
     TBE victim_tbe := getCurrentActiveTBE(victim_addr);

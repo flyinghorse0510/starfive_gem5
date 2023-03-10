@@ -192,7 +192,7 @@ def addNoISAOptions(parser):
                          help="type of l2 replacement")
     parser.add_argument("--l3repl", default="LRURP", 
                          choices=ObjectList.rp_list.get_names(),
-                         help="type of l2 replacement")
+                         help="type of l3 replacement")
 
 
 
