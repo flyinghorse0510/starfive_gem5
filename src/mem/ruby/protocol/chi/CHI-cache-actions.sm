@@ -85,9 +85,6 @@ action(AllocateTBE_Request_WithCredit, desc="") {
 }
 
 action(AllocateTBE_Snoop, desc="") {
-  // zhiang: 
-  // DPRINTF(RubySlicc, "Enter AllocateTBE_Snoop\n");
-
   // No retry for snoop requests; just create resource stall
   check_allocate(storSnpTBEs);
 
@@ -108,8 +105,6 @@ action(AllocateTBE_Snoop, desc="") {
     destsWaitingRetry.remove(in_msg.requestor);
   }
   snpInPort.dequeue(clockEdge());
-  // zhiang: 
-  // DPRINTF(RubySlicc, "Exit AllocateTBE_Snoop\n");
 }
 
 action(AllocateTBE_DvmSnoop, desc="") {
@@ -2174,7 +2169,6 @@ action(UpdateDirState_FromSnpResp, desc="") {
 }
 
 action(Receive_ReqResp, desc="") {
-  printTBEStateStr5(tbe);
   assert(tbe.expected_req_resp.hasExpected());
   peek(rspInPort, CHIResponseMsg) {
     // Decrement pending
@@ -2777,8 +2771,6 @@ action(Send_SnpRespI, desc="") {
 
 action(Send_RetryAck, desc="") {
   peek(retryTriggerInPort, RetryTriggerMsg) {
-//    DPRINTF(RubyTxnTrace, "HNFRetry: seqn %#018x\n", tbe.txSeqNum);
-    DPRINTF(RubyTxnTrace, "HNFRetry: \n");
     cache.profileRetryAck();
  
     enqueue(rspOutPort, CHIResponseMsg, response_latency) {
@@ -2929,17 +2921,19 @@ action(Check_SnoopFilterFill, desc="") {
       }
     } else {
       victim_tbe.wakeup_pending_tgr := true;
+      DPRINTF(RubyCHIDebugStr5,"SnoopFilter Victim Busy|addr=%#x,victim_addr=%#x\n",tbe.addr,victim_addr);
     }
     // wait until we can deallocate the victim_addr
     stall_and_wait(triggerInPort, victim_addr);
   } else if (tbe.requiresDirEntry) {
-    /**
-     * For now doSnoopFilterFill does not matter. 
-     * But this will change, When the Directory is implemented 
-     * as a RubyCache memory, 
-     * with associativity and all
-     */
     directory.allocate(address);
+
+    /**
+     * A directory entry can be
+     * allocated, then its a Snoofilter
+     * hit
+     */
+    directory.profileHit();
   }
   
   if (execute_next) {
@@ -3007,8 +3001,6 @@ action(Initiate_SnoopFilterReplacement, desc="") {
   copyCacheAndDir(cache_entry, dir_entry, tbe, initial);
 
   // Is this correct?
-  // tbe.actions.pushNB(Event:TagArrayRead);
-  // DPRINTF(RubyCHIDebugStr5,"Addr=%#x,state=%s\n",tbe.addr,initial);
   incomingTransactionStart(address, curTransitionEvent(), initial, false);
 }
 
@@ -3057,13 +3049,11 @@ action(CheckCacheFill, desc="") {
     assert(is_valid(victim_entry));
     TBE victim_tbe := getCurrentActiveTBE(victim_addr);
 
-    DPRINTF(RubyCHIDebugStr5,"Starting Cache Eviction for victim_addr=%#x, by addr=%#x\n",victim_addr,address);
-
     // The `is_valid(victim_entry)` condition here is to avoid an unused
     // variable error when compiling to gem5.fast.
     if (is_invalid(victim_tbe) && is_valid(victim_entry)) {
-      DPRINTF(RubySlicc, "Eviction for %#x victim: %#x state=%s\n",
-                          address, victim_addr, victim_entry.state);
+      // DPRINTF(RubyCHIDebugStr5, "Eviction for %#x victim: %#x state=%s\n",
+      //                     address, victim_addr, victim_entry.state);
       enqueue(replTriggerOutPort, ReplacementMsg, 0) {
         out_msg.addr := victim_addr;
         out_msg.from_addr := address;
@@ -3073,7 +3063,7 @@ action(CheckCacheFill, desc="") {
         }
       }
     } else {
-      DPRINTF(RubySlicc, "Eviction for %#x victim: %#x state=%s\n",
+      DPRINTF(RubyCHIDebugStr5, "Eviction for %#x victim: %#x state=%s\n",
                           address, victim_addr, victim_tbe.state);
       // just wait until the transaction finishes to try again
       victim_tbe.wakeup_pending_tgr := true;
@@ -3099,7 +3089,6 @@ action(Finalize_DeallocateRequest, desc="") {
   wakeupPendingReqs(tbe);
   wakeupPendingSnps(tbe);
   wakeupPendingTgrs(tbe);
-
   if (tbe.is_req_tbe) {
     deallocateReqTBE(tbe);
     processRetryQueue();

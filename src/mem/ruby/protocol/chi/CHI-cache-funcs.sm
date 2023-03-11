@@ -438,6 +438,8 @@ TBE allocateRequestTBE(Addr addr, CHIRequestMsg in_msg), return_by_pointer="yes"
   // zhiang: assign tbe.txSeqNum = in_msg.txSeqNum
   tbe.txSeqNum := in_msg.txSeqNum;
   tbe.reqPtr := in_msg.reqPtr;
+  
+  DPRINTF(RubyCHIDebugStr5,"AllocReqTBE,Addr:%#x,slot:%d,reqType:%s,reqtor:%d\n",tbe.addr,tbe.storSlot,tbe.reqType,tbe.requestor);
   return tbe;
 }
 
@@ -764,7 +766,7 @@ bool requiresDirEntry(CHIRequestType reqType, DirEntry dir_entry) {
   } else {
     /**
      * Arka [23/02/2023]: I am not completely sure
-     * which all transactions might require a director
+     * which all transactions might require a directory
      */
     return ((reqType == CHIRequestType:ReadShared) ||
             (reqType == CHIRequestType:ReadNotSharedDirty) ||
@@ -844,11 +846,6 @@ void printTBEStateStr5(TBE tbe) {
     DPRINTF(RubyCHIDebugStr5, "expected_snp_resp.hasExpected=%d\n",tbe.expected_snp_resp.hasExpected());
     DPRINTF(RubyCHIDebugStr5, "expected_req_resp.hasReceivedData=%d\n",tbe.expected_req_resp.hasReceivedData());
     DPRINTF(RubyCHIDebugStr5, "expected_snp_resp.hasReceivedData=%d\n",tbe.expected_snp_resp.hasReceivedData());
-    // if (!tbe.actions.empty()) {
-    //   DPRINTF(RubyCHIDebugStr5, "addr=%#x,actions.front = %s,nb=%d\n",tbe.actions.front(),tbe.actions.frontNB());
-    // } else {
-    //   DPRINTF(RubyCHIDebugStr5, "actions queue empty\n");
-    // }
   } else {
     DPRINTF(RubyCHIDebugStr5,"TBE invalid\n");
   }
@@ -970,6 +967,7 @@ void copyCacheAndDirTBEs(TBE src, TBE dst) {
 void deallocateReqTBE(TBE tbe) {
   assert(is_valid(tbe));
   assert(tbe.is_req_tbe);
+  DPRINTF(RubyCHIDebugStr5,"DeAllocReqTBE,Addr:%#x,slot:%d,reqType:%s\n",tbe.addr,tbe.storSlot,tbe.reqType);
   storTBEs.removeEntryFromSlot(tbe.storSlot);
   TBEs.deallocate(tbe.addr);
 }

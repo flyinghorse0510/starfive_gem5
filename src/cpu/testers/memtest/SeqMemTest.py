@@ -61,6 +61,8 @@ class SeqMemTest(ClockedObject):
     addr_intrlvd_or_tiled = Param.Bool(False,"If true the address partitioning across CPUs is interleaved [0,N,2N;1,N+1,2N+1;...]. Otherwise Tiled [0:N-1,N:2N-1]")
 
     num_cpus = Param.Counter(1, "Total number of CPUs")
+    outstanding_req = Param.Int(1,"Number of outstanding requests. Set 1 if you want to measure latency or to a very large value if you want measure bw")
+    id_starter = Param.Int(0,'Start CPU id of Migratory pattern. [Unused] here')
 
     bench_c2cbw_mode = Param.Bool(False,"[True] Producer Consumer BW or [False] C2C Latency Test")
     id_producers = VectorParam.Int([], "List of Producer Ids")
