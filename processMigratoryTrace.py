@@ -3,6 +3,7 @@ import os
 import json
 import pandas as pd
 import argparse
+import ProdConsStatsParser as pcp
 
 def parseMigratoryTrace(logFile, dumpFile):
     readStartPat = re.compile(r'^(\s*\d*): (\S+): MiGMemLaT\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),Start:R')
@@ -147,10 +148,12 @@ def main():
     options = parser.parse_args()
     allMsgLog=os.path.join(options.input,'debug.trace')
     msgDumpCsv=os.path.join(options.output,'AllMsgLatDump.csv')
+    singleMsgDumpCsv=os.path.join(options.output,'SingleMsgLatDump.csv')
     if options.bench == 'migratory' :
         parseMigratoryTrace(allMsgLog,msgDumpCsv)
+        pcp.getMsgTrace(allMsgLog,singleMsgDumpCsv,0,'0x400','all')
     else :
-        parseTrueProdConsTrace(allMsgLog, msgDumpCsv)
+        parseTrueProdConsTrace(allMsgLog,msgDumpCsv)
     retDict = analyzeCsv(options,msgDumpCsv)
     print(json.dumps(retDict))
 
