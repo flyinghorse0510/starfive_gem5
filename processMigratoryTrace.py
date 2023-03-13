@@ -119,9 +119,12 @@ def parseTrueProdConsTrace(logFile, dumpFile):
             WriteEnd=v['write_end']
             print(f'{addr},{it},{WriteStart},{WriteEnd},{ReadStart},{ReadEnd}',file=fw)
 
-def analyzeCsv(options,msgDumpCsv):
+def analyzeCsv(options,msgDumpCsv,bench='migratory'):
     dfX = pd.read_csv(msgDumpCsv)
-    dfX['lat'] = dfX['WriteEnd']-dfX['ReadStart']
+    if bench == 'migratory':
+        dfX['lat'] = dfX['WriteEnd']-dfX['ReadStart']
+    else :
+        dfX['lat'] = dfX['ReadEnd']-dfX['WriteStart']
     minLat = dfX['lat'].min()
     maxLat = dfX['lat'].max()
     medLat = dfX['lat'].median()
@@ -135,6 +138,9 @@ def analyzeCsv(options,msgDumpCsv):
         'med_lat': medLat,
         'max_lat': maxLat
     })
+    if bench != 'migratory' :
+        bw = (64*len(dfX.index))/(dfX['ReadEnd'].max()-dfX['WriteStart'].min())
+        retDict['bw'] = bw
     return retDict
 
 def main():
@@ -154,7 +160,7 @@ def main():
         pcp.getMsgTrace(allMsgLog,singleMsgDumpCsv,0,'0x400','all')
     else :
         parseTrueProdConsTrace(allMsgLog,msgDumpCsv)
-    retDict = analyzeCsv(options,msgDumpCsv)
+    retDict = analyzeCsv(options,msgDumpCsv,options.bench)
     print(json.dumps(retDict))
 
 if __name__=="__main__":
