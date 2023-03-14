@@ -65,54 +65,54 @@ if [ "$TEST" != "" ]; then
   OUTPUT_PREFIX="MIGRATORY"
   echo "[" > "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/Summary.json"
   
-  # for DCT in ${DCT_CONFIGS[@]}; do
-  #   for NUM_CPUS in ${NUM_CPU_SET[@]}; do
-  #     for ALLOWSD in ${ALLOW_SD_SET[@]}; do
-  #     OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_LINKBW${LINK_BW}_Core${NUM_CPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_ALLOWSD${ALLOWSD}_DCT${DCT}"
-  #     echo $OUTPUT_DIR
-  #     mkdir -p $OUTPUT_DIR
-  #     $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
-  #        --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
-  #        -d $OUTPUT_DIR \
-  #        ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
-  #        --ruby \
-  #        --num-dirs=${NUM_MEM} \
-  #        --num-l3caches=${NUM_LLC} \
-  #        --l1d_size=${l1d_size} \
-  #        --l1i_size=${l1i_size} \
-  #        --l2_size=${l2_size} \
-  #        --l3_size=${l3_size} \
-  #        --l1d_assoc=${l1d_assoc} \
-  #        --l1i_assoc=${l1i_assoc} \
-  #        --l2_assoc=${l2_assoc} \
-  #        --l3_assoc=${l3_assoc} \
-  #        --network=${NETWORK} \
-  #        --topology=CustomMesh \
-  #        --simple-physical-channels \
-  #        --simple-link-bw-factor=${LINK_BW} \
-  #        --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
-  #        --mem-size="16GB" \
-  #        --mem-type=DDR4_3200_8x8 \
-  #        --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
-  #        --mem-test-type='migratory_test' \
-  #        --inj-interval=${INJ_INTERVAL} \
-  #        --disable-gclk-set \
-  #        --enable-DMT=False \
-  #        --enable-DCT=${DCT} \
-  #        --allow-SD=${ALLOWSD} \
-  #        --num_trans_per_cycle_llc=4 \
-  #        --addr-intrlvd-or-tiled=True \
-  #        --bench-c2cbw-mode=True \
-  #        --maxloads=${MAXNUMLOADS} \
-  #        --size-ws=${WKSET} \
-  #        --num-cpus=${NUM_CPUS} \
-  #        --outstanding-req=100 \
-  #        --sequencer-outstanding-requests=32 \
-  #        --id-starter=0 &
-  #     done
-  #   done
-  # done
-  # wait
+  for DCT in ${DCT_CONFIGS[@]}; do
+    for NUM_CPUS in ${NUM_CPU_SET[@]}; do
+      for ALLOWSD in ${ALLOW_SD_SET[@]}; do
+      OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_LINKBW${LINK_BW}_Core${NUM_CPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_ALLOWSD${ALLOWSD}_DCT${DCT}"
+      echo $OUTPUT_DIR
+      mkdir -p $OUTPUT_DIR
+      $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
+         --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
+         -d $OUTPUT_DIR \
+         ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
+         --ruby \
+         --num-dirs=${NUM_MEM} \
+         --num-l3caches=${NUM_LLC} \
+         --l1d_size=${l1d_size} \
+         --l1i_size=${l1i_size} \
+         --l2_size=${l2_size} \
+         --l3_size=${l3_size} \
+         --l1d_assoc=${l1d_assoc} \
+         --l1i_assoc=${l1i_assoc} \
+         --l2_assoc=${l2_assoc} \
+         --l3_assoc=${l3_assoc} \
+         --network=${NETWORK} \
+         --topology=CustomMesh \
+         --simple-physical-channels \
+         --simple-link-bw-factor=${LINK_BW} \
+         --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
+         --mem-size="16GB" \
+         --mem-type=DDR4_3200_8x8 \
+         --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
+         --mem-test-type='migratory_test' \
+         --inj-interval=${INJ_INTERVAL} \
+         --disable-gclk-set \
+         --enable-DMT=False \
+         --enable-DCT=${DCT} \
+         --allow-SD=${ALLOWSD} \
+         --num_trans_per_cycle_llc=4 \
+         --addr-intrlvd-or-tiled=True \
+         --bench-c2cbw-mode=True \
+         --maxloads=${MAXNUMLOADS} \
+         --size-ws=${WKSET} \
+         --num-cpus=${NUM_CPUS} \
+         --outstanding-req=100 \
+         --sequencer-outstanding-requests=32 \
+         --id-starter=0 &
+      done
+    done
+  done
+  wait
 
 for DCT in ${DCT_CONFIGS[@]}; do
   for NUM_CPUS in ${NUM_CPU_SET[@]}; do
