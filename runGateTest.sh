@@ -53,7 +53,7 @@ TRANS=4
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/GateTest"
 # PY3=$(which python3)
 PY3=/home/arka.maity/anaconda3/bin/python3
-DEBUG_FLAGS=TxnTrace,ProdConsMemLatTest
+DEBUG_FLAGS=TxnTrace,ProdConsMemLatTest,RubyGenerated
 DCT_CONFIGS=(False)
 DMT_CONFIGS=(False)
 
@@ -299,7 +299,7 @@ l3_assoc=16
 NUM_LLC=16
 WKSETLIST=(524288)
 NUM_CPU_SET=(16) # For LLC and DDR bw tests, numcpus must be 16
-LoadFactor=10
+LoadFactor=100
 SEQ_TBE_SET=(32)
 NUM_MEM=4
 NUM_DDR_XP=2

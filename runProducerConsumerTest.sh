@@ -337,7 +337,7 @@ fi
 
 # head -n -1 ${OUTPUT_ROOT}/Summary.json > ${OUTPUT_ROOT}/Summary2.json # Remove the last comma
 # echo "]" >> ${OUTPUT_ROOT}/Summary2.json
-# ${PY3} processProdCons.py \
+# ${PY3} getCsvFromJson.py \
 #        --input=${OUTPUT_ROOT}/Summary2.json \
 #        --output=${OUTPUT_ROOT}/Summary.csv
 # rm ${OUTPUT_ROOT}/Summary2.json ${OUTPUT_ROOT}/Summary.json

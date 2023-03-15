@@ -107,7 +107,7 @@ def get1P1CStats(statsFile,options):
     })
     return retDict
 
-def getMsgTrace(msgTraceFile,msgCSVFile,startTime=0):
+def getMsgTrace(msgTraceFile,msgCSVFile,startTime=0,tgtAddr='0x4780',agent='system.ruby.hnf14.cntrl.reqIn'):
     tickPerCyc=500
     msg_pat= re.compile(r'^(\s*\d*): (\S+): txsn: (\w+), type: (\w+), isArrival: ([0-1]), addr: ([0-9a-fx]+), reqtor: (\S+), dest: ([\w,-]+)')
     with open(msgTraceFile,'r') as f:
@@ -126,10 +126,13 @@ def getMsgTrace(msgTraceFile,msgCSVFile,startTime=0):
                     MsgType = msgMatch.group(4)
                     if (isArrival == 1) and (not ('network' in Agent)):
                         print(f'{Txn},{Addr},{Time},{Agent},{MsgType},{reqtor},{dest}',file=fw)
-    tgtAddr='0x4780'
-    Agent='system.ruby.hnf14.cntrl.reqIn'
-    dfX=pd.read_csv(msgCSVFile).query('(Time >= @startTime) and (Agent == @Agent)')
-    dfX.to_csv(msgCSVFile,index=False)
+    
+    if agent == 'all' :
+        dfX=pd.read_csv(msgCSVFile).query('(Time >= @startTime)')
+        dfX.to_csv(msgCSVFile,index=False)
+    else:
+        dfX=pd.read_csv(msgCSVFile).query('(Time >= @startTime) and (Agent == @agent)')
+        dfX.to_csv(msgCSVFile,index=False)
 
 def getAllMsgPerformanceDetails(StartTime):
     parser = argparse.ArgumentParser(description='')
