@@ -233,6 +233,7 @@ MigratoryMemTest::MigratoryMemTest(const Params &p)
     unsigned totalWorkingSetInBlocks=(workingSet/blockSize);
     maxLoads = maxLoadFactor * (totalWorkingSetInBlocks);
     if (isStarter) {
+        // printf("id_starter=%d,%d\n",id,id_starter);
         for (unsigned j = 0; j < maxLoadFactor; j++) {
             for (unsigned i=0; i < totalWorkingSetInBlocks; i++) {
                 /* Create the Initial migratory stucture for each block in the working set */
@@ -284,10 +285,10 @@ void MigratoryMemTest::completeRequest(PacketPtr pkt, bool functional) {
         if (pkt->isRead()) {
             assert(migratoryObject.getState() == READ_RECV);
             writeSyncData_t ref_data = migratoryObject.getData();
-            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%#x,Iter:%d,Reqtor:%d,isStarter:%d,Complete:R,misMatch:%d\n",\
+            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%#x,Iter:%d,Reqtor:%d,Complete:R,misMatch:%d\n",\
                 remove_paddr,\
                 migratoryObject.getIter(), \
-                id,isStarter,(pkt_data[0] != ref_data));
+                id,(pkt_data[0] != ref_data));
             numReadTxnCompleted++;
             stats.numReads++;
 
@@ -302,10 +303,10 @@ void MigratoryMemTest::completeRequest(PacketPtr pkt, bool functional) {
         } else {
             assert(pkt->isWrite());
             assert(migratoryObject.getState() == WRITE_RECV);
-            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%#x,Iter:%d,Reqtor:%d,isStarter:%d,Complete:W,misMatch:0\n",\
+            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%#x,Iter:%d,Reqtor:%d,Complete:W,misMatch:0\n",\
                     remove_paddr,\
                     migratoryObject.getIter(), \
-                    id,isStarter);
+                    id);
             
             referenceData[req->getPaddr()] = pkt_data[0];
             stats.numWrites++;
@@ -387,10 +388,10 @@ void MigratoryMemTest::tick() {
             generateRequest = true;
             paddr = migratoryObject.getAddr();
             data = migratoryObject.getData();
-            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%#x,Iter:%d,Reqtor:%d,isStarter:%d,Start:R\n",\
+            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%#x,Iter:%d,Reqtor:%d,Start:R\n",\
                     paddr,\
                     migratoryObject.getIter(), \
-                    id,isStarter);
+                    id);
             break;
         }
         case WRITE_GENERATE: {
@@ -398,10 +399,10 @@ void MigratoryMemTest::tick() {
             generateRequest = true;
             paddr = migratoryObject.getAddr();
             data = migratoryObject.getData();
-            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%#x,Iter:%d,Reqtor:%d,isStarter:%d,Start:W\n",\
+            DPRINTF(MigratoryMemLatTest,"MiGMemLaT|Addr:%#x,Iter:%d,Reqtor:%d,Start:W\n",\
                     paddr,\
                     migratoryObject.getIter(), \
-                    id,isStarter);
+                    id);
             break;
         }
         case READ_RECV:

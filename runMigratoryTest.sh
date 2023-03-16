@@ -41,14 +41,14 @@ l2_assoc=8
 l3_assoc=16
 NUM_LLC=16
 NUM_MEM=1
-DEBUG_FLAGS=MigratoryMemLatTest
+DEBUG_FLAGS=MigratoryMemLatTest,TxnTrace
 DCT_CONFIGS=(False True) #(False True)
 LINK_BW=16
 INJ_INTERVAL=1
 NETWORK="simple"
 MAXNUMLOADS=2
 ALLOW_SD_SET=(False True)
-OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/Synth_${NETWORK}"
+OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/Synth3_${NETWORK}"
 PY3=/home/arka.maity/anaconda3/bin/python3
 
 if [ "$BUILD" != "" ]; then
@@ -56,13 +56,14 @@ if [ "$BUILD" != "" ]; then
     scons build/${ISA}_${CCPROT}/${buildType} --default=RISCV PROTOCOL=${CCPROT} -j`nproc`
 fi
 
-echo "[" > "${OUTPUT_ROOT}/Summary.json"
+
 
 if [ "$TEST" != "" ]; then
   echo "Migratory test"
-  NUM_CPU_SET=(2 4 8 16)
+  NUM_CPU_SET=(2)
   WKSET=4096
   OUTPUT_PREFIX="MIGRATORY"
+  echo "[" > "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/Summary.json"
   
   for DCT in ${DCT_CONFIGS[@]}; do
     for NUM_CPUS in ${NUM_CPU_SET[@]}; do
@@ -105,6 +106,7 @@ if [ "$TEST" != "" ]; then
          --maxloads=${MAXNUMLOADS} \
          --size-ws=${WKSET} \
          --num-cpus=${NUM_CPUS} \
+         --outstanding-req=100 \
          --sequencer-outstanding-requests=32 \
          --id-starter=0 &
       done
@@ -120,18 +122,19 @@ for DCT in ${DCT_CONFIGS[@]}; do
       --input=${OUTPUT_DIR} \
       --output=${OUTPUT_DIR} \
       --dct=${DCT} \
+      --bench="migratory" \
       --allow-SD=${ALLOWSD} \
-      --num-cpus=${NUM_CPUS} >> "${OUTPUT_ROOT}/Summary.json"
-    echo "," >> "${OUTPUT_ROOT}/Summary.json"
+      --num-cpus=${NUM_CPUS} >> "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/Summary.json"
+    echo "," >> "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/Summary.json"
     done
   done
 done
 
-fi
-
-head -n -1 ${OUTPUT_ROOT}/Summary.json > ${OUTPUT_ROOT}/Summary2.json # Remove the last comma
-echo "]" >> ${OUTPUT_ROOT}/Summary2.json
+head -n -1 ${OUTPUT_ROOT}/${OUTPUT_PREFIX}/Summary.json > ${OUTPUT_ROOT}/${OUTPUT_PREFIX}/Summary2.json # Remove the last comma
+echo "]" >> ${OUTPUT_ROOT}/${OUTPUT_PREFIX}/Summary2.json
 ${PY3} getCsvFromJson.py \
-       --input=${OUTPUT_ROOT}/Summary2.json \
-       --output=${OUTPUT_ROOT}/Summary.csv
-rm ${OUTPUT_ROOT}/Summary2.json ${OUTPUT_ROOT}/Summary.json
+       --input=${OUTPUT_ROOT}/${OUTPUT_PREFIX}/Summary2.json \
+       --output=${OUTPUT_ROOT}/${OUTPUT_PREFIX}/Summary.csv
+rm ${OUTPUT_ROOT}/${OUTPUT_PREFIX}/Summary2.json ${OUTPUT_ROOT}/${OUTPUT_PREFIX}/Summary.json
+
+fi

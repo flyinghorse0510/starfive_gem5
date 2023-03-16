@@ -3,12 +3,13 @@ import os
 import json
 import pandas as pd
 import argparse
+import ProdConsStatsParser as pcp
 
 def parseMigratoryTrace(logFile, dumpFile):
-    readStartPat = re.compile(r'^(\s*\d*): (\S+): MiGMemLaT\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),isStarter:([0-1]+),Start:R')
-    readEndPat = re.compile(r'^(\s*\d*): (\S+): MiGMemLaT\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),isStarter:([0-1]+),Complete:R,misMatch:([0-1]+)')
-    writeStartPat = re.compile(r'^(\s*\d*): (\S+): MiGMemLaT\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),isStarter:([0-1]+),Start:W')
-    writeEndPat = re.compile(r'^(\s*\d*): (\S+): MiGMemLaT\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),isStarter:([0-1]+),Complete:W,misMatch:([0-1]+)')
+    readStartPat = re.compile(r'^(\s*\d*): (\S+): MiGMemLaT\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),Start:R')
+    readEndPat = re.compile(r'^(\s*\d*): (\S+): MiGMemLaT\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),Complete:R,misMatch:([0-1]+)')
+    writeStartPat = re.compile(r'^(\s*\d*): (\S+): MiGMemLaT\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),Start:W')
+    writeEndPat = re.compile(r'^(\s*\d*): (\S+): MiGMemLaT\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),Complete:W,misMatch:([0-1]+)')
     txnDict = dict()
     tickPerCyc = 500
     with open(logFile,'r') as f :
@@ -23,7 +24,6 @@ def parseMigratoryTrace(logFile, dumpFile):
                 agent = readStartMatch.group(2)
                 addr = readStartMatch.group(3)
                 it = int(readStartMatch.group(4))
-                isStarter = int(readStartMatch.group(6))
                 txnDict[(addr,it)] = {
                     'read_start' : time,
                     'read_end' : -1,
@@ -35,7 +35,6 @@ def parseMigratoryTrace(logFile, dumpFile):
                 agent = readEndMatch.group(2)
                 addr = readEndMatch.group(3)
                 it = int(readEndMatch.group(4))
-                isStarter = int(readEndMatch.group(6))
                 assert((addr,it) in txnDict)
                 txnDict[(addr,it)]['read_end'] = time
             elif writeStartMatch :
@@ -43,7 +42,6 @@ def parseMigratoryTrace(logFile, dumpFile):
                 agent = writeStartMatch.group(2)
                 addr = writeStartMatch.group(3)
                 it = int(writeStartMatch.group(4))
-                isStarter = int(writeStartMatch.group(6))
                 assert((addr,it) in txnDict)
                 txnDict[(addr,it)]['write_start'] = time
             elif writeEndMatch :
@@ -51,9 +49,9 @@ def parseMigratoryTrace(logFile, dumpFile):
                 agent = writeEndMatch.group(2)
                 addr = writeEndMatch.group(3)
                 it = int(writeEndMatch.group(4))
-                isStarter = int(writeEndMatch.group(6))
                 assert((addr,it) in txnDict)
                 txnDict[(addr,it)]['write_end'] = time
+            
     with open(dumpFile, 'w') as fw:
         print(f'Addr,It,ReadStart,ReadEnd,WriteStart,WriteEnd',file=fw)
         for k,v in txnDict.items():
@@ -121,9 +119,12 @@ def parseTrueProdConsTrace(logFile, dumpFile):
             WriteEnd=v['write_end']
             print(f'{addr},{it},{WriteStart},{WriteEnd},{ReadStart},{ReadEnd}',file=fw)
 
-def analyzeCsv(options,msgDumpCsv):
+def analyzeCsv(options,msgDumpCsv,bench='migratory'):
     dfX = pd.read_csv(msgDumpCsv)
-    dfX['lat'] = dfX['WriteEnd']-dfX['ReadStart']
+    if bench == 'migratory':
+        dfX['lat'] = dfX['WriteEnd']-dfX['ReadStart']
+    else :
+        dfX['lat'] = dfX['ReadEnd']-dfX['WriteStart']
     minLat = dfX['lat'].min()
     maxLat = dfX['lat'].max()
     medLat = dfX['lat'].median()
@@ -137,6 +138,9 @@ def analyzeCsv(options,msgDumpCsv):
         'med_lat': medLat,
         'max_lat': maxLat
     })
+    if bench != 'migratory' :
+        bw = (64*len(dfX.index))/(dfX['ReadEnd'].max()-dfX['WriteStart'].min())
+        retDict['bw'] = bw
     return retDict
 
 def main():
@@ -150,11 +154,13 @@ def main():
     options = parser.parse_args()
     allMsgLog=os.path.join(options.input,'debug.trace')
     msgDumpCsv=os.path.join(options.output,'AllMsgLatDump.csv')
+    singleMsgDumpCsv=os.path.join(options.output,'SingleMsgLatDump.csv')
     if options.bench == 'migratory' :
         parseMigratoryTrace(allMsgLog,msgDumpCsv)
+        pcp.getMsgTrace(allMsgLog,singleMsgDumpCsv,0,'0x400','all')
     else :
-        parseTrueProdConsTrace(allMsgLog, msgDumpCsv)
-    retDict = analyzeCsv(options,msgDumpCsv)
+        parseTrueProdConsTrace(allMsgLog,msgDumpCsv)
+    retDict = analyzeCsv(options,msgDumpCsv,options.bench)
     print(json.dumps(retDict))
 
 if __name__=="__main__":
