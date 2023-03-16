@@ -241,6 +241,7 @@ std::string denseDst(NetDest& dst)
 void
 MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time, const bool arrivalOrDep)
 {
+    if(!::gem5::debug::TxnTrace) return;
 
     const std::type_info& msg_type = typeid(*(message.get()));
 
@@ -286,7 +287,7 @@ MessageBuffer::txntrace_print(MsgPtr message, const gem5::Tick& arrival_time, co
     uint64_t txSeqNum = 0; 
     if (msg_type == typeid(RubyRequest)){
         const RubyRequest* msg = dynamic_cast<RubyRequest*>(message.get());
-        txSeqNum = msg->getRequestPtr()->getReqInstSeqNum();
+        txSeqNum = msg->getRequestPtr()->getTraceTxsn();
         DPRINTF(TxnTrace, "txsn: %#018x, arr: %lld, req: %p, Arrival: %d, PA: %#x\n", 
                 txSeqNum, 
                 arrival_time, 
