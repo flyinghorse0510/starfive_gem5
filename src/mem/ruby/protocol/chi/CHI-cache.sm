@@ -402,9 +402,11 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     CheckCacheFill,   desc="Check if need to write or update the cache and trigger any necessary allocation and evictions";
 
     // Snoop Filter fill
-    CheckSnoopFilterFill,   desc="Check if need to Snoop filter (directory) entry";
+    WaitForSnoopFilterRepl, desc="Wait for Snoop filter replacement";
+    // CheckSnoopFilterFill,   desc="Check if need to Snoop filter (directory) entry";
     SnoopFilterEviction,    desc="Initiate SnoopFilter eviction";
     SnoopFilterHNCacheFill, desc="Trigger an HNF fill, after receiving SnoopFilter generated invalidation requests";
+    WakeUpEvictingSnoopFilterAddr, desc="Wakeup the reqRdyPort for the SnoopFilter evicting address";
 
     // Internal requests generated to evict or writeback a local copy
     // to free-up cache space
@@ -659,7 +661,8 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool doCacheFill,             desc="Write valid data to the cache when completing transaction";
 
     bool requiresDirEntryAlloc,   desc="Do you require a dirEntry allocation";
-    
+    Addr evicting_sf_addr,        desc="Address that trigger SnoopFilter repl";
+
     // NOTE: dataMaybeDirtyUpstream and dir_ownerExists are the same except
     // when we had just sent dirty data upstream and are waiting for ack to set
     // dir_ownerExists
@@ -722,6 +725,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool wakeup_pending_req;
     bool wakeup_pending_snp;
     bool wakeup_pending_tgr;
+    bool wakeup_pending_sfRepl;
   }
 
   // TBE table definition

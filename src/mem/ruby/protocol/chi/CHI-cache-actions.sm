@@ -51,6 +51,7 @@ action(AllocateTBE_Request, desc="") {
         assert(in_msg.addr == address);
         assert(in_msg.is_local_pf == false);
         out_msg := in_msg;
+        out_msg.stallForSnoopFilterAlloc := checkSnoopFilterFill(address,in_msg);
       }
     }
 
@@ -67,8 +68,6 @@ action(AllocateTBE_Request, desc="") {
       }
     }
   }
-
-  reqInPort.dequeue(clockEdge());
 }
 
 action(AllocateTBE_Request_WithCredit, desc="") {
@@ -79,9 +78,9 @@ action(AllocateTBE_Request_WithCredit, desc="") {
     enqueue(reqRdyOutPort, CHIRequestMsg, allocation_latency) {
       assert(in_msg.addr == address);
       out_msg := in_msg;
+      out_msg.stallForSnoopFilterAlloc := checkSnoopFilterFill(address,in_msg);
     }
   }
-  reqInPort.dequeue(clockEdge());
 }
 
 action(AllocateTBE_Snoop, desc="") {
@@ -263,26 +262,6 @@ action(Initiate_Request, desc="") {
   }
   DirEntry dir_entry := getDirEntry(address);
 
-  // Requires a DirEntry allocation
-  tbe.requiresDirEntryAlloc := (is_invalid(dir_entry)) && requiresDirEntry(tbe.reqType);
-  if (tbe.requiresDirEntryAlloc) {
-    tbe.actions.push(Event:CheckSnoopFilterFill);
-  }
-  // Directory access has taken place. Increment the appropriate stats
-  if (is_valid(dir_entry)) {
-    /**
-     * Arka[23/02/2023]: 
-     * 1. Per the CHI SLICC coding conventions. It is not
-     *    a good practice to add the directory hit
-     *    profiling here. There should be a separate action
-     *    to do this. The problem, is that it involves changes
-     *    in many areas of the code. So we do it here.
-     * 2. There are other Initiate_* actions, that also perform
-     *    `copyCacheAndDir`. They might also require this profiling
-     */
-    directory.profileHit();
-  }
-
   // CacheEntry+DirEntry --> TBE
   copyCacheAndDir(cache_entry, dir_entry, tbe, initial);
 
@@ -300,6 +279,16 @@ action(Initiate_Request, desc="") {
   tbe.dataToBeInvalid := dealloc_entry ||
                          (is_invalid(cache_entry) && (alloc_entry == false));
   tbe.doCacheFill := alloc_entry || is_valid(cache_entry);
+
+  // Requires a DirEntry allocation
+  tbe.requiresDirEntryAlloc := (is_invalid(dir_entry)) && requiresDirEntry(tbe.reqType);
+  bool avail_direntry := directory.cacheAvail(address);
+  bool doSnoopFilterFill := is_HN && (!allow_infinite_SF_entries);
+  assert(avail_direntry || (!doSnoopFilterFill));
+  if (tbe.requiresDirEntryAlloc) {
+    directory.allocate(address);
+    directory.profileHit();
+  }
 
   // model the initial tag array read
   tbe.actions.pushNB(Event:TagArrayRead);
@@ -437,14 +426,17 @@ action(Initiate_Replacement, desc="") {
   incomingTransactionStart(address, curTransitionEvent(), initial, false);
 }
 
-
-
 action(StallRequest, desc="") {
   // was stalled because of an existing request
   assert(is_valid(tbe));
   assert(tbe.addr == address);
   // tracks pending
   tbe.wakeup_pending_req := true;
+  stall_and_wait(reqRdyPort, address);
+}
+
+action(StallRequest_OnSnoopFilterRepl, desc="") {
+  // A valid is not yet allocated. But must stall
   stall_and_wait(reqRdyPort, address);
 }
 
@@ -2808,7 +2800,6 @@ action(CheckUpgrade_FromCU, desc="") {
   tbe.actions.pushFront(Event:SendCompAck);
 }
 
-
 action(Finalize_UpdateCacheFromTBE, desc="") {
   assert(is_valid(tbe));
   State final := tbe.finalState;
@@ -2866,57 +2857,6 @@ action(Deallocate_DirEntry, desc="") {
   directory.deallocate(address);
 }
 
-action(Check_SnoopFilterFill, desc="") {
-  /* 
-   * Still Dealing with the Fresh address. 
-   * But reqTBE is already allocated, which will Stall 
-   * new requests
-   */
-  assert(is_valid(tbe));
-
-  bool avail_direntry := directory.cacheAvail(address);
-  bool doSnoopFilterFill := is_HN && (!allow_infinite_SF_entries);
-  bool execute_next := true;
-  
-  // This action will be entered again
-  // once the eviction is complete so need to impl the
-  // Start SFEntry eviction
-  if (tbe.requiresDirEntryAlloc && !avail_direntry && doSnoopFilterFill) {
-    execute_next := false;
-    Addr victim_addr := directory.cacheProbe(address);
-    DirEntry victim_dir_entry := getDirEntry(victim_addr);
-    assert(is_valid(victim_dir_entry));
-    TBE victim_tbe := getCurrentActiveTBE(victim_addr);
-    if (is_invalid(victim_tbe)) {
-      enqueue(sfReplOutPort, ReplacementMsg, 0) {
-        out_msg.addr := victim_addr;
-        out_msg.from_addr := address;
-      }
-    } else {
-      victim_tbe.wakeup_pending_tgr := true;
-      DPRINTF(RubyCHIDebugStr5,"SnoopFilter Victim Busy|addr=%#x,victim_addr=%#x,pendAction=%s\n",tbe.addr,victim_addr,victim_tbe.pendAction);
-    }
-    // wait until we can deallocate the victim_addr
-    stall_and_wait(triggerInPort, victim_addr);
-  } else if (tbe.requiresDirEntryAlloc) {
-    directory.allocate(address);
-
-    /**
-     * A directory entry can be
-     * allocated, then its a Snoofilter
-     * hit
-     */
-    directory.profileHit();
-  }
-  
-  if (execute_next) {
-    triggerInPort.dequeue(clockEdge());
-    clearPendingAction(tbe);
-    processNextState(address, tbe, cache_entry);
-  } else {
-    wakeupPendingSnps(tbe);
-  }
-}
 
 action(Initiate_SnoopFilterReplacement_WB_BackInv, desc="") {
   assert(is_HN);
@@ -2958,10 +2898,26 @@ action(Initiate_SnoopFilterReplacement_Evict_BackInv, desc="") {
   tbe.actions.pushNB(Event:TagArrayWrite);
 }
 
-action(Pop_SFReplTriggerQueue, desc="") {
-  sfReplInPort.dequeue(clockEdge());
-  // wakeup the transaction that triggered this eviction
-  wakeup_port(triggerInPort, address);
+action(Restore_EvictingSnoopFilterAddr, desc="") {
+  tbe.actions.push(Event:WakeUpEvictingSnoopFilterAddr); // pushNB?
+}
+
+action(Assert_NoDirEntry, desc="") {
+  DirEntry dir_entry := getDirEntry(address);
+  assert(is_invalid(dir_entry));
+}
+
+action(WakeUp_EvictingSnoopFilterAddr, desc="") {
+  assert(is_valid(tbe));
+  Addr evicting_addr := tbe.evicting_sf_addr;
+  wakeup_port(reqRdyPort, evicting_addr);
+}
+
+action(WakeUp_EvictingSnoopFilterAddr_NoTBE, desc="") {
+  peek(sfReplInPort, ReplacementMsg) {
+    Addr evicting_addr := in_msg.from_addr;
+    wakeup_port(reqRdyPort, evicting_addr);
+  }
 }
 
 action(Initiate_SnoopFilterReplacement, desc="") {
@@ -2969,7 +2925,10 @@ action(Initiate_SnoopFilterReplacement, desc="") {
   DirEntry dir_entry := getDirEntry(address);
   assert(is_valid(dir_entry));
   State initial := getState(tbe, cache_entry, address);
-  set_tbe(allocateSnoopFilterTBE(address, machineID, machineID));
+  peek(sfReplInPort, ReplacementMsg) {
+    set_tbe(allocateSnoopFilterTBE(address, machineID, machineID));
+    tbe.evicting_sf_addr := in_msg.from_addr;
+  }
 
   copyCacheAndDir(cache_entry, dir_entry, tbe, initial);
 
@@ -2987,10 +2946,8 @@ action(StallSnoopFilterEviction, desc="") {
   assert(is_valid(tbe));
   assert(tbe.addr == address);
 
-  // Just pop the queue and When this transaction finishes wake-up the original
-  // msgs that caused this eviction
-  tbe.wakeup_pending_tgr := true;
-  sfReplInPort.dequeue(clockEdge());
+  tbe.wakeup_pending_sfRepl := true;
+  stall_and_wait(sfReplInPort, address);
 }
 
 action(CheckCacheFill, desc="") {
@@ -3064,6 +3021,7 @@ action(Finalize_DeallocateRequest, desc="") {
   wakeupPendingReqs(tbe);
   wakeupPendingSnps(tbe);
   wakeupPendingTgrs(tbe);
+  wakeupPendingSFRepl(tbe);
   if (tbe.is_req_tbe) {
     deallocateReqTBE(tbe);
     processRetryQueue();
@@ -3150,8 +3108,17 @@ action(Pop_RetryTriggerQueue, desc="") {
 action(Pop_SnpInPort, desc="") {
   snpInPort.dequeue(clockEdge());
 }
+
 action(Pop_SeqInPort, desc="") {
   seqInPort.dequeue(clockEdge());
+}
+
+action(Pop_SFReplTriggerQueue, desc="") {
+  sfReplInPort.dequeue(clockEdge());
+}
+
+action(Pop_ReqInQueue, desc="") {
+  reqInPort.dequeue(clockEdge());
 }
 
 action(ProcessNextState, desc="") {
