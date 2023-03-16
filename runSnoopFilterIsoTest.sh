@@ -235,12 +235,10 @@ if [ "$GATETEST" != "" ]; then
           --inj-interval=1 \
           --num-snoopfilter-entries=${SNOOP_FILTER_SIZE} \
           --num-snoopfilter-assoc=${SNOOP_FILTER_ASSOC} \
-          --num-producers=1
-          grep 'system\.ruby\.hnf\.cntrl' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
-          grep 'system\.cpu\.l2' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.l2.trace
-          
+          --num-producers=1 &
         done
     done
+    wait
 
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
         for WKSET in ${WKSETLIST[@]}; do
