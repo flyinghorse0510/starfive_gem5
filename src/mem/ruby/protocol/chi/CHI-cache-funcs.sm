@@ -439,7 +439,6 @@ TBE allocateRequestTBE(Addr addr, CHIRequestMsg in_msg), return_by_pointer="yes"
   tbe.txSeqNum := in_msg.txSeqNum;
   tbe.reqPtr := in_msg.reqPtr;
   
-  DPRINTF(RubyCHIDebugStr5,"AllocReqTBE,Addr:%#x,slot:%d,reqType:%s,reqtor:%d\n",tbe.addr,tbe.storSlot,tbe.reqType,tbe.requestor);
   return tbe;
 }
 
@@ -967,7 +966,6 @@ void copyCacheAndDirTBEs(TBE src, TBE dst) {
 void deallocateReqTBE(TBE tbe) {
   assert(is_valid(tbe));
   assert(tbe.is_req_tbe);
-  DPRINTF(RubyCHIDebugStr5,"DeAllocReqTBE,Addr:%#x,slot:%d,reqType:%s\n",tbe.addr,tbe.storSlot,tbe.reqType);
   storTBEs.removeEntryFromSlot(tbe.storSlot);
   TBEs.deallocate(tbe.addr);
 }

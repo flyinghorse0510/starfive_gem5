@@ -183,7 +183,7 @@ if [ "$GATETEST" != "" ]; then
     SNOOP_FILTER_ASSOC=1
     DEBUGFLAGS=RubyCHIDebugStr5,RubyGenerated,SeqMemLatTest
 
-    WKSETLIST=(2048)
+    WKSETLIST=(256 512 1024)
     NUM_CPU_SET=(1)
 
     for NUMCPUS in ${NUM_CPU_SET[@]}; do

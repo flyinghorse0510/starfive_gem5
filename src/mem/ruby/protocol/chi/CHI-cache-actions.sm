@@ -3052,8 +3052,8 @@ action(CheckCacheFill, desc="") {
     // The `is_valid(victim_entry)` condition here is to avoid an unused
     // variable error when compiling to gem5.fast.
     if (is_invalid(victim_tbe) && is_valid(victim_entry)) {
-      // DPRINTF(RubyCHIDebugStr5, "Eviction for %#x victim: %#x state=%s\n",
-      //                     address, victim_addr, victim_entry.state);
+      DPRINTF(RubySlicc, "Eviction for %#x victim: %#x state=%s\n",
+                          address, victim_addr, victim_entry.state);
       enqueue(replTriggerOutPort, ReplacementMsg, 0) {
         out_msg.addr := victim_addr;
         out_msg.from_addr := address;
@@ -3063,7 +3063,7 @@ action(CheckCacheFill, desc="") {
         }
       }
     } else {
-      DPRINTF(RubyCHIDebugStr5, "Eviction for %#x victim: %#x state=%s\n",
+      DPRINTF(RubySlicc, "Eviction for %#x victim: %#x state=%s\n",
                           address, victim_addr, victim_tbe.state);
       // just wait until the transaction finishes to try again
       victim_tbe.wakeup_pending_tgr := true;
