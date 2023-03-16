@@ -262,26 +262,10 @@ action(Initiate_Request, desc="") {
     was_retried := in_msg.allowRetry == false;
   }
   DirEntry dir_entry := getDirEntry(address);
-  copyCacheAndDir(cache_entry, dir_entry, tbe, initial);
-
-  tbe.use_DMT := is_HN && enable_DMT;
-  tbe.use_DCT := enable_DCT;
-
-  bool alloc_entry := needCacheEntry(tbe.reqType,
-                                     cache_entry, dir_entry,
-                                     tbe.is_local_pf);
-  bool dealloc_entry := needDeallocCacheEntry(tbe.reqType);
-  assert((alloc_entry && dealloc_entry) == false);
-
-  // always drops any data when not caching it or when this transaction
-  // requires deallocation
-  tbe.dataToBeInvalid := dealloc_entry ||
-                         (is_invalid(cache_entry) && (alloc_entry == false));
-  tbe.doCacheFill := alloc_entry || is_valid(cache_entry);
 
   // Requires a DirEntry allocation
-  tbe.requiresDirEntry := requiresDirEntry(tbe.reqType, dir_entry);
-  if (tbe.requiresDirEntry) {
+  tbe.requiresDirEntryAlloc := (is_invalid(dir_entry)) && requiresDirEntry(tbe.reqType);
+  if (tbe.requiresDirEntryAlloc) {
     tbe.actions.push(Event:CheckSnoopFilterFill);
   }
   // Directory access has taken place. Increment the appropriate stats
@@ -298,6 +282,24 @@ action(Initiate_Request, desc="") {
      */
     directory.profileHit();
   }
+
+  // CacheEntry+DirEntry --> TBE
+  copyCacheAndDir(cache_entry, dir_entry, tbe, initial);
+
+  tbe.use_DMT := is_HN && enable_DMT;
+  tbe.use_DCT := enable_DCT;
+
+  bool alloc_entry := needCacheEntry(tbe.reqType,
+                                     cache_entry, dir_entry,
+                                     tbe.is_local_pf);
+  bool dealloc_entry := needDeallocCacheEntry(tbe.reqType);
+  assert((alloc_entry && dealloc_entry) == false);
+
+  // always drops any data when not caching it or when this transaction
+  // requires deallocation
+  tbe.dataToBeInvalid := dealloc_entry ||
+                         (is_invalid(cache_entry) && (alloc_entry == false));
+  tbe.doCacheFill := alloc_entry || is_valid(cache_entry);
 
   // model the initial tag array read
   tbe.actions.pushNB(Event:TagArrayRead);
@@ -417,14 +419,6 @@ action(Initiate_Replacement, desc="") {
   assert(is_invalid(tbe));
   State initial := getState(tbe, cache_entry, address);
 
-  // zhiang: printTBEState here
-  DPRINTF(RubySlicc, "Enter Initiate_Replacement\n");
-  if(is_invalid(tbe)) {
-    DPRINTF(RubySlicc, "tbe is invalid\n");
-  } else {
-    printTBEState(tbe);
-  }
-
   if (unify_repl_TBEs) {
     peek(replTriggerInPort, ReplacementMsg) {
       set_tbe(allocateReplacementTBEOnSlot(address, in_msg.slot));
@@ -435,23 +429,7 @@ action(Initiate_Replacement, desc="") {
     DPRINTF(RubySlicc, "Allocated replacement TBE on new slot %d\n", tbe.storSlot);
   }
 
-  // zhiang: printTBEState here
-  DPRINTF(RubySlicc, "After allocateReplacementTBE\n");
-  if(is_invalid(tbe)) {
-    DPRINTF(RubySlicc, "tbe is invalid\n");
-  } else {
-    printTBEState(tbe);
-  }
-
   copyCacheAndDir(cache_entry, getDirEntry(address), tbe, initial);
-
-  // zhiang: printTBEState here
-  DPRINTF(RubySlicc, "After CopyCacheAndDir\n");
-  if(is_invalid(tbe)) {
-    DPRINTF(RubySlicc, "tbe is invalid\n");
-  } else {
-    printTBEState(tbe);
-  }
 
   // model the initial tag array read
   tbe.actions.pushNB(Event:TagArrayRead);
@@ -2883,11 +2861,6 @@ action(Deallocate_CacheBlock, desc="") {
   unset_cache_entry();
 }
 
-action(Allocate_DirEntry, desc="") {
-  assert(directory.isTagPresent(address) == false);
-  directory.allocate(address);
-}
-
 action(Deallocate_DirEntry, desc="") {
   assert(directory.isTagPresent(address));
   directory.deallocate(address);
@@ -2905,10 +2878,10 @@ action(Check_SnoopFilterFill, desc="") {
   bool doSnoopFilterFill := is_HN && (!allow_infinite_SF_entries);
   bool execute_next := true;
   
-  // Remember that this action will be entered again
+  // This action will be entered again
   // once the eviction is complete so need to impl the
   // Start SFEntry eviction
-  if (tbe.requiresDirEntry && !avail_direntry && doSnoopFilterFill) {
+  if (tbe.requiresDirEntryAlloc && !avail_direntry && doSnoopFilterFill) {
     execute_next := false;
     Addr victim_addr := directory.cacheProbe(address);
     DirEntry victim_dir_entry := getDirEntry(victim_addr);
@@ -2921,11 +2894,11 @@ action(Check_SnoopFilterFill, desc="") {
       }
     } else {
       victim_tbe.wakeup_pending_tgr := true;
-      DPRINTF(RubyCHIDebugStr5,"SnoopFilter Victim Busy|addr=%#x,victim_addr=%#x\n",tbe.addr,victim_addr);
+      DPRINTF(RubyCHIDebugStr5,"SnoopFilter Victim Busy|addr=%#x,victim_addr=%#x,pendAction=%s\n",tbe.addr,victim_addr,victim_tbe.pendAction);
     }
     // wait until we can deallocate the victim_addr
     stall_and_wait(triggerInPort, victim_addr);
-  } else if (tbe.requiresDirEntry) {
+  } else if (tbe.requiresDirEntryAlloc) {
     directory.allocate(address);
 
     /**
@@ -3065,6 +3038,8 @@ action(CheckCacheFill, desc="") {
     } else {
       DPRINTF(RubySlicc, "Eviction for %#x victim: %#x state=%s\n",
                           address, victim_addr, victim_tbe.state);
+      DPRINTF(RubyCHIDebugStr5,"CacheEntry Victim Busy|addr=%#x,victim_addr=%#x,pendAction=%s\n",tbe.addr,victim_addr,victim_tbe.pendAction);
+    
       // just wait until the transaction finishes to try again
       victim_tbe.wakeup_pending_tgr := true;
     }

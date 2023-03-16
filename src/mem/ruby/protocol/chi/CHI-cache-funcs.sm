@@ -759,20 +759,16 @@ void printResources() {
                 triggerQueue.getSize(curTick()));
 }
 
-bool requiresDirEntry(CHIRequestType reqType, DirEntry dir_entry) {
-  if (is_valid(dir_entry)) {
-    return false;
-  } else {
-    /**
-     * Arka [23/02/2023]: I am not completely sure
-     * which all transactions might require a directory
-     */
-    return ((reqType == CHIRequestType:ReadShared) ||
-            (reqType == CHIRequestType:ReadNotSharedDirty) ||
-            (reqType == CHIRequestType:ReadUnique) ||
-            (reqType == CHIRequestType:ReadOnce) ||
-            (reqType == CHIRequestType:CleanUnique));
-  }
+bool requiresDirEntry(CHIRequestType reqType) {
+  /**
+   * Arka [23/02/2023]: I am not completely sure
+   * which all transactions might require a directory
+   */
+  return ((reqType == CHIRequestType:ReadShared) ||
+          (reqType == CHIRequestType:ReadNotSharedDirty) ||
+          (reqType == CHIRequestType:ReadUnique) ||
+          (reqType == CHIRequestType:ReadOnce) ||
+          (reqType == CHIRequestType:CleanUnique));
 }
 
 bool needCacheEntry(CHIRequestType req_type,

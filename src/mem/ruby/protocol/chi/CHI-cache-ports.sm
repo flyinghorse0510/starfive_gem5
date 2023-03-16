@@ -309,7 +309,7 @@ in_port(sfReplInPort, ReplacementMsg, sfReplTriggerQueue, rank=12) {
   if (sfReplInPort.isReady(clockEdge())) {
     printResources();
     peek(sfReplInPort, ReplacementMsg) {
-      TBE tbe := getCurrentActiveTBE(in_msg.addr); // Fix this to select the Correct SnoopFilterRepl TBE
+      TBE tbe := getCurrentActiveTBE(in_msg.addr);
       CacheEntry cache_entry := getCacheEntry(in_msg.addr);
       trigger(Event:SnoopFilterEviction, in_msg.addr, cache_entry, tbe);
     }

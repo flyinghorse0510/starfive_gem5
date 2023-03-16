@@ -658,7 +658,8 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool dir_ownerIsExcl,         desc="Owner is UD or UC; SD otherwise";
     bool doCacheFill,             desc="Write valid data to the cache when completing transaction";
 
-    bool requiresDirEntry,        desc="Do you require a dirEntry allocation";
+    bool requiresDirEntryAlloc,   desc="Do you require a dirEntry allocation";
+    
     // NOTE: dataMaybeDirtyUpstream and dir_ownerExists are the same except
     // when we had just sent dirty data upstream and are waiting for ack to set
     // dir_ownerExists
