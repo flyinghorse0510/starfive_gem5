@@ -44,6 +44,7 @@
 #include <unordered_map>
 #include <iterator>
 #include <cstdlib>
+#include <queue>
 
 #include "base/compiler.hh"
 #include "mem/ruby/common/Address.hh"
@@ -61,6 +62,15 @@ struct SnoopFilterLineState
     SnoopFilterLineState() { m_permission = AccessPermission_NUM; }
     AccessPermission m_permission;
     ENTRY m_entry;
+};
+
+struct SFReplInfo {
+  Addr fromAddr; // Victim Addr
+  Addr toAddr;   // Evicting Addr
+  SFReplInfo(Addr fromAddr, Addr toAddr) :
+    fromAddr(fromAddr), toAddr(toAddr) {}
+  SFReplInfo() :
+    fromAddr(0), toAddr(0) {}
 };
 
 template<class ENTRY>
@@ -111,17 +121,34 @@ class SnoopFilter
     void print(std::ostream& out) const;
 
     void profileMiss();
+
     void profileHit();
 
     int getCacheSet(Addr address) const;
 
+    bool hasPendingSFRepls(Addr addr);
+
+    bool hasBlockedSFRepls(Addr addr);
+
+    Addr getFromAddr(Addr addr);
+
+    Addr getToAddr(Addr addr);
+
+    void enqSfReplInfo(Addr fromAddr, Addr toAddr);
+
+    void deqSfReplInfo(Addr addr);
+
   private:
     // Private copy constructor and assignment operator
     SnoopFilter(const SnoopFilter& obj);
+
     SnoopFilter& operator=(const SnoopFilter& obj);
 
     // Data Members (m_prefix)
     std::vector<std::unordered_map<Addr,SnoopFilterLineState<ENTRY>>> m_cache;
+
+    // Address that is currently undergoing (or scheduled to undergo) SnoopFilter repl
+    std::vector<std::queue<SFReplInfo>> m_pending_sfrepl_addr;
 
     int m_assoc;
     int m_num_sets;
@@ -198,6 +225,7 @@ inline SnoopFilter<ENTRY>::SnoopFilter(unsigned num_entries,\
     m_num_sets=m_num_entries/m_assoc;
     for (unsigned i = 0; i < m_num_sets; i++) {
       m_cache.push_back(std::unordered_map<Addr,SnoopFilterLineState<ENTRY>>());
+      m_pending_sfrepl_addr.push_back(std::queue<SFReplInfo>());
     }
     m_num_set_bits=floorLog2(m_num_sets);
     assert(m_num_set_bits > 0);
@@ -316,6 +344,70 @@ SnoopFilter<ENTRY>::getPermission(Addr address) const {
     auto &set = m_cache.at(cacheSet);
     assert(set.find(address) != set.end());
     return set[makeLineAddress(address)].m_permission;
+}
+
+template<class ENTRY>
+inline bool
+SnoopFilter<ENTRY>::hasPendingSFRepls(Addr addr) {
+  int64_t set = addressToCacheSet(addr);
+  auto &pending_repl_addr_q = m_pending_sfrepl_addr.at(set);
+  return (!pending_repl_addr_q.empty());
+}
+
+template<class ENTRY>
+inline bool
+SnoopFilter<ENTRY>::hasBlockedSFRepls(Addr addr) {
+  int64_t set = addressToCacheSet(addr);
+  auto &pending_repl_addr_q = m_pending_sfrepl_addr.at(set);
+  if (pending_repl_addr_q.empty()) {
+    return false;
+  } else {
+    auto &top = pending_repl_addr_q.front();
+    Addr fromAddr = top.fromAddr;
+    if (addr == fromAddr) {
+      return true;
+    }
+  }
+  return false;
+}
+
+template<class ENTRY>
+inline Addr
+SnoopFilter<ENTRY>::getToAddr(Addr addr) {
+  int64_t set = addressToCacheSet(addr);
+  auto &pending_repl_addr_q = m_pending_sfrepl_addr.at(set);
+  assert(!pending_repl_addr_q.empty());
+  auto &top = pending_repl_addr_q.front();
+  return top.toAddr;
+}
+
+template<class ENTRY>
+inline Addr
+SnoopFilter<ENTRY>::getFromAddr(Addr addr) {
+  int64_t set = addressToCacheSet(addr);
+  auto &pending_repl_addr_q = m_pending_sfrepl_addr.at(set);
+  assert(!pending_repl_addr_q.empty());
+  auto &top = pending_repl_addr_q.front();
+  return top.fromAddr;
+}
+
+template<class ENTRY>
+inline void
+SnoopFilter<ENTRY>::enqSfReplInfo(Addr fromAddr, Addr toAddr) {
+  int64_t set1 = addressToCacheSet(fromAddr);
+  int64_t set2 = addressToCacheSet(toAddr);
+  assert(set1 == set2);
+  auto &pending_repl_addr_q = m_pending_sfrepl_addr.at(set1);
+  pending_repl_addr_q.emplace(fromAddr,toAddr);
+}
+
+template<class ENTRY>
+inline void
+SnoopFilter<ENTRY>::deqSfReplInfo(Addr evictingAddr) {
+  int64_t set = addressToCacheSet(evictingAddr);
+  auto &pending_repl_addr_q = m_pending_sfrepl_addr.at(set);
+  assert(!pending_repl_addr_q.empty());
+  pending_repl_addr_q.pop();
 }
 
 template<class ENTRY>

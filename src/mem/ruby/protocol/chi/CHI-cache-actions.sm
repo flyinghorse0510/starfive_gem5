@@ -2855,6 +2855,7 @@ action(Deallocate_DirEntry, desc="") {
   directory.deallocate(address);
 }
 
+// SnoopFilter related actions 
 
 action(Initiate_SnoopFilterReplacement_WB_BackInv, desc="") {
   assert(is_HN);
@@ -2897,7 +2898,13 @@ action(Initiate_SnoopFilterReplacement_Evict_BackInv, desc="") {
 }
 
 action(Restore_EvictingSnoopFilterAddr, desc="") {
+  assert(is_valid(tbe));
   tbe.actions.push(Event:WakeUpEvictingSnoopFilterAddr); // pushNB?
+}
+
+action(Tgr_WakeUp_SFReplTriggerBuffer, desc="") {
+  assert(is_valid(tbe));
+  tbe.actions.push(Event:WakeUpSFReplTriggerBuffer);
 }
 
 action(Assert_NoDirEntry, desc="") {
@@ -2907,14 +2914,28 @@ action(Assert_NoDirEntry, desc="") {
 
 action(WakeUp_EvictingSnoopFilterAddr, desc="") {
   assert(is_valid(tbe));
-  Addr evicting_addr := tbe.evicting_sf_addr;
-  wakeup_port(reqRdyPort, evicting_addr);
+  Addr evicting_sf_addr := tbe.evicting_sf_addr;
+  wakeup_port(reqRdyPort, evicting_sf_addr);
 }
 
 action(WakeUp_EvictingSnoopFilterAddr_NoTBE, desc="") {
-  peek(sfReplInPort, ReplacementMsg) {
-    Addr evicting_addr := in_msg.from_addr;
-    wakeup_port(reqRdyPort, evicting_addr);
+  peek(sfReplInPort, SFReplMessage) {
+    Addr evicting_sf_addr := in_msg.toAddr;
+    wakeup_port(reqRdyPort, evicting_sf_addr);
+  }
+}
+
+action(DeqAndWakeup_PendingSFRepl_FromDirectory, desc="") {
+  // assert(is_valid(tbe));
+  // assert(address == tbe.addr);
+  assert(directory.hasPendingSFRepls(address));
+  Addr toAddr := directory.getToAddr(address);
+  Addr fromAddr := directory.getFromAddr(address);
+  assert(fromAddr == address);
+  directory.deqSfReplInfo(address);
+  // Are there any pending SFRepl messages for toAddr that needs to be woken up
+  if (directory.hasBlockedSFRepls(toAddr)) {
+    wakeup_port(sfReplInPort,toAddr);
   }
 }
 
@@ -2923,9 +2944,9 @@ action(Initiate_SnoopFilterReplacement, desc="") {
   DirEntry dir_entry := getDirEntry(address);
   assert(is_valid(dir_entry));
   State initial := getState(tbe, cache_entry, address);
-  peek(sfReplInPort, ReplacementMsg) {
+  peek(sfReplInPort, SFReplMessage) {
     set_tbe(allocateSnoopFilterTBE(address, machineID, machineID));
-    tbe.evicting_sf_addr := in_msg.from_addr;
+    tbe.evicting_sf_addr := in_msg.toAddr;
   }
 
   copyCacheAndDir(cache_entry, dir_entry, tbe, initial);
@@ -2945,6 +2966,10 @@ action(StallSnoopFilterEviction, desc="") {
   assert(tbe.addr == address);
 
   tbe.wakeup_pending_sfRepl := true;
+  stall_and_wait(sfReplInPort, address);
+}
+
+action(StallSnoopFilterEviction_NoTBE, desc="") {
   stall_and_wait(sfReplInPort, address);
 }
 
@@ -3111,7 +3136,13 @@ action(Pop_SeqInPort, desc="") {
   seqInPort.dequeue(clockEdge());
 }
 
+action(WakeUp_SFReplTriggerBuffer, desc="") {
+  assert(is_valid(tbe));
+  tbe.actions.push(Event:WakeUpSFReplTriggerBuffer);
+}
+
 action(Pop_SFReplTriggerQueue, desc="") {
+  DPRINTF(RubyCHIDebugStr5,"Deq sfReplInPort,addr=%d\n",address);
   sfReplInPort.dequeue(clockEdge());
 }
 

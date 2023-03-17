@@ -130,6 +130,7 @@ transition({RSD,RUSC,RUSD,RU,
   Deallocate_DirEntry;
   Pop_SFReplTriggerQueue;
   Restore_EvictingSnoopFilterAddr;
+  Tgr_WakeUp_SFReplTriggerBuffer;
   ProcessNextState;
 }
 
@@ -140,18 +141,44 @@ transition({UC_RSC, RSC, SC_RSC}, SnoopFilterEviction, BUSY_BLKD) {SfReplTBEAvai
   Deallocate_DirEntry;
   Pop_SFReplTriggerQueue;
   Restore_EvictingSnoopFilterAddr;
+  Tgr_WakeUp_SFReplTriggerBuffer;
   ProcessNextState;
+}
+
+transition(BUSY_BLKD, WakeUpSFReplTriggerBuffer) {
+  Pop_TriggerQueue;
+  DeqAndWakeup_PendingSFRepl_FromDirectory;
+}
+
+/**
+ * A SnoopFilter eviction is triggered
+ * by a different address, even when
+ * an outstanding transaction is 
+ * ongoing
+ */
+transition({RSD,RUSC,RUSD,RU,
+            UD_RSC, UC_RSC, RSC,
+            SC_RSC, UD_RU,UC_RU,
+            UD_RSD,
+            I, UD, UC,
+            BUSY_BLKD,BUSY_INTR}, SnoopFilterEviction_Wait) {
+  StallSnoopFilterEviction_NoTBE;
 }
 
 transition({BUSY_BLKD,BUSY_INTR}, SnoopFilterEviction) {
   StallSnoopFilterEviction;
 }
 
-// These situation can arise. When the line being replaced does not need to maintain a directory entry
+/**
+ * These situation can arise When the line being 
+ * replaced was originally outstanding but was stalled,
+ * but the final stable state is only locally available
+ */
 transition({I,UC,UD}, SnoopFilterEviction) {
   Assert_NoDirEntry;
   WakeUp_EvictingSnoopFilterAddr_NoTBE;
   Pop_SFReplTriggerQueue;
+  DeqAndWakeup_PendingSFRepl_FromDirectory;
 }
 
 transition(BUSY_BLKD, SnoopFilterHNCacheFill) {
@@ -162,8 +189,8 @@ transition(BUSY_BLKD, SnoopFilterHNCacheFill) {
 }
 
 transition(BUSY_BLKD, WakeUpEvictingSnoopFilterAddr) {
-  Assert_NoDirEntry;
   Pop_TriggerQueue;
+  Assert_NoDirEntry;
   WakeUp_EvictingSnoopFilterAddr;
   ProcessNextState_ClearPending;
 }
