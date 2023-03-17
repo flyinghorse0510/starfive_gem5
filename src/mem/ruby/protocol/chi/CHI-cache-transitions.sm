@@ -157,7 +157,7 @@ transition({I,UC,UD}, SnoopFilterEviction) {
 transition(BUSY_BLKD, SnoopFilterHNCacheFill) {
   Pop_TriggerQueue;
   Start_SnoopFilterHNCacheFill;
-  ProcessNextState;
+  ProcessNextState_ClearPending;
   // [Arka]: Do you need ProcessNextState_ClearPending
 }
 

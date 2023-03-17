@@ -51,7 +51,6 @@ action(AllocateTBE_Request, desc="") {
         assert(in_msg.addr == address);
         assert(in_msg.is_local_pf == false);
         out_msg := in_msg;
-        out_msg.stallForSnoopFilterAlloc := checkSnoopFilterFill(address,in_msg);
       }
     }
 
@@ -78,7 +77,6 @@ action(AllocateTBE_Request_WithCredit, desc="") {
     enqueue(reqRdyOutPort, CHIRequestMsg, allocation_latency) {
       assert(in_msg.addr == address);
       out_msg := in_msg;
-      out_msg.stallForSnoopFilterAlloc := checkSnoopFilterFill(address,in_msg);
     }
   }
 }

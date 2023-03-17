@@ -1517,3 +1517,17 @@ bool checkResourceAvailable(RequestType request_type, Addr addr) {
   }
   return avail;
 }
+
+// SnoopFilter related functions
+bool stallForSnoopFilterFill(Addr address, CHIRequestMsg in_msg) {
+  DirEntry dir_entry := getDirEntry(address);
+  bool avail_direntry := directory.cacheAvail(address);
+  bool doSnoopFilterFill := is_HN && (!allow_infinite_SF_entries);
+  bool requiresDirEntryAlloc := false;
+  requiresDirEntryAlloc :=  (is_invalid(dir_entry)) && requiresDirEntry(in_msg.type);
+  bool stallForSnoopFilterAlloc := false;
+  if (requiresDirEntryAlloc && !avail_direntry && doSnoopFilterFill) {
+    stallForSnoopFilterAlloc := true;
+  }
+  return stallForSnoopFilterAlloc;
+}
