@@ -148,6 +148,7 @@ transition({UC_RSC, RSC, SC_RSC}, SnoopFilterEviction, BUSY_BLKD) {SfReplTBEAvai
 transition(BUSY_BLKD, WakeUpSFReplTriggerBuffer) {
   Pop_TriggerQueue;
   DeqAndWakeup_PendingSFRepl_FromDirectory;
+  ProcessNextState_ClearPending;
 }
 
 /**
@@ -185,7 +186,6 @@ transition(BUSY_BLKD, SnoopFilterHNCacheFill) {
   Pop_TriggerQueue;
   Start_SnoopFilterHNCacheFill;
   ProcessNextState_ClearPending;
-  // [Arka]: Do you need ProcessNextState_ClearPending
 }
 
 transition(BUSY_BLKD, WakeUpEvictingSnoopFilterAddr) {
