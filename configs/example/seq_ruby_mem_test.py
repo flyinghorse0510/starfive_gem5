@@ -58,6 +58,7 @@ parser.add_argument("--mem-test-type",type=str,default='bw_test',help="The type 
 parser.add_argument("--size-ws",type=int,default=1024,help='Working set size in bytes. Must be a multiple of Cacheline size')
 parser.add_argument("--enable-DMT", default=False, help="enable DMT")
 parser.add_argument("--enable-DCT", default=False, help="enable DCT")
+parser.add_argument('--allow-SD',default=True, help="allow SD state") # True for MOESI, False for MESI
 parser.add_argument("--num-HNF-TBE", default=16, help="number of oustanding in HN-F")
 parser.add_argument("--num_HNF_ReplTBE", default=16, help="number of replacement oustanding in HN-F")
 parser.add_argument("--num_trans_per_cycle_llc", default=4, help="number of transitions per cycle in HN-F")
@@ -85,7 +86,9 @@ parser.add_argument("--chs-prod-id",type=int,default=2,help='[Test 1] Producer I
 parser.add_argument("--chs-1p1c-num-pairs",default=1,type=int,help='[Test 2] Number of coherence sharing pairs')
 parser.add_argument("--chs-1pMc",action='store_true',help='[Test 3] Run 1 producer M > 1 consumers')
 parser.add_argument("--chs-1p-MSharers",default=2,type=int,help='[Test 3] Number of sharers')
-
+parser.add_argument('--max-outstanding-requests',default=1,type=int,help='Maximumum number of outstanding requests produced')
+parser.add_argument('--id-starter',default=0,type=int,help='Starter id of the migratory sharing patterns')
+parser.add_argument('--outstanding-req',default=100,type=int,help='Number of oustanding requests')
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]
 
@@ -107,6 +110,10 @@ elif args.mem_test_type=='random_test':
     MemTestClass=MemRandomTest
 elif args.mem_test_type=='isolated_test':
     MemTestClass=IsolatedMemTest
+elif args.mem_test_type=='migratory_test':
+    MemTestClass=MigratoryMemTest
+elif args.mem_test_type=='true_prod_cons':
+    MemTestClass=TrueProdConsMemTest
 else:
     raise ValueError(f'MemTest type undefined')
 
@@ -115,7 +122,7 @@ cpuProdListMap=dict([(c,[]) for c in range(num_cpus)])
 cpuConsListMap=dict([(c,[]) for c in range(num_cpus)])
 num_peer_producers=1
 
-if args.mem_test_type=='prod_cons_test':
+if (args.mem_test_type=='prod_cons_test') or (args.mem_test_type=='true_prod_cons'):
     import random
     if (args.chs_1p1c):
         # 1P-1C with controllable prod_id and cons_id locations
@@ -184,6 +191,8 @@ if num_cpus > 0 :
                      bench_c2cbw_mode = args.bench_c2cbw_mode,
                      id_producers = cpuProdListMap[i],
                      id_consumers = cpuConsListMap[i],
+                     outstanding_req = args.outstanding_req,
+                     id_starter = args.id_starter,
                      num_peer_producers = num_peer_producers,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
@@ -201,6 +210,8 @@ if args.num_dmas > 0:
                      bench_c2cbw_mode = args.bench_c2cbw_mode,
                      id_producers = cpuProdListMap[i],
                      id_consumers = cpuConsListMap[i],
+                     outstanding_req = args.outstanding_req,
+                     id_starter = args.id_starter,
                      num_peer_producers = num_peer_producers,
                      addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,
                      suppress_func_errors = not args.suppress_func_errors) \

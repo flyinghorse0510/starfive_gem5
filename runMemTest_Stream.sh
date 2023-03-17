@@ -192,18 +192,18 @@ if [ "$TEST" == "DDR_BW" ]; then
 l1d_size="4KiB"
 l1i_size="4KiB"
 l2_size="8KiB"
-l3_size="4KiB" #"16KiB" #"1024KiB" #"256KiB"
+l3_size="16KiB" #"16KiB" #"1024KiB" #"256KiB"
 l1d_assoc=8
 l1i_assoc=8
 l2_assoc=8
 l3_assoc=16
-NUM_LLC=4
+NUM_LLC=16
 NETWORK="simple" #"garnet" #"simple"
 
 #DMT_Config=(True False)
-NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
+NUM_CPU_SET=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16) # = #2 #4 #16
 #NUM_CPU_SET=(4 8 16) # = #2 #4 #16
-WKSET=524288 #8192 #16384 #524288 #(32768) #Total working set shared by all CPUs
+WKSET=1048576 #8192 #16384 #524288 #(32768) #Total working set shared by all CPUs
 NUM_MEM_SET=(1 2 4)
 #NUM_MEM_SET=(1 2 4)
 #NUM_MEM=1
@@ -222,7 +222,7 @@ fi
 DMT_Config=(False) #(True False)
 ##NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
 
-NUM_CPU_SET=(1 2 4 8 16) # = #2 #4 #16
+NUM_CPU_SET=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16) # = #2 #4 #16
 
 #NUM_CPU_SET=(8) # = #2 #4 #16
 

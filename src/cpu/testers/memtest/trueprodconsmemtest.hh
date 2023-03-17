@@ -46,7 +46,7 @@
 
 #include "base/statistics.hh"
 #include "mem/port.hh"
-#include "params/ProdConsMemTest.hh"
+#include "params/TrueProdConsMemTest.hh"
 #include "sim/clocked_object.hh"
 #include "sim/eventq.hh"
 #include "sim/stats.hh"
@@ -58,8 +58,8 @@ namespace gem5
 typedef uint16_t writeSyncData_t;
 
 /**
- * The ProdConsMemTest class tests a cache coherent memory system.
- * 1. All requests issued by the ProdConsMemTest instance are a
+ * The TrueProdConsMemTest class tests a cache coherent memory system.
+ * 1. All requests issued by the TrueProdConsMemTest instance are a
  *    single byte. 
  * 2. The addresses are generated sequentially and the same
  *    address is generated again, to remove the effects of cold
@@ -70,15 +70,14 @@ typedef uint16_t writeSyncData_t;
  * both requests and responses, thus checking that the memory-system
  * is making progress.
  */
-class ProdConsMemTest : public ClockedObject
+class TrueProdConsMemTest : public ClockedObject
 {
 
   public:
 
-    typedef ProdConsMemTestParams Params;
+    typedef TrueProdConsMemTestParams Params;
     
-    ProdConsMemTest(const Params &p);
-
+    TrueProdConsMemTest(const Params &p);
 
     Port &getPort(const std::string &if_name,
                   PortID idx=InvalidPortID) override;
@@ -100,11 +99,11 @@ class ProdConsMemTest : public ClockedObject
 
     class CpuPort : public RequestPort
     {
-        ProdConsMemTest &seqmemtest;
+        TrueProdConsMemTest &seqmemtest;
 
       public:
 
-        CpuPort(const std::string &_name, ProdConsMemTest &_memtest)
+        CpuPort(const std::string &_name, TrueProdConsMemTest &_memtest)
             : RequestPort(_name, &_memtest), seqmemtest(_memtest)
         { }
 
@@ -129,19 +128,17 @@ class ProdConsMemTest : public ClockedObject
 
     bool waitResponse;
 
-    Cycles interval;
+    const Cycles interval;
 
     /** Request id for all generated traffic */
     RequestorID requestorId;
 
    
 
-    std::unordered_set<Addr> outstandingAddrs;
+    std::unordered_set<uint64_t> outstandingAddrs;
 
     // store the expected value for the addresses we have touched
     std::unordered_map<Addr, writeSyncData_t> referenceData;
-
-    std::set<Addr> writeDataGenerated;
 
     const unsigned blockSize;
 
@@ -185,8 +182,6 @@ class ProdConsMemTest : public ClockedObject
     uint64_t numWriteTxnCompleted;
 
     const double maxLoadFactor;
-
-    unsigned numPeerProducers;
 
     bool removeConsumedData;
 
@@ -257,3 +252,4 @@ class ProdConsMemTest : public ClockedObject
 } // namespace gem5
 
 #endif // __CPU_ISO_MEMTEST_HH__
+

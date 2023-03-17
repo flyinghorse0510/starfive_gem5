@@ -143,7 +143,7 @@ def create_system(options, full_system, system, dma_ports, bootmem,
                                 options, system.cache_line_size.value)
                         for cpu in cpus ]
     for rnf in ruby_system.rnf:
-        rnf.addPrivL2Cache(L2Cache)
+        rnf.addPrivL2Cache(options,L2Cache)
         cpu_sequencers.extend(rnf.getSequencers())
         all_cntrls.extend(rnf.getAllControllers())
         network_nodes.append(rnf)

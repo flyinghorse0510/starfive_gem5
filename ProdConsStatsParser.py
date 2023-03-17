@@ -14,13 +14,13 @@ def parseLinkLog(log_path,bottleNeckInfoFile):
             print(f'CurCyc,Loc,StallTime,TotalDelay,MsgType',file=fw)
             matcher=re.compile(msg_pat)
             for line in f:
-                msg_srch = matcher.match(line)
-                if msg_srch :
-                    CurCyc = (int(msg_srch.group(1)))/tickPerCyc
-                    Loc = msg_srch.group(2)
-                    StallTime = (int(msg_srch.group(3)))/tickPerCyc
-                    AggDelay = (int(msg_srch.group(4)))/tickPerCyc
-                    MsgType = msg_srch.group(5)
+                msgMatch = matcher.match(line)
+                if msgMatch :
+                    CurCyc = (int(msgMatch.group(1)))/tickPerCyc
+                    Loc = msgMatch.group(2)
+                    StallTime = (int(msgMatch.group(3)))/tickPerCyc
+                    AggDelay = (int(msgMatch.group(4)))/tickPerCyc
+                    MsgType = msgMatch.group(5)
                     print(f'{CurCyc},{Loc},{StallTime},{AggDelay},{MsgType}',file=fw)
 
 def parseReadWriteTxn(logfile,dumpfile):
@@ -56,7 +56,7 @@ def parseReadWriteTxn(logfile,dumpfile):
                 if TxSeqNum in msgDict:
                     msgDict[TxSeqNum]['EndTime'] = time
                 else :
-                    raise KeyError(f'{TxSeqNum} does not exist')
+                    raise KeyError(f'{TxSeqNum} does not exist \n {line}')
             else:
                 print(f'DOES NOT MATCH')
                 print(line)
@@ -93,6 +93,8 @@ def get1P1CStats(statsFile,options):
         'link_bw': options.link_bw,
         'prod_id': options.chs_prod_id,
         'cons_id':  options.chs_cons_id,
+        'StartTime': startTime,
+        'EndTime': endTime,
         'num_consumers': options.chs_num_consumers,
         'num_pairs': options.chs_num_pairs,
         'inj_interval': options.inj_rate,
@@ -105,25 +107,51 @@ def get1P1CStats(statsFile,options):
     })
     return retDict
 
-def getMsgTrace(msgTraceFile,msgCSVFile):
+def getMsgTrace(msgTraceFile,msgCSVFile,startTime=0,tgtAddr='0x4780',agent='system.ruby.hnf14.cntrl.reqIn'):
     tickPerCyc=500
-    # msg_pat = re.compile(r'(\d*): (\S+): (\S+)')
-    msg_pat= re.compile(r'^(\s*\d*): (\S+): txsn: (\w+), arr: (\d*), (\S+), type: (\w+), req: (\w+), ')
+    msg_pat= re.compile(r'^(\s*\d*): (\S+): txsn: (\w+), type: (\w+), isArrival: ([0-1]), addr: ([0-9a-fx]+), reqtor: (\S+), dest: ([\w,-]+)')
     with open(msgTraceFile,'r') as f:
         with open(msgCSVFile,'w') as fw:
-            print(f'ArrTime,Agent,MsgType',file=fw)
-            # matcher=re.compile(msg_pat)
+            print(f'Txn,Addr,Time,Agent,MsgType,Reqtor,Dest',file=fw)
             for line in f:
-                msg_srch = re.search(msg_pat,line)
-                if msg_srch :
-                    arrTime = (int(msg_srch.group(1)))/tickPerCyc
-                    agent = msg_srch.group(2)
-                    msgType = msg_srch.group(4)
-                    print(f'{arrTime},{agent},{msgType}',file=fw)
-                else :
-                    print(f'DOES NOT MATCH \n {line}')
+                msgMatch = re.match(msg_pat,line)
+                if msgMatch :
+                    Txn = msgMatch.group(3)
+                    Addr = msgMatch.group(6)
+                    reqtor = msgMatch.group(7)
+                    dest = msgMatch.group(8).replace(',','|')
+                    isArrival = int(msgMatch.group(5))
+                    Time = (int(msgMatch.group(1)))/tickPerCyc
+                    Agent = msgMatch.group(2)
+                    MsgType = msgMatch.group(4)
+                    if (isArrival == 1) and (not ('network' in Agent)):
+                        print(f'{Txn},{Addr},{Time},{Agent},{MsgType},{reqtor},{dest}',file=fw)
+    
+    if agent == 'all' :
+        dfX=pd.read_csv(msgCSVFile).query('(Time >= @startTime)')
+        dfX.to_csv(msgCSVFile,index=False)
+    else:
+        dfX=pd.read_csv(msgCSVFile).query('(Time >= @startTime) and (Agent == @agent)')
+        dfX.to_csv(msgCSVFile,index=False)
 
-def main():
+def getAllMsgPerformanceDetails(StartTime):
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('--input', required=True, type=str)
+    parser.add_argument('--output',required=True, type=str)
+    parser.add_argument('--dct',required=True)
+    parser.add_argument('--link-bw',required=True,type=int)
+    parser.add_argument('--inj-rate',required=True,type=int)
+    parser.add_argument('--bench-name',required=True,type=str)
+    parser.add_argument('--chs-prod-id',default=-1,type=int)
+    parser.add_argument('--chs-cons-id',default=-1,type=int)
+    parser.add_argument('--chs-num-pairs',default=-1,type=int)
+    parser.add_argument('--chs-num-consumers',default=-1,type=int)
+    options = parser.parse_args()
+    msgTraceFile = os.path.join(options.input,'debug.trace')
+    msgCSVFile = os.path.join(options.input,'AllMsgDetails.csv')
+    getMsgTrace(msgTraceFile,msgCSVFile,StartTime)
+
+def getAllMsgPerformance():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--input', required=True, type=str)
     parser.add_argument('--output',required=True, type=str)
@@ -142,7 +170,12 @@ def main():
     if os.path.isfile(msgPerfDumFile):
         retDict=get1P1CStats(msgPerfDumFile,options)
         print(json.dumps(retDict))
+        return retDict['StartTime']
+    return 0
 
+def main():
+    StartTime=getAllMsgPerformance()
+    getAllMsgPerformanceDetails(StartTime)
 
 if __name__=="__main__":
     main()
