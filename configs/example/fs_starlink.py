@@ -315,6 +315,7 @@ parser.add_argument("--num-SNF-TBE", default=32, help="number of oustanding in H
 parser.add_argument("--sequencer-outstanding-requests",type=int,default=32,help="Max outstanding sequencer requests")
 parser.add_argument("--bench-c2cbw-mode",default=True,help="[True] Producer Consumer BW or [False] C2C Latency Test")
 parser.add_argument("--inj-interval",default=1,type=int,help="The interval between request packets")
+parser.add_argument('--allow-SD',default=True, help="allow SD state") # True for MOESI, False for MESI
 
 
 # Add the ruby specific and protocol specific args
