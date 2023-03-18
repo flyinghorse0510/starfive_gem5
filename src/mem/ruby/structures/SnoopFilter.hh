@@ -45,10 +45,12 @@
 #include <iterator>
 #include <cstdlib>
 #include <queue>
+#include <set>
 
 #include "base/compiler.hh"
 #include "mem/ruby/common/Address.hh"
 #include "mem/ruby/protocol/AccessPermission.hh"
+#include "debug/RubyCHIDebugStr5.hh"
 
 namespace gem5
 {
@@ -138,6 +140,8 @@ class SnoopFilter
 
     void deqSfReplInfo(Addr addr);
 
+    bool isAddrBusy(Addr addr) const ;
+
   private:
     // Private copy constructor and assignment operator
     SnoopFilter(const SnoopFilter& obj);
@@ -149,6 +153,9 @@ class SnoopFilter
 
     // Address that is currently undergoing (or scheduled to undergo) SnoopFilter repl
     std::vector<std::queue<SFReplInfo>> m_pending_sfrepl_addr;
+
+    // Addresses in each set that are undergoing snoopfilter repl
+    std::vector<std::set<Addr>> m_busy_addrs; 
 
     int m_assoc;
     int m_num_sets;
@@ -226,6 +233,7 @@ inline SnoopFilter<ENTRY>::SnoopFilter(unsigned num_entries,\
     for (unsigned i = 0; i < m_num_sets; i++) {
       m_cache.push_back(std::unordered_map<Addr,SnoopFilterLineState<ENTRY>>());
       m_pending_sfrepl_addr.push_back(std::queue<SFReplInfo>());
+      m_busy_addrs.push_back(std::set<Addr>());
     }
     m_num_set_bits=floorLog2(m_num_sets);
     assert(m_num_set_bits > 0);
@@ -297,14 +305,56 @@ static inline int get_rand_between(int min, int max) {
     return rand()%(max-min + 1) + min;
 }
 
+template<class ENTRY>
+inline bool SnoopFilter<ENTRY>::isAddrBusy(Addr addr) const {
+  int64_t cacheSet = addressToCacheSet(addr);
+  auto &set = m_cache.at(cacheSet);
+  auto &busyAddrSet = m_busy_addrs.at(cacheSet);
+  if (busyAddrSet.count(addr) > 0) {
+    return true;
+  }
+  return false;
+}
+
 // Returns with the physical address of the conflicting cache line
 template<class ENTRY>
 inline Addr SnoopFilter<ENTRY>::cacheProbe(Addr newAddress) const {
     int64_t cacheSet = addressToCacheSet(newAddress);
     auto &set = m_cache.at(cacheSet);
-    assert(m_assoc==set.size());
-    auto random_it = std::next(std::begin(set), get_rand_between(0,set.size()-1));
-    return makeLineAddress(random_it->first);
+    auto &busyAddrs = m_pending_sfrepl_addr.at(cacheSet);
+    assert(m_assoc==set.size()); // This is only called when all ways are occupied
+    
+    // auto random_it = std::next(std::begin(set), get_rand_between(0,set.size()-1));
+    // return makeLineAddress(random_it->first);
+
+    if (busyAddrs.empty()) {
+      // There are no busy addrs, return a randomly selected address
+      auto random_it = std::next(std::begin(set), get_rand_between(0,set.size()-1));
+      Addr replAddr = makeLineAddress(random_it->first);
+      DPRINTF(RubyCHIDebugStr5,"CachProbe_RandAddr=%x\n",replAddr);
+      return replAddr;
+    } else {
+      std::set<Addr> freeAddrs;
+      auto &busyAddrSet = m_busy_addrs.at(cacheSet);
+      for (auto &entry : set) {
+        if (busyAddrSet.count(entry.first) <= 0) {
+          freeAddrs.insert(entry.first);
+          DPRINTF(RubyCHIDebugStr5,"CachProbe_FreeAddr=%x\n",entry.first);
+        }
+      }
+      if (!freeAddrs.empty()) {
+        auto random_it = std::next(std::begin(freeAddrs), get_rand_between(0,freeAddrs.size()-1));
+        Addr replAddr = makeLineAddress(*random_it);
+        DPRINTF(RubyCHIDebugStr5,"CachProbe_SelFreeAddr=%x\n",replAddr);
+        return replAddr;
+      } else {
+        Addr replAddr =  makeLineAddress(busyAddrs.back().toAddr);
+        DPRINTF(RubyCHIDebugStr5,"CachProbe_NoFreeAddr=%x\n",replAddr);
+        return replAddr;
+      }
+    }
+    assert(false);
+
 }
 
 // looks an address up in the cache
@@ -398,6 +448,9 @@ SnoopFilter<ENTRY>::enqSfReplInfo(Addr fromAddr, Addr toAddr) {
   int64_t set2 = addressToCacheSet(toAddr);
   assert(set1 == set2);
   auto &pending_repl_addr_q = m_pending_sfrepl_addr.at(set1);
+  auto &busyAddrSet = m_busy_addrs.at(set2);
+  busyAddrSet.insert(toAddr);
+  busyAddrSet.insert(fromAddr);
   pending_repl_addr_q.emplace(fromAddr,toAddr);
 }
 
@@ -407,6 +460,13 @@ SnoopFilter<ENTRY>::deqSfReplInfo(Addr evictingAddr) {
   int64_t set = addressToCacheSet(evictingAddr);
   auto &pending_repl_addr_q = m_pending_sfrepl_addr.at(set);
   assert(!pending_repl_addr_q.empty());
+  auto finishingToAddr = pending_repl_addr_q.front().toAddr;
+  auto finishingFromAddr = pending_repl_addr_q.front().fromAddr;
+  auto &busyAddrSet = m_busy_addrs.at(set);
+  assert(busyAddrSet.find(finishingToAddr) != busyAddrSet.end());
+  assert(busyAddrSet.find(finishingFromAddr) != busyAddrSet.end());
+  busyAddrSet.erase(finishingToAddr);
+  busyAddrSet.erase(finishingFromAddr);
   pending_repl_addr_q.pop();
 }
 

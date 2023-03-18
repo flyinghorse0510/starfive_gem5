@@ -39,7 +39,7 @@ WORKSPACE="$(pwd)/output"
 GEM5_DIR=$(pwd)
 ISA="RISCV"
 CCPROT="CHI"
-BUILDTYPE="gem5.opt"
+BUILDTYPE="gem5.debug"
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/SnoopFilterTest"
 PY3=/home/arka.maity/anaconda3/bin/python3
 
@@ -183,7 +183,7 @@ if [ "$GATETEST" != "" ]; then
     SNOOP_FILTER_ASSOC=1
     DEBUGFLAGS=RubyCHIDebugStr5,RubyGenerated,SeqMemLatTest
 
-    WKSETLIST=(256 512 1024)
+    WKSETLIST=(2048)
     NUM_CPU_SET=(1)
 
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
@@ -235,19 +235,23 @@ if [ "$GATETEST" != "" ]; then
           --inj-interval=1 \
           --num-snoopfilter-entries=${SNOOP_FILTER_SIZE} \
           --num-snoopfilter-assoc=${SNOOP_FILTER_ASSOC} \
-          --num-producers=1 &
+          --num-producers=1
+          
+          
+          grep -E 'hnf' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
+          grep -E 'CacheEntry Victim Busy|SnoopFilter Victim Busy|CacheEntry Undergoing SFRepl' ${OUTPUT_DIR}/debug.hnf.trace > ${OUTPUT_DIR}/debug.filt.trace
+        
         done
     done
-    wait
 
-    for NUMCPUS in ${NUM_CPU_SET[@]}; do
-        for WKSET in ${WKSETLIST[@]}; do
-            OUTPUT_PREFIX="SnoopFilter_${NETWORK}"
-            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_LoadFactor${LoadFactor}" 
-            grep -E 'system.cpu: Complete|system.cpu: Start' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.seqmemtest.trace
-            ${PY3} DebugHNFTBEAlloc.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR}
-        done
-    done
+    # for NUMCPUS in ${NUM_CPU_SET[@]}; do
+    #     for WKSET in ${WKSETLIST[@]}; do
+    #         OUTPUT_PREFIX="SnoopFilter_${NETWORK}"
+    #         OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_LoadFactor${LoadFactor}" 
+    #         grep -E 'system.cpu: Complete|system.cpu: Start' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.seqmemtest.trace
+    #         ${PY3} DebugHNFTBEAlloc.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR}
+    #     done
+    # done
     
     # for NUMCPUS in ${NUM_CPU_SET[@]}; do
     #   for WKSET in ${WKSETLIST[@]}; do

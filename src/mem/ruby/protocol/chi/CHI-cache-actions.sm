@@ -285,6 +285,8 @@ action(Initiate_Request, desc="") {
   assert(avail_direntry || (!doSnoopFilterFill));
   if (tbe.requiresDirEntryAlloc) {
     directory.allocate(address);
+  }
+  if ((is_valid(dir_entry)) && requiresDirEntry(tbe.reqType)) {
     directory.profileHit();
   }
 

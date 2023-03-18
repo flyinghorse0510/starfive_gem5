@@ -767,6 +767,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     Addr getFromAddr(Addr);
     Addr enqSfReplInfo(Addr, Addr);
     void deqSfReplInfo(Addr);
+    bool isAddrBusy(Addr addr);
   }
 
   // Directory

@@ -152,10 +152,10 @@ transition(BUSY_BLKD, WakeUpSFReplTriggerBuffer) {
 }
 
 /**
- * A SnoopFilter eviction is triggered
+ * A SnoopFilter repl is triggered
  * by a different address, even when
- * an outstanding transaction is 
- * ongoing
+ * an outstanding SFRepl is 
+ * progress
  */
 transition({RSD,RUSC,RUSD,RU,
             UD_RSC, UC_RSC, RSC,
