@@ -106,6 +106,8 @@ block_size = 64
 MemTestClass=None
 if args.mem_test_type=='bw_test':
     MemTestClass=SeqMemTest
+elif args.mem_test_type=='bw_test_sf':
+    MemTestClass=Seq2MemTest
 elif args.mem_test_type=='prod_cons_test':
     MemTestClass=ProdConsMemTest
 elif args.mem_test_type=='random_test':
