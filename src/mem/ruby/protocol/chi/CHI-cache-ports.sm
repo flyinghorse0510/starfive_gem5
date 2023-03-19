@@ -539,3 +539,16 @@ void processNextState(Addr address, TBE tbe, CacheEntry cache_entry) {
   wakeupPendingSnps(tbe);
 }
 
+void resetDirEntryAndWakeupPendingSFRepl(Addr address) {
+  directory.resetWayBusy(address);
+  // Wakeup any pending SnoopFilter Repls, that can now occur
+  if (snoopFilterPendQ.empty() == false) {
+    SnoopFilterReplPendEntry e := snoopFilterPendQ.front2();
+    if (!directory.allWaysBusy(e.replAddr)) {
+      // SnoopFilter repl is now possible
+      Addr replAddr := e.replAddr;
+      wakeup_port(reqRdyPort, replAddr);
+      snoopFilterPendQ.pop();
+    }
+  }
+}

@@ -1526,6 +1526,7 @@ bool stallForSnoopFilterFill(Addr address, CHIRequestMsg in_msg) {
   bool requiresDirEntryAlloc := false;
   requiresDirEntryAlloc :=  (is_invalid(dir_entry)) && requiresDirEntry(in_msg.type);
   bool stallForSnoopFilterAlloc := false;
+  // DPRINTF(RubyCHIDebugStr5,"requiresDirEntryAlloc=%d,avail_direntry=%d,doSnoopFilterFill=%d\n",requiresDirEntryAlloc,avail_direntry,doSnoopFilterFill);
   if (requiresDirEntryAlloc && !avail_direntry && doSnoopFilterFill) {
     stallForSnoopFilterAlloc := true;
   }

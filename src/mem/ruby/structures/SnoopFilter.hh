@@ -286,7 +286,7 @@ inline bool SnoopFilter<ENTRY>::cacheAvail(Addr address) const {
   auto &avail_ways = m_avail_ways.at(cacheSet);
   if (set.find(address) != set.end()) {
     return true; // Line already present
-  } else if (!m_avail_ways.empty()) {
+  } else if (!avail_ways.empty()) {
     return true; // Line can be allocated. There is space
   } else if (m_allow_infinite_entries) {
     return true; // Line can always be allocated. There no space constraints, but unrealistic
@@ -416,7 +416,8 @@ inline Addr SnoopFilter<ENTRY>::cacheProbe(Addr newAddress) const {
     for (const auto &entry : set) {
       const auto &line_state = entry.second;
       auto way_id = line_state.m_way_id;
-      if (busy_ways.count(way_id) > 0) {
+      if (busy_ways.count(way_id) <= 0) {
+        // way_id is not busy
         replaceable_ways_map[way_id] = entry.first;
       }
     }

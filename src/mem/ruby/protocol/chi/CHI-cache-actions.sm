@@ -2832,6 +2832,7 @@ action(Finalize_UpdateCacheFromTBE, desc="") {
 action(Finalize_UpdateDirectoryFromTBE, desc="") {
   assert(is_valid(tbe));
   State final := tbe.finalState;
+  bool deallocDirEntry := false;
   if ((final == State:UD_RSC) || (final == State:SD_RSC) || (final == State:UC_RSC) ||
       (final == State:SC_RSC) || (final == State:UC_RU)  || (final == State:UD_RU) ||
       (final == State:UD_RSD) || (final == State:SD_RSD) || (final == State:RU) ||
@@ -2847,8 +2848,18 @@ action(Finalize_UpdateDirectoryFromTBE, desc="") {
   } else {
     assert((tbe.dir_ownerExists == false) && tbe.dir_sharers.isEmpty());
     if(directory.isTagPresent(address)) {
-      directory.deallocate(address);
+      deallocDirEntry := true;
     }
+  }
+
+  /** 
+   * If you de-allocating the dirEntry, make
+   * sure to reset the SnoopFilter way and 
+   * wakeup any pending SnoopFilter repl.
+   */
+  if (deallocDirEntry) {
+    resetDirEntryAndWakeupPendingSFRepl(address);
+    directory.deallocate(address);
   }
 }
 
@@ -2912,17 +2923,8 @@ action(ResetAndDealloc_DirEntry, desc="") {
 
 action(Reset_DirEntry, desc="") {
   assert(is_valid(tbe));
-  directory.resetWayBusy(address);
-  // Wakeup any pending SnoopFilter Repls, that can now occur
-  if (snoopFilterPendQ.empty() == false) {
-    SnoopFilterReplPendEntry e := snoopFilterPendQ.front2();
-    if (!directory.allWaysBusy(e.replAddr)) {
-      // SnoopFilter repl is now possible
-      Addr replAddr := e.replAddr;
-      wakeup_port(reqRdyPort, replAddr);
-      snoopFilterPendQ.pop();
-    }
-  }
+  assert(tbe.addr == address);
+  resetDirEntryAndWakeupPendingSFRepl(address);
 }
 
 action(Restore_EvictingSnoopFilterAddr, desc="") {
