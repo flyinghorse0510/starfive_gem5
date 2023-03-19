@@ -44,7 +44,7 @@
 #include <unordered_map>
 #include <iterator>
 #include <cstdlib>
-#include <queue>
+#include <stack>
 #include <set>
 
 #include "base/compiler.hh"
@@ -64,22 +64,22 @@ struct SnoopFilterLineState
     SnoopFilterLineState() { m_permission = AccessPermission_NUM; }
     AccessPermission m_permission;
     ENTRY m_entry;
+    uint64_t m_way_id;
 };
 
-struct SFReplInfo {
-  Addr fromAddr; // Victim Addr
-  Addr toAddr;   // Evicting Addr
-  SFReplInfo(Addr fromAddr, Addr toAddr) :
-    fromAddr(fromAddr), toAddr(toAddr) {}
-  SFReplInfo() :
-    fromAddr(0), toAddr(0) {}
-};
 
 template<class ENTRY>
 inline std::ostream&
 operator<<(std::ostream& out, const SnoopFilterLineState<ENTRY>& obj)
 {
     return out;
+}
+
+static inline int get_rand_between(int min, int max) {
+  if (min == max) {
+    return min;
+  }
+  return rand()%(max-min + 1) + min;
 }
 
 template<class ENTRY>
@@ -101,22 +101,48 @@ class SnoopFilter
     //   b) an Invalid line in the same cache "way"
     bool cacheAvail(Addr address) const;
 
-    // find an Invalid entry and sets the tag appropriate for the address
+    /**
+     * Allocate a way to an address.
+     * Must fail if no ways are avail
+     * for allocation. Its the client
+     * (CCU's) responsibility 
+     * to ensure that there are 
+     * free ways available 
+     * if m_allow_infinite_entries is false.
+     */
     void allocate(Addr address);
 
     void deallocate(Addr address);
 
-    // Returns with the physical address of the conflicting cache line
+    void setWayBusy(Addr addr);
+
+    void resetWayBusy(Addr addr);
+
+    /**
+     * The client (CCU) must test this
+     * condition before proceeding with
+     * SFRepl. 
+     */
+    bool allWaysBusy(Addr addr) const;
+
+    /**
+     * Returns with the physical address of the 
+     * conflicting cache line. Will fail if
+     * 1. There are free ways available
+     * 2. All ways are busy
+     */ 
     Addr cacheProbe(Addr newAddress) const;
 
     int size() const;
 
     // looks an address up in the cache
     ENTRY* lookup(Addr address);
+
     const ENTRY* lookup(Addr address) const;
 
     // Get/Set permission of cache block
     AccessPermission getPermission(Addr address) const;
+
     void changePermission(Addr address, AccessPermission new_perm);
 
     // Print cache contents
@@ -126,36 +152,32 @@ class SnoopFilter
 
     void profileHit();
 
-    int getCacheSet(Addr address) const;
-
-    bool hasPendingSFRepls(Addr addr);
-
-    bool hasBlockedSFRepls(Addr addr);
-
-    Addr getFromAddr(Addr addr);
-
-    Addr getToAddr(Addr addr);
-
-    void enqSfReplInfo(Addr fromAddr, Addr toAddr);
-
-    void deqSfReplInfo(Addr addr);
-
-    bool isAddrBusy(Addr addr) const ;
-
   private:
     // Private copy constructor and assignment operator
     SnoopFilter(const SnoopFilter& obj);
 
     SnoopFilter& operator=(const SnoopFilter& obj);
 
-    // Data Members (m_prefix)
+    /** 
+     * Cache Structure. This also includes
+     * busy entries might be 
+     * undergoing SFRepl
+     */ 
     std::vector<std::unordered_map<Addr,SnoopFilterLineState<ENTRY>>> m_cache;
 
-    // Address that is currently undergoing (or scheduled to undergo) SnoopFilter repl
-    std::vector<std::queue<SFReplInfo>> m_pending_sfrepl_addr;
+    /**
+     * Ways that are busy (transient). 
+     * Currently undergoing repl for the mapped address
+     * They are not avail for allocation. And
+     * [Arka]: Should lookup fail for these ways  
+     */
+    std::vector<std::unordered_map<uint64_t,Addr>> m_busy_ways;
 
-    // Addresses in each set that are undergoing snoopfilter repl
-    std::vector<std::set<Addr>> m_busy_addrs; 
+    /**
+     * Ways that are available for allocation.
+     * These ways must not undergo SFRepl.
+     */ 
+    std::vector<std::set<uint64_t>> m_avail_ways;
 
     int m_assoc;
     int m_num_sets;
@@ -163,6 +185,7 @@ class SnoopFilter
     int m_num_set_bits;
     int m_start_index_bit;
     bool m_allow_infinite_entries;
+
     int64_t addressToCacheSet(Addr address) const;
 
     // Count the Number of SnoopFilter evictions
@@ -232,8 +255,12 @@ inline SnoopFilter<ENTRY>::SnoopFilter(unsigned num_entries,\
     m_num_sets=m_num_entries/m_assoc;
     for (unsigned i = 0; i < m_num_sets; i++) {
       m_cache.push_back(std::unordered_map<Addr,SnoopFilterLineState<ENTRY>>());
-      m_pending_sfrepl_addr.push_back(std::queue<SFReplInfo>());
-      m_busy_addrs.push_back(std::set<Addr>());
+      m_busy_ways.push_back(std::unordered_map<uint64_t,Addr>());
+      std::set<uint64_t> avail_ways;
+      for (uint64_t way_id=0; way_id < m_assoc; way_id++) {
+        avail_ways.insert(way_id);
+      }
+      m_avail_ways.push_back(avail_ways);
     }
     m_num_set_bits=floorLog2(m_num_sets);
     assert(m_num_set_bits > 0);
@@ -256,9 +283,10 @@ inline bool SnoopFilter<ENTRY>::cacheAvail(Addr address) const {
   assert(address == makeLineAddress(address));
   int64_t cacheSet = addressToCacheSet(address);
   auto &set = m_cache.at(cacheSet);
+  auto &avail_ways = m_avail_ways.at(cacheSet);
   if (set.find(address) != set.end()) {
     return true; // Line already present
-  } else if (set.size() < m_assoc) {
+  } else if (!m_avail_ways.empty()) {
     return true; // Line can be allocated. There is space
   } else if (m_allow_infinite_entries) {
     return true; // Line can always be allocated. There no space constraints, but unrealistic
@@ -273,12 +301,25 @@ inline void SnoopFilter<ENTRY>::allocate(Addr address) {
     assert(address == makeLineAddress(address));
     assert(!isTagPresent(address));
     assert(cacheAvail(address));
+    int64_t cacheSet = addressToCacheSet(address);
+    auto &set = m_cache.at(cacheSet);
+    uint64_t way_id = set.size();
+    
+    // Manage entries if you have finite entries to track
+    if (!m_allow_infinite_entries) {
+      auto &avail_ways = m_avail_ways.at(cacheSet);
+      assert(!avail_ways.empty());
+      way_id = *(std::next(std::begin(avail_ways), get_rand_between(0,avail_ways.size()-1)));
+      auto &busy_ways = m_busy_ways.at(cacheSet);
+      assert(busy_ways.count(way_id) <= 0); // Alloc should not occur for a busy transaction
+      avail_ways.erase(way_id);
+    }
+
     // Create an empty entry in Directory
     SnoopFilterLineState<ENTRY> line_state;
     line_state.m_permission = AccessPermission_Invalid;
     line_state.m_entry = ENTRY();
-    int64_t cacheSet = addressToCacheSet(address);
-    auto &set = m_cache.at(cacheSet);
+    line_state.m_way_id = way_id;
     if (!m_allow_infinite_entries && (set.size() >= m_assoc)) {
       panic("SnoopFilter cannot find an entry to allocate");
     }
@@ -292,69 +333,96 @@ inline void SnoopFilter<ENTRY>::deallocate(Addr address) {
     assert(isTagPresent(address));
     int64_t cacheSet = addressToCacheSet(address);
     auto &set = m_cache.at(cacheSet);
+    
+    // Manage entries if you have finite entries to track
+    if (!m_allow_infinite_entries) {
+      auto &avail_ways = m_avail_ways.at(cacheSet);
+      assert(avail_ways.size() <= m_assoc);
+      auto way_id = set[address].m_way_id;
+      auto &busy_ways = m_busy_ways.at(cacheSet);
+      assert(busy_ways.count(way_id) <= 0); // Dealloc should not occur for a busy transaction
+      avail_ways.insert(way_id);
+    }
+
+    // Delete from the cache structure
     [[maybe_unused]] auto num_erased = set.erase(address);
     assert(num_erased == 1);
 }
 
 template<class ENTRY>
-int SnoopFilter<ENTRY>::getCacheSet(Addr address) const {
-  return addressToCacheSet(address);
-}
+inline void SnoopFilter<ENTRY>::setWayBusy(Addr addr) {
+  if (!m_allow_infinite_entries) {
+    // addr is undergoing SFRepl
+    int64_t cacheSet = addressToCacheSet(addr);
+    auto &set = m_cache.at(cacheSet);
+    auto &busy_ways = m_busy_ways.at(cacheSet);
+    assert(set.count(addr) > 0); // Only an allocated address can undergo SFRepl
+    auto &line_state = set.at(addr);
+    auto way_id = line_state.m_way_id;
+    busy_ways[way_id] = addr;
 
-static inline int get_rand_between(int min, int max) {
-    return rand()%(max-min + 1) + min;
+    // Remove it from the set of available ways
+    auto &avail_ways = m_avail_ways.at(cacheSet);
+    avail_ways.erase(way_id);
+  } // else assertion failure ?
 }
 
 template<class ENTRY>
-inline bool SnoopFilter<ENTRY>::isAddrBusy(Addr addr) const {
+inline void SnoopFilter<ENTRY>::resetWayBusy(Addr addr) {
+  if (!m_allow_infinite_entries) {
+    // addr is undergoing SFRepl
+    int64_t cacheSet = addressToCacheSet(addr);
+    auto &set = m_cache.at(cacheSet);
+    auto &busy_ways = m_busy_ways.at(cacheSet);
+    assert(set.count(addr) > 0); //Only an allocated address and undergo SFRepl
+    auto &line_state = set.at(addr);
+    auto way_id = line_state.m_way_id;
+    busy_ways.erase(way_id);
+
+    // Put it back to the set of available ways
+    auto &avail_ways = m_avail_ways.at(cacheSet);
+    avail_ways.insert(way_id);
+  } // else assertion failure ?
+}
+
+template<class ENTRY>
+inline bool SnoopFilter<ENTRY>::allWaysBusy(Addr addr) const {
   int64_t cacheSet = addressToCacheSet(addr);
   auto &set = m_cache.at(cacheSet);
-  auto &busyAddrSet = m_busy_addrs.at(cacheSet);
-  if (busyAddrSet.count(addr) > 0) {
+  auto &busy_ways = m_busy_ways.at(cacheSet);
+  if (busy_ways.size() >= m_assoc) {
     return true;
   }
   return false;
 }
 
-// Returns with the physical address of the conflicting cache line
+/**
+ * Returns with the physical address of the 
+ * conflicting cache line. Will fail if
+ * 1. There are free ways available
+ * 2. All ways are busy
+ */ 
 template<class ENTRY>
 inline Addr SnoopFilter<ENTRY>::cacheProbe(Addr newAddress) const {
     int64_t cacheSet = addressToCacheSet(newAddress);
     auto &set = m_cache.at(cacheSet);
-    auto &busyAddrs = m_pending_sfrepl_addr.at(cacheSet);
-    assert(m_assoc==set.size()); // This is only called when all ways are occupied
-    
-    // auto random_it = std::next(std::begin(set), get_rand_between(0,set.size()-1));
-    // return makeLineAddress(random_it->first);
+    auto &busy_ways = m_busy_ways.at(cacheSet);
+    auto &avail_ways = m_avail_ways.at(cacheSet);
+    assert(avail_ways.empty()); // This is only called when all ways are occupied
+    assert(!allWaysBusy(newAddress));
+    assert(set.size() == m_assoc);
 
-    if (busyAddrs.empty()) {
-      // There are no busy addrs, return a randomly selected address
-      auto random_it = std::next(std::begin(set), get_rand_between(0,set.size()-1));
-      Addr replAddr = makeLineAddress(random_it->first);
-      DPRINTF(RubyCHIDebugStr5,"CachProbe_RandAddr=%x\n",replAddr);
-      return replAddr;
-    } else {
-      std::set<Addr> freeAddrs;
-      auto &busyAddrSet = m_busy_addrs.at(cacheSet);
-      for (auto &entry : set) {
-        if (busyAddrSet.count(entry.first) <= 0) {
-          freeAddrs.insert(entry.first);
-          DPRINTF(RubyCHIDebugStr5,"CachProbe_FreeAddr=%x\n",entry.first);
-        }
-      }
-      if (!freeAddrs.empty()) {
-        auto random_it = std::next(std::begin(freeAddrs), get_rand_between(0,freeAddrs.size()-1));
-        Addr replAddr = makeLineAddress(*random_it);
-        DPRINTF(RubyCHIDebugStr5,"CachProbe_SelFreeAddr=%x\n",replAddr);
-        return replAddr;
-      } else {
-        Addr replAddr =  makeLineAddress(busyAddrs.back().toAddr);
-        DPRINTF(RubyCHIDebugStr5,"CachProbe_NoFreeAddr=%x\n",replAddr);
-        return replAddr;
+    std::unordered_map<uint64_t, Addr> replaceable_ways_map;
+    for (const auto &entry : set) {
+      const auto &line_state = entry.second;
+      auto way_id = line_state.m_way_id;
+      if (busy_ways.count(way_id) > 0) {
+        replaceable_ways_map[way_id] = entry.first;
       }
     }
-    assert(false);
-
+    assert(!replaceable_ways_map.empty());
+    auto random_it = std::next(std::begin(replaceable_ways_map), get_rand_between(0,replaceable_ways_map.size()-1));
+    return makeLineAddress(random_it->second);
 }
 
 // looks an address up in the cache
@@ -394,80 +462,6 @@ SnoopFilter<ENTRY>::getPermission(Addr address) const {
     auto &set = m_cache.at(cacheSet);
     assert(set.find(address) != set.end());
     return set[makeLineAddress(address)].m_permission;
-}
-
-template<class ENTRY>
-inline bool
-SnoopFilter<ENTRY>::hasPendingSFRepls(Addr addr) {
-  int64_t set = addressToCacheSet(addr);
-  auto &pending_repl_addr_q = m_pending_sfrepl_addr.at(set);
-  return (!pending_repl_addr_q.empty());
-}
-
-template<class ENTRY>
-inline bool
-SnoopFilter<ENTRY>::hasBlockedSFRepls(Addr addr) {
-  int64_t set = addressToCacheSet(addr);
-  auto &pending_repl_addr_q = m_pending_sfrepl_addr.at(set);
-  if (pending_repl_addr_q.empty()) {
-    return false;
-  } else {
-    auto &top = pending_repl_addr_q.front();
-    Addr fromAddr = top.fromAddr;
-    if (addr == fromAddr) {
-      return true;
-    }
-  }
-  return false;
-}
-
-template<class ENTRY>
-inline Addr
-SnoopFilter<ENTRY>::getToAddr(Addr addr) {
-  int64_t set = addressToCacheSet(addr);
-  auto &pending_repl_addr_q = m_pending_sfrepl_addr.at(set);
-  assert(!pending_repl_addr_q.empty());
-  auto &top = pending_repl_addr_q.front();
-  return top.toAddr;
-}
-
-template<class ENTRY>
-inline Addr
-SnoopFilter<ENTRY>::getFromAddr(Addr addr) {
-  int64_t set = addressToCacheSet(addr);
-  auto &pending_repl_addr_q = m_pending_sfrepl_addr.at(set);
-  assert(!pending_repl_addr_q.empty());
-  auto &top = pending_repl_addr_q.front();
-  return top.fromAddr;
-}
-
-template<class ENTRY>
-inline void
-SnoopFilter<ENTRY>::enqSfReplInfo(Addr fromAddr, Addr toAddr) {
-  int64_t set1 = addressToCacheSet(fromAddr);
-  int64_t set2 = addressToCacheSet(toAddr);
-  assert(set1 == set2);
-  auto &pending_repl_addr_q = m_pending_sfrepl_addr.at(set1);
-  auto &busyAddrSet = m_busy_addrs.at(set2);
-  busyAddrSet.insert(toAddr);
-  busyAddrSet.insert(fromAddr);
-  pending_repl_addr_q.emplace(fromAddr,toAddr);
-}
-
-template<class ENTRY>
-inline void
-SnoopFilter<ENTRY>::deqSfReplInfo(Addr evictingAddr) {
-  int64_t set = addressToCacheSet(evictingAddr);
-  auto &pending_repl_addr_q = m_pending_sfrepl_addr.at(set);
-  assert(!pending_repl_addr_q.empty());
-  auto finishingToAddr = pending_repl_addr_q.front().toAddr;
-  auto finishingFromAddr = pending_repl_addr_q.front().fromAddr;
-  auto &busyAddrSet = m_busy_addrs.at(set);
-  assert(busyAddrSet.find(finishingToAddr) != busyAddrSet.end());
-  assert(busyAddrSet.find(finishingFromAddr) != busyAddrSet.end());
-  busyAddrSet.erase(finishingToAddr);
-  busyAddrSet.erase(finishingFromAddr);
-  pending_repl_addr_q.pop();
 }
 
 template<class ENTRY>

@@ -403,12 +403,11 @@ machine(MachineType:Cache, "Cache coherency protocol") :
 
     // Snoop Filter fill
     WaitForSnoopFilterRepl, desc="Wait for Snoop filter replacement";
-    // CheckSnoopFilterFill,   desc="Check if need to Snoop filter (directory) entry";
+    WaitForSnoopFilterRepl_Pend, desc="SnoopFilter repl is not possible";
     SnoopFilterEviction,    desc="Initiate SnoopFilter eviction";
-    SnoopFilterEviction_Wait, desc="Stalled SnoopFilter eviction, due a different ongoing eviction";
     SnoopFilterHNCacheFill, desc="Trigger an HNF fill, after receiving SnoopFilter generated invalidation requests";
     WakeUpEvictingSnoopFilterAddr, desc="Wakeup the reqRdyPort for the SnoopFilter evicting address";
-    WakeUpSFReplTriggerBuffer, desc="Wakeup sfReplInPort, once a SnoopFilter repl concludes";
+    ResetAndDeallocDirEntry, desc="Reset the directory way";
 
     // Internal requests generated to evict or writeback a local copy
     // to free-up cache space
@@ -582,6 +581,10 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     MachineID retryDest, desc="Retry destination";
   }
 
+  structure(SnoopFilterReplPendEntry) {
+    Addr replAddr,       desc="Address that is attempting to replace an entry in SnoopFilter";
+  }
+
   // Queue for event triggers. Used to specify a list of actions that need
   // to be performed across multiple transitions.
   // This class is also used to track pending retries
@@ -599,6 +602,9 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     // For the retry queue
     void emplace(Addr,bool,MachineID);
     RetryQueueEntry next(); //SLICC won't allow to reuse front()
+    // For SnoopFilter operations
+    void emplace_entry(Addr); //SLICC won't allow to reuse emplace()
+    SnoopFilterReplPendEntry front2(); //SLICC won't allow to reuse front()
   }
 
   // TBE fields
@@ -761,13 +767,9 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     Addr cacheProbe(Addr);
     void profileMiss();
     void profileHit();
-    bool hasPendingSFRepls(Addr);
-    bool hasBlockedSFRepls(Addr);
-    Addr getToAddr(Addr);
-    Addr getFromAddr(Addr);
-    Addr enqSfReplInfo(Addr, Addr);
-    void deqSfReplInfo(Addr);
-    bool isAddrBusy(Addr addr);
+    bool allWaysBusy(Addr);
+    void setWayBusy(Addr);
+    void resetWayBusy(Addr);
   }
 
   // Directory
@@ -815,6 +817,9 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   bool dvmHasPendingSyncOp, default="false";
   Addr dvmPendingSyncOp, default="0";
 
+  // For Handling SnoopFilter repls
+  TriggerQueue snoopFilterPendQ, template="<Cache_SnoopFilterReplPendEntry>";
+
   // Retry handling
 
   // Destinations that will be sent PCrdGrant when a TBE becomes available
@@ -861,7 +866,6 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   structure(SFReplMessage, interface="Message") {
     Addr fromAddr; // Victim Addr
     Addr toAddr;   // Evicting
-    bool stall_on_prev_sfrepl;
   }
 
   ////////////////////////////////////////////////////////////////////////////

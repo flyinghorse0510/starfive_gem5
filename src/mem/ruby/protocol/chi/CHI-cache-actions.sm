@@ -436,8 +436,14 @@ action(StallRequest, desc="") {
 }
 
 action(StallRequest_OnSnoopFilterRepl, desc="") {
-  // A valid is not yet allocated. But must stall
+  // A valid tbe is not yet allocated. But must stall
   stall_and_wait(reqRdyPort, address);
+}
+
+action(StallRequest_OnSnoopFilterRepl_Pend, desc="") {
+  // Directory(set,way) is busy servicing other SFRepl requests. Create a Stall for this request
+  stall_and_wait(reqRdyPort, address);
+  snoopFilterPendQ.emplace_entry(address);
 }
 
 action(StallSnoop, desc="") {
@@ -2899,14 +2905,29 @@ action(Initiate_SnoopFilterReplacement_Evict_BackInv, desc="") {
   tbe.actions.pushNB(Event:TagArrayWrite);
 }
 
+action(ResetAndDealloc_DirEntry, desc="") {
+  assert(is_valid(tbe));
+  tbe.actions.push(Event:ResetAndDeallocDirEntry); // pushNB?
+}
+
+action(Reset_DirEntry, desc="") {
+  assert(is_valid(tbe));
+  directory.resetWayBusy(address);
+  // Wakeup any pending SnoopFilter Repls, that can now occur
+  if (snoopFilterPendQ.empty() == false) {
+    SnoopFilterReplPendEntry e := snoopFilterPendQ.front2();
+    if (!directory.allWaysBusy(e.replAddr)) {
+      // SnoopFilter repl is now possible
+      Addr replAddr := e.replAddr;
+      wakeup_port(reqRdyPort, replAddr);
+      snoopFilterPendQ.pop();
+    }
+  }
+}
+
 action(Restore_EvictingSnoopFilterAddr, desc="") {
   assert(is_valid(tbe));
   tbe.actions.push(Event:WakeUpEvictingSnoopFilterAddr); // pushNB?
-}
-
-action(Tgr_WakeUp_SFReplTriggerBuffer, desc="") {
-  assert(is_valid(tbe));
-  tbe.actions.push(Event:WakeUpSFReplTriggerBuffer);
 }
 
 action(Assert_NoDirEntry, desc="") {
@@ -2927,19 +2948,7 @@ action(WakeUp_EvictingSnoopFilterAddr_NoTBE, desc="") {
   }
 }
 
-action(DeqAndWakeup_PendingSFRepl_FromDirectory, desc="") {
-  // assert(is_valid(tbe));
-  // assert(address == tbe.addr);
-  assert(directory.hasPendingSFRepls(address));
-  Addr toAddr := directory.getToAddr(address);
-  Addr fromAddr := directory.getFromAddr(address);
-  assert(fromAddr == address);
-  directory.deqSfReplInfo(address);
-  // Are there any pending SFRepl messages for toAddr that needs to be woken up
-  if (directory.hasBlockedSFRepls(toAddr)) {
-    wakeup_port(sfReplInPort,toAddr);
-  }
-}
+
 
 action(Initiate_SnoopFilterReplacement, desc="") {
   assert(is_invalid(tbe));
@@ -2971,9 +2980,6 @@ action(StallSnoopFilterEviction, desc="") {
   stall_and_wait(sfReplInPort, address);
 }
 
-action(StallSnoopFilterEviction_NoTBE, desc="") {
-  stall_and_wait(sfReplInPort, address);
-}
 
 action(CheckCacheFill, desc="") {
   assert(is_valid(tbe));
@@ -3138,10 +3144,6 @@ action(Pop_SeqInPort, desc="") {
   seqInPort.dequeue(clockEdge());
 }
 
-action(WakeUp_SFReplTriggerBuffer, desc="") {
-  assert(is_valid(tbe));
-  tbe.actions.push(Event:WakeUpSFReplTriggerBuffer);
-}
 
 action(Pop_SFReplTriggerQueue, desc="") {
   DPRINTF(RubyCHIDebugStr5,"Deq sfReplInPort,addr=%d\n",address);

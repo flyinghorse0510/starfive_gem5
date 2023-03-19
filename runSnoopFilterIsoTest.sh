@@ -222,7 +222,7 @@ if [ "$GATETEST" != "" ]; then
           --size-ws=${WKSET} \
           --mem-type=DDR4_3200_8x8 \
           --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
-          --mem-test-type='bw_test' \
+          --mem-test-type='bw_test_sf' \
           --addr-intrlvd-or-tiled=$MultiCoreAddrMode  \
           --disable-gclk-set \
           --enable-DMT=${DMT} \

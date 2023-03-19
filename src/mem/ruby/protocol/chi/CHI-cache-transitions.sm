@@ -121,16 +121,22 @@ transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,
   StallRequest_OnSnoopFilterRepl;
 }
 
+transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,
+            UC_RSC,SD_RSC,UD_RSC,UC_RU,
+            UD_RU,UD_RSD,SD_RSD,RUSC,
+            BUSY_INTR,BUSY_BLKD}, WaitForSnoopFilterRepl_Pend) {
+  StallRequest_OnSnoopFilterRepl_Pend;
+}
+
 transition({RSD,RUSC,RUSD,RU,
             UD_RSC,
             UD_RU,UC_RU,UD_RSD}, SnoopFilterEviction, BUSY_BLKD) {SfReplTBEAvailable} {
   Initiate_SnoopFilterReplacement;
   Initiate_SnoopFilterReplacement_WB_BackInv;
   Profile_SnoopFilterMiss;
-  Deallocate_DirEntry;
+  ResetAndDealloc_DirEntry;
   Pop_SFReplTriggerQueue;
   Restore_EvictingSnoopFilterAddr;
-  Tgr_WakeUp_SFReplTriggerBuffer;
   ProcessNextState;
 }
 
@@ -138,32 +144,10 @@ transition({UC_RSC, RSC, SC_RSC}, SnoopFilterEviction, BUSY_BLKD) {SfReplTBEAvai
   Initiate_SnoopFilterReplacement;
   Initiate_SnoopFilterReplacement_Evict_BackInv;
   Profile_SnoopFilterMiss;
-  Deallocate_DirEntry;
+  ResetAndDealloc_DirEntry;
   Pop_SFReplTriggerQueue;
   Restore_EvictingSnoopFilterAddr;
-  Tgr_WakeUp_SFReplTriggerBuffer;
   ProcessNextState;
-}
-
-transition(BUSY_BLKD, WakeUpSFReplTriggerBuffer) {
-  Pop_TriggerQueue;
-  DeqAndWakeup_PendingSFRepl_FromDirectory;
-  ProcessNextState_ClearPending;
-}
-
-/**
- * A SnoopFilter repl is triggered
- * by a different address, even when
- * an outstanding SFRepl is 
- * progress
- */
-transition({RSD,RUSC,RUSD,RU,
-            UD_RSC, UC_RSC, RSC,
-            SC_RSC, UD_RU,UC_RU,
-            UD_RSD,
-            I, UD, UC,
-            BUSY_BLKD,BUSY_INTR}, SnoopFilterEviction_Wait) {
-  StallSnoopFilterEviction_NoTBE;
 }
 
 transition({BUSY_BLKD,BUSY_INTR}, SnoopFilterEviction) {
@@ -172,14 +156,14 @@ transition({BUSY_BLKD,BUSY_INTR}, SnoopFilterEviction) {
 
 /**
  * These situation can arise When the line being 
- * replaced was originally outstanding but was stalled,
- * but the final stable state is only locally available
+ * replaced had outstanding txns so was stalled.
+ * Upon the completion of the txn final stable state 
+ * is only locally available.
  */
 transition({I,UC,UD}, SnoopFilterEviction) {
   Assert_NoDirEntry;
   WakeUp_EvictingSnoopFilterAddr_NoTBE;
   Pop_SFReplTriggerQueue;
-  DeqAndWakeup_PendingSFRepl_FromDirectory;
 }
 
 transition(BUSY_BLKD, SnoopFilterHNCacheFill) {
@@ -195,6 +179,12 @@ transition(BUSY_BLKD, WakeUpEvictingSnoopFilterAddr) {
   ProcessNextState_ClearPending;
 }
 
+transition(BUSY_BLKD, ResetAndDeallocDirEntry) {
+  Pop_TriggerQueue;
+  Reset_DirEntry;
+  Deallocate_DirEntry;
+  ProcessNextState_ClearPending;
+}
 
 transition({BUSY_INTR,BUSY_BLKD}, DataArrayWrite) {DataArrayWrite} {
   Pop_TriggerQueue;

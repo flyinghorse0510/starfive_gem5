@@ -312,13 +312,8 @@ in_port(sfReplInPort, SFReplMessage, sfReplTriggerQueue, rank=12) {
     peek(sfReplInPort, SFReplMessage) {
       TBE tbe := getCurrentActiveTBE(in_msg.fromAddr);
       CacheEntry cache_entry := getCacheEntry(in_msg.fromAddr);
-      bool stall_on_prev_sfrepl := in_msg.stall_on_prev_sfrepl;
       DPRINTF(RubyCHIDebugStr5,"Trigger SnoopFilter Repl=%s\n",in_msg);
-      if (stall_on_prev_sfrepl) {
-        trigger(Event:SnoopFilterEviction_Wait, in_msg.fromAddr, cache_entry, tbe);
-      } else {
-        trigger(Event:SnoopFilterEviction, in_msg.fromAddr, cache_entry, tbe);
-      }
+      trigger(Event:SnoopFilterEviction, in_msg.fromAddr, cache_entry, tbe);
     }
   }
 }
@@ -332,30 +327,12 @@ void wakeupPendingSFRepl(TBE tbe) {
 }
 
 void enqSnoopFilterFill(Addr address) {
-  Addr new_probed_victim_addr := directory.cacheProbe(address);
-  bool stall_on_prev_sfrepl := false;
-  if (directory.hasPendingSFRepls(address)) {
-    Addr topToAddr := directory.getToAddr(address);
-    Addr topFromAddr := directory.getFromAddr(address);
-    DPRINTF(RubyCHIDebugStr5,"ReplOrder IncomingAddr=%#x,ProbeAddr=%#x,topFromAddr=%#x,topToAddr=%#x\n",address,new_probed_victim_addr,topFromAddr,topToAddr);
-    // if (new_probed_victim_addr == topToAddr) {
-    //   /**
-    //    * The incoming address (say C) is try to replace 
-    //    * a victim address (say B), which in turn is 
-    //    * in the process of replacing another 
-    //    * victim (say A). Must stall C, until
-    //    * B finishes
-    //    */
-    //   stall_on_prev_sfrepl := true;
-    // }
-    stall_on_prev_sfrepl := directory.isAddrBusy(new_probed_victim_addr);
-  }
-  directory.enqSfReplInfo(new_probed_victim_addr,address); // Enq this address, as the new replacement address
-  
+  assert(!directory.allWaysBusy(address));
+  Addr victim_addr := directory.cacheProbe(address);
+  directory.setWayBusy(victim_addr); // Block this set-way combination to prevent subsequent SFRepl triggers
   enqueue(sfReplOutPort, SFReplMessage, 0) {
-    out_msg.fromAddr := new_probed_victim_addr;
+    out_msg.fromAddr := victim_addr;
     out_msg.toAddr := address;
-    out_msg.stall_on_prev_sfrepl := stall_on_prev_sfrepl;
   }
 }
 
@@ -384,8 +361,13 @@ in_port(reqRdyPort, CHIRequestMsg, reqRdy, rank=3,
 
         // Wait for SnoopFilter Replacement
         if (stallForSnoopFilterAlloc) {
-          enqSnoopFilterFill(in_msg.addr);
-          trigger(Event:WaitForSnoopFilterRepl, in_msg.addr, cache_entry, tbe);
+          bool allWaysBusy := directory.allWaysBusy(in_msg.addr);
+          if (allWaysBusy) {
+            trigger(Event:WaitForSnoopFilterRepl_Pend, in_msg.addr, cache_entry, tbe);
+          } else {
+            enqSnoopFilterFill(in_msg.addr);
+            trigger(Event:WaitForSnoopFilterRepl, in_msg.addr, cache_entry, tbe);
+          }
         }
 
         // Special case for possibly stale writebacks or evicts
