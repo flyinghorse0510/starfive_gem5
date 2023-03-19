@@ -176,7 +176,7 @@ void
 FalseSharingMemTest::completeRequest(PacketPtr pkt, bool functional)
 {
     const RequestPtr &req = pkt->req;
-    assert(req->getSize() == 2);
+    assert(req->getSize() == sizeof(writeSyncData_t));
 
     // this memTxnId is no longer outstanding
     auto remove_paddr = req->getPaddr();

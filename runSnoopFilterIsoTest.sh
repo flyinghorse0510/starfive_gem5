@@ -184,7 +184,7 @@ if [ "$GATETEST" != "" ]; then
     DEBUGFLAGS=RubyCHIDebugStr5,RubyGenerated,SeqMemLatTest
 
     WKSETLIST=(2048)
-    NUM_CPU_SET=(1)
+    NUM_CPU_SET=(4)
 
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
       for WKSET in ${WKSETLIST[@]}; do

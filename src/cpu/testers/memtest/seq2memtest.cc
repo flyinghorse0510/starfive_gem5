@@ -150,7 +150,7 @@ Seq2MemTest::Seq2MemTest(const Params &p)
 
     // Set the number of max outstanding transactions
     maxOutstandingReq = p.outstanding_req;
-    if (maxOutstandingReq < perCPUWorkingBlocks.size()) {
+    if (maxOutstandingReq >= perCPUWorkingBlocks.size()) {
         maxOutstandingReq = perCPUWorkingBlocks.size();
     }
 

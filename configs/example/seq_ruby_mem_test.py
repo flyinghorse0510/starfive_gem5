@@ -107,7 +107,9 @@ MemTestClass=None
 if args.mem_test_type=='bw_test':
     MemTestClass=SeqMemTest
 elif args.mem_test_type=='bw_test_sf':
-    MemTestClass=Seq2MemTest
+    MemTestClass=Seq2MemTest # Testing the SnoopFilter under extreme configs to trigger outstanding SFRepls
+elif args.mem_test_type=='falsesharing_test':
+    MemTestClass=FalseSharingMemTest
 elif args.mem_test_type=='prod_cons_test':
     MemTestClass=ProdConsMemTest
 elif args.mem_test_type=='random_test':
