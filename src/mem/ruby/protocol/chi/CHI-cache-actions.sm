@@ -3028,7 +3028,6 @@ action(CheckCacheFill, desc="") {
     } else {
       DPRINTF(RubySlicc, "Eviction for %#x victim: %#x state=%s\n",
                           address, victim_addr, victim_tbe.state);
-      DPRINTF(RubyCHIDebugStr5,"CacheEntry Victim Busy|addr=%#x,victim_addr=%#x,pendAction=%s\n",tbe.addr,victim_addr,victim_tbe.pendAction);
     
       // just wait until the transaction finishes to try again
       victim_tbe.wakeup_pending_tgr := true;
@@ -3148,7 +3147,6 @@ action(Pop_SeqInPort, desc="") {
 
 
 action(Pop_SFReplTriggerQueue, desc="") {
-  DPRINTF(RubyCHIDebugStr5,"Deq sfReplInPort,addr=%d\n",address);
   sfReplInPort.dequeue(clockEdge());
 }
 
