@@ -283,7 +283,9 @@ MultiCoreAddrMode="True"
 
 DEBUG_FLAGS=PseudoInst
 
-FS_ROOT="${WORKSPACE}/GEM5_ARM_FS_DCTDMT"
+SNPFILTER_ENTRIES=16384 # covfactor*(512KiB*NUMCPUS)/(NUM_LLC*64B)=2*(512Ki)/64
+SNPFILTER_ASSOC=8
+FS_ROOT="${WORKSPACE}/GEM5_ARM_FS_SNPFILTER/COVFACTOR_2"
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
@@ -445,6 +447,8 @@ if [ "$RESTORE" != "" ]; then
               --num-cpus=${NUMCPUS} \
               --inj-interval=1      \
               --enable-DCT=${DCT} \
+              --num-snoopfilter-entries=${SNPFILTER_ENTRIES} \
+              --num-snoopfilter-assoc=${SNPFILTER_ASSOC} \
               --ruby \
               --checkpoint-restore ${CHECKPNT_IDX} \
               --machine-type VExpress_GEM5_V1 \
@@ -549,6 +553,8 @@ if [ "$DIRRUN" != "" ]; then
               --num-cpus=${NUMCPUS} \
               --inj-interval=1      \
               --enable-DCT=${DCT} \
+              --num-snoopfilter-entries=${SNPFILTER_ENTRIES} \
+              --num-snoopfilter-assoc=${SNPFILTER_ASSOC} \
               --ruby \
               --machine-type VExpress_GEM5_V1 \
               --cpu-type ${RESTORE_CPU} \

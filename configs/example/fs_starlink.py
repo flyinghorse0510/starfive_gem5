@@ -316,7 +316,8 @@ parser.add_argument("--sequencer-outstanding-requests",type=int,default=32,help=
 parser.add_argument("--bench-c2cbw-mode",default=True,help="[True] Producer Consumer BW or [False] C2C Latency Test")
 parser.add_argument("--inj-interval",default=1,type=int,help="The interval between request packets")
 parser.add_argument('--allow-SD',default=True, help="allow SD state") # True for MOESI, False for MESI
-
+parser.add_argument("--num-snoopfilter-entries",default=4,type=int,help="SnoopFilter: number of entries")
+parser.add_argument("--num-snoopfilter-assoc",default=2,type=int,help="SnoopFilter: assoc")
 
 # Add the ruby specific and protocol specific args
 if '--ruby' in sys.argv:
