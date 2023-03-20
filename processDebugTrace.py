@@ -119,10 +119,47 @@ def parseTrueProdConsTrace(logFile, dumpFile):
             WriteEnd=v['write_end']
             print(f'{addr},{it},{WriteStart},{WriteEnd},{ReadStart},{ReadEnd}',file=fw)
 
+def parseFalseSharingTrace(logFile, dumpFile):
+    tickPerCyc = 500
+    rwStartPat=re.compile(r'^(\s*\d*): (\S+): FalseMemTest\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),Start:([RW])')
+    rwEndPat=re.compile(r'^(\s*\d*): (\S+): FalseMemTest\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),Complete:([RW])')
+    txnDict = dict()
+    with open(logFile,'r') as f :
+        for line in f :
+            rwStartMatch = rwStartPat.match(line)
+            rwEndMatch = rwEndPat.match(line)
+            if rwStartMatch :
+                time = (int(rwStartMatch.group(1)))/tickPerCyc
+                agent = rwStartMatch.group(2)
+                addr = rwStartMatch.group(3)
+                it = int(rwStartMatch.group(4))
+                txnDict[(agent,addr,it)] = {
+                    'start' : time,
+                    'end' : -1
+                }
+            elif rwEndMatch :
+                time = (int(rwEndMatch.group(1)))/tickPerCyc
+                agent = rwEndMatch.group(2)
+                addr = rwEndMatch.group(3)
+                it = int(rwEndMatch.group(4))
+                assert((agent,addr,it) in txnDict)
+                txnDict[(agent,addr,it)]['end'] = time
+    with open(dumpFile, 'w') as fw:
+         print(f'Agent,Addr,It,Start,End',file=fw)
+         for k,v in txnDict.items():
+             agent,addr,it = k
+             start = v['start']
+             end = v['end']
+             print(f'{agent},{addr},{it},{start},{end}',file=fw)
+    
+
 def analyzeCsv(options,msgDumpCsv,bench='migratory'):
     dfX = pd.read_csv(msgDumpCsv)
+    print(dfX)
     if bench == 'migratory':
         dfX['lat'] = dfX['WriteEnd']-dfX['ReadStart']
+    elif bench == 'falsesharing_test' :
+        dfX['lat'] = dfX['end']-dfX['start']
     else :
         dfX['lat'] = dfX['ReadEnd']-dfX['WriteStart']
     minLat = dfX['lat'].min()
@@ -158,6 +195,8 @@ def main():
     if options.bench == 'migratory' :
         parseMigratoryTrace(allMsgLog,msgDumpCsv)
         pcp.getMsgTrace(allMsgLog,singleMsgDumpCsv,0,'0x400','all')
+    elif options.bench=='falsesharing_test' :
+        parseFalseSharingTrace(allMsgLog,msgDumpCsv)
     else :
         parseTrueProdConsTrace(allMsgLog,msgDumpCsv)
     retDict = analyzeCsv(options,msgDumpCsv,options.bench)
