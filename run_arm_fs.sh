@@ -405,7 +405,8 @@ if [ "$RESTORE" != "" ]; then
             OUTPUT_DIR="${OUTPUT_DIR}/${BENCHMARK}"
 
             # dump all variables to variables.txt and ease the parsing for STATS
-            touch "${OUTPUT_DIR}/variables.txt"
+            mkdir -p ${OUTPUT_DIR}
+            echo "PROGRESS CHECKING: ${OUTPUT_DIR}/progress.log"
             set > "${OUTPUT_DIR}/variables.txt"
 
             $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
@@ -455,7 +456,7 @@ if [ "$RESTORE" != "" ]; then
               --disk-image $M5_PATH/disks/expanded-ubuntu-18.04-arm64-docker.img \
               --param 'system.realview.gic.gem5_extensions = True' \
               --checkpoint-dir ${CHECKPNT_DIR} \
-              --script=${PARSEC_SCRIPT_DIR}/$BENCHMARK.rcS &
+              --script=${PARSEC_SCRIPT_DIR}/$BENCHMARK.rcS > "${OUTPUT_DIR}/progress.log" 2>&1 &
 
                       done
                     done
@@ -508,7 +509,8 @@ if [ "$DIRRUN" != "" ]; then
             OUTPUT_DIR="${OUTPUT_DIR}/${BENCHMARK}"
 
             # dump all variables to variables.txt and ease the parsing for STATS
-            touch "${OUTPUT_DIR}/variables.txt"
+            mkdir -p ${OUTPUT_DIR}
+            echo "PROGRESS CHECKING: ${OUTPUT_DIR}/progress.log"
             set > "${OUTPUT_DIR}/variables.txt"
             
             $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
@@ -555,7 +557,7 @@ if [ "$DIRRUN" != "" ]; then
               --dtb-filename=$M5_PATH/binaries/armv8_gem5_v1_${NUMCPUS}cpu.dtb \
               --disk-image $M5_PATH/disks/expanded-ubuntu-18.04-arm64-docker.img \
               --param 'system.realview.gic.gem5_extensions = True' \
-              --script=${PARSEC_SCRIPT_DIR}/$BENCHMARK.rcS &
+              --script=${PARSEC_SCRIPT_DIR}/$BENCHMARK.rcS > "${OUTPUT_DIR}/progress.log" 2>&1 &
 
                       done
                     done
