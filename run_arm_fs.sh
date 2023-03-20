@@ -616,6 +616,8 @@ fi
 
   if [ "$STATS" != "" ]; then 
     OUTPUT_ROOT="$FS_ROOT"
+    # to print output dir, add --print-dir. By default no print.
+    # python3 stats_parser_fs.py --root-dir ${OUTPUT_ROOT} --print-dir
     python3 stats_parser_fs.py --root-dir ${OUTPUT_ROOT}
 fi
 
