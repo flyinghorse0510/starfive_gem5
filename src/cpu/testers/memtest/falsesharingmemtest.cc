@@ -292,11 +292,17 @@ FalseSharingMemTest::tick()
     }
 
     /* Search for an address within perCPUWorkingAddrs */
-    do {
-        paddr = perCPUWorkingAddrs.at(seqIdx);
-        seqIdx = (seqIdx+1)%(perCPUWorkingAddrs.size());
-         
-    } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
+    paddr = perCPUWorkingAddrs.at(seqIdx);
+    seqIdx = (seqIdx+1)%(perCPUWorkingAddrs.size());
+    if (outstandingAddrs.find(paddr) != outstandingAddrs.end()) {
+        waitResponse = true;
+        return;
+    }
+    // do {
+    //     paddr = perCPUWorkingAddrs.at(seqIdx);
+    //     seqIdx = (seqIdx+1)%(perCPUWorkingAddrs.size());
+    // } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
+
     writeSyncData_t data = writeSyncDataBase;
     
     outstandingAddrs.insert(paddr);
