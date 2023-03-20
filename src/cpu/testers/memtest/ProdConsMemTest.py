@@ -62,7 +62,7 @@ class ProdConsMemTest(ClockedObject):
     id_producers = VectorParam.Int([], "List of Producer Ids")
     id_consumers = VectorParam.Int([], "List of Consumer Ids")
     num_peer_producers = Param.Counter(1, "Number of independent peer producers. Use to partition the working set")
-    outstanding_req = Param.Int(1,"[Not Used Here] Number of outstanding requests. Set 1 if you want to measure latency or to a very large value if you want measure bw")
+    outstanding_req = Param.Int(100,"[Not Used Here] Number of outstanding requests. Set 1 if you want to measure latency or to a very large value if you want measure bw")
     id_starter = Param.Int(0,'[Not Used Here] Start CPU id of Migratory pattern. [Unused] here')
 
     # Determine how often to print progress messages and what timeout
