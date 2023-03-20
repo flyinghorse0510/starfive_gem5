@@ -111,6 +111,8 @@ structure(CHIRequestMsg, desc="", interface="Message") {
   bool usesTxnId,       desc="True if using a Transaction ID", default="false";
   Addr txnId,           desc="Transaction ID", default="0";
 
+  bool stallForSnoopFilterAlloc, default="false",desc="Stall for Snoopfilter repl";
+
   // zhiang: add txSeqNum here
   uint64_t txSeqNum,        default="0", desc="Sequence number for txn trace";
   RequestPtr reqPtr,        default="nullptr", desc="Pointer to original request";

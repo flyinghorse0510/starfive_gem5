@@ -76,6 +76,8 @@ class TriggerQueue
     // def. to workaround that
     const T& next() const { return queue.front().val; }
 
+    const T& front2() const { return queue.front().val; }
+
     // Returns the end of the queue
     const T& back() const { return queue.back().val; }
 
@@ -95,6 +97,14 @@ class TriggerQueue
     template<typename... Ts>
     void
     emplace(Ts&&... args)
+    {
+        queue.push_back({T(std::forward<Ts>(args)...),false});
+    }
+
+    // emplace an event at the end of the queue
+    template<typename... Ts>
+    void
+    emplace_entry(Ts&&... args)
     {
         queue.push_back({T(std::forward<Ts>(args)...),false});
     }

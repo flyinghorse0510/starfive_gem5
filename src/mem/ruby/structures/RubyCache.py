@@ -36,7 +36,7 @@ class RubyCache(SimObject):
 
     size = Param.MemorySize("capacity in bytes");
     assoc = Param.Int("");
-    replacement_policy = Param.BaseReplacementPolicy(TreePLRURP(), "")
+    replacement_policy = Param.BaseReplacementPolicy(LRURP(), "")
     start_index_bit = Param.Int(6, "index start, default 6 for 64-byte line");
     is_icache = Param.Bool(False, "is instruction only cache");
     block_size = Param.MemorySize("0B", "block size in bytes. 0 means default RubyBlockSize")

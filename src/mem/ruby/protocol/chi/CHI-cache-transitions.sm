@@ -43,11 +43,13 @@
 transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,SD_RSD,RUSC
             BUSY_INTR,BUSY_BLKD}, AllocRequest) {
   AllocateTBE_Request;
+  Pop_ReqInQueue;
 }
 
 transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,SD_RSD,RUSC
             BUSY_INTR,BUSY_BLKD}, AllocRequestWithCredit) {
   AllocateTBE_Request_WithCredit;
+  Pop_ReqInQueue;
 }
 
 transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,SD_RSD,RUSC
@@ -108,8 +110,80 @@ transition({BUSY_INTR,BUSY_BLKD}, DataArrayRead) {DataArrayRead} {
 // on potential replacement
 transition({BUSY_INTR,BUSY_BLKD}, CheckCacheFill, BUSY_INTR) {
   CheckCacheFill;
-  // CheckCacheFill either does Pop_TriggerQueue+ProcessNextState_ClearPending
-  // or a stall depending on block availability
+}
+
+// SnoopFilter Repl
+
+transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,
+            UC_RSC,SD_RSC,UD_RSC,UC_RU,
+            UD_RU,UD_RSD,SD_RSD,RUSC,
+            BUSY_INTR,BUSY_BLKD}, WaitForSnoopFilterRepl) {
+  StallRequest_OnSnoopFilterRepl;
+}
+
+transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,
+            UC_RSC,SD_RSC,UD_RSC,UC_RU,
+            UD_RU,UD_RSD,SD_RSD,RUSC,
+            BUSY_INTR,BUSY_BLKD}, WaitForSnoopFilterRepl_Pend) {
+  StallRequest_OnSnoopFilterRepl_Pend;
+}
+
+transition({RSD,RUSC,RUSD,RU,
+            UD_RSC,
+            UD_RU,UC_RU,UD_RSD}, SnoopFilterEviction, BUSY_BLKD) {SfReplTBEAvailable} {
+  Initiate_SnoopFilterReplacement;
+  Initiate_SnoopFilterReplacement_WB_BackInv;
+  Profile_SnoopFilterMiss;
+  ResetAndDealloc_DirEntry;
+  Pop_SFReplTriggerQueue;
+  Restore_EvictingSnoopFilterAddr;
+  ProcessNextState;
+}
+
+transition({UC_RSC, RSC, SC_RSC}, SnoopFilterEviction, BUSY_BLKD) {SfReplTBEAvailable} {
+  Initiate_SnoopFilterReplacement;
+  Initiate_SnoopFilterReplacement_Evict_BackInv;
+  Profile_SnoopFilterMiss;
+  ResetAndDealloc_DirEntry;
+  Pop_SFReplTriggerQueue;
+  Restore_EvictingSnoopFilterAddr;
+  ProcessNextState;
+}
+
+transition({BUSY_BLKD,BUSY_INTR}, SnoopFilterEviction) {
+  StallSnoopFilterEviction;
+}
+
+/**
+ * These situation can arise When the line being 
+ * replaced had outstanding txns so was stalled.
+ * Upon the completion of the txn final stable state 
+ * is only locally available.
+ */
+transition({I,UC,UD}, SnoopFilterEviction) {
+  Assert_NoDirEntry;
+  WakeUp_EvictingSnoopFilterAddr_NoTBE;
+  Pop_SFReplTriggerQueue;
+}
+
+transition(BUSY_BLKD, SnoopFilterHNCacheFill) {
+  Pop_TriggerQueue;
+  Start_SnoopFilterHNCacheFill;
+  ProcessNextState_ClearPending;
+}
+
+transition(BUSY_BLKD, WakeUpEvictingSnoopFilterAddr) {
+  Pop_TriggerQueue;
+  Assert_NoDirEntry;
+  WakeUp_EvictingSnoopFilterAddr;
+  ProcessNextState_ClearPending;
+}
+
+transition(BUSY_BLKD, ResetAndDeallocDirEntry) {
+  Pop_TriggerQueue;
+  Reset_DirEntry;
+  Deallocate_DirEntry;
+  ProcessNextState_ClearPending;
 }
 
 transition({BUSY_INTR,BUSY_BLKD}, DataArrayWrite) {DataArrayWrite} {
@@ -178,7 +252,6 @@ transition({BUSY_INTR,BUSY_BLKD}, SnpOncePipe) {
 transition(I, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadShared_Miss;
-  Allocate_DirEntry;
   Profile_Miss;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -195,7 +268,6 @@ transition({RSC,RUSC}, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
 transition({UD,SD,UC,SC}, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadShared_Hit;
-  Allocate_DirEntry;
   Profile_Hit;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -249,7 +321,6 @@ transition({UD_RU,UC_RU,RU,RSD,RUSD,RSC,RUSC}, ReadOnce, BUSY_BLKD) {
 transition(I, {ReadUnique,ReadUnique_PoC}, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadUnique_Miss;
-  Allocate_DirEntry;
   Profile_Miss;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -258,7 +329,6 @@ transition(I, {ReadUnique,ReadUnique_PoC}, BUSY_BLKD) {
 transition({UD,UC}, {ReadUnique,ReadUnique_PoC}, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadUnique_Hit;
-  Allocate_DirEntry;
   Profile_Hit;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -284,7 +354,6 @@ transition({SC,SD}, ReadUnique_PoC, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadUnique_AutoUpgrade;
   Initiate_ReadUnique_Hit;
-  Allocate_DirEntry;
   Profile_Hit;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -312,7 +381,6 @@ transition({RSC,RSD}, ReadUnique_PoC, BUSY_BLKD) {
 transition({SC,SD}, ReadUnique, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadUnique_Upgrade;
-  Allocate_DirEntry;
   Profile_Miss;
   Pop_ReqRdyQueue;
   ProcessNextState;

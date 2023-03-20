@@ -46,7 +46,7 @@ out_port(retryTriggerOutPort, RetryTriggerMsg, retryTriggerQueue);
 out_port(replTriggerOutPort, TriggerMsg, replTriggerQueue);
 out_port(reqRdyOutPort, CHIRequestMsg, reqRdy);
 out_port(snpRdyOutPort, CHIRequestMsg, snpRdy);
-
+out_port(sfReplOutPort, SFReplMessage, sfReplTriggerQueue);
 
 // Include helper functions here. Some of them require the outports to be
 // already defined
@@ -54,6 +54,7 @@ out_port(snpRdyOutPort, CHIRequestMsg, snpRdy);
 // the required input ports. Currently the SLICC compiler does not support
 // separate declaration and definition of functions in the .sm files.
 include "CHI-cache-funcs.sm";
+
 
 
 // Inbound port definitions and internal triggers queues
@@ -233,6 +234,7 @@ bool retryTriggerInPort_rsc_stall_handler() {
 // Action triggers
 in_port(triggerInPort, TriggerMsg, triggerQueue, rank=5,
         rsc_stall_handler=triggerInPort_rsc_stall_handler) {
+  
   if (triggerInPort.isReady(clockEdge())) {
     printResources();
     peek(triggerInPort, TriggerMsg) {
@@ -285,6 +287,12 @@ in_port(replTriggerInPort, ReplacementMsg, replTriggerQueue, rank=4) {
       if (is_valid(cache_entry) &&
           ((upstreamHasUnique(cache_entry.state) && dealloc_backinv_unique) ||
           (upstreamHasShared(cache_entry.state) && dealloc_backinv_shared))) {
+        /**
+         * [TODO: 21/02/2023][Arka]: Public version of gem5 contains bugs
+         * in this path. Global_Eviction is not
+         * implemented properly. Debug it later
+         * Currently not a priority to fix.
+         */
         trigger := Event:Global_Eviction;
       } else {
         if (is_HN) {
@@ -298,6 +306,35 @@ in_port(replTriggerInPort, ReplacementMsg, replTriggerQueue, rank=4) {
   }
 }
 
+in_port(sfReplInPort, SFReplMessage, sfReplTriggerQueue, rank=12) {
+  if (sfReplInPort.isReady(clockEdge())) {
+    printResources();
+    peek(sfReplInPort, SFReplMessage) {
+      TBE tbe := getCurrentActiveTBE(in_msg.fromAddr);
+      CacheEntry cache_entry := getCacheEntry(in_msg.fromAddr);
+      DPRINTF(RubyCHIDebugStr5,"Trigger SnoopFilter Repl=%s\n",in_msg);
+      trigger(Event:SnoopFilterEviction, in_msg.fromAddr, cache_entry, tbe);
+    }
+  }
+}
+
+void wakeupPendingSFRepl(TBE tbe) {
+  if (tbe.wakeup_pending_sfRepl) {
+    Addr addr := tbe.addr;
+    wakeup_port(sfReplInPort, addr);
+    tbe.wakeup_pending_sfRepl := false;
+  }
+}
+
+void enqSnoopFilterFill(Addr address) {
+  assert(!directory.allWaysBusy(address));
+  Addr victim_addr := directory.cacheProbe(address);
+  directory.setWayBusy(victim_addr); // Block this set-way combination to prevent subsequent SFRepl triggers
+  enqueue(sfReplOutPort, SFReplMessage, 0) {
+    out_msg.fromAddr := victim_addr;
+    out_msg.toAddr := address;
+  }
+}
 
 // Requests with an allocated TBE
 in_port(reqRdyPort, CHIRequestMsg, reqRdy, rank=3,
@@ -320,6 +357,18 @@ in_port(reqRdyPort, CHIRequestMsg, reqRdy, rank=3,
         TBE tbe := getCurrentActiveTBE(in_msg.addr);
 
         DirEntry dir_entry := getDirEntry(in_msg.addr);
+        bool stallForSnoopFilterAlloc := stallForSnoopFilterFill(in_msg.addr, in_msg);
+
+        // Wait for SnoopFilter Replacement
+        if (stallForSnoopFilterAlloc) {
+          bool allWaysBusy := directory.allWaysBusy(in_msg.addr);
+          if (allWaysBusy) {
+            trigger(Event:WaitForSnoopFilterRepl_Pend, in_msg.addr, cache_entry, tbe);
+          } else {
+            enqSnoopFilterFill(in_msg.addr);
+            trigger(Event:WaitForSnoopFilterRepl, in_msg.addr, cache_entry, tbe);
+          }
+        }
 
         // Special case for possibly stale writebacks or evicts
         if (in_msg.type == CHIRequestType:WriteBackFull) {
@@ -488,4 +537,18 @@ void processNextState(Addr address, TBE tbe, CacheEntry cache_entry) {
   // we might be going to BUSY_INTERRUPTABLE so wakeup pending snoops
   // if any
   wakeupPendingSnps(tbe);
+}
+
+void resetDirEntryAndWakeupPendingSFRepl(Addr address) {
+  directory.resetWayBusy(address);
+  // Wakeup any pending SnoopFilter Repls, that can now occur
+  if (snoopFilterPendQ.empty() == false) {
+    SnoopFilterReplPendEntry e := snoopFilterPendQ.front2();
+    if (!directory.allWaysBusy(e.replAddr)) {
+      // SnoopFilter repl is now possible
+      Addr replAddr := e.replAddr;
+      wakeup_port(reqRdyPort, replAddr);
+      snoopFilterPendQ.pop();
+    }
+  }
 }

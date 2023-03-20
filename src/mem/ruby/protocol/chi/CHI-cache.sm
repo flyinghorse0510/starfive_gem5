@@ -94,6 +94,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   int number_of_repl_TBEs;
   int number_of_DVM_TBEs;
   int number_of_DVM_snoop_TBEs;
+  int number_of_SFReplTBEs := 4;
 
   // replacements use the same TBE slot as the request that triggered it
   // in this case the number_of_repl_TBEs parameter is ignored
@@ -192,6 +193,9 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // Internal queue for eviction requests
   MessageBuffer * replTriggerQueue;
 
+  // Internal queue for SFEviction requests
+  MessageBuffer * sfReplTriggerQueue;
+
   // Prefetch queue for receiving prefetch requests from prefetcher
   MessageBuffer * prefetchQueue;
 
@@ -199,6 +203,11 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // as demand access in this cache. Notice the demand access stats are still
   // updated only on true demand requests.
   bool upstream_prefetch_trains_prefetcher := "False";
+
+  // Allow infinite SnoopFilter entries
+  bool allow_infinite_SF_entries;
+  int number_snoopfilter_entries;
+  int number_snoopfilter_assoc;
 
 {
 
@@ -392,6 +401,14 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     // Cache fill handling
     CheckCacheFill,   desc="Check if need to write or update the cache and trigger any necessary allocation and evictions";
 
+    // Snoop Filter fill
+    WaitForSnoopFilterRepl, desc="Wait for Snoop filter replacement";
+    WaitForSnoopFilterRepl_Pend, desc="SnoopFilter repl is not possible";
+    SnoopFilterEviction,    desc="Initiate SnoopFilter eviction";
+    SnoopFilterHNCacheFill, desc="Trigger an HNF fill, after receiving SnoopFilter generated invalidation requests";
+    WakeUpEvictingSnoopFilterAddr, desc="Wakeup the reqRdyPort for the SnoopFilter evicting address";
+    ResetAndDeallocDirEntry, desc="Reset the directory way";
+
     // Internal requests generated to evict or writeback a local copy
     // to free-up cache space
     Local_Eviction,   desc="Evicts/WB the local copy of the line";
@@ -564,6 +581,10 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     MachineID retryDest, desc="Retry destination";
   }
 
+  structure(SnoopFilterReplPendEntry) {
+    Addr replAddr,       desc="Address that is attempting to replace an entry in SnoopFilter";
+  }
+
   // Queue for event triggers. Used to specify a list of actions that need
   // to be performed across multiple transitions.
   // This class is also used to track pending retries
@@ -581,6 +602,9 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     // For the retry queue
     void emplace(Addr,bool,MachineID);
     RetryQueueEntry next(); //SLICC won't allow to reuse front()
+    // For SnoopFilter operations
+    void emplace_entry(Addr); //SLICC won't allow to reuse emplace()
+    SnoopFilterReplPendEntry front2(); //SLICC won't allow to reuse front()
   }
 
   // TBE fields
@@ -591,6 +615,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool is_repl_tbe, desc="Allocated in the replacements table";
     bool is_dvm_tbe, desc="Allocated in the DVM table";
     bool is_dvm_snp_tbe, desc="Allocated in the DVM snoop table";
+    bool is_sfrepl_tbe, desc="Allocated TBE for Snoop Filter repl";
 
     int storSlot, desc="Slot in the storage tracker occupied by this entry";
 
@@ -642,6 +667,10 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool dir_ownerExists,         desc="Owner ID is valid";
     bool dir_ownerIsExcl,         desc="Owner is UD or UC; SD otherwise";
     bool doCacheFill,             desc="Write valid data to the cache when completing transaction";
+
+    bool requiresDirEntryAlloc,   desc="Do you require a dirEntry allocation";
+    Addr evicting_sf_addr,        desc="Address that trigger SnoopFilter repl";
+
     // NOTE: dataMaybeDirtyUpstream and dir_ownerExists are the same except
     // when we had just sent dirty data upstream and are waiting for ack to set
     // dir_ownerExists
@@ -704,6 +733,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool wakeup_pending_req;
     bool wakeup_pending_snp;
     bool wakeup_pending_tgr;
+    bool wakeup_pending_sfRepl;
   }
 
   // TBE table definition
@@ -728,15 +758,23 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   }
 
   // Directory memory definition
-  structure(PerfectCacheMemory, external = "yes") {
+  structure(SnoopFilter, external = "yes") {
     void allocate(Addr);
     void deallocate(Addr);
     DirEntry lookup(Addr);
     bool isTagPresent(Addr);
+    bool cacheAvail(Addr);
+    Addr cacheProbe(Addr);
+    void profileMiss();
+    void profileHit();
+    bool allWaysBusy(Addr);
+    void setWayBusy(Addr);
+    void resetWayBusy(Addr);
   }
 
   // Directory
-  PerfectCacheMemory directory, template="<Cache_DirEntry>";
+  // PerfectCacheMemory directory, template="<Cache_DirEntry>", constructor="m_number_snoopfilter_entries";
+  SnoopFilter directory, template="<Cache_DirEntry>", constructor="m_number_snoopfilter_entries, m_number_snoopfilter_assoc, m_allow_infinite_SF_entries, this";
 
   // Tracks unique lines locked after a store miss
   TimerTable useTimerTable;
@@ -745,12 +783,6 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // This is incremented at Profile_Eviction and decays on
   // store miss completion
   int sc_lock_multiplier, default="0";
-
-  // std::string getTBETypeStr(TBEType tbeType) {
-  //   return TBEType_to_string(tbeType);
-  // }
-
-  // std::string reqTypeStr:=TBEType_to_string(TBEType:Request);
 
   // Main TBE table used for incoming requests
   TBETable TBEs,      template="<Cache_TBE>", constructor="m_number_of_TBEs";
@@ -761,6 +793,10 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   TBETable replTBEs,      template="<Cache_TBE>", constructor="m_unify_repl_TBEs ? m_number_of_TBEs : m_number_of_repl_TBEs";
   TBEStorage storReplTBEs, constructor="this, TBEType_to_string(TBEType_Repl), m_number_of_repl_TBEs";
 
+  // TBEs to keep track of SnoopFilter replacement
+  TBETable sfReplTBEs, template="<Cache_TBE>",constructor="m_number_of_SFReplTBEs";
+  TBEStorage storSFReplTBEs, constructor="this, TBEType_to_string(TBEType_SFRepl), m_number_of_SFReplTBEs";
+  
   // TBE table for incoming snoops
   TBETable snpTBEs,      template="<Cache_TBE>", constructor="m_number_of_snoop_TBEs";
   TBEStorage storSnpTBEs, constructor="this, TBEType_to_string(TBEType_Snp), m_number_of_snoop_TBEs";
@@ -780,6 +816,9 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // Used to record if a Sync op is pending
   bool dvmHasPendingSyncOp, default="false";
   Addr dvmPendingSyncOp, default="0";
+
+  // For Handling SnoopFilter repls
+  TriggerQueue snoopFilterPendQ, template="<Cache_SnoopFilterReplPendEntry>";
 
   // Retry handling
 
@@ -814,7 +853,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool functionalWrite(Packet *pkt) { return false; }
   }
 
-  // Internal replacement request
+  // Internal replacement request. The same structure is also used for SnoopFilter replacements
   structure(ReplacementMsg, interface="Message") {
     Addr addr;
     Addr from_addr;
@@ -824,6 +863,10 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool functionalWrite(Packet *pkt) { return false; }
   }
 
+  structure(SFReplMessage, interface="Message") {
+    Addr fromAddr; // Victim Addr
+    Addr toAddr;   // Evicting
+  }
 
   ////////////////////////////////////////////////////////////////////////////
   // Input/output port definitions

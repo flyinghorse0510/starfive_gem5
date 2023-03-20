@@ -67,6 +67,8 @@ parser.add_argument("--addr-intrlvd-or-tiled",default=False,help="If true the ad
 parser.add_argument("--sequencer-outstanding-requests",type=int,default=32,help="Max outstanding sequencer requests")
 parser.add_argument("--bench-c2cbw-mode",default=True,help="[True] Producer Consumer BW or [False] C2C Latency Test")
 parser.add_argument("--inj-interval",default=1,type=int,help="The interval between request packets")
+parser.add_argument("--num-snoopfilter-entries",default=4,type=int,help="SnoopFilter: number of entries")
+parser.add_argument("--num-snoopfilter-assoc",default=2,type=int,help="SnoopFilter: assoc")
 """
     The (--producers,--num-producers) are mutually exclusive argument specification 
     as are (--consumers,--num-consumers). --producers an --consumers specify the 
@@ -82,7 +84,7 @@ parser.add_argument("--num-producers",type=int,default=-1,help="number of produc
 parser.add_argument("--num-consumers",type=int,default=-1,help="number of consumers")
 parser.add_argument("--chs-1p1c",action='store_true',help='[Test 1] Run isolated 1p 1c coherence sharing benchmarks')
 parser.add_argument("--chs-cons-id",type=int,default=0,help='[Test 1] Consumer Id')
-parser.add_argument("--chs-prod-id",type=int,default=2,help='[Test 1] Producer Id')
+parser.add_argument("--chs-prod-id",type=int,default=0,help='[Test 1] Producer Id')
 parser.add_argument("--chs-1p1c-num-pairs",default=1,type=int,help='[Test 2] Number of coherence sharing pairs')
 parser.add_argument("--chs-1pMc",action='store_true',help='[Test 3] Run 1 producer M > 1 consumers')
 parser.add_argument("--chs-1p-MSharers",default=2,type=int,help='[Test 3] Number of sharers')
@@ -104,6 +106,10 @@ block_size = 64
 MemTestClass=None
 if args.mem_test_type=='bw_test':
     MemTestClass=SeqMemTest
+elif args.mem_test_type=='bw_test_sf':
+    MemTestClass=Seq2MemTest # Testing the SnoopFilter under extreme configs to trigger outstanding SFRepls
+elif args.mem_test_type=='falsesharing_test':
+    MemTestClass=FalseSharingMemTest
 elif args.mem_test_type=='prod_cons_test':
     MemTestClass=ProdConsMemTest
 elif args.mem_test_type=='random_test':

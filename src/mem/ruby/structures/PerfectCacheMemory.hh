@@ -42,6 +42,8 @@
 #define __MEM_RUBY_STRUCTURES_PERFECTCACHEMEMORY_HH__
 
 #include <unordered_map>
+#include <iterator>
+#include <cstdlib>
 
 #include "base/compiler.hh"
 #include "mem/ruby/common/Address.hh"
@@ -74,6 +76,8 @@ class PerfectCacheMemory
   public:
     PerfectCacheMemory();
 
+    PerfectCacheMemory(unsigned);
+
     // tests to see if an address is present in the cache
     bool isTagPresent(Addr address) const;
 
@@ -89,6 +93,8 @@ class PerfectCacheMemory
 
     // Returns with the physical address of the conflicting cache line
     Addr cacheProbe(Addr newAddress) const;
+
+    int size() const;
 
     // looks an address up in the cache
     ENTRY* lookup(Addr address);
@@ -108,7 +114,15 @@ class PerfectCacheMemory
 
     // Data Members (m_prefix)
     std::unordered_map<Addr, PerfectCacheLineState<ENTRY> > m_map;
+
+    // Maximum directory_size (Make it a parameters)
+    unsigned m_max_dir_size;
 };
+
+template<class ENTRY>
+inline int PerfectCacheMemory<ENTRY>::size() const {
+    return m_map.size();
+}
 
 template<class ENTRY>
 inline std::ostream&
@@ -121,9 +135,11 @@ operator<<(std::ostream& out, const PerfectCacheMemory<ENTRY>& obj)
 
 template<class ENTRY>
 inline
-PerfectCacheMemory<ENTRY>::PerfectCacheMemory()
-{
-}
+PerfectCacheMemory<ENTRY>::PerfectCacheMemory(unsigned m_max_dir_size) : m_max_dir_size(m_max_dir_size) {}
+
+template<class ENTRY>
+inline
+PerfectCacheMemory<ENTRY>::PerfectCacheMemory() : m_max_dir_size(100) {}
 
 // tests to see if an address is present in the cache
 template<class ENTRY>
@@ -137,7 +153,7 @@ template<class ENTRY>
 inline bool
 PerfectCacheMemory<ENTRY>::cacheAvail(Addr address) const
 {
-    return true;
+    return ((m_map.size() < m_max_dir_size) || isTagPresent(address));
 }
 
 // find an Invalid or already allocated entry and sets the tag
@@ -161,13 +177,17 @@ PerfectCacheMemory<ENTRY>::deallocate(Addr address)
     assert(num_erased == 1);
 }
 
+static inline int get_rand_between(int min, int max) {
+    return rand()%(max-min + 1) + min;
+}
+
 // Returns with the physical address of the conflicting cache line
 template<class ENTRY>
 inline Addr
 PerfectCacheMemory<ENTRY>::cacheProbe(Addr newAddress) const
 {
-    panic("cacheProbe called in perfect cache");
-    return newAddress;
+    auto random_it = std::next(std::begin(m_map), get_rand_between(0, m_map.size()-1));
+    return makeLineAddress(random_it->first);
 }
 
 // looks an address up in the cache

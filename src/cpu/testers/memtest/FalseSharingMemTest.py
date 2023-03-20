@@ -41,24 +41,41 @@ from m5.proxy import *
 
 from m5.objects.ClockedObject import ClockedObject
 
-class IsolatedMemTest(ClockedObject):
-    type = 'IsolatedMemTest'
-    cxx_header = "cpu/testers/memtest/isolatedmemtest.hh"
-    cxx_class = 'gem5::IsolatedMemTest'
+class FalseSharingMemTest(ClockedObject):
+    type = 'Seq2MemTest'
+    cxx_header = "cpu/testers/memtest/falsesharingmemtest.hh"
+    cxx_class = 'gem5::FalseSharingMemTest'
 
     # Interval of packet injection, the size of the memory range
     # touched, and an optional stop condition
-    interval = Param.Cycles(100, "Interval between request packets")
-    size = Param.Unsigned(4194304, "Working set(bytes)")
+    interval = Param.Cycles(1, "Interval between request packets")
+    size = Param.Unsigned(4194304, "Size of memory region to use (bytes)")
+    base_addr_1 = Param.Addr(0x0, "Start of the first testing region")
+    
+    mod_stream_triad = Param.Bool(False, "Generate Stream TRIAD like Mem requestes. 2 independent loads, 1 dependent stores")
+    
     working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
+    max_loads = Param.Counter(1, "Number of loads to execute before exiting")
+    #percent_reads = Param.Percent(65, "Percentage reads")
+    percent_reads = Param.Percent(100, "Percentage reads")
+    addr_intrlvd_or_tiled = Param.Bool(False,"If true the address partitioning across CPUs is interleaved [0,N,2N;1,N+1,2N+1;...]. Otherwise Tiled [0:N-1,N:2N-1]")
+
     num_cpus = Param.Counter(1, "Total number of CPUs")
-    max_loads = Param.Counter(1, "Number of loads to unique address")
+    outstanding_req = Param.Int(1,"Number of outstanding requests. Set 1 if you want to measure latency or to a very large value if you want measure bw")
+    id_starter = Param.Int(0,'Start CPU id of Migratory pattern. [Unused] here')
+
+    bench_c2cbw_mode = Param.Bool(False,"[True] Producer Consumer BW or [False] C2C Latency Test")
+    id_producers = VectorParam.Int([], '[Not Used Here] List of Producer Ids')
+    id_consumers = VectorParam.Int([], '[Not Used Here] List of Consumer Ids')
+    num_peer_producers = Param.Counter(1, "Number of independent peer producers. Use to partition the working set")
+    outstanding_req = Param.Int(1,"[Not Used Here] Number of outstanding requests. Set 1 if you want to measure latency or to a very large value if you want measure bw")
+    id_starter = Param.Int(0,'[Not Used Here] Start CPU id of Migratory pattern. [Unused] here')
 
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses
     progress_interval = Param.Counter(1000000,
         "Progress report interval (in accesses)")
-    progress_check = Param.Cycles(50000, "Cycles before exiting " \
+    progress_check = Param.Cycles(5000000, "Cycles before exiting " \
                                       "due to lack of progress")
 
     port = RequestPort("Port to the memory system")
@@ -68,10 +85,3 @@ class IsolatedMemTest(ClockedObject):
     # accesses as Ruby needs this
     suppress_func_errors = Param.Bool(False, "Suppress panic when "\
                                             "functional accesses fail.")
-    
-    # Extra parameters to comply with seq_mem_ruby_test
-    bench_c2cbw_mode = Param.Bool(False,"[True] Producer Consumer BW or [False] C2C Latency Test")
-    id_producers = VectorParam.Int([], "List of Producer Ids")
-    id_consumers = VectorParam.Int([], "List of Consumer Ids")
-    num_peer_producers = Param.Counter(1, "Number of independent peer producers. Use to partition the working set")
-    addr_intrlvd_or_tiled =  Param.Bool(False,"If true the address partitioning across CPUs is interleaved [0,N,2N;1,N+1,2N+1;...]. Otherwise Tiled [0:N-1,N:2N-1]")

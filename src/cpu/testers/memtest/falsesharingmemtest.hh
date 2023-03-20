@@ -38,15 +38,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __CPU_ISO_MEMTEST_HH__
-#define __CPU_ISO_MEMTEST_HH__
+#ifndef __CPU_MEMTEST_MEMTEST_HH__
+#define __CPU_MEMTEST_MEMTEST_HH__
 
 #include <unordered_map>
 #include <unordered_set>
 
 #include "base/statistics.hh"
 #include "mem/port.hh"
-#include "params/IsolatedMemTest.hh"
+#include "params/FalseSharingMemTest.hh"
 #include "sim/clocked_object.hh"
 #include "sim/eventq.hh"
 #include "sim/stats.hh"
@@ -55,11 +55,11 @@
 namespace gem5
 {
 
-
+typedef uint8_t writeSyncData_t;
 
 /**
- * The IsolatedMemTest class tests a cache coherent memory system.
- * 1. All requests issued by the IsolatedMemTest instance are a
+ * The FalseSharingMemTest class tests a cache coherent memory system.
+ * 1. All requests issued by the FalseSharingMemTest instance are a
  *    single byte. 
  * 2. The addresses are generated sequentially and the same
  *    address is generated again, to remove the effects of cold
@@ -70,13 +70,13 @@ namespace gem5
  * both requests and responses, thus checking that the memory-system
  * is making progress.
  */
-class IsolatedMemTest : public ClockedObject
+class FalseSharingMemTest : public ClockedObject
 {
 
   public:
 
-    typedef IsolatedMemTestParams Params;
-    IsolatedMemTest(const Params &p);
+    typedef FalseSharingMemTestParams Params;
+    FalseSharingMemTest(const Params &p);
 
 
     Port &getPort(const std::string &if_name,
@@ -99,11 +99,11 @@ class IsolatedMemTest : public ClockedObject
 
     class CpuPort : public RequestPort
     {
-        IsolatedMemTest &seqmemtest;
+        FalseSharingMemTest &seqmemtest;
 
       public:
 
-        CpuPort(const std::string &_name, IsolatedMemTest &_memtest)
+        CpuPort(const std::string &_name, FalseSharingMemTest &_memtest)
             : RequestPort(_name, &_memtest), seqmemtest(_memtest)
         { }
 
@@ -135,18 +135,22 @@ class IsolatedMemTest : public ClockedObject
 
     unsigned int id;
 
-    std::unordered_set<uint64_t> outstandingAddrs;
+    const uint64_t workingSet; // Working Set in bytes
+
+    uint64_t workingSetSize; // Number of unique cache lines in thw Working set
+
+    writeSyncData_t writeSyncDataBase;
+
+    std::unordered_set<Addr> outstandingAddrs;
 
     // store the expected value for the addresses we have touched
-    std::unordered_map<Addr, uint8_t> referenceData;
+    std::unordered_map<Addr, writeSyncData_t> referenceData;
 
     const unsigned blockSize;
 
     const Addr blockAddrMask;
 
-    std::map<Addr,bool> readWriteMap;
-
-    std::vector<Addr> workingSet;
+    const unsigned percentReads;
 
     /**
      * Get the block aligned address.
@@ -164,13 +168,29 @@ class IsolatedMemTest : public ClockedObject
     Tick nextProgressMessage;   // access # for next progress report
 
 
+    Addr baseAddr;
+    
+    uint64_t num_cpus;
+    
+    uint64_t numPerCPUWorkingAddrs;
+    
+    std::vector<Addr> perCPUWorkingAddrs;
+    
+    bool addrInterleavedOrTiled;
 
-    uint64_t numReads;
-    uint64_t numWrites;
-    uint64_t maxLoads2;
-    bool isSequential;
-    uint64_t txSeqNum; // zhiang: requestorID + txSeqNum should be the unique ID
-    const uint64_t maxLoads;
+    uint64_t numReadsGenerated;
+
+    uint64_t numReadsCompleted;
+    
+    uint64_t numWritesGenerated;
+    
+    uint64_t numWritesCompleted;
+    
+    uint64_t maxLoads;
+
+    uint64_t maxOutstandingReq;
+
+    uint64_t txSeqNum; // requestorID + txSeqNum should be the unique ID
 
     const bool atomic;
 
@@ -199,4 +219,5 @@ class IsolatedMemTest : public ClockedObject
 
 } // namespace gem5
 
-#endif // __CPU_ISO_MEMTEST_HH__
+#endif // __CPU_MEMTEST_MEMTEST_HH__
+
