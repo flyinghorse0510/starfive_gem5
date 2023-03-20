@@ -281,7 +281,7 @@ action(Initiate_Request, desc="") {
   // Requires a DirEntry allocation
   tbe.requiresDirEntryAlloc := (is_invalid(dir_entry)) && requiresDirEntry(tbe.reqType);
   bool avail_direntry := directory.cacheAvail(address);
-  bool doSnoopFilterFill := is_HN && (!allow_infinite_SF_entries);
+  bool doSnoopFilterFill := is_HN && (!allow_infinite_SF_entries) && requiresDirEntry(tbe.reqType);
   assert(avail_direntry || (!doSnoopFilterFill));
   if (tbe.requiresDirEntryAlloc) {
     directory.allocate(address);
