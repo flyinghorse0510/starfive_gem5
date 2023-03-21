@@ -293,11 +293,11 @@ FalseSharingMemTest::tick()
 
     /* Search for an address within perCPUWorkingAddrs */
     paddr = perCPUWorkingAddrs.at(seqIdx);
-    seqIdx = (seqIdx+1)%(perCPUWorkingAddrs.size());
     if (outstandingAddrs.find(paddr) != outstandingAddrs.end()) {
         waitResponse = true;
         return;
     }
+    seqIdx = (seqIdx+1)%(perCPUWorkingAddrs.size());
     // do {
     //     paddr = perCPUWorkingAddrs.at(seqIdx);
     //     seqIdx = (seqIdx+1)%(perCPUWorkingAddrs.size());
@@ -316,7 +316,7 @@ FalseSharingMemTest::tick()
     writeSyncData_t *pkt_data = new writeSyncData_t[1];
 
     unsigned cmd = random_mt.random(0, 100);
-    bool readOrWrite = (cmd < percentReads)?true:false;
+    bool readOrWrite = false; //(cmd < percentReads)?true:false;
     if (readOrWrite) {
         pkt = new Packet(req, MemCmd::ReadReq);
         auto ref = referenceData.find(req->getPaddr());

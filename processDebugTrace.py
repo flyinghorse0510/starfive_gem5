@@ -155,11 +155,11 @@ def parseFalseSharingTrace(logFile, dumpFile):
 
 def analyzeCsv(options,msgDumpCsv,bench='migratory'):
     dfX = pd.read_csv(msgDumpCsv)
-    print(dfX)
     if bench == 'migratory':
         dfX['lat'] = dfX['WriteEnd']-dfX['ReadStart']
     elif bench == 'falsesharing_test' :
-        dfX['lat'] = dfX['end']-dfX['start']
+        dfX = dfX.query('End > 0')
+        dfX['lat'] = dfX['End']-dfX['Start']
     else :
         dfX['lat'] = dfX['ReadEnd']-dfX['WriteStart']
     minLat = dfX['lat'].min()
@@ -175,7 +175,7 @@ def analyzeCsv(options,msgDumpCsv,bench='migratory'):
         'med_lat': medLat,
         'max_lat': maxLat
     })
-    if bench != 'migratory' :
+    if bench == 'true_prod_cons_test' :
         bw = (64*len(dfX.index))/(dfX['ReadEnd'].max()-dfX['WriteStart'].min())
         retDict['bw'] = bw
     return retDict
