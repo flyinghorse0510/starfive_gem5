@@ -318,6 +318,7 @@ parser.add_argument("--inj-interval",default=1,type=int,help="The interval betwe
 parser.add_argument('--allow-SD',default=True, help="allow SD state") # True for MOESI, False for MESI
 parser.add_argument("--num-snoopfilter-entries",default=4,type=int,help="SnoopFilter: number of entries")
 parser.add_argument("--num-snoopfilter-assoc",default=2,type=int,help="SnoopFilter: assoc")
+parser.add_argument('--allow-infinite-SF-entries',action='store_true', help="Allow infinite SnoopFilter entries.") # False to use a realistic SF
 
 # Add the ruby specific and protocol specific args
 if '--ruby' in sys.argv:
