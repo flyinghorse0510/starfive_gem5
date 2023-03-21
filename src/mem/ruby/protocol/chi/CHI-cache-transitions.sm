@@ -128,7 +128,7 @@ transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,
   StallRequest_OnSnoopFilterRepl_Pend;
 }
 
-transition({RSD,RUSC,RUSD,RU,
+transition({RSD,RUSD,RU,
             UD_RSC,
             UD_RU,UC_RU,UD_RSD}, SnoopFilterEviction, BUSY_BLKD) {SfReplTBEAvailable} {
   Initiate_SnoopFilterReplacement;
@@ -140,7 +140,7 @@ transition({RSD,RUSC,RUSD,RU,
   ProcessNextState;
 }
 
-transition({UC_RSC, RSC, SC_RSC}, SnoopFilterEviction, BUSY_BLKD) {SfReplTBEAvailable} {
+transition({UC_RSC, RUSC, RSC, SC_RSC}, SnoopFilterEviction, BUSY_BLKD) {SfReplTBEAvailable} {
   Initiate_SnoopFilterReplacement;
   Initiate_SnoopFilterReplacement_Evict_BackInv;
   Profile_SnoopFilterMiss;

@@ -179,10 +179,10 @@ else :
     cpuProdListMap[args.chs_cons_id]=[args.chs_prod_id]
     cpuConsListMap[args.chs_cons_id]=[args.chs_cons_id]
 
-for cpu in range(num_cpus):
-    prod=cpuProdListMap[cpu]
-    cons=cpuConsListMap[cpu]
-    print(f'cpu={cpu}|prod={prod},cons={cons}')
+# for cpu in range(num_cpus):
+#     prod=cpuProdListMap[cpu]
+#     cons=cpuConsListMap[cpu]
+#     print(f'cpu={cpu}|prod={prod},cons={cons}')
 
 if num_cpus > block_size:
      print("Error: Number of testers %d limited to %d because of false sharing"
