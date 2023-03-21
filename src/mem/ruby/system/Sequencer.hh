@@ -232,6 +232,13 @@ class Sequencer : public RubyPort
                                         RubyRequestType primary_type,
                                         RubyRequestType secondary_type);
 
+    struct SequencerStats : public statistics::Group
+    {
+        SequencerStats(statistics::Group *parent);
+        statistics::Distribution LDLatDist;
+        statistics::Distribution STLatDist;
+    } stats;
+
   private:
     int m_max_outstanding_requests;
 
