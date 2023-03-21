@@ -28,38 +28,33 @@ logging.addLevelName(LOG_MSG, 'MSG')
 
 # sim_tick's pattern & clk_domain's pattern
 sim_tick_pat = re.compile('^simTicks\s+(\d+)')
-clk_domain_pat = re.compile('^system.cpu_clk_domain.clock\s+(\d+)')
+clk_domain_pat = re.compile('^system\.cpu_clk_domain\.clock\s+(\d+)')
 
 # llc_demand's pattern
 # three groups we need : 1) hnf's id 2) hit/miss/access 3) num of hit/miss/access
 # idx can be nullstr, not None
-llc_demand_pat = re.compile('^system.ruby.hnf(\d*).cntrl.cache.m_demand_([a-z]+)\s+(\d+)')
-llc_txn_pat = re.compile('^system.ruby.hnf(\d*).cntrl.inTransLatHist.(ReadShared|ReadUnique_PoC|WriteBackFull).total\s+(\d+)')
-l2p_txn_pat = re.compile('^system.cpu(\d*).l2.inTransLatHist.(ReadShared|ReadUnique|WriteBackFull).total\s+(\d+)')
+llc_demand_pat = re.compile('^system\.ruby\.hnf(\d*)\.cntrl\.cache\.m_demand_([a-z]+)\s+(\d+)')
+llc_txn_pat = re.compile('^system\.ruby\.hnf(\d*)\.cntrl\.inTransLatHist\.(ReadShared|ReadUnique_PoC|WriteBackFull)\.total\s+(\d+)')
+l2p_txn_pat = re.compile('^system\.cpu(\d*)\.l2\.inTransLatHist\.(ReadShared|ReadUnique|WriteBackFull)\.total\s+(\d+)')
 
 # l1d, l1i, l2p's pattern
 # four groups we need: 1) cpu's id 2) l1d/l1i/l2 3) hit/miss/access 4) num of hit/miss/access
-priv_cache_demand_pat = re.compile('^system.cpu(\d*).(\w*).cache.m_demand_([a-z]+)\s+(\d+)')
+priv_cache_demand_pat = re.compile('^system\.cpu(\d*)\.(\w*)\.cache\.m_demand_([a-z]+)\s+(\d+)')
 
 # ddr's pattern
 # groupes we need: 1) mem_ctrls's id 2) write/read 3) num of read/write requests
-ddr_pat = re.compile('system.mem_ctrls(\d*).([a-z]+)Reqs\s+(\d+)')
+ddr_pat = re.compile('system\.mem_ctrls(\d*)\.([a-z]+)Reqs\s+(\d+)')
 
 # cpu's pattern
 # groups we need: 1) cpu's id 2) load/store 3) num of load/store requests
-cpu_inst_pat = re.compile('^system.cpu(\d*).exec_context.thread_0.num(Load|Store|)Insts\s+(\d+)')
-cpu_cycle_pat = re.compile('^system.cpu(\d*).numCycles\s+(\d+)')
+cpu_inst_pat = re.compile('^system\.cpu(\d*)\.exec_context\.thread_0\.num(Load|Store|)Insts\s+(\d+)')
+cpu_cycle_pat = re.compile('^system\.cpu(\d*)\.numCycles\s+(\d+)')
 
-def test_cpu():
-    l1 = "system.cpu0.exec_context.thread_0.numLoadInsts     18911203                       # Number of load instructions (Count)\n"
-    l2 = "system.cpu0.exec_context.thread_0.numStoreInsts      7082663                       # Number of store instructions (Count)\n"
-    l3 = "system.cpu0.exec_context.thread_0.numInsts     25993866                       # Number of memory refs (Count)\n"
+## sequencer's pattern
+## we only care about data sequencer
+## groups we need: 1) cpu's id 2) LD/ST 3) mean/min_value/max_value 4) latency
+seq_lat_pat = re.compile('^system\.cpu(\d*)\.data_sequencer\.(LD|ST)LatDist::(mean|min_value|max_value)\s+(\d+\.?\d+|\d+)')
 
-    print("test_cpu:")
-    for l in [l1,l2,l3]:
-        cpu_search = re.search(cpu_inst_pat, l)
-        if cpu_search:
-            print(f'group0:{cpu_search.group(0)}, group1:{cpu_search.group(1)}, group2:{cpu_search.group(2)}, group3:{cpu_search.group(3)}')
 
 class Printable:
     def __repr__(self):
@@ -72,6 +67,10 @@ class CPU(Printable):
         self.write = write
         self.inst = inst
         self.cycle = cycle
+
+class SEQ(Printable):
+    def __init__(self,id=0):
+        self.id = id
 
 class Cache(Printable):
     def __init__(self,hit=0,miss=0,access=0):
@@ -116,7 +115,7 @@ class CLK(Printable):
         self.clk_domain = clk_domain
 
 # parse one line each time
-def parse_stats(line, clk:CLK, cpus:List[CPU], llcs:List[LLC], ddrs:List[DDR], l1ds:List[L1D], l1is:List[L1I], l2ps:List[L2P]):
+def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], ddrs:List[DDR], l1ds:List[L1D], l1is:List[L1I], l2ps:List[L2P]):
     sim_tick_sch = re.search(sim_tick_pat, line)
     clk_domain_sch = re.search(clk_domain_pat, line)
     llc_demand_sch = re.search(llc_demand_pat, line)
@@ -126,6 +125,7 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], llcs:List[LLC], ddrs:List[DDR], l
     cpu_inst_sch = re.search(cpu_inst_pat, line)
     cpu_cycle_sch = re.search(cpu_cycle_pat, line)
     priv_cache_sch = re.search(priv_cache_demand_pat, line)
+    seq_lat_sch = re.search(seq_lat_pat, line)
 
     if sim_tick_sch:
         clk.sim_tick = int(sim_tick_sch.group(1))
@@ -226,6 +226,14 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], llcs:List[LLC], ddrs:List[DDR], l
         cpu_id = 0 if len(cpus) == 1 else int(cpu_cycle_sch.group(1))
         cpus[cpu_id].cycle = int(cpu_cycle_sch.group(2))
 
+    elif seq_lat_sch:
+        seq_id = 0 if len(seqs) == 1 else int(seq_lat_sch.group(1))
+        seq_op:str = seq_lat_sch.group(2) # LD/ST
+        seq_stats:str = seq_lat_sch.group(3) # mean|min_value|max_value
+        seq_lat:float = float(seq_lat_sch.group(4))
+
+        setattr(seqs[seq_id], seq_op+'_'+seq_stats, seq_lat)
+
 
 def get_all_sim_dir(root_dir):
     # Recursive function to find all files named "stats.txt" in the folder and its subfolders
@@ -297,6 +305,7 @@ def variable_file_parser(args:argparse.Namespace, variable_file_path):
 def parse_stats_file(args:argparse.Namespace):
 
     cpus = [CPU(i) for i in range(args.NUMCPUS)]
+    seqs = [SEQ(i) for i in range(args.NUMCPUS)]
     llcs = [LLC(i) for i in range(args.NUM_LLC)]
     l1ds = [L1D(i) for i in range(args.NUMCPUS)]
     l1is = [L1I(i) for i in range(args.NUMCPUS)]
@@ -317,13 +326,14 @@ def parse_stats_file(args:argparse.Namespace):
         for idx,line in enumerate(f):
             if line == '---------- End Simulation Statistics   ----------\n':
                 break
-            parse_stats(line, clk, cpus, llcs, ddrs, l1ds, l1is, l2ps)
+            parse_stats(line, clk, cpus, seqs, llcs, ddrs, l1ds, l1is, l2ps)
     
-    logging.debug(f'clk:{clk}\ncpus:{cpus}\nllcs:{llcs}\nl1ds:{l1ds}\nl1is:{l1is}\nl2ps:{l2ps}\nddrs:{ddrs}')
+    logging.debug(f'clk:{clk}\ncpus:{cpus}\nseqs:{seqs}\nllcs:{llcs}\nl1ds:{l1ds}\nl1is:{l1is}\nl2ps:{l2ps}\nddrs:{ddrs}')
 
     df_dict = {
         'clk': pd.DataFrame([vars(clk)]),
         'cpu': pd.DataFrame([vars(item) for item in cpus]),
+        'seq': pd.DataFrame([vars(item) for item in seqs]),
         'llc': pd.DataFrame([vars(item) for item in llcs]),
         'l1d': pd.DataFrame([vars(item) for item in l1ds]),
         'l1i': pd.DataFrame([vars(item) for item in l1is]),
@@ -362,7 +372,7 @@ def parse_stats_file(args:argparse.Namespace):
     [df.to_csv(f'{args.OUTPUT_DIR}/{name}.csv') for name, df in df_dict.items()]
 
     with open(output_file_path, 'w') as f:
-        f.write(f'clk:\n{df_dict["clk"]}\n\ncpu:\n{df_dict["cpu"]}\n\nl1d:\n{df_dict["l1d"]}\n\nl1i:\n{df_dict["l1i"]}\n\nl2p:\n{df_dict["l2p"]}\n\nllc:\n{df_dict["llc"]}')
+        f.write(f'clk:\n{df_dict["clk"]}\n\ncpu:\n{df_dict["cpu"]}\n\nseq:\n{df_dict["seq"]}\n\nl1d:\n{df_dict["l1d"]}\n\nl1i:\n{df_dict["l1i"]}\n\nl2p:\n{df_dict["l2p"]}\n\nllc:\n{df_dict["llc"]}')
 
     logging.info(f'written to {output_file_path}')
 
