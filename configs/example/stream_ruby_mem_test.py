@@ -71,6 +71,9 @@ parser.add_argument("--addr-intrlvd-or-tiled",default=False,help="If true the ad
 parser.add_argument("--sequencer-outstanding-requests",type=int,default=32,help="Max outstanding sequencer requests")
 parser.add_argument("--inj-interval",default=1,type=int,help="The interval between request packets")
 parser.add_argument("--allow-SD",default=True,type=bool,help="allow SD state")
+parser.add_argument("--num-snoopfilter-entries",default=4,type=int,help="SnoopFilter: number of entries")
+parser.add_argument("--num-snoopfilter-assoc",default=2,type=int,help="SnoopFilter: assoc")
+
 
 #
 # Add the ruby specific and protocol specific options
