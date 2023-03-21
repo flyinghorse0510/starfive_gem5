@@ -175,6 +175,8 @@ class FalseSharingMemTest : public ClockedObject
     uint64_t numPerCPUWorkingAddrs;
     
     std::vector<Addr> perCPUWorkingAddrs;
+
+    std::unordered_map<Addr,unsigned> addrIterMap;
     
     bool addrInterleavedOrTiled;
 

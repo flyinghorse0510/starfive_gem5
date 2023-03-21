@@ -257,34 +257,6 @@ MessageBuffer::txntrace_print(MsgPtr message, \
     } else if (port_name.find("snpRdy") != std::string::npos) {
         return;
     }
-    // else if this line is link, depends on whether we set TxnLink
-    // we need the req/snp/dat/rspIn port to print the latency on the last link
-    // else if(port_name.find("system.ruby.network.int_links") != std::string::npos || port_name.rfind("In") != std::string::npos){
-    //     // port names containing src_node or dst_node are intermediate buffers in routers.
-    //     if(port_name.find("node",29) != std::string::npos){
-    //         return;
-    //     }
-
-    //     if(!::gem5::debug::TxnLink){ // if we not enabled txnlink, skip the rest calculation and dprintf
-    //         return;
-    //     }
-
-    //     // we only update the link_time and link_name when we are in a link.
-    //     // this works for both simple and garnet
-    //     Tick last_link_time = message->getLastLinkTime();
-    //     std::string last_link = message->getLastLinkName();
-    //     int pos = port_name.rfind(".");
-    //     // The outier function only accepts following two scenarios, we only do substr to the first one
-    //     // system.ruby.network.int_links08.buffer08
-    //     // system.cpu.l2.reqIn // len is only 19, will cause error
-    //     if(port_name.rfind("In") == std::string::npos){
-    //         message->setLastLinkName(port_name.substr(20,pos-20));
-    //     }
-    //     message->setLastLinkTime(arrival_time);
-
-    //     // snprintf(link_info, sizeof(link_info), "<-%lu(%s)", last_link_time, last_link.c_str());
-    //     snprintf(link_info, sizeof(link_info), "(%s:%lu)", last_link.c_str(), arrival_time - last_link_time);
-    // }
 
     // else we always print this line
     // zhiang: we added txSeqNum to CHI protocol msgs so that can print txSeqNum
@@ -439,7 +411,7 @@ MessageBuffer::enqueue(MsgPtr message, Tick current_time, Tick delta)
     profileRetry(message);
 
     // zhiang: print the txntrace message
-    txntrace_print(message, arrival_time, true);
+    // txntrace_print(message, arrival_time, true);
     // Schedule the wakeup
     assert(m_consumer != NULL);
     m_consumer->scheduleEventAbsolute(arrival_time);
@@ -481,7 +453,6 @@ MessageBuffer::dequeue(Tick current_time, bool decrement_messages)
         m_buf_msgs--;
         txntrace_print(message, curTick(), false);
     }
-    // txntrace_print(message,curTick()-message->getLastEnqueueTime());
 
     // if a dequeue callback was requested, call it now
     if (m_dequeue_callback) {

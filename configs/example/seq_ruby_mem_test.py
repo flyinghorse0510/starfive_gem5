@@ -91,6 +91,8 @@ parser.add_argument("--chs-1p-MSharers",default=2,type=int,help='[Test 3] Number
 parser.add_argument('--max-outstanding-requests',default=1,type=int,help='Maximumum number of outstanding requests produced')
 parser.add_argument('--id-starter',default=0,type=int,help='Starter id of the migratory sharing patterns')
 parser.add_argument('--outstanding-req',default=100,type=int,help='Number of oustanding requests')
+parser.add_argument('--allow-infinite-SF-entries',default=True, help="Allow infinite SnoopFilter entries.")
+
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]
 
@@ -177,10 +179,10 @@ else :
     cpuProdListMap[args.chs_cons_id]=[args.chs_prod_id]
     cpuConsListMap[args.chs_cons_id]=[args.chs_cons_id]
 
-for cpu in range(num_cpus):
-    prod=cpuProdListMap[cpu]
-    cons=cpuConsListMap[cpu]
-    print(f'cpu={cpu}|prod={prod},cons={cons}')
+# for cpu in range(num_cpus):
+#     prod=cpuProdListMap[cpu]
+#     cons=cpuConsListMap[cpu]
+#     print(f'cpu={cpu}|prod={prod},cons={cons}')
 
 if num_cpus > block_size:
      print("Error: Number of testers %d limited to %d because of false sharing"

@@ -194,15 +194,15 @@ fi
 if [ "$GATETEST" != "" ]; then
     l1d_size="128B"
     l1i_size="128B"
-    l2_size="8KiB"
+    l2_size="512B"
     l3_size="1KiB"
     l1d_assoc=1
     l1i_assoc=1
-    l2_assoc=4
-    l3_assoc=8
+    l2_assoc=2
+    l3_assoc=1
     NUM_LLC=1
     SEQ_TBE=32
-    LoadFactor=10
+    LoadFactor=5
     NUM_MEM=4
     NUM_DDR_XP=2
     NUM_DDR_Side=1
@@ -221,16 +221,18 @@ if [ "$GATETEST" != "" ]; then
     NETWORK="simple"
     SNOOP_FILTER_SIZE=2
     SNOOP_FILTER_ASSOC=1
-    DEBUGFLAGS=RubyCHIDebugStr5,RubyGenerated,SeqMemLatTest
+    IDEAL_SNOOP_FILTER=False
+    DEBUGFLAGS=RubyCHIDebugStr5,RubyGenerated,TxnTrace
 
-    WKSETLIST=(2048)
-    NUM_CPU_SET=(4)
+    WKSETLIST=(8192)
+    NUM_CPU_SET=(16)
 
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
       for WKSET in ${WKSETLIST[@]}; do
-        OUTPUT_PREFIX="SnoopFilter_${NETWORK}"
-        OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_LoadFactor${LoadFactor}" 
-        echo ${OUTPUT_DIR}
+        OUTPUT_PREFIX="ParsecBugfix_${NETWORK}"
+        OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DMT${DMT}_DCT${DCT}" 
+        echo "GateTest Started: ${NUMCPUS},${WKSET},DMT_${DMT},DCT_${DCT}"
+        mkdir -p ${OUTPUT_DIR}
         $GEM5_DIR/build/${ISA}_${CCPROT}/${BUILDTYPE} \
           --debug-flags=$DEBUGFLAGS --debug-file=debug.trace \
           -d $OUTPUT_DIR \
@@ -275,11 +277,12 @@ if [ "$GATETEST" != "" ]; then
           --inj-interval=1 \
           --num-snoopfilter-entries=${SNOOP_FILTER_SIZE} \
           --num-snoopfilter-assoc=${SNOOP_FILTER_ASSOC} \
-          --num-producers=1
+          --allow-infinite-SF-entries=${IDEAL_SNOOP_FILTER} \
+          --num-producers=1 > ${OUTPUT_DIR}/cmd.log 2>&1
           
           grep -E 'hnf' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
-          grep -E 'CacheEntry Victim Busy|SnoopFilter Victim Busy|CacheEntry Undergoing SFRepl' ${OUTPUT_DIR}/debug.hnf.trace > ${OUTPUT_DIR}/debug.filt.trace
-        
+          grep -E 'AllocRequest|reqIn|reqOut|rspIn|datIn' ${OUTPUT_DIR}/debug.hnf.trace >  ${OUTPUT_DIR}/debug.hnf.reqalloc.trace
+          grep -E 'AllocRequest' ${OUTPUT_DIR}/debug.hnf.trace >  ${OUTPUT_DIR}/debug.hnf.state.trace
         done
     done
 

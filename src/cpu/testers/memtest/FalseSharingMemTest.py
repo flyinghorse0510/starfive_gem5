@@ -42,7 +42,7 @@ from m5.proxy import *
 from m5.objects.ClockedObject import ClockedObject
 
 class FalseSharingMemTest(ClockedObject):
-    type = 'Seq2MemTest'
+    type = 'FalseSharingMemTest'
     cxx_header = "cpu/testers/memtest/falsesharingmemtest.hh"
     cxx_class = 'gem5::FalseSharingMemTest'
 
@@ -56,7 +56,6 @@ class FalseSharingMemTest(ClockedObject):
     
     working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
     max_loads = Param.Counter(1, "Number of loads to execute before exiting")
-    #percent_reads = Param.Percent(65, "Percentage reads")
     percent_reads = Param.Percent(100, "Percentage reads")
     addr_intrlvd_or_tiled = Param.Bool(False,"If true the address partitioning across CPUs is interleaved [0,N,2N;1,N+1,2N+1;...]. Otherwise Tiled [0:N-1,N:2N-1]")
 

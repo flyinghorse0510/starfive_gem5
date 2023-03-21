@@ -103,9 +103,6 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     # this is deducted from the initial tag read latency for sequencer requests
     # dataAccessLatency may be set to 0 if one wants to consider parallel
     # data and tag lookups
-    print(options.l1repl)
-    print(options.l2repl)
-    print(options.l3repl)
     class L1ICache(RubyCache):
         dataAccessLatency = 0
         tagAccessLatency = 4
