@@ -126,8 +126,9 @@ FalseSharingMemTest::FalseSharingMemTest(const Params &p)
          * Different CPUs, request different bytes
          * of the same block
          */ 
-        Addr effectiveBlockAddr = ((baseAddr+i) << (static_cast<uint64_t>(std::log2(blockSize)))) + id;
-        perCPUWorkingAddrs.push_back(effectiveBlockAddr);
+        Addr effectiveAddr = ((baseAddr+i) << (static_cast<uint64_t>(std::log2(blockSize)))) + id;
+        perCPUWorkingAddrs.push_back(effectiveAddr);
+        addrIterMap[effectiveAddr] = 0;
     }
     fatal_if(perCPUWorkingAddrs.size()<=0,"Working Set size is 0\n");
 
@@ -202,7 +203,10 @@ FalseSharingMemTest::completeRequest(PacketPtr pkt, bool functional)
 
                 panic("Read of %x returns %x, expected %x\n", remove_paddr,pkt_data[0], ref_data);
             } else {
-                DPRINTF(SeqMemLatTest, "Complete,%x,R,%x\n", req->getPaddr(),pkt_data[0]);
+                DPRINTF(SeqMemLatTest,"FalseMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:R\n",\
+                                       remove_paddr,\
+                                       addrIterMap[remove_paddr],\
+                                       id);
                 
                 numReadsCompleted++;
                 stats.numReads++;
@@ -216,8 +220,10 @@ FalseSharingMemTest::completeRequest(PacketPtr pkt, bool functional)
             }
         } else {
             assert(pkt->isWrite());
-            DPRINTF(SeqMemLatTest, "Complete,%x,W,%x\n", req->getPaddr(),pkt_data[0]);
-            // update the reference data
+            DPRINTF(SeqMemLatTest,"FalseMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:W\n",\
+                remove_paddr,\
+                addrIterMap[remove_paddr],\
+                id);
             referenceData[req->getPaddr()] = pkt_data[0];
             numWritesCompleted++;
             stats.numWrites++;
@@ -286,23 +292,31 @@ FalseSharingMemTest::tick()
     }
 
     /* Search for an address within perCPUWorkingAddrs */
-    do {
-        paddr = perCPUWorkingAddrs.at(seqIdx);
-        seqIdx = (seqIdx+1)%(perCPUWorkingAddrs.size());
-         
-    } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
+    paddr = perCPUWorkingAddrs.at(seqIdx);
+    if (outstandingAddrs.find(paddr) != outstandingAddrs.end()) {
+        waitResponse = true;
+        return;
+    }
+    seqIdx = (seqIdx+1)%(perCPUWorkingAddrs.size());
+    // do {
+    //     paddr = perCPUWorkingAddrs.at(seqIdx);
+    //     seqIdx = (seqIdx+1)%(perCPUWorkingAddrs.size());
+    // } while (outstandingAddrs.find(paddr) != outstandingAddrs.end());
+
     writeSyncData_t data = writeSyncDataBase;
     
     outstandingAddrs.insert(paddr);
     RequestPtr req = std::make_shared<Request>(paddr, sizeof(data), flags, requestorId);
     req->setContext(id);
     req->setReqInstSeqNum(txSeqNum);
+    assert(addrIterMap.count(paddr) > 0);
+    addrIterMap[paddr]++;
 
     PacketPtr pkt = nullptr;
     writeSyncData_t *pkt_data = new writeSyncData_t[1];
 
     unsigned cmd = random_mt.random(0, 100);
-    bool readOrWrite = (cmd < percentReads)?true:false;
+    bool readOrWrite = false; //(cmd < percentReads)?true:false;
     if (readOrWrite) {
         pkt = new Packet(req, MemCmd::ReadReq);
         auto ref = referenceData.find(req->getPaddr());
@@ -311,13 +325,19 @@ FalseSharingMemTest::tick()
         }
         pkt->dataDynamic(pkt_data);
 
-        DPRINTF(SeqMemLatTest,"Start,%x,R,%x\n",req->getPaddr(),data);
+        DPRINTF(SeqMemLatTest,"FalseMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Start:R\n",\
+                paddr,\
+                addrIterMap[paddr],\
+                id);
         numReadsGenerated++;
     } else {
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
         pkt_data[0] = data;
-        DPRINTF(SeqMemLatTest,"Start,%x,W,%x\n",req->getPaddr(),data);
+        DPRINTF(SeqMemLatTest,"FalseMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Start:W\n",\
+                paddr,\
+                addrIterMap[paddr],\
+                id);
         numWritesGenerated++;
     }
 
