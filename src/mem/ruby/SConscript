@@ -71,6 +71,8 @@ DebugFlag('RubyProtocol')
 DebugFlag('RubyCHIDebugStr5')
 DebugFlag('RubyTxnTrace')
 
+DebugFlag('SnpProfile')
+
 CompoundFlag('Ruby', [ 'RubyQueue', 'RubyNetwork', 'RubyTester',
     'RubyGenerated', 'RubySlicc', 'RubySystem', 'RubyCache',
     'RubyDma', 'RubyPort', 'RubySequencer', 'RubyCacheTrace',

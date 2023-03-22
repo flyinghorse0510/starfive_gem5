@@ -47,10 +47,14 @@
 #include <stack>
 #include <set>
 
+#include "mem/ruby/common/NetDest.hh"
+
 #include "base/compiler.hh"
 #include "mem/ruby/common/Address.hh"
 #include "mem/ruby/protocol/AccessPermission.hh"
 #include "debug/RubyCHIDebugStr5.hh"
+
+#include "debug/SnpProfile.hh"
 
 namespace gem5
 {
@@ -152,6 +156,8 @@ class SnoopFilter
 
     void profileHit();
 
+    void profileDirEntry(ENTRY* entry);
+
   private:
     // Private copy constructor and assignment operator
     SnoopFilter(const SnoopFilter& obj);
@@ -194,11 +200,14 @@ class SnoopFilter
       SnoopFilterStats(statistics::Group *parent) : statistics::Group(parent),
        ADD_STAT(m_snoopfilter_misses, "Number of SnoopFilter misses"),
        ADD_STAT(m_snoopfilter_hits, "Number of SnoopFilter hits"),
-       ADD_STAT(m_snoopfilter_accesses, "Number of SnoopFilter accesses", m_snoopfilter_hits+m_snoopfilter_misses) {}
+       ADD_STAT(m_snoopfilter_accesses, "Number of SnoopFilter accesses", m_snoopfilter_hits+m_snoopfilter_misses),
+       ADD_STAT(m_snoopfilter_sharers, "Number of SnoopFilter sharers") {}
       
       statistics::Scalar m_snoopfilter_misses;
       statistics::Scalar m_snoopfilter_hits;
       statistics::Formula m_snoopfilter_accesses;
+
+      statistics::Scalar m_snoopfilter_sharers;
 
     } snoopFilterStats;
 };
@@ -216,6 +225,13 @@ void SnoopFilter<ENTRY>::profileHit() {
 template<class ENTRY>
 inline int SnoopFilter<ENTRY>::size() const {
     return m_num_entries;
+}
+
+template<class ENTRY>
+void SnoopFilter<ENTRY>::profileDirEntry(ENTRY* entry) {
+  NetDest sharers = entry->getsharers();
+  DPRINTF(SnpProfile, "sharers: %s, count=%d, getAllDest.size=%d\n", sharers, sharers.count(), sharers.getAllDest().size());
+  snoopFilterStats.m_snoopfilter_sharers += sharers.count();
 }
 
 template<class ENTRY>

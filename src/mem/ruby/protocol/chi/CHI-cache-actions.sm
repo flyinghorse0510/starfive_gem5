@@ -288,6 +288,7 @@ action(Initiate_Request, desc="") {
   }
   if ((is_valid(dir_entry)) && requiresDirEntry(tbe.reqType)) {
     directory.profileHit();
+    directory.profileDirEntry(dir_entry);
   }
 
   // model the initial tag array read
