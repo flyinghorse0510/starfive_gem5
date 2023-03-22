@@ -406,6 +406,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     WaitForSnoopFilterRepl_Pend, desc="SnoopFilter repl is not possible";
     SnoopFilterEviction,    desc="Initiate SnoopFilter eviction";
     CheckCacheFill_SFRepl,  desc="Update HNF cache upon receiving SnpCleanInvalid responses from sharers";
+    SnoopFilterHNCacheFill, desc="SnoopFilter Cache fill";
     WakeUpEvictingSnoopFilterAddr, desc="Wakeup the reqRdyPort for the SnoopFilter evicting address";
     ResetAndDeallocDirEntry, desc="Reset the directory way";
 
