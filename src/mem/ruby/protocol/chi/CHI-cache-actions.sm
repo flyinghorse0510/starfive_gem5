@@ -2901,7 +2901,7 @@ action(Start_SnoopFilterHNCacheFill, desc="") {
   } else if (is_invalid(cache_entry) && (!cache.cacheAvail(address))) {
     printTBEStateStr5(tbe);
     if (tbe.dataDirty) {
-      /* Cache Entry not valid. Also no space. Generate WriteNoSnp to SNF */
+      /* Generate WriteNoSnp to SNF */
       // tbe.actions.push(Event:WriteFEPipe);
       tbe.actions.push(Event:SendWriteNoSnp);
       // tbe.actions.pushNB(Event:DataArrayRead);
@@ -2911,6 +2911,8 @@ action(Start_SnoopFilterHNCacheFill, desc="") {
     }
     tbe.dataToBeInvalid := true;
   }
+  tbe.actions.push(Event:ResetAndDeallocDirEntry); // pushNB?
+  tbe.actions.push(Event:WakeUpEvictingSnoopFilterAddr); // pushNB?
 }
 
 
@@ -2920,6 +2922,8 @@ action(Initiate_SnoopFilterReplacement_Evict_BackInv, desc="") {
   tbe.actions.push(Event:SendSnpCleanInvalid);
   tbe.dataToBeInvalid := is_invalid(cache_entry);
   tbe.actions.pushNB(Event:TagArrayWrite);
+  tbe.actions.push(Event:ResetAndDeallocDirEntry); // pushNB?
+  tbe.actions.push(Event:WakeUpEvictingSnoopFilterAddr); // pushNB?
 }
 
 action(ResetAndDealloc_DirEntry, desc="") {
