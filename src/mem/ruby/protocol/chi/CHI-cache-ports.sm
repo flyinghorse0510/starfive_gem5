@@ -165,7 +165,7 @@ void wakeupPendingSnps(TBE tbe) {
 
 
 // Incoming snoops
-// Not snoops are not retried, so the snoop channel is stalled if no
+// Snoops are not retried, so the snoop channel is stalled if no
 // Snp TBEs available
 in_port(snpInPort, CHIRequestMsg, snpIn, rank=7) {
   if (snpInPort.isReady(clockEdge())) {
@@ -312,7 +312,6 @@ in_port(sfReplInPort, SFReplMessage, sfReplTriggerQueue, rank=12) {
     peek(sfReplInPort, SFReplMessage) {
       TBE tbe := getCurrentActiveTBE(in_msg.fromAddr);
       CacheEntry cache_entry := getCacheEntry(in_msg.fromAddr);
-      DPRINTF(RubyCHIDebugStr5,"Trigger SnoopFilter Repl=%s\n",in_msg);
       trigger(Event:SnoopFilterEviction, in_msg.fromAddr, cache_entry, tbe);
     }
   }

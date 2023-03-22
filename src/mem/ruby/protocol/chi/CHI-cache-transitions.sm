@@ -166,10 +166,8 @@ transition({I,UC,UD}, SnoopFilterEviction) {
   Pop_SFReplTriggerQueue;
 }
 
-transition(BUSY_BLKD, SnoopFilterHNCacheFill) {
-  Pop_TriggerQueue;
-  Start_SnoopFilterHNCacheFill;
-  ProcessNextState_ClearPending;
+transition(BUSY_BLKD, CheckCacheFill_SFRepl) {
+  CheckCacheFill;
 }
 
 transition(BUSY_BLKD, WakeUpEvictingSnoopFilterAddr) {

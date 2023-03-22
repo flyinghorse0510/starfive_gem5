@@ -198,11 +198,11 @@ if [ "$GATETEST" != "" ]; then
     l3_size="1KiB"
     l1d_assoc=1
     l1i_assoc=1
-    l2_assoc=2
+    l2_assoc=1
     l3_assoc=1
     NUM_LLC=1
     SEQ_TBE=32
-    LoadFactor=5
+    LoadFactor=4
     NUM_MEM=4
     NUM_DDR_XP=2
     NUM_DDR_Side=1
@@ -211,7 +211,7 @@ if [ "$GATETEST" != "" ]; then
     VC_PER_VNET=2
     LINK_LAT=1
     ROUTER_LAT=0
-    DMT=False
+    DMT=True
     DCT=False
     HNF_TBE=32
     SNF_TBE=32
@@ -219,13 +219,13 @@ if [ "$GATETEST" != "" ]; then
     TRANS=4
     MultiCoreAddrMode=True
     NETWORK="simple"
-    SNOOP_FILTER_SIZE=2
+    SNOOP_FILTER_SIZE=16
     SNOOP_FILTER_ASSOC=1
     IDEAL_SNOOP_FILTER=False
-    DEBUGFLAGS=RubyCHIDebugStr5,RubyGenerated,TxnTrace
+    DEBUGFLAGS=RubyCHIDebugStr5,RubyGenerated
 
-    WKSETLIST=(8192)
-    NUM_CPU_SET=(16)
+    WKSETLIST=(2048)
+    NUM_CPU_SET=(2)
 
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
       for WKSET in ${WKSETLIST[@]}; do
@@ -279,31 +279,20 @@ if [ "$GATETEST" != "" ]; then
           --num-snoopfilter-assoc=${SNOOP_FILTER_ASSOC} \
           --allow-infinite-SF-entries=${IDEAL_SNOOP_FILTER} \
           --num-producers=1 > ${OUTPUT_DIR}/cmd.log 2>&1
-          
-          grep -E 'hnf' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
-          grep -E 'AllocRequest|reqIn|reqOut|rspIn|datIn' ${OUTPUT_DIR}/debug.hnf.trace >  ${OUTPUT_DIR}/debug.hnf.reqalloc.trace
-          grep -E 'AllocRequest' ${OUTPUT_DIR}/debug.hnf.trace >  ${OUTPUT_DIR}/debug.hnf.state.trace
         done
     done
 
-    # for NUMCPUS in ${NUM_CPU_SET[@]}; do
-    #     for WKSET in ${WKSETLIST[@]}; do
-    #         OUTPUT_PREFIX="SnoopFilter_${NETWORK}"
-    #         OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_LoadFactor${LoadFactor}" 
-    #         grep -E 'system.cpu: Complete|system.cpu: Start' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.seqmemtest.trace
-    #         ${PY3} DebugHNFTBEAlloc.py --input ${OUTPUT_DIR} --output ${OUTPUT_DIR}
-    #     done
-    # done
-    
-    # for NUMCPUS in ${NUM_CPU_SET[@]}; do
-    #   for WKSET in ${WKSETLIST[@]}; do
-    #     OUTPUT_PREFIX="SnoopFilter_${NETWORK}"
-    #     OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_LoadFactor${LoadFactor}" 
-    #     SNOOPFILTER_MISS_STATS="${OUTPUT_ROOT}/SnoopFilterMiss.txt"
-    #     echo ${SNOOPFILTER_MISS_STATS}
-    #     echo "NUMCPUS=${NUMCPUS},WS=${WKSET}" > ${SNOOPFILTER_MISS_STATS}
-    #     grep -E 'system\.ruby\.hnf\.cntrl\.m_snoopfilter_*' ${OUTPUT_DIR}/stats.txt >> ${SNOOPFILTER_MISS_STATS}
-    #     echo "---------------------------------------------" >> ${SNOOPFILTER_MISS_STATS}
-    #   done
-    # done
+    for NUMCPUS in ${NUM_CPU_SET[@]}; do
+        for WKSET in ${WKSETLIST[@]}; do
+            OUTPUT_PREFIX="ParsecBugfix_${NETWORK}"
+            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DMT${DMT}_DCT${DCT}" 
+            echo "GateTest Parsing: ${NUMCPUS},${WKSET},DMT_${DMT},DCT_${DCT}"
+            grep -E 'hnf' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
+            ${PY3} processSLICCTrace.py --input=${OUTPUT_DIR}/debug.hnf.trace \
+                                        --output=${OUTPUT_DIR}/debug.hnf.addrOrdered.trace \
+                                        --tgt-addr=0x80
+            #   grep -E 'AllocRequest|reqIn|reqOut|rspIn|datIn' ${OUTPUT_DIR}/debug.hnf.trace >  ${OUTPUT_DIR}/debug.hnf.reqalloc.trace
+            #   grep -E 'AllocRequest' ${OUTPUT_DIR}/debug.hnf.trace >  ${OUTPUT_DIR}/debug.hnf.state.trace
+        done
+    done
 fi
