@@ -156,7 +156,7 @@ class SnoopFilter
 
     void profileHit();
 
-    void profileDirEntry(ENTRY* entry);
+    void profileAlloc();
 
   private:
     // Private copy constructor and assignment operator
@@ -200,15 +200,14 @@ class SnoopFilter
       SnoopFilterStats(statistics::Group *parent) : statistics::Group(parent),
        ADD_STAT(m_snoopfilter_misses, "Number of SnoopFilter misses"),
        ADD_STAT(m_snoopfilter_hits, "Number of SnoopFilter hits"),
-       ADD_STAT(m_snoopfilter_accesses, "Number of SnoopFilter accesses", m_snoopfilter_hits+m_snoopfilter_misses),
-       ADD_STAT(m_snoopfilter_sharers, "Number of SnoopFilter sharers") {}
+       ADD_STAT(m_snoopfilter_alloc,"Number of SnoopFilter alloc"),
+       ADD_STAT(m_snoopfilter_accesses, "Number of SnoopFilter accesses", m_snoopfilter_hits+m_snoopfilter_alloc) {}
       
       statistics::Scalar m_snoopfilter_misses;
       statistics::Scalar m_snoopfilter_hits;
+      statistics::Scalar m_snoopfilter_alloc;
       statistics::Formula m_snoopfilter_accesses;
-
-      statistics::Scalar m_snoopfilter_sharers;
-
+      
     } snoopFilterStats;
 };
 
@@ -223,15 +222,13 @@ void SnoopFilter<ENTRY>::profileHit() {
 }
 
 template<class ENTRY>
-inline int SnoopFilter<ENTRY>::size() const {
-    return m_num_entries;
+void SnoopFilter<ENTRY>::profileAlloc() {
+  snoopFilterStats.m_snoopfilter_alloc++;
 }
 
 template<class ENTRY>
-void SnoopFilter<ENTRY>::profileDirEntry(ENTRY* entry) {
-  NetDest sharers = entry->getsharers();
-  DPRINTF(SnpProfile, "sharers: %s, count=%d, getAllDest.size=%d\n", sharers, sharers.count(), sharers.getAllDest().size());
-  snoopFilterStats.m_snoopfilter_sharers += sharers.count();
+inline int SnoopFilter<ENTRY>::size() const {
+    return m_num_entries;
 }
 
 template<class ENTRY>

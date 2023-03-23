@@ -216,8 +216,8 @@ fi
 if [ "$GATETEST" != "" ]; then
     l1d_size="128B"
     l1i_size="128B"
-    l2_size="512B"
-    l3_size="1KiB"
+    l2_size="4KiB"
+    l3_size="16KiB"
     l1d_assoc=1
     l1i_assoc=1
     l2_assoc=1
@@ -241,22 +241,23 @@ if [ "$GATETEST" != "" ]; then
     TRANS=4
     MultiCoreAddrMode=True
     NETWORK="simple"
-    SNOOP_FILTER_SIZE=16
+    SNOOP_FILTER_SIZE=2
     SNOOP_FILTER_ASSOC=1
     IDEAL_SNOOP_FILTER=False
-    DEBUGFLAGS=RubyCHIDebugStr5,RubyGenerated
+    DEBUGFLAGS=RubyCHIDebugStr5,SeqMemLatTest,TxnTrace
 
-    WKSETLIST=(2048)
-    NUM_CPU_SET=(4)
+    WKSETLIST=(1024)
+    NUM_CPU_SET=(1)
 
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
         for WKSET in ${WKSETLIST[@]}; do
             for DMT in ${DMT_CONFIG_SET[@]}; do
                 for DCT in ${DCT_CONFIG_SET[@]}; do
-                    OUTPUT_PREFIX="ParsecBugfix_${NETWORK}"
-                    OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DMT${DMT}_DCT${DCT}" 
-                    echo "GateTest Started: NUMCPUS_${NUMCPUS},WS_${WKSET},DMT_${DMT},DCT_${DCT}"
+                    OUTPUT_PREFIX="MemLoad_${NETWORK}"
+                    OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_NumLLC${NUM_LLC}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DMT${DMT}_DCT${DCT}"
+                    echo "GateTest Started: NUMCPUS_${NUMCPUS},WS_${WKSET},DMT_${DMT},DCT_${DCT},NUMLLC_${NUM_LLC}"
                     mkdir -p ${OUTPUT_DIR}
+                    set > ${OUTPUT_DIR}/Variables.txt
                     $GEM5_DIR/build/${ISA}_${CCPROT}/${BUILDTYPE} \
                       --debug-flags=$DEBUGFLAGS --debug-file=debug.trace \
                       -d $OUTPUT_DIR \
@@ -313,10 +314,11 @@ if [ "$GATETEST" != "" ]; then
         for WKSET in ${WKSETLIST[@]}; do
             for DMT in ${DMT_CONFIG_SET[@]}; do
                 for DCT in ${DCT_CONFIG_SET[@]}; do
-                    OUTPUT_PREFIX="ParsecBugfix_${NETWORK}"
-                    OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DMT${DMT}_DCT${DCT}" 
+                    OUTPUT_PREFIX="MemLoad_${NETWORK}"
+                    OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_NumLLC${NUM_LLC}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DMT${DMT}_DCT${DCT}"
                     echo "GateTest Parsing: ${NUMCPUS},${WKSET},DMT_${DMT},DCT_${DCT}"
                     grep -E 'hnf' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
+                    grep -E 'reqIn|SnoopFilterAlloc|SnoopFilterRepl|PQSTZ' ${OUTPUT_DIR}/debug.hnf.trace > ${OUTPUT_DIR}/debug.hnf.tgt.trace 
                     ${PY3} processSLICCTrace.py --input=${OUTPUT_DIR}/debug.hnf.trace \
                                                 --output=${OUTPUT_DIR}/debug.hnf.addrOrdered.trace \
                                                 --tgt-addr=0x5c0
