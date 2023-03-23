@@ -55,6 +55,9 @@ cpu_cycle_pat = re.compile('^system\.cpu(\d*)\.numCycles\s+(\d+)')
 ## groups we need: 1) cpu's id 2) LD/ST 3) mean/min_value/max_value 4) latency
 seq_lat_pat = re.compile('^system\.cpu(\d*)\.data_sequencer\.(LD|ST)LatDist::(mean|min_value|max_value)\s+(\d+\.?\d+|\d+)')
 
+## snoop's pattern
+llc_snpout_pat = re.compile('^system\.ruby\.hnf(\d*)\.cntrl\.snpOut\.m_msg_count\s+(\d+)')
+l2p_snpin_pat = re.compile('^system\.cpu(\d*)\.l2\.snpIn\.m_msg_count\s+(\d+)')
 
 class Printable:
     def __repr__(self):
@@ -126,6 +129,8 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], d
     cpu_cycle_sch = re.search(cpu_cycle_pat, line)
     priv_cache_sch = re.search(priv_cache_demand_pat, line)
     seq_lat_sch = re.search(seq_lat_pat, line)
+    llc_snpout_sch = re.search(llc_snpout_pat, line)
+    l2p_snpin_sch = re.search(l2p_snpin_pat, line)
 
     if sim_tick_sch:
         clk.sim_tick = int(sim_tick_sch.group(1))
@@ -233,6 +238,16 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], d
         seq_lat:float = float(seq_lat_sch.group(4))
 
         setattr(seqs[seq_id], seq_op+'_'+seq_stats, seq_lat)
+
+    # ^system\.ruby\.hnf(\d*)\.cntrl\.snpout\.m_msg_count\s+(\d+)
+    elif llc_snpout_sch:
+        llc_id = 0 if len(llcs) == 1 else int(llc_snpout_sch.group(1))
+        llcs[llc_id].snpOut = int(llc_snpout_sch.group(2))
+        
+    # ^system\.cpu(\d*)\.l2\.snpin\.m_msg_count\s+(\d+)
+    elif l2p_snpin_sch:
+        cpu_id = 0 if len(cpus) == 1 else int(l2p_snpin_sch.group(1))
+        l2ps[cpu_id].snpIn = int(l2p_snpin_sch.group(2))
 
 
 def get_all_sim_dir(root_dir):
