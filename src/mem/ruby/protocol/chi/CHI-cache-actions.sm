@@ -2823,6 +2823,7 @@ action(Finalize_UpdateCacheFromTBE, desc="") {
     DPRINTF(RubySlicc, "Cached data %s pfb %s\n", tbe.dataBlk, cache_entry.HWPrefetched);
   } else {
     // make sure only deallocate the cache entry if data is invalid
+    printTBEStateStr5(tbe);
     assert(tbe.dataValid == false);
     if (is_valid(cache_entry)) {
       cache.deallocate(address);
@@ -2877,18 +2878,44 @@ action(Deallocate_DirEntry, desc="") {
 }
 
 // SnoopFilter related actions 
-
 action(Initiate_SnoopFilterReplacement_WB_BackInv, desc="") {
   assert(is_HN);
   assert(is_valid(tbe));
   assert(tbe.dataDirty || tbe.dataMaybeDirtyUpstream);
   tbe.doCacheFill := true;
   tbe.actions.push(Event:SendSnpCleanInvalid);
-  if (cache.cacheAvail(address)) { // Cache it if you have space
-    tbe.actions.push(Event:CheckCacheFill_SFRepl);
-    tbe.actions.push(Event:TagArrayWrite);
-  }
+  tbe.actions.push(Event:WriteFEPipe);
+  tbe.actions.push(Event:SnoopFilterHNCacheFill);
 }
+
+action(Start_SnoopFilterHNCacheFill, desc="") {
+  assert(is_HN);
+  assert(is_valid(tbe));
+  assert(tbe.dataDirty || tbe.dataUnique);
+  tbe.dataToBeInvalid := is_invalid(cache_entry);
+  if (is_invalid(cache_entry) && (cache.cacheAvail(address))) {
+    /* Cache Entry not valid but space is available. Allocate */
+    tbe.dataToBeInvalid := false;
+    set_cache_entry(cache.allocate(address, new CacheEntry));
+    tbe.actions.pushFront(Event:DataArrayWriteOnFill);
+    tbe.actions.pushFront(Event:FillPipe);
+  } else if (is_invalid(cache_entry) && (!cache.cacheAvail(address))) {
+    printTBEStateStr5(tbe);
+    if (tbe.dataDirty) {
+      /* Generate WriteNoSnp to SNF */
+      // tbe.actions.push(Event:WriteFEPipe);
+      tbe.actions.push(Event:SendWriteNoSnp);
+      // tbe.actions.pushNB(Event:DataArrayRead);
+      tbe.actions.push(Event:WriteBEPipe);
+      tbe.actions.push(Event:SendWBData);
+      // tbe.actions.pushNB(Event:TagArrayWrite);
+    }
+    tbe.dataToBeInvalid := true;
+  }
+  tbe.actions.push(Event:ResetAndDeallocDirEntry); // pushNB?
+  tbe.actions.push(Event:WakeUpEvictingSnoopFilterAddr); // pushNB?
+}
+
 
 action(Initiate_SnoopFilterReplacement_Evict_BackInv, desc="") {
   assert(is_HN);
@@ -2896,6 +2923,8 @@ action(Initiate_SnoopFilterReplacement_Evict_BackInv, desc="") {
   tbe.actions.push(Event:SendSnpCleanInvalid);
   tbe.dataToBeInvalid := is_invalid(cache_entry);
   tbe.actions.pushNB(Event:TagArrayWrite);
+  tbe.actions.push(Event:ResetAndDeallocDirEntry); // pushNB?
+  tbe.actions.push(Event:WakeUpEvictingSnoopFilterAddr); // pushNB?
 }
 
 action(ResetAndDealloc_DirEntry, desc="") {
