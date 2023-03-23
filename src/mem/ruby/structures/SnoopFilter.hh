@@ -152,6 +152,8 @@ class SnoopFilter
 
     void profileHit();
 
+    void profileAlloc();
+
   private:
     // Private copy constructor and assignment operator
     SnoopFilter(const SnoopFilter& obj);
@@ -194,10 +196,12 @@ class SnoopFilter
       SnoopFilterStats(statistics::Group *parent) : statistics::Group(parent),
        ADD_STAT(m_snoopfilter_misses, "Number of SnoopFilter misses"),
        ADD_STAT(m_snoopfilter_hits, "Number of SnoopFilter hits"),
-       ADD_STAT(m_snoopfilter_accesses, "Number of SnoopFilter accesses", m_snoopfilter_hits+m_snoopfilter_misses) {}
+       ADD_STAT(m_snoopfilter_alloc,"Number of SnoopFilter alloc"),
+       ADD_STAT(m_snoopfilter_accesses, "Number of SnoopFilter accesses", m_snoopfilter_hits+m_snoopfilter_alloc) {}
       
       statistics::Scalar m_snoopfilter_misses;
       statistics::Scalar m_snoopfilter_hits;
+      statistics::Scalar m_snoopfilter_alloc;
       statistics::Formula m_snoopfilter_accesses;
 
     } snoopFilterStats;
@@ -211,6 +215,11 @@ void SnoopFilter<ENTRY>::profileMiss() {
 template<class ENTRY>
 void SnoopFilter<ENTRY>::profileHit() {
   snoopFilterStats.m_snoopfilter_hits++;
+}
+
+template<class ENTRY>
+void SnoopFilter<ENTRY>::profileAlloc() {
+  snoopFilterStats.m_snoopfilter_alloc++;
 }
 
 template<class ENTRY>

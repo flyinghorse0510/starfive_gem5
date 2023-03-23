@@ -768,6 +768,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     Addr cacheProbe(Addr);
     void profileMiss();
     void profileHit();
+    void profileAlloc();
     bool allWaysBusy(Addr);
     void setWayBusy(Addr);
     void resetWayBusy(Addr);

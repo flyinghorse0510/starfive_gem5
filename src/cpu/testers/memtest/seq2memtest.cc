@@ -276,7 +276,7 @@ Seq2MemTest::tick()
     }
 
     /* Already generated all the transactions */
-    if ((numReadsGenerated+numWritesGenerated) > maxLoads) {
+    if ((numReadsGenerated+numWritesGenerated) >= maxLoads) {
         waitResponse = true;
         return;
     }

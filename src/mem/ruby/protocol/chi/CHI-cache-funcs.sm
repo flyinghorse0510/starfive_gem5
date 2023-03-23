@@ -1140,7 +1140,6 @@ State makeFinalState(TBE tbe, CacheEntry cache_entry, DirEntry dir_entry) {
       cache_state := State:SC;
     }
   }
-  DPRINTF(RubyCHIDebugStr5,"TBEState cache_entry_valid=%d,dir_entry_valid=%d\n",is_valid(cache_entry),is_valid(dir_entry));
 
   return makeFinalStateHelper(cache_state, dir_state);
 }
