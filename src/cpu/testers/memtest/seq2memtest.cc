@@ -123,6 +123,7 @@ Seq2MemTest::Seq2MemTest(const Params &p)
     for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
         Addr effectiveBlockAddr=(addrInterleavedOrTiled)?(baseAddr+(num_cpus*i)+id):
                                 (baseAddr+(numPerCPUWorkingBlocks*id)+i);
+        addrIterMap[effectiveBlockAddr] = 0;
         perCPUWorkingBlocks.push_back(effectiveBlockAddr<<(static_cast<uint64_t>(std::log2(blockSize))));
     }
     fatal_if(perCPUWorkingBlocks.size()<=0,"Working Set size is 0\n");
@@ -194,11 +195,12 @@ Seq2MemTest::completeRequest(PacketPtr pkt, bool functional)
         if (pkt->isRead()) {
             writeSyncData_t ref_data = referenceData[req->getPaddr()];
             if (pkt_data[0] != ref_data) {
-                // Incorrect data read. Probably due to unhandled race conditions
-
                 panic("Read of %x returns %x, expected %x\n", remove_paddr,pkt_data[0], ref_data);
             } else {
-                DPRINTF(SeqMemLatTest, "Complete,%x,R,%x\n", req->getPaddr(),pkt_data[0]);
+                DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:R\n",\
+                                       remove_paddr,\
+                                       addrIterMap[remove_paddr],\
+                                       id);
                 
                 numReadsCompleted++;
                 stats.numReads++;
@@ -212,7 +214,10 @@ Seq2MemTest::completeRequest(PacketPtr pkt, bool functional)
             }
         } else {
             assert(pkt->isWrite());
-            DPRINTF(SeqMemLatTest, "Complete,%x,W,%x\n", req->getPaddr(),pkt_data[0]);
+            DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:W\n",\
+                remove_paddr,\
+                addrIterMap[remove_paddr],\
+                id);
             // update the reference data
             referenceData[req->getPaddr()] = pkt_data[0];
             numWritesCompleted++;
@@ -295,6 +300,8 @@ Seq2MemTest::tick()
     RequestPtr req = std::make_shared<Request>(paddr, 2, flags, requestorId);
     req->setContext(id);
     req->setReqInstSeqNum(txSeqNum);
+    assert(addrIterMap.count(paddr) > 0);
+    addrIterMap[paddr]++;
 
     PacketPtr pkt = nullptr;
     writeSyncData_t *pkt_data = new writeSyncData_t[1];
@@ -309,13 +316,19 @@ Seq2MemTest::tick()
         }
         pkt->dataDynamic(pkt_data);
 
-        DPRINTF(SeqMemLatTest,"Start,%x,R,%x\n",req->getPaddr(),data);
+        DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Start:R\n",\
+                paddr,\
+                addrIterMap[paddr],\
+                id);
         numReadsGenerated++;
     } else {
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
         pkt_data[0] = data;
-        DPRINTF(SeqMemLatTest,"Start,%x,W,%x\n",req->getPaddr(),data);
+        DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Start:W\n",\
+                paddr,\
+                addrIterMap[paddr],\
+                id);
         numWritesGenerated++;
     }
 

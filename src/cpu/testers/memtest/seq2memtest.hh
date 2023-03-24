@@ -175,6 +175,8 @@ class Seq2MemTest : public ClockedObject
     uint64_t numPerCPUWorkingBlocks;
     
     std::vector<Addr> perCPUWorkingBlocks;
+
+    std::unordered_map<Addr,unsigned> addrIterMap;
     
     bool addrInterleavedOrTiled;
 

@@ -119,7 +119,7 @@ def parseTrueProdConsTrace(logFile, dumpFile):
             WriteEnd=v['write_end']
             print(f'{addr},{it},{WriteStart},{WriteEnd},{ReadStart},{ReadEnd}',file=fw)
 
-def parseFalseSharingTrace(logFile, dumpFile):
+def parseMemTest(logFile, dumpFile):
     tickPerCyc = 500
     rwStartPat=re.compile(r'^(\s*\d*): (\S+): FalseMemTest\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),Start:([RW])')
     rwEndPat=re.compile(r'^(\s*\d*): (\S+): FalseMemTest\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),Complete:([RW])')
@@ -195,8 +195,8 @@ def main():
     if options.bench == 'migratory' :
         parseMigratoryTrace(allMsgLog,msgDumpCsv)
         pcp.getMsgTrace(allMsgLog,singleMsgDumpCsv,0,'0x400','all')
-    elif options.bench=='falsesharing_test' :
-        parseFalseSharingTrace(allMsgLog,msgDumpCsv)
+    elif (options.bench=='falsesharing_test') or (options.bench=='sfreplmem_test') :
+        parseMemTest(allMsgLog,msgDumpCsv)
     else :
         parseTrueProdConsTrace(allMsgLog,msgDumpCsv)
     retDict = analyzeCsv(options,msgDumpCsv,options.bench)
