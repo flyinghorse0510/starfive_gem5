@@ -121,8 +121,8 @@ def parseTrueProdConsTrace(logFile, dumpFile):
 
 def parseMemTest(logFile, dumpFile):
     tickPerCyc = 500
-    rwStartPat=re.compile(r'^(\s*\d*): (\S+): FalseMemTest\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),Start:([RW])')
-    rwEndPat=re.compile(r'^(\s*\d*): (\S+): FalseMemTest\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),Complete:([RW])')
+    rwStartPat=re.compile(r'^(\s*\d*): (\S+): SFReplMemTest\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),Start:([RW])')
+    rwEndPat=re.compile(r'^(\s*\d*): (\S+): SFReplMemTest\|Addr:([0-9a-fx]+),Iter:([0-9]+),Reqtor:([0-9]+),Complete:([RW])')
     txnDict = dict()
     with open(logFile,'r') as f :
         for line in f :
@@ -157,8 +157,8 @@ def analyzeCsv(options,msgDumpCsv,bench='migratory'):
     dfX = pd.read_csv(msgDumpCsv)
     if bench == 'migratory':
         dfX['lat'] = dfX['WriteEnd']-dfX['ReadStart']
-    elif bench == 'falsesharing_test' :
-        dfX = dfX.query('End > 0')
+    elif (bench == 'falsesharing_test') or (options.bench=='sfreplmem_test') :
+        # dfX = dfX.query('End > 0')
         dfX['lat'] = dfX['End']-dfX['Start']
     else :
         dfX['lat'] = dfX['ReadEnd']-dfX['WriteStart']
@@ -175,6 +175,8 @@ def analyzeCsv(options,msgDumpCsv,bench='migratory'):
         'med_lat': medLat,
         'max_lat': maxLat
     })
+    if options.bench=='sfreplmem_test' :
+        retDict['working_set'] = options.working_set
     if bench == 'true_prod_cons_test' :
         bw = (64*len(dfX.index))/(dfX['ReadEnd'].max()-dfX['WriteStart'].min())
         retDict['bw'] = bw
@@ -188,6 +190,7 @@ def main():
     parser.add_argument('--allow-SD',required=True, help="allow SD state") # True for MOESI, False for MESI
     parser.add_argument('--dct',required=True)
     parser.add_argument('--bench',required=True,type=str,default='migratory')
+    parser.add_argument('--working-set',required=False,type=int,default=1024,help="Working set in bytes")
     options = parser.parse_args()
     allMsgLog=os.path.join(options.input,'debug.trace')
     msgDumpCsv=os.path.join(options.output,'AllMsgLatDump.csv')
