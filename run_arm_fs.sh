@@ -247,7 +247,7 @@ if [ "$TEST" == "REAL" ]; then
 l1d_size="64KiB"
 l1i_size="64KiB"
 l2_size="512KiB"
-l3_size="4MiB" #"32KiB" #"16KiB" #"1024KiB" #"256KiB"
+l3_size="2MiB" #"32KiB" #"16KiB" #"1024KiB" #"256KiB"
 l1d_assoc=8
 l1i_assoc=8
 l2_assoc=8
@@ -298,6 +298,10 @@ DEBUG_FLAGS=PseudoInst
 SNPFILTER_ENTRIES=16384 # covfactor*(512KiB*NUMCPUS)/(NUM_LLC*64B)=2*(512Ki)/64
 SNPFILTER_ASSOC=8
 FS_ROOT="${WORKSPACE}/GEM5_ARM_FS_SNPFILTER/COVFACTOR_2"
+
+# SNPFILTER_ENTRIES=8192 # covfactor*(512KiB*NUMCPUS)/(NUM_LLC*64B)=2*(512Ki)/64
+# SNPFILTER_ASSOC=8
+# FS_ROOT="${WORKSPACE}/GEM5_ARM_FS_SNPFILTER_KEEPDIR/COVFACTOR_1"
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"

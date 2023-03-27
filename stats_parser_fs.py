@@ -59,6 +59,10 @@ seq_lat_pat = re.compile('^system\.cpu(\d*)\.data_sequencer\.(LD|ST)LatDist::(me
 llc_snpout_pat = re.compile('^system\.ruby\.hnf(\d*)\.cntrl\.snpOut\.m_msg_count\s+(\d+)')
 l2p_snpin_pat = re.compile('^system\.cpu(\d*)\.l2\.snpIn\.m_msg_count\s+(\d+)')
 
+## snoop filter's pattern
+## groups we need: 1) hnf's id 2) misses/hits/alloc/accesses 3)num of misses/hits/alloc/accesses
+snp_ftr_pat = re.compile('^system\.ruby\.hnf(\d*)\.cntrl\.m_snoopfilter_(misses|hits|alloc|accesses)\s+(\d+)')
+
 class Printable:
     def __repr__(self):
         return str(vars(self))
@@ -71,6 +75,14 @@ class CPU(Printable):
         self.inst = inst
         self.cycle = cycle
 
+    @classmethod
+    def cpu_ipc(cls, cpu_df:pd.DataFrame):
+        cpu_sum = pd.Series(cpu_df.sum(), name='Total')
+        cpu_df = pd.concat([cpu_df, cpu_sum.to_frame().T])
+        cpu_df['ipc'] = cpu_df['inst']/cpu_df['cycle']
+        return cpu_df
+
+
 class SEQ(Printable):
     def __init__(self,id=0):
         self.id = id
@@ -80,6 +92,18 @@ class Cache(Printable):
         self.hit = hit
         self.miss = miss
         self.access = access
+
+    @classmethod
+    def cache_hit_rate(cls, cache_df:pd.DataFrame):
+        cache_sum = pd.Series(cache_df.sum(), name='Total')
+        cache_df = pd.concat([cache_df, cache_sum.to_frame().T])
+        cache_df['hit_rate'] = cache_df['hit']/cache_df['access']
+        return cache_df
+    
+    @classmethod
+    def cache_readTxn(cls, cache_df:pd.DataFrame):
+        cache_df['ReadS/U'] = cache_df['ReadS']+cache_df['ReadU']
+        return cache_df
 
 class LLC(Cache):
     def __init__(self,hit=0,miss=0,access=0,reack=0,ReadS=0,ReadU=0,WriteB=0):
@@ -100,6 +124,19 @@ class L1D(PrivCache):
 class L1I(PrivCache):
     pass
 
+class SNP(Cache):
+    def __init__(self, llc_id, hit=0,miss=0,access=0,alloc=0):
+        super(SNP,self).__init__(hit,miss,access)
+        self.llc_id=llc_id
+        self.alloc=alloc
+
+    @classmethod
+    def cache_miss_rate(cls, cache_df:pd.DataFrame):
+        cache_sum = pd.Series(cache_df.sum(), name='Total')
+        cache_df = pd.concat([cache_df, cache_sum.to_frame().T])
+        cache_df['miss_rate'] = cache_df['miss']/cache_df['access']
+        return cache_df
+
 class L2P(PrivCache):
     def __init__(self, ReadS=0, ReadU=0, WriteB=0):
         self.ReadS = ReadS
@@ -118,7 +155,7 @@ class CLK(Printable):
         self.clk_domain = clk_domain
 
 # parse one line each time
-def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], ddrs:List[DDR], l1ds:List[L1D], l1is:List[L1I], l2ps:List[L2P]):
+def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], snps:List[SNP], ddrs:List[DDR], l1ds:List[L1D], l1is:List[L1I], l2ps:List[L2P]):
     sim_tick_sch = re.search(sim_tick_pat, line)
     clk_domain_sch = re.search(clk_domain_pat, line)
     llc_demand_sch = re.search(llc_demand_pat, line)
@@ -131,6 +168,7 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], d
     seq_lat_sch = re.search(seq_lat_pat, line)
     llc_snpout_sch = re.search(llc_snpout_pat, line)
     l2p_snpin_sch = re.search(l2p_snpin_pat, line)
+    snp_ftr_sch = re.search(snp_ftr_pat, line)
 
     if sim_tick_sch:
         clk.sim_tick = int(sim_tick_sch.group(1))
@@ -249,6 +287,23 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], d
         cpu_id = 0 if len(cpus) == 1 else int(l2p_snpin_sch.group(1))
         l2ps[cpu_id].snpIn = int(l2p_snpin_sch.group(2))
 
+    # groups we need: 1) hnf's id 2) misses/hits/alloc/accesses 3)num of misses/hits/alloc/accesses
+    elif snp_ftr_sch:
+        llc_id = 0 if len(llcs) == 1 else int(snp_ftr_sch.group(1))
+        snp_ftr_op = snp_ftr_sch.group(2)
+        snp_ftr_num_op = int(snp_ftr_sch.group(3))
+
+        if snp_ftr_op == 'misses':
+            snps[llc_id].miss = snp_ftr_num_op
+        elif snp_ftr_op == 'hits':
+            snps[llc_id].hit = snp_ftr_num_op
+        elif snp_ftr_op == 'alloc':
+            snps[llc_id].alloc = snp_ftr_num_op
+        elif snp_ftr_op == 'accesses':
+            snps[llc_id].access = snp_ftr_num_op
+        else:
+            raise TypeError(f'parse_stats():snp_ftr_sch: Unrecognized snp_ftr_op {snp_ftr_op}')
+
 
 def get_all_sim_dir(root_dir):
     # Recursive function to find all files named "stats.txt" in the folder and its subfolders
@@ -322,6 +377,7 @@ def parse_stats_file(args:argparse.Namespace):
     cpus = [CPU(i) for i in range(args.NUMCPUS)]
     seqs = [SEQ(i) for i in range(args.NUMCPUS)]
     llcs = [LLC(i) for i in range(args.NUM_LLC)]
+    snps = [SNP(i) for i in range(args.NUM_LLC)]
     l1ds = [L1D(i) for i in range(args.NUMCPUS)]
     l1is = [L1I(i) for i in range(args.NUMCPUS)]
     l2ps = [L2P(i) for i in range(args.NUMCPUS)]
@@ -341,53 +397,44 @@ def parse_stats_file(args:argparse.Namespace):
         for idx,line in enumerate(f):
             if line == '---------- End Simulation Statistics   ----------\n':
                 break
-            parse_stats(line, clk, cpus, seqs, llcs, ddrs, l1ds, l1is, l2ps)
+            parse_stats(line, clk, cpus, seqs, llcs, snps, ddrs, l1ds, l1is, l2ps)
     
-    logging.debug(f'clk:{clk}\ncpus:{cpus}\nseqs:{seqs}\nllcs:{llcs}\nl1ds:{l1ds}\nl1is:{l1is}\nl2ps:{l2ps}\nddrs:{ddrs}')
+    logging.debug(f'clk:{clk}\ncpus:{cpus}\nseqs:{seqs}\nllcs:{llcs}\nsnps:{snps}\nl1ds:{l1ds}\nl1is:{l1is}\nl2ps:{l2ps}\nddrs:{ddrs}')
 
     df_dict = {
         'clk': pd.DataFrame([vars(clk)]),
         'cpu': pd.DataFrame([vars(item) for item in cpus]),
         'seq': pd.DataFrame([vars(item) for item in seqs]),
         'llc': pd.DataFrame([vars(item) for item in llcs]),
+        'snp': pd.DataFrame([vars(item) for item in snps]),
         'l1d': pd.DataFrame([vars(item) for item in l1ds]),
         'l1i': pd.DataFrame([vars(item) for item in l1is]),
         'l2p': pd.DataFrame([vars(item) for item in l2ps]),
         'ddr': pd.DataFrame([vars(item) for item in ddrs]),
-    }
+    }    
 
-    def cache_hit_rate(cache_df:pd.DataFrame):
-        cache_sum = pd.Series(cache_df.sum(), name='Total')
-        cache_df = pd.concat([cache_df, cache_sum.to_frame().T])
-        cache_df['hit_rate'] = cache_df['hit']/cache_df['access']
-        return cache_df
+    # cache hit rate
+    df_dict['l1d'] = Cache.cache_hit_rate(df_dict['l1d'])
+    df_dict['l1i'] = Cache.cache_hit_rate(df_dict['l1i'])
+    df_dict['l2p'] = Cache.cache_hit_rate(df_dict['l2p'])
+    df_dict['llc'] = Cache.cache_hit_rate(df_dict['llc'])
     
-    def cache_readTxn(cache_df:pd.DataFrame):
-        cache_df['ReadS/U'] = cache_df['ReadS']+cache_df['ReadU']
-        return cache_df
-    
-    def cpu_ipc(cpu_df:pd.DataFrame):
-        cpu_sum = pd.Series(cpu_df.sum(), name='Total')
-        cpu_df = pd.concat([cpu_df, cpu_sum.to_frame().T])
-        cpu_df['ipc'] = cpu_df['inst']/cpu_df['cycle']
-        return cpu_df
+    # cache readS/U
+    df_dict['llc'] = Cache.cache_readTxn(df_dict['llc'])
+    df_dict['l2p'] = Cache.cache_readTxn(df_dict['l2p'])
 
-    df_dict['l1d'] = cache_hit_rate(df_dict['l1d'])
-    df_dict['l1i'] = cache_hit_rate(df_dict['l1i'])
-    df_dict['l2p'] = cache_hit_rate(df_dict['l2p'])
-    df_dict['llc'] = cache_hit_rate(df_dict['llc'])
-    
-    df_dict['llc'] = cache_readTxn(df_dict['llc'])
-    df_dict['l2p'] = cache_readTxn(df_dict['l2p'])
+    # cpu ipc
+    df_dict['cpu'] = CPU.cpu_ipc(df_dict['cpu'])
 
-    df_dict['cpu'] = cpu_ipc(df_dict['cpu'])
+    # snoop filter
+    df_dict['snp'] = SNP.cache_miss_rate(df_dict['snp'])
 
     logging.debug(f'DataFrames:\ncpu:\n{df_dict["cpu"]}\nl1d:\n{df_dict["l1d"]}\nl1i:\n{df_dict["l1i"]}\nl2p:\n{df_dict["l2p"]}\nllc:\n{df_dict["llc"]}')
 
     [df.to_csv(f'{args.OUTPUT_DIR}/{name}.csv') for name, df in df_dict.items()]
 
     with open(output_file_path, 'w') as f:
-        f.write(f'clk:\n{df_dict["clk"]}\n\ncpu:\n{df_dict["cpu"]}\n\nseq:\n{df_dict["seq"]}\n\nl1d:\n{df_dict["l1d"]}\n\nl1i:\n{df_dict["l1i"]}\n\nl2p:\n{df_dict["l2p"]}\n\nllc:\n{df_dict["llc"]}')
+        f.write(f'clk:\n{df_dict["clk"]}\n\ncpu:\n{df_dict["cpu"]}\n\nseq:\n{df_dict["seq"]}\n\nl1d:\n{df_dict["l1d"]}\n\nl1i:\n{df_dict["l1i"]}\n\nl2p:\n{df_dict["l2p"]}\n\nllc:\n{df_dict["llc"]}\n\nsnoop filter:\n{df_dict["snp"]}')
 
     logging.info(f'written to {output_file_path}')
 
@@ -420,7 +467,8 @@ def parse_stats_file(args:argparse.Namespace):
         'llc_hit':[df_dict['llc'].loc['Total','hit']],
         'llc_miss':[df_dict['llc'].loc['Total','miss']],
         'llc_access':[df_dict['llc'].loc['Total','access']],
-        'llc_hitrate':[df_dict['llc'].loc['Total','hit_rate']],        
+        'llc_hitrate':[df_dict['llc'].loc['Total','hit_rate']],
+        'snoop_filter_missrate':[df_dict['snp'].loc['Total','miss_rate']]
     },index=None)
     if args.print_dir:
         agg_df['outdir'] = args.OUTPUT_DIR
