@@ -39,7 +39,12 @@ CHECKPNT_CPU="NonCachingSimpleCPU"  # NonCachingSimpleCPU
 RESTORE_CPU_SET=("TimingSimpleCPU")  # AtomicSimpleCPU
 
 # BENCHMARK_NAMES=("blackscholes" "canneal" "facesim" "ferret" "fluidanimate" "freqmine" "streamcluster" "swaptions")
-BENCHMARK_NAMES=("blackscholes" "canneal" "facesim" "ferret" "fluidanimate" "freqmine" "streamcluster" "swaptions")
+BENCHMARK_NAMES=("facesim")
+
+# BENCHMARK_NAMES=("splash2x.barnes" "splash2x.cholesky" "splash2x.fft" "splash2x.fmm" "splash2x.lu_cb"
+#       "splash2x.lu_ncb" "splash2x.ocean_cp" "splash2x.ocean_ncp" "splash2x.radiosity" "splash2x.radix"
+#       "splash2x.raytrace" "splash2x.water_nsquared" "splash2x.water_spatial")
+
 BENCHMARK_SIZE="simsmall" # simmedium
 
 buildType="gem5.opt"
@@ -90,7 +95,14 @@ while getopts "hbc:r:d:s:a:t:g:" options; do
 done
 
 CHECKPNT_SCRIPT="${GEM5_DIR}/configs/boot/hack_back_ckpt.rcS"
-PARSEC_SCRIPT_DIR="/home/zhiang.li/arm/m5_path/parsec_scripts"
+
+# original configuration: need to clear out workspace and uncompress
+# PARSEC_SCRIPT_DIR="/home/zhiang.li/arm/m5_path/parsec_scripts"
+# DISK_IMG="expanded-ubuntu-18.04-arm64-docker.img"
+
+# keep the output of the workspace and donot uncompress
+PARSEC_SCRIPT_DIR="/home/zhiang.li/arm/m5_path/parsec_keepdir_scripts"
+DISK_IMG="expanded-ubuntu-18.04-arm64-keepdir.img"
 
 #NOTE:
 #1. To test latency need to set Sequencer maximal outstanding to 1
@@ -352,7 +364,7 @@ if [ "$CHECKPNT" != "" ]; then
               --kernel=$M5_PATH/binaries/vmlinux.vexpress_gem5_v1_64 \
               --bootloader=$M5_PATH/binaries/boot_emm.arm64 \
               --dtb-filename=$M5_PATH/binaries/armv8_gem5_v1_${NUMCPUS}cpu.dtb \
-              --disk-image $M5_PATH/disks/expanded-ubuntu-18.04-arm64-docker.img \
+              --disk-image=$M5_PATH/disks/$DISK_IMG \
               --param 'system.realview.gic.gem5_extensions = True' \
               --cpu-type=$CHECKPNT_CPU \
               --checkpoint-dir=$CHECKPNT_DIR \
@@ -457,7 +469,7 @@ if [ "$RESTORE" != "" ]; then
               --kernel=$M5_PATH/binaries/vmlinux.vexpress_gem5_v1_64 \
               --bootloader=$M5_PATH/binaries/boot_emm.arm64 \
               --dtb-filename=$M5_PATH/binaries/armv8_gem5_v1_${NUMCPUS}cpu.dtb \
-              --disk-image $M5_PATH/disks/expanded-ubuntu-18.04-arm64-docker.img \
+              --disk-image=$M5_PATH/disks/$DISK_IMG \
               --param 'system.realview.gic.gem5_extensions = True' \
               --checkpoint-dir ${CHECKPNT_DIR} \
               --script=${PARSEC_SCRIPT_DIR}/$BENCHMARK.rcS > "${OUTPUT_DIR}/progress.log" 2>&1 &
@@ -561,7 +573,7 @@ if [ "$DIRRUN" != "" ]; then
               --kernel=$M5_PATH/binaries/vmlinux.vexpress_gem5_v1_64 \
               --bootloader=$M5_PATH/binaries/boot_emm.arm64 \
               --dtb-filename=$M5_PATH/binaries/armv8_gem5_v1_${NUMCPUS}cpu.dtb \
-              --disk-image $M5_PATH/disks/expanded-ubuntu-18.04-arm64-docker.img \
+              --disk-image=$M5_PATH/disks/$DISK_IMG \
               --param 'system.realview.gic.gem5_extensions = True' \
               --script=${PARSEC_SCRIPT_DIR}/$BENCHMARK.rcS > "${OUTPUT_DIR}/progress.log" 2>&1 &
 
