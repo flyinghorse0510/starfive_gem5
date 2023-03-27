@@ -224,7 +224,7 @@ if [ "$GATETEST" != "" ]; then
     l3_assoc=8
     NUM_LLC=16
     SEQ_TBE=32
-    LoadFactor=1
+    LoadFactor=10
     NUM_MEM=4
     NUM_DDR_XP=2
     NUM_DDR_Side=1
@@ -246,7 +246,7 @@ if [ "$GATETEST" != "" ]; then
     IDEAL_SNOOP_FILTER=False
     DEBUGFLAGS=SeqMemLatTest
 
-    WKSETLIST=(65536)
+    WKSETLIST=(4096 8192 16384)
     NUM_CPU_SET=(16)
 
     for NUMCPUS in ${NUM_CPU_SET[@]}; do

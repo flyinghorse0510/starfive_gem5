@@ -123,8 +123,9 @@ Seq2MemTest::Seq2MemTest(const Params &p)
     for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
         Addr effectiveBlockAddr=(addrInterleavedOrTiled)?(baseAddr+(num_cpus*i)+id):
                                 (baseAddr+(numPerCPUWorkingBlocks*id)+i);
-        addrIterMap[effectiveBlockAddr] = 0;
-        perCPUWorkingBlocks.push_back(effectiveBlockAddr<<(static_cast<uint64_t>(std::log2(blockSize))));
+	Addr effectiveAddr = effectiveBlockAddr<<(static_cast<uint64_t>(std::log2(blockSize)));
+        addrIterMap[effectiveAddr] = 0;
+        perCPUWorkingBlocks.push_back(effectiveAddr);
     }
     fatal_if(perCPUWorkingBlocks.size()<=0,"Working Set size is 0\n");
 
