@@ -1,6 +1,6 @@
 import re
-import os
 import ast
+import math
 import logging
 import argparse
 import subprocess
@@ -129,7 +129,7 @@ def parse_stats(line, llcs:List[SnoopFilterStats]) :
         elif sf_status == 'alloc' :
             llcs[sf_id].alloc = sf_op
 
-def snoopfilter_summary(snoopfilters: List[SnoopFilterStats]):
+def snoopfilter_summary(snoopfilters: List[SnoopFilterStats],retStr=True):
     total_hit, total_miss, total_access, total_alloc = 0,0,0,0
     for sf_stat in snoopfilters:
         total_hit += sf_stat.hit
@@ -138,7 +138,10 @@ def snoopfilter_summary(snoopfilters: List[SnoopFilterStats]):
         total_access += sf_stat.access
     miss_rate = total_miss/total_access
     hit_rate = 1-miss_rate
-    return f'SnoopFilter summary: hit rate:{hit_rate}, miss rate: {miss_rate}'
+    if retStr:
+        return f'SnoopFilter summary: hit rate:{hit_rate}, miss rate: {miss_rate}'
+    else :
+        return miss_rate
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="")
@@ -147,6 +150,9 @@ if __name__ == '__main__':
     parser.add_argument('--num_cpu', required=True, type=int)
     parser.add_argument('--num_llc', required=True, type=int)
     parser.add_argument('--print_path', required=False, default=False, type=ast.literal_eval)
+    parser.add_argument('--l2-assoc',required=True,help='L2 Assoc',type=str)
+    parser.add_argument('--working-set',required=True,type=str,help='Working set in bytes')
+    parser.add_argument('--summary-dump-file',required=True,type=str,help='Dump summary stats file')
     args = parser.parse_args()
 
     snoopfilters = [SnoopFilterStats(i) for i in range(args.num_llc)]
@@ -161,7 +167,7 @@ if __name__ == '__main__':
             parse_stats(line, snoopfilters)
 
     # print tick
-    tick_str = f'total cycle is {tick/1000}\n'
+    tick_str = f'total cycle is {tick/500}\n'
 
     # generate print strings
     print_dict = gen_print_str(snoopfilters)
@@ -175,35 +181,13 @@ if __name__ == '__main__':
             pp.pprint(v)
             stats_str += v
     
-    # if args.print:
-    #     print(f'Stats for configuration {os.path.basename(os.path.dirname(args.input))}')
-    #     print(stats_str)
-    #     print(snoopfilter_summary(snoopfilters))
-
     with open(args.output,'w+') as f:
         f.write(stats_str)
         f.write(snoopfilter_summary(snoopfilters))
     print(f'written to {args.output}')
 
-    # # need to create a new file by .sh to avoid historical data from last run
-    # # --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --dmt ${DMT} --trans ${TRANS} --snf_tbe ${SNF_TBE} --linkwidth ${LINKWIDTH}
-
-    # # generate the header for throughput.txt
-    # if not os.path.getsize('throughput.txt'):
-    #     with open('throughput.txt', 'w') as f:
-    #         if args.print_path:
-    #             f.write(f'{"CPU":^8}{"LLC":^8}{"DDR":^8}{"DMT":^8}{"TRANS":^8}{"SNF_TBE":^8}{"LINKWD":^8}{"INJINTV":^8}{"READ(B)":^16}{"WRITE(B)":16}{"TICK(ps)":^16}{"THROUGHPUT(GB/s)":^16}{"HNF_RETRY_ACK:":^16}{"SNF_RETRY_MSG":^16}{"PATH"}\n')
-    #         else:
-    #             f.write(f'{"CPU":^8}{"LLC":^8}{"DDR":^8}{"DMT":^8}{"TRANS":^8}{"SNF_TBE":^8}{"LINKWD":^8}{"INJINTV":^8}{"READ(B)":^16}{"WRITE(B)":16}{"TICK(ps)":^16}{"THROUGHPUT(GB/s)":^16}{"HNF_RETRY_ACK:":^16}{"SNF_RETRY_MSG":^16}\n')
-    
-    # cpu_read_byte, cpu_write_byte, throughput = gen_throughput(cpus)
-    # total_snf_remsg = reduce(lambda x,y:x+y, [snf.remsg for snf in snfs])
-    # total_hnf_reack = reduce(lambda x,y:x+y, [llc.reack for llc in llcs])
-    
-    # with open('throughput.txt', 'a+') as f:
-    #     if args.print_path:
-    #         f.write(f'{args.num_cpu:^8}{args.num_llc:^8}{args.num_ddr:^8}{args.dmt:^8}{args.trans:^8}{args.snf_tbe:^8}{args.linkwidth:^8}{args.injintv:^8}{cpu_read_byte:^16}{cpu_write_byte:^16}{tick:^16}{throughput:^16}{total_hnf_reack:^16}{total_snf_remsg:^16}{args.input}\n')
-    #     else:
-    #         f.write(f'{args.num_cpu:^8}{args.num_llc:^8}{args.num_ddr:^8}{args.dmt:^8}{args.trans:^8}{args.snf_tbe:^8}{args.linkwidth:^8}{args.injintv:^8}{cpu_read_byte:^16}{cpu_write_byte:^16}{tick:^16}{throughput:^16}{total_hnf_reack:^16}{total_snf_remsg:^16}\n')
-    
-    # print(f'written to ./throughput.txt')
+    with open(args.summary_dump_file,'a+') as fsw :
+        l2_assoc = args.l2_assoc
+        working_set = args.working_set
+        sf_miss_rate = snoopfilter_summary(snoopfilters,False)
+        print(f'L2Assoc: {l2_assoc},WS: {working_set},SFMissRate: {sf_miss_rate:.2f}',file=fsw)
