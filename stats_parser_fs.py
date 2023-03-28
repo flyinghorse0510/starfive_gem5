@@ -448,6 +448,8 @@ def parse_stats_file(args:argparse.Namespace):
         'dct':[args.DCT],
         'dmt':[args.DMT],
         'hnf_tbe':[args.HNF_TBE],
+        'seq_tbe':[args.SEQ_TBE],
+        'snf_tbe':[args.SNF_TBE],
         'trans':[args.TRANS],
         'linkwid':[args.LINKWIDTH],
         'net':[args.NETWORK],
@@ -468,7 +470,7 @@ def parse_stats_file(args:argparse.Namespace):
         'llc_miss':[df_dict['llc'].loc['Total','miss']],
         'llc_access':[df_dict['llc'].loc['Total','access']],
         'llc_hitrate':[df_dict['llc'].loc['Total','hit_rate']],
-        'snoop_filter_missrate':[df_dict['snp'].loc['Total','miss_rate']]
+        'sf_missrate':[df_dict['snp'].loc['Total','miss_rate']]
     },index=None)
     if args.print_dir:
         agg_df['outdir'] = args.OUTPUT_DIR
