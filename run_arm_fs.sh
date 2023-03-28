@@ -38,8 +38,8 @@ CHECKPNT_IDX="1"
 CHECKPNT_CPU="NonCachingSimpleCPU"  # NonCachingSimpleCPU
 RESTORE_CPU_SET=("TimingSimpleCPU")  # AtomicSimpleCPU
 
-# BENCHMARK_NAMES=("blackscholes" "canneal" "facesim" "ferret" "fluidanimate" "freqmine" "streamcluster" "swaptions")
-BENCHMARK_NAMES=("facesim")
+BENCHMARK_NAMES=("blackscholes" "canneal" "facesim" "ferret" "fluidanimate" "freqmine" "streamcluster" "swaptions")
+# BENCHMARK_NAMES=("facesim")
 
 # BENCHMARK_NAMES=("splash2x.barnes" "splash2x.cholesky" "splash2x.fft" "splash2x.fmm" "splash2x.lu_cb"
 #       "splash2x.lu_ncb" "splash2x.ocean_cp" "splash2x.ocean_ncp" "splash2x.radiosity" "splash2x.radix"
@@ -96,13 +96,9 @@ done
 
 CHECKPNT_SCRIPT="${GEM5_DIR}/configs/boot/hack_back_ckpt.rcS"
 
-# original configuration: need to clear out workspace and uncompress
-# PARSEC_SCRIPT_DIR="/home/zhiang.li/arm/m5_path/parsec_scripts"
-# DISK_IMG="expanded-ubuntu-18.04-arm64-docker.img"
+PARSEC_SCRIPT_DIR="/home/zhiang.li/arm/m5_path/parsec_scripts"
+DISK_IMG="expanded-ubuntu-18.04-arm64-docker.img"
 
-# keep the output of the workspace and donot uncompress
-PARSEC_SCRIPT_DIR="/home/zhiang.li/arm/m5_path/parsec_keepdir_scripts"
-DISK_IMG="expanded-ubuntu-18.04-arm64-keepdir.img"
 
 #NOTE:
 #1. To test latency need to set Sequencer maximal outstanding to 1
@@ -294,6 +290,9 @@ INJ_INTV_SET=(4)
 MultiCoreAddrMode="True"
 
 DEBUG_FLAGS=PseudoInst
+
+
+## Different Snoop Filter Coverage Percentage Settings ##
 
 SNPFILTER_ENTRIES=16384 # covfactor*(512KiB*NUMCPUS)/(NUM_LLC*64B)=2*(512Ki)/64
 SNPFILTER_ASSOC=8
