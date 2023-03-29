@@ -208,6 +208,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   bool allow_infinite_SF_entries;
   int number_snoopfilter_entries;
   int number_snoopfilter_assoc;
+  int snoopfilter_start_index_bit;
 
 {
 
@@ -775,8 +776,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   }
 
   // Directory
-  // PerfectCacheMemory directory, template="<Cache_DirEntry>", constructor="m_number_snoopfilter_entries";
-  SnoopFilter directory, template="<Cache_DirEntry>", constructor="m_number_snoopfilter_entries, m_number_snoopfilter_assoc, m_allow_infinite_SF_entries, this";
+  SnoopFilter directory, template="<Cache_DirEntry>", constructor="m_number_snoopfilter_entries, m_number_snoopfilter_assoc, m_allow_infinite_SF_entries, m_snoopfilter_start_index_bit, this";
 
   // Tracks unique lines locked after a store miss
   TimerTable useTimerTable;

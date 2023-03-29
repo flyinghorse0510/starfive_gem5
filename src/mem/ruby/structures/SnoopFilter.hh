@@ -56,6 +56,7 @@ class SnoopFilter
     SnoopFilter(unsigned num_entries,\
                 unsigned assoc,\
                 bool allow_infinite_entries, \
+                unsigned start_index_bit, \
                 statistics::Group *parent);
 
     // tests to see if an address is present in the cache
@@ -218,11 +219,12 @@ template<class ENTRY>
 inline SnoopFilter<ENTRY>::SnoopFilter(unsigned num_entries,\
                 unsigned assoc,\
                 bool allow_infinite_entries, \
+                unsigned start_index_bit, \
                 statistics::Group *parent) :
     m_num_entries(num_entries),
     m_assoc(assoc),
     m_allow_infinite_entries(allow_infinite_entries),
-    m_start_index_bit(6),
+    m_start_index_bit(start_index_bit),
     snoopFilterStats(parent) {
     
     assert(m_num_entries%m_assoc==0);

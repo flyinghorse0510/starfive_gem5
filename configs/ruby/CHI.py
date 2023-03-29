@@ -130,8 +130,7 @@ def create_system(options, full_system, system, dma_ports, bootmem,
         size = options.l3_size
         assoc = options.l3_assoc
         replacement_policy = ObjectList.rp_list.get(options.l3repl)
-    # print(type(L1ICache.replacement_policy))
-    # other functions use system.cache_line_size assuming it has been set
+    
     assert(system.cache_line_size.value == options.cacheline_size)
 
     cpu_sequencers = []

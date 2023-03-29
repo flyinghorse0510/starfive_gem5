@@ -226,6 +226,8 @@ class CHI_Cache_Controller(Cache_Controller):
         # This should be set to true in the data cache controller to enable
         # timeouts on unique lines when a store conditional fails
         self.sc_lock_enabled = False
+        _block_size_bits = int(math.log(ruby_system.block_size_bytes, 2))
+        self.snoopfilter_start_index_bit = _block_size_bits
 
 class CHI_L1Controller(CHI_Cache_Controller):
     '''
@@ -301,13 +303,17 @@ class CHI_L2Controller(CHI_Cache_Controller):
         self.number_snoopfilter_entries = 100 # Does not matter for non-HNF caches
         self.number_snoopfilter_assoc = 2
 
-
 class CHI_HNFController(CHI_Cache_Controller):
     '''
     Default parameters for a coherent home node (HNF) cache controller
     '''
 
-    def __init__(self, options, ruby_system, cache, prefetcher, addr_ranges):
+    def __init__(self, options, \
+                       ruby_system, \
+                       cache, \
+                       prefetcher, \
+                       snoopfilter_start_index_bit, \
+                       addr_ranges):
         super(CHI_HNFController, self).__init__(ruby_system)
         self.sequencer = NULL
         self.cache = cache
@@ -340,6 +346,7 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.allow_infinite_SF_entries = options.allow_infinite_SF_entries #False # [False]: Use a realistic (finite entry) Snoop Filter
         self.number_snoopfilter_entries = options.num_snoopfilter_entries
         self.number_snoopfilter_assoc = options.num_snoopfilter_assoc
+        self.snoopfilter_start_index_bit = snoopfilter_start_index_bit
 
 class CHI_MNController(MiscNode_Controller):
     '''
@@ -600,7 +607,7 @@ class CHI_HNF(CHI_Node):
 
         ll_cache = llcache_type(start_index_bit = intlvHighBit + 1)
         self._cntrl = CHI_HNFController(options, ruby_system, ll_cache, NULL,
-                                        addr_ranges)
+                                        intlvHighBit + 1, addr_ranges)
 
         if parent == None:
             self.cntrl = self._cntrl
