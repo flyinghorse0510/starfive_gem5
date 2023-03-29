@@ -178,7 +178,6 @@ if __name__ == '__main__':
     import pprint as pp
     for k,v in print_dict.items():
         if k in print_args:
-            pp.pprint(v)
             stats_str += v
     
     with open(args.output,'w+') as f:
