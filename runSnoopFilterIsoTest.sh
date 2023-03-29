@@ -240,8 +240,6 @@ if [ "$GATETEST" != "" ]; then
     TRANS=4
     MultiCoreAddrMode=True
     NETWORK="simple"
-    SNOOP_FILTER_SIZE_CONFIG_SET=(64 128)
-    SNOOP_FILTER_ASSOC_CONFIG_SET=8
     IDEAL_SNOOP_FILTER=False
     DEBUGFLAGS=SeqMemLatTest,TxnTrace,RubyGenerated
     OUTPUT_PREFIX="MemLoad_${NETWORK}"
@@ -249,6 +247,8 @@ if [ "$GATETEST" != "" ]; then
     WKSETLIST=(4096 8192 10240 12288 16384 65536)
     NUM_CPU_SET=(16)
     L2_ASSOC_CONFIG_SET=(1 2 4 8)
+    SNOOP_FILTER_SIZE_CONFIG_SET=(64 128)
+    SNOOP_FILTER_ASSOC_CONFIG_SET=8
 
     # for NUMCPUS in ${NUM_CPU_SET[@]}; do
     #     for WKSET in ${WKSETLIST[@]}; do
@@ -337,7 +337,7 @@ if [ "$GATETEST" != "" ]; then
                                 ${PY3} processSLICCTrace.py \
                                     --input="${OUTPUT_DIR}/debug.hnf.trace" \
                                     --output="${OUTPUT_DIR}/debug.hnf.csv" \
-                                    --dbg-output="${OUTPUT_DIR}/debug.sfaccess.csv" \
+                                    --dbg-output="${OUTPUT_DIR}/debug.hnfevents.csv" \
                                     --num-snoopfilter-assoc=$SNOOP_FILTER_ASSOC \
                                     --num-snoopfilter-entries=$SNOOP_FILTER_SIZE &
                             done

@@ -42,6 +42,10 @@ def bitSelect(addr,start,end):
     # print(f'setBinAddr: {len(binAddr)}, hexAddr: {hex(addr)},{start},{end}')
     return int(setBinAddr, base=2)
 
+def getBinaryAddr(addr):
+    binAddr=bin(addr).lstrip('0b').rjust(64,'0')
+    return binAddr
+
 def processCHIReqInputs(options,logFile,dumpFile):
     reqInPat=re.compile(r'^(\s*\d*): (\S+): txsn: (\w+), type: ([a-zA-Z_]+), isArrival: ([0-1]), addr: ([xa-f0-9]+), reqtor: Cache-([\d]+), dest: ([\d]+),')
     tickPerCyc=500
@@ -64,25 +68,36 @@ def processCHIReqInputs(options,logFile,dumpFile):
                         dest=reqInMatch.group(8)
                         print(f'{addrStr},{reqType},{reqtor},{dest},{cyc},{setIdx}',file=fw)
 
-def processSnoopFilterEviction(options,logFile,dumpFile):
+def processEvents(options,logFile,dumpFile):
     tickPerCyc=500
-    sfEvictPat=re.compile(r'^(\s*\d*): system.ruby.hnf01.cntrl: \[Cache_Controller ([0-9]+)\], Time: ([0-9]+), state: ([\w]+), event: SnoopFilterEviction, addr: ([0-9a-fx]+)')
+    evtList=[r'SnoopFilterEviction',
+             r'ReadUnique_PoC',
+             r'ReadShared',
+             r'CleanUnique',
+             r'Evict',
+             r'WriteBackFull',
+             r'WriteEvictFull',
+             r'LocalHN_Eviction',
+             r'Global_Eviction']
+    txnPat=re.compile(r'^(\s*\d*): (\S+): \[Cache_Controller ([0-9]+)\], Time: ([0-9]+), state: ([\w]+), event: ('+'|'.join(evtList)+r'), addr: ([0-9a-fx]+)')
     num_sets = (options.num_snoopfilter_entries / options.num_snoopfilter_assoc)
     num_set_bits=int(np.log2(num_sets))
     with open(logFile,'r') as f:
         with open(dumpFile,'w') as fw :
-            print(f'Time,InitState,Addr,SetIdx',file=fw)
+            print(f'Cyc,Addr,SetIdx,InitState,Event,Dest',file=fw)
             for line in f:
-                sfEvictMatch=sfEvictPat.search(line)
-                if sfEvictMatch :
-                    initState=sfEvictMatch.group(4)
+                txnMatch=txnPat.search(line)
+                if txnMatch :
+                    initState=txnMatch.group(5)
                     if (initState == 'BUSY_BLKD') or (initState == 'BUSY_INTR') :
                         continue
-                    cyc=int(sfEvictMatch.group(1))/tickPerCyc
-                    addr=int(sfEvictMatch.group(5),base=16)
+                    cyc=int(txnMatch.group(1))/tickPerCyc
+                    addrStr=txnMatch.group(7)
+                    addr=int(addrStr,base=16)
                     setIdx=bitSelect(addr,6+num_set_bits,6)
-                    addrStr=sfEvictMatch.group(5)
-                    print(f'{cyc},{initState},{addrStr},{setIdx}',file=fw)
+                    hnfId=txnMatch.group(3)
+                    event=txnMatch.group(6)
+                    print(f'{cyc},{addrStr},{setIdx},{initState},{event},{hnfId}',file=fw)
 
 
 def main():
@@ -99,7 +114,7 @@ def main():
     tgtAddr=options.tgt_addr
     # processRubyGeneratedFlags(logFile,dumpFile,tgtAddr)
     processCHIReqInputs(options,logFile,dumpFile)
-    processSnoopFilterEviction(options,logFile,options.dbg_output)
+    processEvents(options,logFile,options.dbg_output)
 
 if __name__=="__main__":
     main()
