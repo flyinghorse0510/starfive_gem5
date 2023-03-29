@@ -227,6 +227,22 @@ structure (CacheMemory, external = "yes") {
   void profileRetryAck();
 }
 
+  // SnoopFilter definitions
+  structure(SnoopFilter, external = "yes") {
+    AbstractCacheEntry allocate(Addr, AbstractCacheEntry);
+    void deallocate(Addr);
+    AbstractCacheEntry lookup(Addr);
+    bool isTagPresent(Addr);
+    bool cacheAvail(Addr);
+    Addr cacheProbe(Addr);
+    void profileMiss();
+    void profileHit();
+    void profileAlloc();
+    bool allWaysBusy(Addr);
+    void setWayBusy(Addr);
+    void resetWayBusy(Addr);
+  }
+
 structure (WireBuffer, inport="yes", outport="yes", external = "yes") {
 
 }

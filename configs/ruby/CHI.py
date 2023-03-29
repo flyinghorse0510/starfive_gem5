@@ -131,6 +131,12 @@ def create_system(options, full_system, system, dma_ports, bootmem,
         assoc = options.l3_assoc
         replacement_policy = ObjectList.rp_list.get(options.l3repl)
     
+    class HNFRealSnoopFilter(RubySnoopFilter):
+        size = 8
+        assoc = 2
+        start_index_bits = 6
+        allow_infinite_entries = False
+    
     assert(system.cache_line_size.value == options.cacheline_size)
 
     cpu_sequencers = []
@@ -180,7 +186,7 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     hnf_list = [i for i in range(options.num_l3caches)]
     CHI_HNF.createAddrRanges(sysranges, system.cache_line_size.value,
                              hnf_list)
-    ruby_system.hnf = [ CHI_HNF(options, i, ruby_system, HNFCache, None)
+    ruby_system.hnf = [ CHI_HNF(options, i, ruby_system, HNFCache, HNFRealSnoopFilter, None)
                         for i in range(options.num_l3caches) ]
 
     for hnf in ruby_system.hnf:

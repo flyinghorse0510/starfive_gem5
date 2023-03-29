@@ -46,6 +46,9 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // happen in parallel. The cache tag latency is used for both cases.
   CacheMemory * cache;
 
+  // Directory
+  SnoopFilter * directory;
+
   // Additional pipeline latency modeling for the different request types
   // When defined, these are applied after the initial tag array read and
   // sending necessary snoops.
@@ -758,25 +761,6 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     void addEntryToSlot(int slot);
     void removeEntryFromSlot(int slot);
   }
-
-  // Directory memory definition
-  structure(SnoopFilter, external = "yes") {
-    void allocate(Addr);
-    void deallocate(Addr);
-    DirEntry lookup(Addr);
-    bool isTagPresent(Addr);
-    bool cacheAvail(Addr);
-    Addr cacheProbe(Addr);
-    void profileMiss();
-    void profileHit();
-    void profileAlloc();
-    bool allWaysBusy(Addr);
-    void setWayBusy(Addr);
-    void resetWayBusy(Addr);
-  }
-
-  // Directory
-  SnoopFilter directory, template="<Cache_DirEntry>", constructor="m_number_snoopfilter_entries, m_number_snoopfilter_assoc, m_allow_infinite_SF_entries, m_snoopfilter_start_index_bit, this";
 
   // Tracks unique lines locked after a store miss
   TimerTable useTimerTable;

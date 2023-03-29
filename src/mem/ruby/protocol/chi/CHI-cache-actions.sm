@@ -284,7 +284,7 @@ action(Initiate_Request, desc="") {
   bool doSnoopFilterFill := is_HN && (!allow_infinite_SF_entries) && requiresDirEntry(tbe.reqType);
   assert(avail_direntry || (!doSnoopFilterFill));
   if (tbe.requiresDirEntryAlloc) {
-    directory.allocate(address);
+    set_cache_entry(directory.allocate(address, new DirEntry));
     DPRINTF(RubyCHIDebugStr5,"SnoopFilterAlloc addr=%#x,type=%s\n",tbe.addr,tbe.reqType);
     directory.profileAlloc();
   }

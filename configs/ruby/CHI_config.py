@@ -199,6 +199,9 @@ class TriggerMessageBuffer(MessageBuffer):
 class OrderedTriggerMessageBuffer(TriggerMessageBuffer):
     ordered = True
 
+class CHI_IdealSnoopFilter(RubySnoopFilter):
+    allow_infinite_entries=True
+
 class CHI_Cache_Controller(Cache_Controller):
     '''
     Default parameters for a Cache controller
@@ -238,6 +241,7 @@ class CHI_L1Controller(CHI_Cache_Controller):
         super(CHI_L1Controller, self).__init__(ruby_system)
         self.sequencer = sequencer
         self.cache = cache
+        self.directory = CHI_IdealSnoopFilter()
         self.use_prefetcher = False
         self.send_evictions = True
         self.is_HN = False
@@ -275,6 +279,7 @@ class CHI_L2Controller(CHI_Cache_Controller):
         super(CHI_L2Controller, self).__init__(ruby_system)
         self.sequencer = NULL
         self.cache = cache
+        self.directory = CHI_IdealSnoopFilter()
         self.use_prefetcher = False
         self.allow_SD = options.allow_SD
         self.is_HN = False
@@ -311,12 +316,14 @@ class CHI_HNFController(CHI_Cache_Controller):
     def __init__(self, options, \
                        ruby_system, \
                        cache, \
+                       real_snoopfilter, \
                        prefetcher, \
                        snoopfilter_start_index_bit, \
                        addr_ranges):
         super(CHI_HNFController, self).__init__(ruby_system)
         self.sequencer = NULL
         self.cache = cache
+        self.directory = real_snoopfilter
         self.use_prefetcher = False
         self.addr_ranges = addr_ranges
         self.allow_SD = options.allow_SD
@@ -598,7 +605,7 @@ class CHI_HNF(CHI_Node):
 
     # The CHI controller can be a child of this object or another if
     # 'parent' if specified
-    def __init__(self,options, hnf_idx, ruby_system, llcache_type, parent):
+    def __init__(self,options, hnf_idx, ruby_system, llcache_type, snoopfilter_type, parent):
         super(CHI_HNF, self).__init__(ruby_system)
 
         addr_ranges,intlvHighBit = self.getAddrRanges(hnf_idx)
@@ -606,7 +613,8 @@ class CHI_HNF(CHI_Node):
         assert(len(addr_ranges) >= 1)
 
         ll_cache = llcache_type(start_index_bit = intlvHighBit + 1)
-        self._cntrl = CHI_HNFController(options, ruby_system, ll_cache, NULL,
+        real_snoopfilter = snoopfilter_type()
+        self._cntrl = CHI_HNFController(options, ruby_system, ll_cache, real_snoopfilter, NULL,
                                         intlvHighBit + 1, addr_ranges)
 
         if parent == None:

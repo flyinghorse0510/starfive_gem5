@@ -44,12 +44,14 @@ if env['CONF']['PROTOCOL'] == 'None':
     Return()
 
 SimObject('RubyCache.py', sim_objects=['RubyCache'])
+SimObject('RubySnoopFilter.py', sim_objects=['RubySnoopFilter'])
 SimObject('DirectoryMemory.py', sim_objects=['RubyDirectoryMemory'])
 SimObject('RubyPrefetcher.py', sim_objects=['RubyPrefetcher'])
 SimObject('WireBuffer.py', sim_objects=['RubyWireBuffer'])
 
 Source('DirectoryMemory.cc')
 Source('CacheMemory.cc')
+Source('SnoopFilter.cc')
 Source('WireBuffer.cc')
 Source('PersistentTable.cc')
 Source('RubyPrefetcher.cc')

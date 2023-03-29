@@ -58,6 +58,7 @@ python_class_map = {
                     "GPUCoalescer" : "RubyGPUCoalescer",
                     "VIPERCoalescer" : "VIPERCoalescer",
                     "DirectoryMemory": "RubyDirectoryMemory",
+                    "SnoopFilter" : "RubySnoopFilter",
                     "PerfectCacheMemory": "RubyPerfectCacheMemory",
                     "MemoryControl": "MemoryControl",
                     "MessageBuffer": "MessageBuffer",
