@@ -132,10 +132,10 @@ def create_system(options, full_system, system, dma_ports, bootmem,
         replacement_policy = ObjectList.rp_list.get(options.l3repl)
     
     class HNFRealSnoopFilter(RubySnoopFilter):
-        size = 8
-        assoc = 2
-        start_index_bits = 6
-        allow_infinite_entries = False
+        size = options.num_snoopfilter_entries
+        assoc = options.num_snoopfilter_assoc
+        start_index_bit = 6
+        allow_infinite_entries = options.allow_infinite_SF_entries
     
     assert(system.cache_line_size.value == options.cacheline_size)
 

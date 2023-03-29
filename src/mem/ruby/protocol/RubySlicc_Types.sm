@@ -234,6 +234,7 @@ structure (CacheMemory, external = "yes") {
     AbstractCacheEntry lookup(Addr);
     bool isTagPresent(Addr);
     bool cacheAvail(Addr);
+    bool allowInfiniteEntries();
     Addr cacheProbe(Addr);
     void profileMiss();
     void profileHit();

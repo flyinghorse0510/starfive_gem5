@@ -207,12 +207,6 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // updated only on true demand requests.
   bool upstream_prefetch_trains_prefetcher := "False";
 
-  // Allow infinite SnoopFilter entries
-  bool allow_infinite_SF_entries;
-  int number_snoopfilter_entries;
-  int number_snoopfilter_assoc;
-  int snoopfilter_start_index_bit;
-
 {
 
   ////////////////////////////////////////////////////////////////////////////

@@ -229,8 +229,6 @@ class CHI_Cache_Controller(Cache_Controller):
         # This should be set to true in the data cache controller to enable
         # timeouts on unique lines when a store conditional fails
         self.sc_lock_enabled = False
-        _block_size_bits = int(math.log(ruby_system.block_size_bytes, 2))
-        self.snoopfilter_start_index_bit = _block_size_bits
 
 class CHI_L1Controller(CHI_Cache_Controller):
     '''
@@ -266,9 +264,6 @@ class CHI_L1Controller(CHI_Cache_Controller):
         self.number_of_DVM_TBEs = 16
         self.number_of_DVM_snoop_TBEs = 4
         self.unify_repl_TBEs = False
-        self.allow_infinite_SF_entries = True
-        self.number_snoopfilter_entries = 100 # Does not matter for non-HNF caches
-        self.number_snoopfilter_assoc = 2
 
 class CHI_L2Controller(CHI_Cache_Controller):                 
     '''
@@ -304,9 +299,6 @@ class CHI_L2Controller(CHI_Cache_Controller):
         self.number_of_DVM_TBEs = 1 # should not receive any dvm
         self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
         self.unify_repl_TBEs = False
-        self.allow_infinite_SF_entries = True
-        self.number_snoopfilter_entries = 100 # Does not matter for non-HNF caches
-        self.number_snoopfilter_assoc = 2
 
 class CHI_HNFController(CHI_Cache_Controller):
     '''
@@ -350,10 +342,6 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
         self.unify_repl_TBEs = False
         self.transitions_per_cycle = options.num_trans_per_cycle_llc
-        self.allow_infinite_SF_entries = options.allow_infinite_SF_entries #False # [False]: Use a realistic (finite entry) Snoop Filter
-        self.number_snoopfilter_entries = options.num_snoopfilter_entries
-        self.number_snoopfilter_assoc = options.num_snoopfilter_assoc
-        self.snoopfilter_start_index_bit = snoopfilter_start_index_bit
 
 class CHI_MNController(MiscNode_Controller):
     '''

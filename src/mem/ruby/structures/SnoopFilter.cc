@@ -85,6 +85,10 @@ SnoopFilter::SnoopFilter(const Params &p) : SimObject(p),
     assert(m_num_set_bits > 0);
 }
 
+bool SnoopFilter::allowInfiniteEntries() const {
+  return m_allow_infinite_entries;
+}
+
 // tests to see if an address is present in the cache
 bool SnoopFilter::isTagPresent(Addr address) const {
     assert(address == makeLineAddress(address));

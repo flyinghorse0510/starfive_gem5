@@ -96,6 +96,8 @@ class SnoopFilter : public SimObject {
 
     void profileAlloc();
 
+    bool allowInfiniteEntries() const;
+
   private:
     // Private copy constructor and assignment operator
     SnoopFilter(const SnoopFilter& obj);
