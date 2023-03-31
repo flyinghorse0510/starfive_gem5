@@ -735,6 +735,7 @@ class Addr(CheckedInt):
 
 class AddrRange(ParamValue):
     cxx_type = 'AddrRange'
+    addr_len = 64
 
     def __init__(self, *args, **kwargs):
         # Disable interleaving and hashing by default
@@ -802,13 +803,41 @@ class AddrRange(ParamValue):
         if kwargs:
             raise TypeError("Too many keywords: %s" % list(kwargs.keys()))
 
+    def getAddrLen(self):
+        return self.addr_len
+    
+    def setMasks(self,masks):
+        self.masks = masks
+    
+    def setIntlvMatch(self,intlvMatch):
+        self.intlvMatch = intlvMatch
+    
+    def setIntlvBits(self,intlvBits):
+        self.intlvBits = intlvBits
+    
     def __str__(self):
+        # return self.printMasks2()
+        return self.printMasks1()
+
+    def printMasks1(self):
         if len(self.masks) == 0:
             return '%s:%s' % (self.start, self.end)
         else:
             return '%s:%s:%s:%s' % (self.start, self.end, self.intlvMatch,
                                     ':'.join(str(m) for m in self.masks))
 
+    def printMasks2(self):
+        sel=['' for _ in range(len(self.masks))]
+        for i,mask in enumerate(self.masks):
+            binMask = bin(mask).lstrip('0b').rjust(self.addr_len,'0')
+            setAddrBits = [f'a_{self.addr_len-j}' for (j,c) in enumerate(binMask) if c == '1']
+            sel[i]='^'.join(setAddrBits)
+        b='[\n'
+        for i,s in enumerate(sel):
+            b+=f'b({i}) = {s}\n'
+        b+=']\n'
+        return b
+    
     def size(self):
         # Divide the size by the size of the interleaving slice
         return (int(self.end) - int(self.start)) >> self.intlvBits

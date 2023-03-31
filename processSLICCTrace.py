@@ -58,29 +58,89 @@ def getSnoopFilterStartBit(options,jsonFile):
             snoopfilter_start_bit=int(cfg['system']['ruby']['hnf']['cntrl']['snoopfilter_start_index_bit'])
     return snoopfilter_start_bit
 
-def processCHIReqInputs(options,jsonFile,logFile,dumpFile):
-    reqInPat=re.compile(r'^(\s*\d*): (\S+): txsn: (\w+), type: ([a-zA-Z_]+), isArrival: ([0-1]), addr: ([xa-f0-9]+), reqtor: Cache-([\d]+), dest: ([\d]+),')
+def getSequencerOutput(options,jsonFile,logFile):
     tickPerCyc=500
-    num_sets = (options.num_snoopfilter_entries / options.num_snoopfilter_assoc)
-    num_set_bits=int(np.log2(num_sets))
-    snoopfilterStartBit = getSnoopFilterStartBit(options,jsonFile)
-    assert(snoopfilterStartBit > 0)
+    memTestInPat=re.compile(r'^(\s*\d*): (\S+): SFReplMemTest\|Addr:([xa-f0-9]+),Iter:1,Reqtor:0,Start:R')
+    seqOutputList=[]
     with open(logFile,'r') as f:
-        with open(dumpFile,'w') as fw :
+        for line in f:
+            memTestIMatch=memTestInPat.search(line)
+            if memTestIMatch :
+                cyc=int(memTestIMatch.group(1))/tickPerCyc
+                reqType='SeqReq'
+                setIdx=-1
+                addrStr=memTestIMatch.group(3)
+                reqtor=memTestIMatch.group(2)
+                dest='---'
+                seqOutputList.append({
+                    'Addr':addrStr,
+                    'ReqType': reqType,
+                    'Reqtor': reqtor,
+                    'Dest': dest,
+                    'Cyc': cyc,
+                    'SFSetId': setIdx
+                })
+    return seqOutputList
+
+def getHNFInput(options,jsonFile,logFile):
+    tickPerCyc=500
+    hnfInPat=re.compile(r'^(\s*\d*): system\.ruby\.hnf(\d+)\.cntrl\.reqIn: txsn: (\w+), type: ([a-zA-Z_]+), isArrival: ([0-1]), addr: ([xa-f0-9]+), reqtor: Cache-([\d]+), dest: ([\d]+),')
+    seqOutputList=[]
+    with open(logFile,'r') as f:
+        for line in f :
+            hnfInMatch=hnfInPat.search(line)
+            if hnfInMatch :
+                # msgBufferStr=hnfInMatch.group(2)
+                cyc=int(hnfInMatch.group(1))/tickPerCyc
+                reqType=hnfInMatch.group(4)
+                # addr=int(hnfInMatch.group(6),base=16)
+                setIdx=-1 #bitSelect(addr,snoopfilterStartBit+num_set_bits,snoopfilterStartBit)
+                addrStr=hnfInMatch.group(6)
+                reqtor=hnfInMatch.group(7)
+                dest=hnfInMatch.group(8)
+                seqOutputList.append({
+                    'Addr':addrStr,
+                    'ReqType': reqType,
+                    'Reqtor': reqtor,
+                    'Dest': dest,
+                    'Cyc': cyc,
+                    'SFSetId': setIdx
+                })
+    return seqOutputList
+    
+
+def processAddressRequests(options,jsonFile,logFile,dumpFile,reqtorPipelineLoc=0):
+    """
+        @options           : Parser options
+        @jsonFile          : JSON config file
+        @reqtorPipelineLoc : Location of the agent in pipeline from the upstream
+                             0 -- sequencer output
+                             1 -- L1D output
+                             2 -- L2 output
+                             3 -- HNF input
+
+    """
+    isMatched=False
+    if reqtorPipelineLoc == 0:
+        seqOutputList = getSequencerOutput(options,jsonFile,logFile)
+        isMatched=True
+    elif reqtorPipelineLoc == 3:
+        seqOutputList = getHNFInput(options,jsonFile,logFile)
+        isMatched=True
+    else :
+        raise NotImplementedError(f'Implement parsers for other agents in the system')
+    if isMatched:
+        with open(dumpFile,'w') as fw:
             print(f'Addr,ReqType,Reqtor,Dest,Cyc,SetIdx',file=fw)
-            for line in f :
-                reqInMatch=reqInPat.search(line)
-                if reqInMatch :
-                    msgBufferStr=reqInMatch.group(2)
-                    if 'reqIn' in msgBufferStr:
-                        cyc=int(reqInMatch.group(1))/tickPerCyc
-                        reqType=reqInMatch.group(4)
-                        addr=int(reqInMatch.group(6),base=16)
-                        setIdx=bitSelect(addr,snoopfilterStartBit+num_set_bits,snoopfilterStartBit)
-                        addrStr=reqInMatch.group(6)
-                        reqtor=reqInMatch.group(7)
-                        dest=reqInMatch.group(8)
-                        print(f'{addrStr},{reqType},{reqtor},{dest},{cyc},{setIdx}',file=fw)
+            for k,v in seqOutputList.items():
+                addrStr = v['Addr'] 
+                reqType = v['ReqType']
+                reqtor = v['Reqtor']
+                dest = v['Dest']
+                cyc = v['Cyc']
+                setIdx = v['SFSetId']
+            print(f'{addrStr},{reqType},{reqtor},{dest},{cyc},{setIdx}',file=fw)
+        
 
 def processEvents(options,jsonFile,logFile,dumpFile):
     tickPerCyc=500
@@ -119,7 +179,8 @@ def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--input',required=True,type=str)
     parser.add_argument('--input-cfg',required=True,type=str)
-    parser.add_argument('--output',required=True,type=str)
+    parser.add_argument('--output-seq',required=True,type=str)
+    parser.add_argument('--output-hnf',required=True,type=str)
     parser.add_argument('--output-dbg',required=True,type=str)
     parser.add_argument('--num_llc',required=True,type=str)
     parser.add_argument('--num-snoopfilter-assoc',required=True,type=int)
@@ -127,12 +188,14 @@ def main():
     parser.add_argument('--tgt-addr',required=False,type=str,default='0x400')
     options=parser.parse_args()
     logFile=options.input
-    dumpFile=options.output
+    dumpFile_seq=options.output_seq
+    dumpFile_hnf=options.output_hnf
     tgtAddr=options.tgt_addr
     jsonFile=options.input_cfg
     # processRubyGeneratedFlags(logFile,dumpFile,tgtAddr)
-    processCHIReqInputs(options,jsonFile,logFile,dumpFile)
-    processEvents(options,jsonFile,logFile,options.output_dbg)
+    processAddressRequests(options,jsonFile,logFile,dumpFile_seq,0)
+    processAddressRequests(options,jsonFile,logFile,dumpFile_hnf,3)
+    # processEvents(options,jsonFile,logFile,options.output_dbg)
 
 if __name__=="__main__":
     main()

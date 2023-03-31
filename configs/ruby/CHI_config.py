@@ -310,7 +310,6 @@ class CHI_HNFController(CHI_Cache_Controller):
                        cache, \
                        real_snoopfilter, \
                        prefetcher, \
-                       snoopfilter_start_index_bit, \
                        addr_ranges):
         super(CHI_HNFController, self).__init__(ruby_system)
         self.sequencer = NULL
@@ -582,6 +581,15 @@ class CHI_HNF(CHI_Node):
                                         intlvHighBit = numa_bit,
                                         intlvBits = llc_bits,
                                         intlvMatch = i)
+                # Check the StarFive MAS
+                masks=[0 for _ in range(llc_bits)]
+                for j in range(llc_bits) :
+                    masks[j] = 0
+                    for k in range(block_size_bits,54,llc_bits):
+                        masks[j] |= (1 << (j+k))
+                addr_range.setIntlvMatch(i)
+                addr_range.setIntlvBits(llc_bits)
+                addr_range.setMasks(masks)
                 ranges.append(addr_range)
             cls._addr_ranges[hnf] = (ranges, numa_bit)
             
@@ -602,8 +610,7 @@ class CHI_HNF(CHI_Node):
 
         ll_cache = llcache_type(start_index_bit = intlvHighBit + 1)
         real_snoopfilter = snoopfilter_type()
-        self._cntrl = CHI_HNFController(options, ruby_system, ll_cache, real_snoopfilter, NULL,
-                                        intlvHighBit + 1, addr_ranges)
+        self._cntrl = CHI_HNFController(options, ruby_system, ll_cache, real_snoopfilter, NULL, addr_ranges)
 
         if parent == None:
             self.cntrl = self._cntrl

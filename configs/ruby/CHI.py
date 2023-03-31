@@ -195,60 +195,11 @@ def create_system(options, full_system, system, dma_ports, bootmem,
         assert(hnf.getAllControllers() == hnf.getNetworkSideControllers())
         all_cntrls.extend(hnf.getAllControllers())
         hnf_dests.extend(hnf.getAllControllers())
-
+    
     # Create the memory controllers
     # Notice we don't define a Directory_Controller type so we don't use
     # create_directories shared by other protocols.
     CHI_SNF_MainMem.NoC_Params.router_list = [15]
-    
-    #this is for 4x4 mesh, to be enhanced later. to be put into 4x4 topology construction
-##    if(options.cpu_type == "DDR_SameSide"):
-##         if(options.num_dirs <= 2):
-##              CHI_SNF_MainMem.NoC_Params.router_list = [13,14]
-##         elif(options.num_dir == 4):
-##              CHI_SNF_MainMem.NoC_Params.router_list = [12,13,14,15]
-##    elif(options.cpu_type == "DDR_TwoSide"): 
-##         if(options.num_dirs <= 2):
-##              CHI_SNF_MainMem.NoC_Params.router_list = [13,1] 
-##         elif(options.num_dir == 4):
-##              CHI_SNF_MainMem.NoC_Params.router_list = [13,14,1,2]
-##   elif(options.cpu_type == "DDR_FourSide"):
-##         if(options.num_dir <= 4):
-##              CHI_SNF_MainMem.NoC_Params.router_list = [13,11,2,4]
-##   else
-##         m5.fatal('no DDR layout configuration available') 
-     #this is for 4x4 mesh, to be enhanced later. to be put into 4x4 topology construction
-##    if(options.DDR_loc_num == 1):
-##         if(options.num_dirs <= 2):
-##              CHI_SNF_MainMem.NoC_Params.router_list = [13,14]
-##         elif(options.num_dirs == 4):
-##              CHI_SNF_MainMem.NoC_Params.router_list = [12,13,14,15]
-##    elif(options.DDR_loc_num == 2): 
-##         if(options.num_dirs <= 2):
-##              CHI_SNF_MainMem.NoC_Params.router_list = [13,1] 
-##         elif(options.num_dirs == 4):
-##              CHI_SNF_MainMem.NoC_Params.router_list = [13,14,1,2]
-##    elif(options.DDR_loc_num == 4):
-##         if(options.num_dirs <= 4):
-##              CHI_SNF_MainMem.NoC_Params.router_list = [13,11,2,4]
-##    else:
-##         m5.fatal('no DDR layout configuration available') 
-
-    #1 point x (1, 2 ,4) DDR
-    #2 point: 1 side, 2 side x (2,4) DDR
-    #4 point: 1 side, 2 side, 4 side x (4) DDR
-
-    # 1/2 mesh stations 
-    #1 point x (1, 2 ,4) DDR
-    #1 side: 1 side x (1,2,4) DDR
-    #2 side: 2 side x (2,4) DDR
- 
-    # 4 mesh stations 
-    #1 side: x (4) DDR
-    #2 side: 2/node, 1/node x (4) DDR
-    #4 side: 1/node x (4) DDR
-     
-    #CHI_SNF_MainMem.NoC_Params.router_list = [12,13,14,15]
     if(options.DDR_loc_num == 1):
          CHI_SNF_MainMem.NoC_Params.router_list = [13]
          #CHI_SNF_MainMem.NoC_Params.router_list = [12]
