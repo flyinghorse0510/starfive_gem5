@@ -568,7 +568,7 @@ class CHI_HNF(CHI_Node):
 
     _addr_ranges = {}
     @classmethod
-    def createAddrRanges(cls, sys_mem_ranges, cache_line_size, hnfs):
+    def createAddrRanges(cls, options, sys_mem_ranges, cache_line_size, hnfs):
         import pprint as pp
         # Create the HNFs interleaved addr ranges
         block_size_bits = int(math.log(cache_line_size, 2))
@@ -582,14 +582,15 @@ class CHI_HNF(CHI_Node):
                                         intlvBits = llc_bits,
                                         intlvMatch = i)
                 # Check the StarFive MAS
-                masks=[0 for _ in range(llc_bits)]
-                for j in range(llc_bits) :
-                    masks[j] = 0
-                    for k in range(block_size_bits,54,llc_bits):
-                        masks[j] |= (1 << (j+k))
-                addr_range.setIntlvMatch(i)
-                addr_range.setIntlvBits(llc_bits)
-                addr_range.setMasks(masks)
+                if options.xor_addr_bits :
+                    masks=[0 for _ in range(llc_bits)]
+                    for j in range(llc_bits) :
+                        masks[j] = 0
+                        for k in range(block_size_bits,54,llc_bits):
+                            masks[j] |= (1 << (j+k))
+                    addr_range.setIntlvMatch(i)
+                    addr_range.setIntlvBits(llc_bits)
+                    addr_range.setMasks(masks)
                 ranges.append(addr_range)
             cls._addr_ranges[hnf] = (ranges, numa_bit)
             

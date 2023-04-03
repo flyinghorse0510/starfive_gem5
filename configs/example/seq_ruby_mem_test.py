@@ -93,6 +93,7 @@ parser.add_argument('--max-outstanding-requests',default=1,type=int,help='Maximu
 parser.add_argument('--id-starter',default=0,type=int,help='Starter id of the migratory sharing patterns')
 parser.add_argument('--outstanding-req',default=100,type=int,help='Number of oustanding requests')
 parser.add_argument('--allow-infinite-SF-entries',default=True, type=ast.literal_eval, help="Allow infinite SnoopFilter entries.")
+parser.add_argument('--xor-addr-bits',default=False,type=ast.literal_eval,help='If True, xor the addr bits to compute the mask')
 
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]

@@ -60,7 +60,8 @@ def getSnoopFilterStartBit(options,jsonFile):
 
 def getSequencerOutput(options,jsonFile,logFile):
     tickPerCyc=500
-    memTestInPat=re.compile(r'^(\s*\d*): (\S+): SFReplMemTest\|Addr:([xa-f0-9]+),Iter:1,Reqtor:0,Start:R')
+    # memTestInPat=re.compile(r'^(\s*\d*): (\S+): SFReplMemTest\|Addr:([xa-f0-9]+),Iter:1,Reqtor:0,Start:(R|W)')
+    memTestInPat=re.compile(r'^(\s*\d*): system.cpu(\d*).data_sequencer: txsn: (\w+), ReqBegin=(LD|ST), addr: ([xa-f0-9]+)')
     seqOutputList=[]
     with open(logFile,'r') as f:
         for line in f:
@@ -69,11 +70,15 @@ def getSequencerOutput(options,jsonFile,logFile):
                 cyc=int(memTestIMatch.group(1))/tickPerCyc
                 reqType='SeqReq'
                 setIdx=-1
-                addrStr=memTestIMatch.group(3)
+                addrStr=memTestIMatch.group(5)
                 reqtor=memTestIMatch.group(2)
+                if reqtor == '':
+                    reqtor = '0'
                 dest='---'
+                txnIdStr=memTestIMatch.group(3)
                 seqOutputList.append({
-                    'Addr':addrStr,
+                    'Addr': addrStr,
+                    'Txn': txnIdStr,
                     'ReqType': reqType,
                     'Reqtor': reqtor,
                     'Dest': dest,
@@ -97,9 +102,11 @@ def getHNFInput(options,jsonFile,logFile):
                 setIdx=-1 #bitSelect(addr,snoopfilterStartBit+num_set_bits,snoopfilterStartBit)
                 addrStr=hnfInMatch.group(6)
                 reqtor=hnfInMatch.group(7)
-                dest=hnfInMatch.group(8)
+                dest=int(hnfInMatch.group(2))
+                txnIdStr=hnfInMatch.group(3)
                 seqOutputList.append({
                     'Addr':addrStr,
+                    'Txn': txnIdStr,
                     'ReqType': reqType,
                     'Reqtor': reqtor,
                     'Dest': dest,
@@ -131,15 +138,16 @@ def processAddressRequests(options,jsonFile,logFile,dumpFile,reqtorPipelineLoc=0
         raise NotImplementedError(f'Implement parsers for other agents in the system')
     if isMatched:
         with open(dumpFile,'w') as fw:
-            print(f'Addr,ReqType,Reqtor,Dest,Cyc,SetIdx',file=fw)
-            for k,v in seqOutputList.items():
+            print(f'Addr,Txn,ReqType,Reqtor,Dest,Cyc,SetIdx',file=fw)
+            for v in seqOutputList:
                 addrStr = v['Addr'] 
                 reqType = v['ReqType']
                 reqtor = v['Reqtor']
                 dest = v['Dest']
                 cyc = v['Cyc']
                 setIdx = v['SFSetId']
-            print(f'{addrStr},{reqType},{reqtor},{dest},{cyc},{setIdx}',file=fw)
+                txnIdStr = v['Txn']
+                print(f'{addrStr},{txnIdStr},{reqType},{reqtor},{dest},{cyc},{setIdx}',file=fw)
         
 
 def processEvents(options,jsonFile,logFile,dumpFile):
