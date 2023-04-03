@@ -2,6 +2,8 @@ import re
 import os
 import argparse
 import json
+import ast
+import pandas as pd
 import numpy as np
 
 def processRubyGeneratedFlags(logFile,dumpFile,tgtAddr):
@@ -183,6 +185,27 @@ def processEvents(options,jsonFile,logFile,dumpFile):
                     event=txnMatch.group(6)
                     print(f'{cyc},{addrStr},{setIdx},{initState},{event},{hnfId}',file=fw)
 
+def estimateDTMCMatrix(stateSeq,stateIds):
+    """
+        Estimate the DTMC transition
+        probability given an 
+        @stateSeq : Input Sequence
+        @stateIds : State IDs
+    """
+    X=[0 for _ in range(len(stateIds))]
+    Y_t=stateSeq
+    T=range(len(Y_t)-1)
+    for s in stateIds:
+        X[s] = sum([1 if ((Y_t[t]==s) and (Y_t[t+1]==s)) else 0 for t in T])/sum([1 if (Y_t[t]==s) else 0 for t in T])
+    return X
+
+def getHNFTransitionProbability(options,dumpFile_hnf):
+    acceptableReq=set({'ReadShared', 'ReadUnique', 'CleanUnique'})
+    dfX2=pd.read_csv(dumpFile_hnf).query(f'ReqType in @acceptableReq').sort_values(by=['Cyc'],ascending=[True])
+    X = estimateDTMCMatrix(dfX2['Dest'].values,set(dfX2['Dest'].values))
+    with open(options.collated_outfile,'a+') as fsw:
+        print(f'{options.block_stride},{options.randomized_acc},{np.min(X)},{np.median(X)},{np.max(X)}',file=fsw)
+    
 def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--input',required=True,type=str)
@@ -193,16 +216,18 @@ def main():
     parser.add_argument('--num_llc',required=True,type=str)
     parser.add_argument('--num-snoopfilter-assoc',required=True,type=int)
     parser.add_argument('--num-snoopfilter-entries',required=True,type=int)
-    parser.add_argument('--tgt-addr',required=False,type=str,default='0x400')
+    parser.add_argument('--block-stride',required=False,default=0,type=int,help=f'Block Stride. Stride=2^(block_stride)')
+    parser.add_argument('--randomized-acc',required=False,default=False,type=ast.literal_eval,help=f'randomized access pattern')
+    parser.add_argument('--collated-outfile',required=True,type=str,help='Collated Output filename')
     options=parser.parse_args()
     logFile=options.input
     dumpFile_seq=options.output_seq
     dumpFile_hnf=options.output_hnf
-    tgtAddr=options.tgt_addr
     jsonFile=options.input_cfg
     # processRubyGeneratedFlags(logFile,dumpFile,tgtAddr)
     processAddressRequests(options,jsonFile,logFile,dumpFile_seq,0)
     processAddressRequests(options,jsonFile,logFile,dumpFile_hnf,3)
+    getHNFTransitionProbability(options,dumpFile_hnf)
     # processEvents(options,jsonFile,logFile,options.output_dbg)
 
 if __name__=="__main__":
