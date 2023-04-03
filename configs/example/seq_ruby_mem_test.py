@@ -94,6 +94,8 @@ parser.add_argument('--id-starter',default=0,type=int,help='Starter id of the mi
 parser.add_argument('--outstanding-req',default=100,type=int,help='Number of oustanding requests')
 parser.add_argument('--allow-infinite-SF-entries',default=True, type=ast.literal_eval, help="Allow infinite SnoopFilter entries.")
 parser.add_argument('--xor-addr-bits',default=False,type=ast.literal_eval,help='If True, xor the addr bits to compute the mask')
+parser.add_argument('--block-stride-bits',default=0,type=int,help='Block address strides, 2^(--block-stride-bits)')
+parser.add_argument('--randomize-acc',default=False,type=ast.literal_eval,help=f'Randomize access patters')
 
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]
@@ -204,6 +206,8 @@ if num_cpus > 0 :
                      outstanding_req = args.outstanding_req,
                      id_starter = args.id_starter,
                      num_peer_producers = num_peer_producers,
+                     block_stride_bits = args.block_stride_bits,
+                     randomize_acc = args.randomize_acc,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
 
@@ -224,6 +228,8 @@ if args.num_dmas > 0:
                      id_starter = args.id_starter,
                      num_peer_producers = num_peer_producers,
                      addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,
+                     block_stride_bits = args.block_stride_bits,
+                     randomize_acc = args.randomize_acc,
                      suppress_func_errors = not args.suppress_func_errors) \
              for i in range(args.num_dmas) ]
     system.dma_devices = dmas

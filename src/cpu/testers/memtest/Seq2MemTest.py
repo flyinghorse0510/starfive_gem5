@@ -67,6 +67,8 @@ class Seq2MemTest(ClockedObject):
     num_peer_producers = Param.Counter(1, "[Not Used Here] Number of independent peer producers. Use to partition the working set")
     outstanding_req = Param.Int(1,"[Not Used Here] Number of outstanding requests. Set 1 if you want to measure latency or to a very large value if you want measure bw")
     id_starter = Param.Int(0,'[Not Used Here] Start CPU id of Migratory pattern. [Unused] here')
+    block_stride_bits = Param.Int(0,'Block address bits. stride=2^(block_stride_bits)')
+    randomize_acc = Param.Bool(False,'[True] pseudo-randomize access patterns')
 
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses

@@ -194,6 +194,10 @@ class Seq2MemTest : public ClockedObject
 
     uint64_t txSeqNum; // requestorID + txSeqNum should be the unique ID
 
+    uint64_t blockStrideBits;
+
+    const bool randomizeAcc;
+
     const bool atomic;
 
     const bool suppressFuncErrors;

@@ -59,6 +59,12 @@ static unsigned int NUM_CPUS_COMPLETED = 0;
 static unsigned int TESTER_ALLOCATOR = 0;
 static unsigned int TESTER_PRODUCER_IDX; // Pass Index of the writer. Only written by sole producer
 
+static inline int get_rand_between(int min, int max) {
+  if (min == max) {
+    return min;
+  }
+  return rand()%(max-min + 1) + min;
+}
 
 bool
 Seq2MemTest::CpuPort::recvTimingResp(PacketPtr pkt)
@@ -111,6 +117,8 @@ Seq2MemTest::Seq2MemTest(const Params &p)
       baseAddr(p.base_addr_1),
       addrInterleavedOrTiled(p.addr_intrlvd_or_tiled),
       percentReads(p.percent_reads),
+      blockStrideBits(p.block_stride_bits),
+      randomizeAcc(p.randomize_acc),
       txSeqNum((static_cast<uint64_t>(p.system->getRequestorId(this))) << 48),
       suppressFuncErrors(p.suppress_func_errors), stats(this)
 {
@@ -123,7 +131,10 @@ Seq2MemTest::Seq2MemTest(const Params &p)
     for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
         Addr effectiveBlockAddr=(addrInterleavedOrTiled)?(baseAddr+(num_cpus*i)+id):
                                 (baseAddr+(numPerCPUWorkingBlocks*id)+i);
-	Addr effectiveAddr = effectiveBlockAddr<<(static_cast<uint64_t>(std::log2(blockSize)));
+        if (blockStrideBits > 0) {
+            effectiveBlockAddr = effectiveBlockAddr<<blockStrideBits;
+        }
+	    Addr effectiveAddr = effectiveBlockAddr<<(static_cast<uint64_t>(std::log2(blockSize)));
         addrIterMap[effectiveAddr] = 0;
         perCPUWorkingBlocks.push_back(effectiveAddr);
     }
@@ -290,6 +301,9 @@ Seq2MemTest::tick()
     /* Search for an address within perCPUWorkingBlocks */
     paddr = perCPUWorkingBlocks.at(seqIdx);
     seqIdx = (seqIdx+1)%(perCPUWorkingBlocks.size());
+    if (randomizeAcc) {
+        seqIdx = get_rand_between(0,perCPUWorkingBlocks.size()-1);
+    }
     if (outstandingAddrs.find(paddr) != outstandingAddrs.end()) {
         waitResponse = true;
         return;
