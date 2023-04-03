@@ -196,15 +196,22 @@ def estimateDTMCMatrix(stateSeq,stateIds):
     Y_t=stateSeq
     T=range(len(Y_t)-1)
     for s in stateIds:
-        X[s] = sum([1 if ((Y_t[t]==s) and (Y_t[t+1]==s)) else 0 for t in T])/sum([1 if (Y_t[t]==s) else 0 for t in T])
+        n = sum([1 if ((Y_t[t]==s) and (Y_t[t+1]==s)) else 0 for t in T])
+        d = sum([1 if (Y_t[t]==s) else 0 for t in T])
+        if (d == 0) : # Current State 's' is never entered
+            X[s] = -1
+        else :
+            X[s] = n/d
     return X
 
 def getHNFTransitionProbability(options,dumpFile_hnf):
     acceptableReq=set({'ReadShared', 'ReadUnique', 'CleanUnique'})
     dfX2=pd.read_csv(dumpFile_hnf).query(f'ReqType in @acceptableReq').sort_values(by=['Cyc'],ascending=[True])
-    X = estimateDTMCMatrix(dfX2['Dest'].values,set(dfX2['Dest'].values))
+    hnfSet=set(range(options.num_llc))
+    X = estimateDTMCMatrix(dfX2['Dest'].values,hnfSet)
     with open(options.collated_outfile,'a+') as fsw:
-        print(f'{options.block_stride},{options.randomized_acc},{np.min(X)},{np.median(X)},{np.max(X)}',file=fsw)
+        jstr=','.join([f'{x:.2f}' for x in X])
+        print(f'{options.block_stride},{options.randomized_acc},{options.xored_addr},{jstr}',file=fsw)
     
 def main():
     parser = argparse.ArgumentParser(description='')
@@ -213,11 +220,12 @@ def main():
     parser.add_argument('--output-seq',required=True,type=str)
     parser.add_argument('--output-hnf',required=True,type=str)
     parser.add_argument('--output-dbg',required=True,type=str)
-    parser.add_argument('--num_llc',required=True,type=str)
+    parser.add_argument('--num_llc',required=True,type=int)
     parser.add_argument('--num-snoopfilter-assoc',required=True,type=int)
     parser.add_argument('--num-snoopfilter-entries',required=True,type=int)
     parser.add_argument('--block-stride',required=False,default=0,type=int,help=f'Block Stride. Stride=2^(block_stride)')
     parser.add_argument('--randomized-acc',required=False,default=False,type=ast.literal_eval,help=f'randomized access pattern')
+    parser.add_argument('--xored-addr',required=False,default=False,type=ast.literal_eval,help='Addr xored')
     parser.add_argument('--collated-outfile',required=True,type=str,help='Collated Output filename')
     options=parser.parse_args()
     logFile=options.input
