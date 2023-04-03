@@ -582,12 +582,16 @@ class CHI_HNF(CHI_Node):
                                         intlvBits = llc_bits,
                                         intlvMatch = i)
                 # Check the StarFive MAS
-                if options.xor_addr_bits :
+                if (options.xor_addr_bits > 1):
                     masks=[0 for _ in range(llc_bits)]
                     for j in range(llc_bits) :
                         masks[j] = 0
-                        for k in range(block_size_bits,54,llc_bits):
+                        total_xor_addr_bits = options.xor_addr_bits
+                        for k in range(block_size_bits,48,llc_bits):
+                            if total_xor_addr_bits <= 0:
+                                break
                             masks[j] |= (1 << (j+k))
+                            total_xor_addr_bits -= 1
                     addr_range.setIntlvMatch(i)
                     addr_range.setIntlvBits(llc_bits)
                     addr_range.setMasks(masks)

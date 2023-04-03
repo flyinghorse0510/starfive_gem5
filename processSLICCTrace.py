@@ -206,7 +206,8 @@ def estimateDTMCMatrix(stateSeq,stateIds):
 
 def getHNFTransitionProbability(options,dumpFile_hnf):
     acceptableReq=set({'ReadShared', 'ReadUnique', 'CleanUnique'})
-    dfX2=pd.read_csv(dumpFile_hnf).query(f'ReqType in @acceptableReq').sort_values(by=['Cyc'],ascending=[True])
+    # dfX2=pd.read_csv(dumpFile_hnf).query(f'ReqType in @acceptableReq').sort_values(by=['Cyc'],ascending=[True])
+    dfX2=pd.read_csv(dumpFile_hnf).sort_values(by=['Cyc'],ascending=[True])
     hnfSet=set(range(options.num_llc))
     X = estimateDTMCMatrix(dfX2['Dest'].values,hnfSet)
     with open(options.collated_outfile,'a+') as fsw:
