@@ -413,9 +413,14 @@ Sequencer::recordMissLatency(SequencerRequest* srequest, bool llscSuccess,
     if(type == RubyRequestType::RubyRequestType_LD){
         stats.LDLatDist.sample(total_lat);
     }
-
-    if(type == RubyRequestType::RubyRequestType_ST){
+    else if(type == RubyRequestType::RubyRequestType_ST){
         stats.STLatDist.sample(total_lat);
+    }
+    else if(type == RubyRequestType::RubyRequestType_Load_Linked){
+        stats.LLLatDist.sample(total_lat);
+    }
+    else if(type == RubyRequestType::RubyRequestType_Store_Conditional){
+        stats.SCLatDist.sample(total_lat);
     }
 
     if (isExternalHit) {
@@ -1025,10 +1030,14 @@ Sequencer::getCurrentUnaddressedTransactionID() const
 Sequencer::SequencerStats::SequencerStats(statistics::Group *parent)
       : statistics::Group(parent),
       ADD_STAT(LDLatDist, "Distribution of LD Latency"),
-      ADD_STAT(STLatDist, "Distribution of ST Latency")
+      ADD_STAT(STLatDist, "Distribution of ST Latency"),
+      ADD_STAT(LLLatDist, "Distribution of LD Linked Latency"),
+      ADD_STAT(SCLatDist, "Distribution of ST Conditional Latency")
 {
     LDLatDist.init(0,999,1000);
     STLatDist.init(0,999,1000);
+    LLLatDist.init(0,999,1000);
+    SCLatDist.init(0,999,1000);
 }
 
 } // namespace ruby

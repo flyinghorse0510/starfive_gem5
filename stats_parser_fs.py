@@ -51,9 +51,13 @@ cpu_inst_pat = re.compile('^system\.cpu(\d*)\.exec_context\.thread_0\.num(Load|S
 cpu_cycle_pat = re.compile('^system\.cpu(\d*)\.numCycles\s+(\d+)')
 
 ## sequencer's pattern
-## we only care about data sequencer
+## TODO: Current stats taken from two parts. 
+## 1) In seq.csv, stats.txt, only cpu data sequencers are taken into account
+## 2) In all_stats.txt, both cpu and dma sequencers are taken into account
 ## groups we need: 1) cpu's id 2) LD/ST 3) mean/min_value/max_value 4) latency
-seq_lat_pat = re.compile('^system\.cpu(\d*)\.data_sequencer\.(LD|ST)LatDist::(mean|min_value|max_value)\s+(\d+\.?\d+|\d+)')
+seq_lat_cpu_pat = re.compile('^system\.cpu(\d*)\.data_sequencer\.(LD|ST|LL|SC)LatDist::(mean|samples)\s+(\d+\.?\d+|\d+)')
+seq_lat_all_pat = re.compile('^system\.ruby\.RequestType\.(LD|ST|Load_Linked|Store_Conditional)\.latency_hist_seqr::mean\s+(\d+\.?\d+|\d+)')
+
 
 ## snoop's pattern
 llc_snpout_pat = re.compile('^system\.ruby\.hnf(\d*)\.cntrl\.snpOut\.m_msg_count\s+(\d+)')
@@ -84,6 +88,18 @@ class CPU(Printable):
 
 
 class SEQ(Printable):
+    ## TODO: sequencer latency use different data source
+    ## for individual latency, use self-defined stats, e.g. LDLatDist
+    ## for overall average latency, use GEM5 profiling stats, e.g. LD
+    ## please see Sequencer.cc for more details
+
+    ## cls variables for storing overall average latency
+    ld_lat = 0
+    st_lat = 0
+    ll_lat = 0
+    sc_lat = 0
+
+    ## instance varaibles for storing individual latency
     def __init__(self,id=0):
         self.id = id
 
@@ -165,7 +181,8 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], s
     cpu_inst_sch = re.search(cpu_inst_pat, line)
     cpu_cycle_sch = re.search(cpu_cycle_pat, line)
     priv_cache_sch = re.search(priv_cache_demand_pat, line)
-    seq_lat_sch = re.search(seq_lat_pat, line)
+    seq_lat_cpu_sch = re.search(seq_lat_cpu_pat, line)
+    seq_lat_all_sch = re.search(seq_lat_all_pat, line)
     llc_snpout_sch = re.search(llc_snpout_pat, line)
     l2p_snpin_sch = re.search(l2p_snpin_pat, line)
     snp_ftr_sch = re.search(snp_ftr_pat, line)
@@ -269,14 +286,29 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], s
         cpu_id = 0 if len(cpus) == 1 else int(cpu_cycle_sch.group(1))
         cpus[cpu_id].cycle = int(cpu_cycle_sch.group(2))
 
-    elif seq_lat_sch:
-        seq_id = 0 if len(seqs) == 1 else int(seq_lat_sch.group(1))
-        seq_op:str = seq_lat_sch.group(2) # LD/ST
-        seq_stats:str = seq_lat_sch.group(3) # mean|min_value|max_value
-        seq_lat:float = float(seq_lat_sch.group(4))
+    elif seq_lat_cpu_sch:
+        seq_id = 0 if len(seqs) == 1 else int(seq_lat_cpu_sch.group(1))
+        seq_op:str = seq_lat_cpu_sch.group(2) # LD/ST/LL/SC
+        seq_stats:str = seq_lat_cpu_sch.group(3) # mean|samples
+        seq_data:float = float(seq_lat_cpu_sch.group(4))
 
-        setattr(seqs[seq_id], seq_op+'_'+seq_stats, seq_lat)
+        setattr(seqs[seq_id], seq_op+'_'+seq_stats, seq_data)
 
+    elif seq_lat_all_sch:
+        seq_op:str = seq_lat_all_sch.group(1)
+        seq_lat:float = float(seq_lat_all_sch.group(2))
+
+        if seq_op == 'LD':
+            SEQ.ld_lat = seq_lat
+        elif seq_op == 'ST':
+            SEQ.st_lat = seq_lat
+        elif seq_op == 'Load_Linked':
+            SEQ.ll_lat = seq_lat
+        elif seq_op == 'Store_Conditional':
+            SEQ.sc_lat = seq_lat
+        else:
+            raise TypeError(f'parse_stats():seq_lat_all_sch: Unrecognized seq_op {seq_op}')
+    
     # ^system\.ruby\.hnf(\d*)\.cntrl\.snpout\.m_msg_count\s+(\d+)
     elif llc_snpout_sch:
         llc_id = 0 if len(llcs) == 1 else int(llc_snpout_sch.group(1))
@@ -458,6 +490,10 @@ def parse_stats_file(args:argparse.Namespace):
         'l2_size':[args.l2_size],
         'l3_size':[args.l3_size],
         'cpu_ipc':[df_dict['cpu'].loc['Total','ipc']],
+        'ld_lat':SEQ.ld_lat,
+        'st_lat':SEQ.st_lat,
+        'll_lat':SEQ.ll_lat,
+        'sc_lat':SEQ.sc_lat,
         'l2p_read': [df_dict['l2p'].loc['Total','ReadS/U']],
         'l2p_write': [df_dict['l2p'].loc['Total','WriteB']],
         'l2p_hit':[df_dict['l2p'].loc['Total','hit']],
