@@ -36,7 +36,11 @@ ISA="ARM"
 CCPROT="CHI"
 CHECKPNT_IDX="1"
 CHECKPNT_CPU="NonCachingSimpleCPU"  # NonCachingSimpleCPU
-RESTORE_CPU_SET=("TimingSimpleCPU")  # AtomicSimpleCPU
+RESTORE_CPU_SET=("TimingSimpleCPU")  # AtomicSimpleCPU, O3CPU
+
+CHECKPNT_SCRIPT="${GEM5_DIR}/configs/boot/hack_back_ckpt.rcS"
+PARSEC_SCRIPT_DIR="/home/zhiang.li/arm/m5_path/parsec_scripts"
+DISK_IMG="expanded-ubuntu-18.04-arm64-docker.img"
 
 BENCHMARK_NAMES=("blackscholes" "canneal" "facesim" "ferret" "fluidanimate" "freqmine" "streamcluster" "swaptions")
 # BENCHMARK_NAMES=("facesim")
@@ -93,11 +97,6 @@ while getopts "hbc:r:d:s:a:t:g:" options; do
          echo "Running link graphing, need to turn on TxnLink"
     esac
 done
-
-CHECKPNT_SCRIPT="${GEM5_DIR}/configs/boot/hack_back_ckpt.rcS"
-
-PARSEC_SCRIPT_DIR="/home/zhiang.li/arm/m5_path/parsec_scripts"
-DISK_IMG="expanded-ubuntu-18.04-arm64-docker.img"
 
 
 #NOTE:
