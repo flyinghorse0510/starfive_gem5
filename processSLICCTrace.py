@@ -210,10 +210,70 @@ def getHNFTransitionProbability(options,dumpFile_hnf):
     dfX2=pd.read_csv(dumpFile_hnf).sort_values(by=['Cyc'],ascending=[True])
     hnfSet=set(range(options.num_llc))
     X = estimateDTMCMatrix(dfX2['Dest'].values,hnfSet)
+    return X
+
+def getReadWriteStats(options,dumpFile_hnf):
+    readsPat=re.compile(f'system.cpu(\d*).numReads( +)(\d+)')
+    writesPat=re.compile(f'system.cpu(\d*).numWrites( +)(\d+)')
+    tickPerCycPat=re.compile(f'system.clk_domain.clock( +)(\d+)')
+    simTicksPat=re.compile(f'simTicks( +)(\d+)')
+    hnfHitPat=re.compile(f'system.ruby.hnf(\d*).cntrl.cache.m_demand_hits( +)(\d+)')
+    hnfMissPat=re.compile(f'system.ruby.hnf(\d*).cntrl.cache.m_demand_misses( +)(\d+)')
+    sfMissPat=re.compile(f'system.ruby.hnf(\d*).cntrl.directory.m_snoopfilter_misses( +)(\d+)')
+    sfAccPat=re.compile(f'system.ruby.hnf(\d*).cntrl.directory.m_snoopfilter_accesses( +)(\d+)')
+    numReads=-1
+    numWrites=-1
+    tickPerCyc=-1
+    cyc=0
+    simTicks=0
+    statsFile=options.stats_file
+    numHNFHits=0
+    numHNFMisses=0
+    numSFMiss=0
+    numSFAcc=0
+    with open(statsFile,'r') as sf:
+        for line in sf:
+            readsMatch=readsPat.search(line)
+            writesMatch=writesPat.search(line)
+            tickPerCycMatch=tickPerCycPat.search(line)
+            simTickMatch=simTicksPat.search(line)
+            hnfHitMatch=hnfHitPat.search(line)
+            hnfMissMatch=hnfMissPat.search(line)
+            sfMissMatch=sfMissPat.search(line)
+            sfAccMatch=sfAccPat.match(line)
+            if readsMatch :
+                numReads = int(readsMatch.group(3))
+            elif writesMatch :
+                numWrites=int(writesMatch.group(3))
+            elif tickPerCycMatch :
+                tickPerCyc = int(tickPerCycMatch.group(2))
+            elif simTickMatch :
+                simTicks = int(simTickMatch.group(2))
+            elif hnfHitMatch :
+                numHNFHits += int(hnfHitMatch.group(3))
+            elif hnfMissMatch :
+                numHNFMisses += int(hnfMissMatch.group(3))
+            elif sfMissMatch :
+                numSFMiss += int(sfMissMatch.group(3))
+            elif sfAccMatch :
+                numSFAcc += int(sfAccMatch.group(3))
+    assert(tickPerCyc > 0)
+    cyc=simTicks/tickPerCyc
+    bw=64*(numReads+numWrites)/cyc
+    totalHNFAcc=numHNFHits+numHNFMisses
+    hnfMissRate=-1
+    sfMissRate=-1
+    if totalHNFAcc > 0:
+        hnfMissRate=numHNFMisses/totalHNFAcc
+    if numSFAcc > 0:
+        sfMissRate=numSFMiss/numSFAcc
+    X=getHNFTransitionProbability(options,dumpFile_hnf)
     with open(options.collated_outfile,'a+') as fsw:
         jstr=','.join([f'{x:.2f}' for x in X])
-        print(f'{options.block_stride},{options.randomized_acc},{options.xored_addr},{jstr}',file=fsw)
-    
+        print(f'{options.block_stride},{options.randomized_acc},{options.xored_addr},{bw},{hnfMissRate},{sfMissRate},{jstr}',file=fsw)
+
+
+
 def main():
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--input',required=True,type=str)
@@ -227,17 +287,20 @@ def main():
     parser.add_argument('--block-stride',required=False,default=0,type=int,help=f'Block Stride. Stride=2^(block_stride)')
     parser.add_argument('--randomized-acc',required=False,default=False,type=ast.literal_eval,help=f'randomized access pattern')
     parser.add_argument('--xored-addr',required=False,default=False,type=ast.literal_eval,help='Addr xored')
-    parser.add_argument('--collated-outfile',required=True,type=str,help='Collated Output filename')
+    parser.add_argument('--collated-outfile',required=False,default='null',type=str,help='Collated Output filename')
+    parser.add_argument('--stats-file',required=False,default='null',type=str,help='')
     options=parser.parse_args()
     logFile=options.input
     dumpFile_seq=options.output_seq
     dumpFile_hnf=options.output_hnf
     jsonFile=options.input_cfg
     # processRubyGeneratedFlags(logFile,dumpFile,tgtAddr)
-    processAddressRequests(options,jsonFile,logFile,dumpFile_seq,0)
-    processAddressRequests(options,jsonFile,logFile,dumpFile_hnf,3)
-    getHNFTransitionProbability(options,dumpFile_hnf)
-    # processEvents(options,jsonFile,logFile,options.output_dbg)
+    if options.collated_outfile != 'null' :
+        getReadWriteStats(options,dumpFile_hnf)
+    else :
+        processAddressRequests(options,jsonFile,logFile,dumpFile_seq,0)
+        processAddressRequests(options,jsonFile,logFile,dumpFile_hnf,3)
+
 
 if __name__=="__main__":
     main()
