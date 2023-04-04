@@ -4,12 +4,10 @@ Help() {
    # Display Help
    echo "Run gem5 Starlink2.0 configurations."
    echo
-   echo "Syntax: scriptTemplate [-b|r|h|w|t]"
+   echo "Syntax: scriptTemplate [-b|h|t]"
    echo "options:"
    echo "h     Print this Help."
    echo "b     Build."
-   echo "r     IsoMemTest"
-   echo "w     ProdConsMemTest"
    echo "t     seqmemtest"
    echo
 }
@@ -20,16 +18,12 @@ ISOMEMTEST=""
 PRODCONSTEST=""
 GATETEST=""
 
-while getopts "hbrwt" options; do
+while getopts "hbt" options; do
     case $options in
         h) Help
            exit;;
         b) BUILD="yes"
             ;;
-        r) ISOMEMTEST="yes"
-           ;;
-        w) PRODCONSTEST="yes"
-           ;;
         t) GATETEST="yes"
            ;;
     esac
@@ -78,16 +72,16 @@ if [ "$GATETEST" != "" ]; then
     NETWORK="simple"
     IDEAL_SNOOP_FILTER=False
     DEBUGFLAGS=SeqMemLatTest,TxnTrace,RubyGenerated
-    OUTPUT_PREFIX="SeqMemLoadAddrPat_${NETWORK}"
+    OUTPUT_PREFIX="CHITxnTest_${NETWORK}"
 
-    WKSETLIST=(262144) #(4096 8192 10240 12288 16384 65536)
+    WKSETLIST=(8192) #(4096 8192 10240 12288 16384 65536)
     NUM_CPU_SET=(1)
     L2_ASSOC_CONFIG_SET=(1) #(1 2 4 8)
     SNOOP_FILTER_SIZE_CONFIG_SET=(128) #(64 128)
     SNOOP_FILTER_ASSOC_CONFIG_SET=8
-    XOR_ADDR_BITS_SET=(1 2 4 8 12 16 20)
-    BLOCK_STRIDE_CONFIG_SET=(0 1 2 4 8)
-    RANDOMIZE_ACC_CONFIG_SET=(False True)
+    XOR_ADDR_BITS_SET=(1)
+    BLOCK_STRIDE_CONFIG_SET=(0)
+    RANDOMIZE_ACC_CONFIG_SET=(False)
 
     # for NUMCPUS in ${NUM_CPU_SET[@]}; do
     #     for WKSET in ${WKSETLIST[@]}; do
@@ -161,49 +155,6 @@ if [ "$GATETEST" != "" ]; then
     # done
     # wait
 
-    # for NUMCPUS in ${NUM_CPU_SET[@]}; do
-    #     for WKSET in ${WKSETLIST[@]}; do
-    #         for l2_assoc in ${L2_ASSOC_CONFIG_SET[@]}; do
-    #             for SNOOP_FILTER_SIZE in ${SNOOP_FILTER_SIZE_CONFIG_SET[@]}; do
-    #                 for SNOOP_FILTER_ASSOC in ${SNOOP_FILTER_ASSOC_CONFIG_SET[@]}; do
-    #                     for BLOCK_STRIDE_BITS in ${BLOCK_STRIDE_CONFIG_SET[@]}; do
-    #                         for XOR_ADDR_BITS in ${XOR_ADDR_BITS_SET[@]}; do
-    #                             for RANDOMIZE_ACC in ${RANDOMIZE_ACC_CONFIG_SET[@]}; do
-    #                                 OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_NumLLC${NUM_LLC}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_L2Assoc${l2_assoc}_XorAddrBits${XOR_ADDR_BITS}_BlockStrideBits${BLOCK_STRIDE_BITS}_RandomizeAcc${RANDOMIZE_ACC}"
-    #                                 OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
-    #                                 echo "GateTest Parsing: ${OUTPUT_BASE}"
-    #                                 grep 'hnf' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
-    #                                 # ${PY3} stats_parse_snoopfilter.py \
-    #                                 #     --input="${OUTPUT_DIR}/stats.txt" \
-    #                                 #     --output="${OUTPUT_DIR}/log.txt" \
-    #                                 #     --num_cpu=${NUMCPUS} \
-    #                                 #     --num_llc=${NUM_LLC} \
-    #                                 #     --l2-assoc=${l2_assoc} \
-    #                                 #     --working-set=${WKSET} \
-    #                                 #     --summary-dump-file="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/SFMissRateSummary.txt" &
-    #                                 ${PY3} processSnoopFilterHNFAccTrace.py \
-    #                                     --input="${OUTPUT_DIR}/debug.trace" \
-    #                                     --input-cfg="${OUTPUT_DIR}/config.json" \
-    #                                     --output-hnf="${OUTPUT_DIR}/debug.hnf.csv" \
-    #                                     --output-seq="${OUTPUT_DIR}/debug.seq.csv" \
-    #                                     --output-dbg="${OUTPUT_DIR}/debug.hnfevents.csv" \
-    #                                     --block-stride=${BLOCK_STRIDE_BITS} \
-    #                                     --randomized-acc=${RANDOMIZE_ACC} \
-    #                                     --num_llc=${NUM_LLC} \
-    #                                     --xored-addr=${XOR_ADDR_BITS} \
-    #                                     --num-snoopfilter-assoc=$SNOOP_FILTER_ASSOC \
-    #                                     --num-snoopfilter-entries=$SNOOP_FILTER_SIZE &
-    #                             done
-    #                         done
-    #                     done
-    #                 done
-    #             done
-    #         done
-    #     done
-    # done
-    # wait
-
-    echo "BlockStride,RandomizedAcc,addr_xored,BW,LLCMissRate,AggSFMissRate,Pii" > "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/Summary.csv"
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
         for WKSET in ${WKSETLIST[@]}; do
             for l2_assoc in ${L2_ASSOC_CONFIG_SET[@]}; do
@@ -214,21 +165,11 @@ if [ "$GATETEST" != "" ]; then
                                 for RANDOMIZE_ACC in ${RANDOMIZE_ACC_CONFIG_SET[@]}; do
                                     OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_NumLLC${NUM_LLC}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_L2Assoc${l2_assoc}_XorAddrBits${XOR_ADDR_BITS}_BlockStrideBits${BLOCK_STRIDE_BITS}_RandomizeAcc${RANDOMIZE_ACC}"
                                     OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
-                                    echo "GateTest Collating: ${OUTPUT_BASE}"
-                                    ${PY3} processSnoopFilterHNFAccTrace.py \
-                                        --input="${OUTPUT_DIR}/debug.trace" \
-                                        --input-cfg="${OUTPUT_DIR}/config.json" \
-                                        --output-hnf="${OUTPUT_DIR}/debug.hnf.csv" \
-                                        --output-seq="${OUTPUT_DIR}/debug.seq.csv" \
-                                        --output-dbg="${OUTPUT_DIR}/debug.hnfevents.csv" \
-                                        --collated-outfile="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/Summary.csv" \
-                                        --stats-file="${OUTPUT_DIR}/stats.txt" \
-                                        --block-stride=${BLOCK_STRIDE_BITS} \
-                                        --randomized-acc=${RANDOMIZE_ACC} \
-                                        --num_llc=${NUM_LLC} \
-                                        --xored-addr=${XOR_ADDR_BITS} \
-                                        --num-snoopfilter-assoc=$SNOOP_FILTER_ASSOC \
-                                        --num-snoopfilter-entries=$SNOOP_FILTER_SIZE
+                                    echo "GateTest Parsing: ${OUTPUT_BASE}"
+                                    grep 'hnf' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
+                                    ${PY3} reOrderSliccTrace.py \
+                                        --input="${OUTPUT_DIR}/debug.hnf.trace" \
+                                        --output="${OUTPUT_DIR}/debug.hnf.trace.csv"
                                 done
                             done
                         done

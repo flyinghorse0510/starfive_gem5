@@ -6,38 +6,6 @@ import ast
 import pandas as pd
 import numpy as np
 
-def processRubyGeneratedFlags(logFile,dumpFile,tgtAddr):
-    transitionPat=re.compile(r'^(\s*\d*): (\S+): \[Cache_Controller ([0-9]+)\], Time: ([0-9]+), state: ([\w]+), event: ([\w]+), addr: ([0-9a-fx]+)')
-    actionPat=re.compile(r'^(\s*\d*): (\S+): executing ([\w]+)')
-    nextStatePat=re.compile(r'^(\s*\d*): (\S+): next_state: ([\w]+)')
-    tbeStatePat=re.compile(r'^(\s*\d*): (\S+): ([\S]+):([\d]+): TBEState')
-    addrDict=dict() # Each address consist of a list of transitions and actions
-    addr='INVALID'
-    with open(logFile,'r') as f:
-        for line in f :
-            line=line.rstrip()
-            tranMatch=transitionPat.match(line)
-            actionMatch=actionPat.match(line)
-            nextStateMatch=nextStatePat.match(line)
-            tbeStateMatch=tbeStatePat.match(line)
-            if tranMatch :
-                addr=tranMatch.group(7)
-                if addr in addrDict:
-                    addrDict[addr].append(line)
-                else :
-                    addrDict[addr] = [line]
-            elif (actionMatch or nextStateMatch or tbeStateMatch):
-                assert(addr != 'INVALID')
-                assert(addr in addrDict)
-                addrDict[addr].append(line)
-    with open(dumpFile,'w') as fw:
-        if tgtAddr in addrDict :
-            v = addrDict[tgtAddr]
-            for line in v:
-                print(line,file=fw)
-        else :
-            print(f'Addr={tgtAddr} not found',file=fw)
-
 def bitSelect(addr,start,end):
     assert(start >= end)
     binAddr=bin(addr).lstrip('0b').rjust(64,'0')
@@ -294,7 +262,6 @@ def main():
     dumpFile_seq=options.output_seq
     dumpFile_hnf=options.output_hnf
     jsonFile=options.input_cfg
-    # processRubyGeneratedFlags(logFile,dumpFile,tgtAddr)
     if options.collated_outfile != 'null' :
         getReadWriteStats(options,dumpFile_hnf)
     else :
