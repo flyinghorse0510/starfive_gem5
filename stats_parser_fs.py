@@ -48,6 +48,8 @@ ddr_pat = re.compile('system\.mem_ctrls(\d*)\.([a-z]+)Reqs\s+(\d+)')
 # cpu's pattern
 # groups we need: 1) cpu's id 2) load/store 3) num of load/store requests
 cpu_inst_pat = re.compile('^system\.cpu(\d*)\.exec_context\.thread_0\.num(Load|Store|)Insts\s+(\d+)')
+cpu_o3inst_pat = re.compile('^system\.cpu(\d*)\.committedInsts\s+(\d+)')
+cpu_o3mem_pat = re.compile('^system\.cpu(\d*)\.commit\.(loads|memRefs)\s+(\d+)')
 cpu_cycle_pat = re.compile('^system\.cpu(\d*)\.numCycles\s+(\d+)')
 
 ## sequencer's pattern
@@ -72,7 +74,10 @@ class Printable:
         return str(vars(self))
 
 class CPU(Printable):
-    def __init__(self,id=0,read=0,write=0,inst=0,cycle=0):
+    # CPU type
+    typ = None
+
+    def __init__(self,id=0,read=0,write=0,inst=0, cycle=0):
         self.id = id
         self.read = read
         self.write = write
@@ -178,7 +183,9 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], s
     l2p_txn_sch = re.search(l2p_txn_pat, line)
     llc_txn_sch = re.search(llc_txn_pat, line)
     ddr_sch = re.search(ddr_pat, line)
-    cpu_inst_sch = re.search(cpu_inst_pat, line)
+    cpu_inst_sch = re.search(cpu_inst_pat, line) if CPU.typ != 'O3CPU' else None
+    cpu_o3inst_sch = re.search(cpu_o3inst_pat, line) if CPU.typ == 'O3CPU' else None
+    cpu_o3mem_sch = re.search(cpu_o3mem_pat, line) if CPU.typ == 'O3CPU' else None
     cpu_cycle_sch = re.search(cpu_cycle_pat, line)
     priv_cache_sch = re.search(priv_cache_demand_pat, line)
     seq_lat_cpu_sch = re.search(seq_lat_cpu_pat, line)
@@ -281,6 +288,23 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], s
             cpus[cpu_id].inst = cpu_num_op
         else:
             raise TypeError(f'parse_stats():cpu_op: Unrecognized cpu_op {cpu_op}')
+        
+    elif cpu_o3inst_sch:
+        cpu_id = 0 if len(cpus) == 1 else int(cpu_o3inst_sch.group(1))
+        cpus[cpu_id].inst = int(cpu_o3inst_sch.group(2))
+
+    elif cpu_o3mem_sch:
+        cpu_id = 0 if len(cpus) == 1 else int(cpu_o3mem_sch.group(1))
+        cpu_op = cpu_o3mem_sch.group(2)
+        cpu_num_op:int = int(cpu_o3mem_sch.group(3))
+
+        if cpu_op == 'memRefs':
+            cpus[cpu_id].write = cpu_num_op
+        elif cpu_op == 'loads':
+            cpus[cpu_id].read = cpu_num_op
+            cpus[cpu_id].write = cpus[cpu_id].write - cpus[cpu_id].read
+        else:
+            raise TypeError(f'parse_stats():cpu_o3mem: Unrecognized cpu_op {cpu_op}')
     
     elif cpu_cycle_sch:
         cpu_id = 0 if len(cpus) == 1 else int(cpu_cycle_sch.group(1))
@@ -374,6 +398,7 @@ def variable_file_parser(args:argparse.Namespace, variable_file_path):
         'BENCHMARK':str,
         'NUMCPUS':int,
         'NUM_LLC':int,
+        'RESTORE_CPU':str,
         'SNPFILTER_ENTRIES':int,
         'NUM_MEM':int,
         'NUM_DDR_Side':int,
@@ -408,7 +433,7 @@ def variable_file_parser(args:argparse.Namespace, variable_file_path):
 
 
 def parse_stats_file(args:argparse.Namespace):
-
+    CPU.typ = args.RESTORE_CPU # O3CPU or other types
     cpus = [CPU(i) for i in range(args.NUMCPUS)]
     seqs = [SEQ(i) for i in range(args.NUMCPUS)]
     llcs = [LLC(i) for i in range(args.NUM_LLC)]
