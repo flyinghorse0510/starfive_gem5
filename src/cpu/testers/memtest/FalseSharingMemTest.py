@@ -56,7 +56,7 @@ class FalseSharingMemTest(ClockedObject):
     
     working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
     max_loads = Param.Counter(1, "Number of loads to execute before exiting")
-    percent_reads = Param.Percent(100, "Percentage reads")
+    percent_reads = Param.Percent(50, "Percentage reads")
     addr_intrlvd_or_tiled = Param.Bool(False,"If true the address partitioning across CPUs is interleaved [0,N,2N;1,N+1,2N+1;...]. Otherwise Tiled [0:N-1,N:2N-1]")
 
     num_cpus = Param.Counter(1, "Total number of CPUs")
@@ -67,8 +67,9 @@ class FalseSharingMemTest(ClockedObject):
     id_producers = VectorParam.Int([], '[Not Used Here] List of Producer Ids')
     id_consumers = VectorParam.Int([], '[Not Used Here] List of Consumer Ids')
     num_peer_producers = Param.Counter(1, "Number of independent peer producers. Use to partition the working set")
-    outstanding_req = Param.Int(1,"[Not Used Here] Number of outstanding requests. Set 1 if you want to measure latency or to a very large value if you want measure bw")
     id_starter = Param.Int(0,'[Not Used Here] Start CPU id of Migratory pattern. [Unused] here')
+    block_stride_bits = Param.Int(0,'Block address bits. stride=2^(block_stride_bits)')
+    randomize_acc = Param.Bool(False,'[True] pseudo-randomize access patterns')
 
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses
