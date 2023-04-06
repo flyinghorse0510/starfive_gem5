@@ -21,6 +21,8 @@
 #include "sim/sim_object.hh"
 #include "params/RubySnoopFilter.hh"
 
+#include "debug/SnpProfile.hh"
+
 namespace gem5
 {
 
@@ -146,7 +148,7 @@ class SnoopFilter : public SimObject {
       statistics::Scalar m_snoopfilter_hits;
       statistics::Scalar m_snoopfilter_alloc;
       statistics::Formula m_snoopfilter_accesses;
-
+      
     } snoopFilterStats;
 };
 

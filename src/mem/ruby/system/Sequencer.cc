@@ -68,7 +68,8 @@ namespace ruby
 
 Sequencer::Sequencer(const Params &p)
     : RubyPort(p), m_IncompleteTimes(MachineType_NUM),
-      deadlockCheckEvent([this]{ wakeup(); }, "Sequencer deadlock check")
+      deadlockCheckEvent([this]{ wakeup(); }, "Sequencer deadlock check"),
+      stats(this)
 {
     m_outstanding_count = 0;
 
@@ -406,6 +407,21 @@ Sequencer::recordMissLatency(SequencerRequest* srequest, bool llscSuccess,
 
     m_latencyHist.sample(total_lat);
     m_typeLatencyHist[type]->sample(total_lat);
+
+
+    // zhiang: add latency to stats
+    if(type == RubyRequestType::RubyRequestType_LD){
+        stats.LDLatDist.sample(total_lat);
+    }
+    else if(type == RubyRequestType::RubyRequestType_ST){
+        stats.STLatDist.sample(total_lat);
+    }
+    else if(type == RubyRequestType::RubyRequestType_Load_Linked){
+        stats.LLLatDist.sample(total_lat);
+    }
+    else if(type == RubyRequestType::RubyRequestType_Store_Conditional){
+        stats.SCLatDist.sample(total_lat);
+    }
 
     if (isExternalHit) {
         m_missLatencyHist.sample(total_lat);
@@ -1009,6 +1025,19 @@ Sequencer::getCurrentUnaddressedTransactionID() const
         uint64_t(m_version & 0xFFFFFFFF) << 32) |
         (m_unaddressedTransactionCnt << RubySystem::getBlockSizeBits()
     );
+}
+
+Sequencer::SequencerStats::SequencerStats(statistics::Group *parent)
+      : statistics::Group(parent),
+      ADD_STAT(LDLatDist, "Distribution of LD Latency"),
+      ADD_STAT(STLatDist, "Distribution of ST Latency"),
+      ADD_STAT(LLLatDist, "Distribution of LD Linked Latency"),
+      ADD_STAT(SCLatDist, "Distribution of ST Conditional Latency")
+{
+    LDLatDist.init(0,999,1000);
+    STLatDist.init(0,999,1000);
+    LLLatDist.init(0,999,1000);
+    SCLatDist.init(0,999,1000);
 }
 
 } // namespace ruby

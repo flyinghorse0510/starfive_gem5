@@ -279,6 +279,10 @@ doSimLoop(EventQueue *eventq)
         assert(curTick() <= eventq->nextTick() &&
                "event scheduled in the past");
 
+        if(curTick() % 1000000000 == 0){
+            printf("%lu M Cycles passed\n", curTick()/1000000000);
+        }
+
         if (async_event && testAndClearAsyncEvent()) {
             // Take the event queue lock in case any of the service
             // routines want to schedule new events.

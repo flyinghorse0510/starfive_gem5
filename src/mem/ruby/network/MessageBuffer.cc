@@ -243,6 +243,7 @@ MessageBuffer::txntrace_print(MsgPtr message, \
                               const gem5::Tick& arrival_time, \
                               const bool arrivalOrDep)
 {
+    if(!::gem5::debug::TxnTrace) return;
 
     const std::type_info& msg_type = typeid(*(message.get()));
 

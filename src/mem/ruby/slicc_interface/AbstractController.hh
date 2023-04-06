@@ -265,7 +265,7 @@ class AbstractController : public ClockedObject, public Consumer
     // zhiang: get TxSeqNum
     uint64_t getTxSeqNum(RequestPtr req)
     {
-      return req->getReqInstSeqNum();
+      return req->getTraceTxsn();
     }
 
     /**

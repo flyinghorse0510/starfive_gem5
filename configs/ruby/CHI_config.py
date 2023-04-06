@@ -411,6 +411,9 @@ class CHI_DMAController(CHI_Cache_Controller):
         self.number_of_snoop_TBEs = 1 # should not receive any snoop
         self.number_of_DVM_TBEs = 1 # should not receive any dvm
         self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
+        self.allow_infinite_SF_entries = True
+        self.number_snoopfilter_entries = 1000
+        self.number_snoopfilter_assoc = 2
         self.unify_repl_TBEs = False
 
 class CPUSequencerWrapper:
