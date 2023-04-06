@@ -399,7 +399,7 @@ def variable_file_parser(args:argparse.Namespace, variable_file_path):
         'NUMCPUS':int,
         'NUM_LLC':int,
         'RESTORE_CPU':str,
-        'SNPFILTER_ENTRIES':int,
+        'SNPFILTER_ENTRIES':str,
         'NUM_MEM':int,
         'NUM_DDR_Side':int,
         'NUM_DDR_XP':int,
@@ -418,7 +418,7 @@ def variable_file_parser(args:argparse.Namespace, variable_file_path):
         'l3_size':str,
     }
 
-    var_dict = {key:ops(all_var_dict[key]) for key,ops in var_list.items()}
+    var_dict = {key:ops(all_var_dict.get(key)) for key,ops in var_list.items()}
     logging.debug(f'variable_file_parser:var_dict: {var_dict}')
 
     import copy
