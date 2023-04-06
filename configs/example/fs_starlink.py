@@ -319,12 +319,15 @@ parser.add_argument('--allow-SD',default=True, help="allow SD state") # True for
 parser.add_argument("--num-snoopfilter-entries",default=4,type=int,help="SnoopFilter: number of entries")
 parser.add_argument("--num-snoopfilter-assoc",default=2,type=int,help="SnoopFilter: assoc")
 parser.add_argument('--allow-infinite-SF-entries',action='store_true', help="Allow infinite SnoopFilter entries.") # False to use a realistic SF
+parser.add_argument('--xor-addr-bits',default=4,type=int,help='Number of addr bits XORed to obtain the address masks')
 
 # Add the ruby specific and protocol specific args
 if '--ruby' in sys.argv:
     Ruby.define_options(parser)
 
 args = parser.parse_args()
+logging.info(f'xor_addr_bits:{args.xor_addr_bits}')
+logging.info(f'allow_infinite_SF_entries:{args.allow_infinite_SF_entries}')
 
 # system under test can be any CPU
 (TestCPUClass, test_mem_mode, FutureClass) = Simulation.setCPUClass(args)

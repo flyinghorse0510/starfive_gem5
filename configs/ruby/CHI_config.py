@@ -388,6 +388,7 @@ class CHI_DMAController(CHI_Cache_Controller):
             assoc = 1
         self.use_prefetcher = False
         self.cache = DummyCache()
+        self.directory = CHI_IdealSnoopFilter()
         self.sequencer.dcache = NULL
         # All allocations are false
         # Deallocations are true (don't really matter)
@@ -411,9 +412,9 @@ class CHI_DMAController(CHI_Cache_Controller):
         self.number_of_snoop_TBEs = 1 # should not receive any snoop
         self.number_of_DVM_TBEs = 1 # should not receive any dvm
         self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
-        self.allow_infinite_SF_entries = True
-        self.number_snoopfilter_entries = 1000
-        self.number_snoopfilter_assoc = 2
+        # self.allow_infinite_SF_entries = True
+        # self.number_snoopfilter_entries = 1000
+        # self.number_snoopfilter_assoc = 2
         self.unify_repl_TBEs = False
 
 class CPUSequencerWrapper:
