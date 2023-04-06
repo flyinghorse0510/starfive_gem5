@@ -36,7 +36,7 @@ ISA="ARM"
 CCPROT="CHI"
 CHECKPNT_IDX="1"
 CHECKPNT_CPU="NonCachingSimpleCPU"  # NonCachingSimpleCPU
-RESTORE_CPU_SET=("TimingSimpleCPU")  # AtomicSimpleCPU, O3CPU
+RESTORE_CPU_SET=("O3CPU")  # AtomicSimpleCPU, TimingSimpleCPU
 
 CHECKPNT_SCRIPT="${GEM5_DIR}/configs/boot/hack_back_ckpt.rcS"
 PARSEC_SCRIPT_DIR="/home/zhiang.li/arm/m5_path/parsec_scripts"
@@ -241,7 +241,7 @@ if [ "$TEST" == "REAL" ]; then
 
 l1d_size="64KiB"
 l1i_size="64KiB"
-l2_size="512KiB"
+l2_size="1MiB"
 l3_size="2MiB" #"32KiB" #"16KiB" #"1024KiB" #"256KiB"
 l1d_assoc=8
 l1i_assoc=8
