@@ -525,6 +525,7 @@ def parse_stats_file(args:argparse.Namespace):
         'st_lat':SEQ.st_lat,
         # 'll_lat':SEQ.ll_lat,
         # 'sc_lat':SEQ.sc_lat,
+        'l1i_hitrate':[df_dict['l1i'].loc['Total','hit_rate']],
         'l1d_hitrate':[df_dict['l1d'].loc['Total','hit_rate']],
         'l2p_read': [df_dict['l2p'].loc['Total','ReadS/U']],
         'l2p_write': [df_dict['l2p'].loc['Total','WriteB']],
