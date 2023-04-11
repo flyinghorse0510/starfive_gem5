@@ -386,6 +386,7 @@ class CHI_DMAController(CHI_Cache_Controller):
             tagAccessLatency = 1
             size = "128"
             assoc = 1
+        self.directory = CHI_IdealSnoopFilter()
         self.use_prefetcher = False
         self.cache = DummyCache()
         self.sequencer.dcache = NULL

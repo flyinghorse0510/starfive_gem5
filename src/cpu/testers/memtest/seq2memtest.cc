@@ -113,7 +113,7 @@ Seq2MemTest::Seq2MemTest(const Params &p)
       maxLoads(p.max_loads),
       atomic(p.system->isAtomicMode()),
       seqIdx(0),
-      num_cpus(p.num_cpus),
+      num_peers(p.num_peers),
       baseAddr(p.base_addr_1),
       addrInterleavedOrTiled(p.addr_intrlvd_or_tiled),
       percentReads(p.percent_reads),
@@ -126,10 +126,10 @@ Seq2MemTest::Seq2MemTest(const Params &p)
     fatal_if(id >= blockSize, "Too many testers, only %d allowed\n",
              blockSize - 1);
 
-    fatal_if(workingSet%(num_cpus*blockSize)!=0,"per CPU working set not block aligned, workingSet=%d,num_cpus=%d,blockSize=%d\n",workingSet,num_cpus,blockSize);
-    numPerCPUWorkingBlocks=(workingSet/(num_cpus*blockSize));
+    fatal_if(workingSet%(num_peers*blockSize)!=0,"per CPU working set not block aligned, workingSet=%d,num_peers=%d,blockSize=%d\n",workingSet,num_peers,blockSize);
+    numPerCPUWorkingBlocks=(workingSet/(num_peers*blockSize));
     for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
-        Addr effectiveBlockAddr=(addrInterleavedOrTiled)?(baseAddr+(num_cpus*i)+id):
+        Addr effectiveBlockAddr=(addrInterleavedOrTiled)?(baseAddr+(num_peers*i)+id):
                                 (baseAddr+(numPerCPUWorkingBlocks*id)+i);
         if (blockStrideBits > 0) {
             effectiveBlockAddr = effectiveBlockAddr<<blockStrideBits;
@@ -278,7 +278,7 @@ Seq2MemTest::tick()
     Addr paddr = 0;
 
     /* Simulation Exit if all transactions complete */
-    if (NUM_CPUS_COMPLETED >= num_cpus) {
+    if (NUM_CPUS_COMPLETED >= num_peers) {
         if ((numReadsGenerated+numWritesGenerated) > 0) {
              /* All transactions completed. Exit ? */
             exitSimLoop("All transactions completed");

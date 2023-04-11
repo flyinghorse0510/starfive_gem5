@@ -56,12 +56,11 @@ class Seq2MemTest(ClockedObject):
     
     working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
     max_loads = Param.Counter(1, "Number of loads to execute before exiting")
-    percent_reads = Param.Percent(100, "Percentage reads")
+    percent_reads = Param.Percent(50, "Percentage reads")
     addr_intrlvd_or_tiled = Param.Bool(False,"If true the address partitioning across CPUs is interleaved [0,N,2N;1,N+1,2N+1;...]. Otherwise Tiled [0:N-1,N:2N-1]")
 
-    num_cpus = Param.Counter(1, "Total number of CPUs")
+    num_peers = Param.Counter(1, "Total number of CPUs")
 
-    bench_c2cbw_mode = Param.Bool(False,"[True] Producer Consumer BW or [False] C2C Latency Test")
     id_producers = VectorParam.Int([], '[Not Used Here] List of Producer Ids')
     id_consumers = VectorParam.Int([], '[Not Used Here] List of Consumer Ids')
     num_peer_producers = Param.Counter(1, "[Not Used Here] Number of independent peer producers. Use to partition the working set")

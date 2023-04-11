@@ -60,7 +60,7 @@ class SnoopFilter : public SimObject {
      * free ways available 
      * if m_allow_infinite_entries is false.
      */
-    AbstractCacheEntry* allocate(Addr address, AbstractCacheEntry *entry);
+    void allocate(Addr address, AbstractCacheEntry *entry);
 
     void deallocate(Addr address);
 
