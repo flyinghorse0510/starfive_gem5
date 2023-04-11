@@ -833,7 +833,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool functionalWrite(Packet *pkt) { return false; }
   }
 
-  // Internal replacement request. The same structure is also used for SnoopFilter replacements
+  // Internal replacement request.
   structure(ReplacementMsg, interface="Message") {
     Addr addr;
     Addr from_addr;

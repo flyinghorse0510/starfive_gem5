@@ -109,7 +109,7 @@ class NoC_Params:
     router_latency = 1
     router_buffer_size = 4
     cntrl_msg_size = 8
-    data_width = 16
+    data_width = 64
     cross_links = []
     cross_link_latency = 0
 
@@ -339,7 +339,7 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.number_of_snoop_TBEs = 1 # should not receive any snoop
         self.number_of_DVM_TBEs = 1 # should not receive any dvm
         self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
-        self.unify_repl_TBEs = False
+        self.unify_repl_TBEs = options.unify_repl_TBEs
         self.transitions_per_cycle = options.num_trans_per_cycle_llc
 
 class CHI_MNController(MiscNode_Controller):

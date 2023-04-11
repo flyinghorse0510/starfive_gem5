@@ -96,6 +96,7 @@ parser.add_argument('--allow-infinite-SF-entries',default=True, type=ast.literal
 parser.add_argument('--xor-addr-bits',default=1,type=int,help='Number of addr bits XORed to obtain the address masks')
 parser.add_argument('--block-stride-bits',default=0,type=int,help='Block address strides, 2^(--block-stride-bits)')
 parser.add_argument('--randomize-acc',default=False,type=ast.literal_eval,help=f'Randomize access patters')
+parser.add_argument('--unify_repl_TBEs',default=False,type=ast.literal_eval,help=f'Unify Repl and Req TBEs')
 
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]
