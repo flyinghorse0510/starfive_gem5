@@ -84,6 +84,8 @@ def create_system(options, full_system, system, dma_ports, bootmem,
 
     # NoC params
     params = chi_defs.NoC_Params
+
+    
     # Node types
     CHI_RNF = chi_defs.CHI_RNF
     CHI_HNF = chi_defs.CHI_HNF

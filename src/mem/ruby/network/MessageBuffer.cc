@@ -210,7 +210,7 @@ MessageBuffer::areNSlotsAvailable(unsigned int n, Tick current_time)
 const Message*
 MessageBuffer::peek() const
 {
-    DPRINTF(RubyQueue, "Peeking at head of queue.\n");
+    DPRINTF(RubyQueue, "Peeking at head of queue. Buffer size: %d.\n",m_prio_heap.size());
     const Message* msg_ptr = m_prio_heap.front().get();
     assert(msg_ptr);
 

@@ -44,6 +44,8 @@ from m5.defines import buildEnv
 if buildEnv['PROTOCOL'] == 'CHI':
     import ruby.CHI_config as CHI
 
+NUM_VNET=4
+
 from topologies.BaseTopology import SimpleTopology
 
 class CustomMesh(SimpleTopology):
@@ -51,6 +53,8 @@ class CustomMesh(SimpleTopology):
 
     def __init__(self, controllers):
         self.nodes = controllers
+        self.garnet_separate=False
+        self.link_width_bytes = 32
 
     #--------------------------------------------------------------------------
     # _makeMesh
@@ -58,7 +62,7 @@ class CustomMesh(SimpleTopology):
 
     def _makeMesh(self, IntLink, link_latency, num_rows, num_columns,
                   cross_links, cross_link_latency, link_bw_factor):
-
+        
         # East->West, West->East, North->South, South->North
         # XY routing weights
         link_weights = [1, 1, 2, 2]
@@ -72,15 +76,28 @@ class CustomMesh(SimpleTopology):
                     llat = cross_link_latency \
                                 if (east_out, west_in) in cross_links \
                                 else link_latency
-                    self._int_links.append(\
-                                IntLink(link_id=self._link_count,
-                                        src_node=self._routers[east_out],
-                                        dst_node=self._routers[west_in],
-                                        dst_inport="West",
-                                        latency = llat,
-                                        bandwidth_factor = link_bw_factor,
-                                        weight=link_weights[0]))
-                    self._link_count += 1
+                    if self.garnet_separate:
+                        for vnet in range(NUM_VNET):
+                            self._int_links.append(\
+                                        IntLink(link_id=self._link_count,
+                                                src_node=self._routers[east_out],
+                                                dst_node=self._routers[west_in],
+                                                dst_inport="West",
+                                                latency = llat,
+                                                bandwidth_factor = link_bw_factor,
+                                                weight=link_weights[0],
+                                                supported_vnets=[vnet]))
+                            self._link_count += 1
+                    else:
+                        self._int_links.append(\
+                                    IntLink(link_id=self._link_count,
+                                            src_node=self._routers[east_out],
+                                            dst_node=self._routers[west_in],
+                                            dst_inport="West",
+                                            latency = llat,
+                                            bandwidth_factor = link_bw_factor,
+                                            weight=link_weights[0]))
+                        self._link_count += 1
 
         # West output to East input links
         for row in range(num_rows):
@@ -91,15 +108,28 @@ class CustomMesh(SimpleTopology):
                     llat = cross_link_latency \
                                 if (west_out, east_in) in cross_links \
                                 else link_latency
-                    self._int_links.append(\
-                                IntLink(link_id=self._link_count,
-                                        src_node=self._routers[west_out],
-                                        dst_node=self._routers[east_in],
-                                        dst_inport="East",
-                                        latency = llat,
-                                        bandwidth_factor = link_bw_factor,
-                                        weight=link_weights[1]))
-                    self._link_count += 1
+                    if self.garnet_separate:
+                        for vnet in range(NUM_VNET):
+                            self._int_links.append(\
+                                        IntLink(link_id=self._link_count,
+                                                src_node=self._routers[west_out],
+                                                dst_node=self._routers[east_in],
+                                                dst_inport="East",
+                                                latency = llat,
+                                                bandwidth_factor = link_bw_factor,
+                                                weight=link_weights[1],
+                                                supported_vnets=[vnet]))
+                            self._link_count += 1
+                    else:
+                        self._int_links.append(\
+                                    IntLink(link_id=self._link_count,
+                                            src_node=self._routers[west_out],
+                                            dst_node=self._routers[east_in],
+                                            dst_inport="East",
+                                            latency = llat,
+                                            bandwidth_factor = link_bw_factor,
+                                            weight=link_weights[1]))
+                        self._link_count += 1
 
         # North output to South input links
         for col in range(num_columns):
@@ -110,15 +140,28 @@ class CustomMesh(SimpleTopology):
                     llat = cross_link_latency \
                             if (north_out, south_in) in cross_links \
                             else link_latency
-                    self._int_links.append(\
-                                IntLink(link_id=self._link_count,
-                                        src_node=self._routers[north_out],
-                                        dst_node=self._routers[south_in],
-                                        dst_inport="South",
-                                        latency = llat,
-                                        bandwidth_factor = link_bw_factor,
-                                        weight=link_weights[2]))
-                    self._link_count += 1
+                    if self.garnet_separate:
+                        for vnet in range(NUM_VNET):
+                            self._int_links.append(\
+                                        IntLink(link_id=self._link_count,
+                                                src_node=self._routers[north_out],
+                                                dst_node=self._routers[south_in],
+                                                dst_inport="South",
+                                                latency = llat,
+                                                bandwidth_factor = link_bw_factor,
+                                                weight=link_weights[2],
+                                                supported_vnets=[vnet]))
+                            self._link_count += 1
+                    else:
+                        self._int_links.append(\
+                                    IntLink(link_id=self._link_count,
+                                            src_node=self._routers[north_out],
+                                            dst_node=self._routers[south_in],
+                                            dst_inport="South",
+                                            latency = llat,
+                                            bandwidth_factor = link_bw_factor,
+                                            weight=link_weights[2]))
+                        self._link_count += 1
 
         # South output to North input links
         for col in range(num_columns):
@@ -129,21 +172,39 @@ class CustomMesh(SimpleTopology):
                     llat = cross_link_latency \
                             if (south_out, north_in) in cross_links \
                             else link_latency
-                    self._int_links.append(\
-                                IntLink(link_id=self._link_count,
-                                        src_node=self._routers[south_out],
-                                        dst_node=self._routers[north_in],
-                                        dst_inport="North",
-                                        latency = llat,
-                                        bandwidth_factor = link_bw_factor,
-                                        weight=link_weights[3]))
-                    self._link_count += 1
+                    if self.garnet_separate:
+                        for vnet in range(NUM_VNET):
+                            self._int_links.append(\
+                                        IntLink(link_id=self._link_count,
+                                                src_node=self._routers[south_out],
+                                                dst_node=self._routers[north_in],
+                                                dst_inport="North",
+                                                latency = llat,
+                                                bandwidth_factor = link_bw_factor,
+                                                weight=link_weights[3],
+                                                supported_vnets=[vnet]))
+                            self._link_count += 1
+                    else:
+                        self._int_links.append(\
+                                    IntLink(link_id=self._link_count,
+                                            src_node=self._routers[south_out],
+                                            dst_node=self._routers[north_in],
+                                            dst_inport="North",
+                                            latency = llat,
+                                            bandwidth_factor = link_bw_factor,
+                                            weight=link_weights[3]))
+                        self._link_count += 1
 
     #--------------------------------------------------------------------------
     # distributeNodes
     #--------------------------------------------------------------------------
 
-    def _createRNFRouter(self, mesh_router):
+    def _check_garnet_separate(self,options): #check if we want separate channels for garnet or not
+        if(options.network=="garnet" and options.simple_physical_channels==True): 
+            print("using garnet network with separate vnet links")
+        return options.network=="garnet" and options.simple_physical_channels==True
+
+    def _createRNFRouter(self, mesh_router,link_bw_factor):
         # Create a zero-latency router bridging node controllers
         # and the mesh router
         node_router = self._Router(router_id = len(self._routers),
@@ -151,23 +212,46 @@ class CustomMesh(SimpleTopology):
         self._routers.append(node_router)
 
         # connect node_router <-> mesh router
-        self._int_links.append(self._IntLink( \
-                                    link_id = self._link_count,
-                                    src_node = node_router,
-                                    dst_node = mesh_router,
-                            latency = self._router_link_latency))
-        self._link_count += 1
+        if self.garnet_separate:
+            for vnet in range(NUM_VNET):
+                self._int_links.append(self._IntLink( \
+                                            link_id = self._link_count,
+                                            src_node = node_router,
+                                            dst_node = mesh_router,
+                                    latency = self._router_link_latency,
+                                    bandwidth_factor = link_bw_factor,
+                                    supported_vnets=[vnet]))
+                self._link_count += 1
 
-        self._int_links.append(self._IntLink( \
-                                    link_id = self._link_count,
-                                    src_node = mesh_router,
-                                    dst_node = node_router,
-                            latency = self._router_link_latency))
-        self._link_count += 1
+                self._int_links.append(self._IntLink( \
+                                            link_id = self._link_count,
+                                            src_node = mesh_router,
+                                            dst_node = node_router,
+                                    latency = self._router_link_latency,
+                                    bandwidth_factor = link_bw_factor,
+                                    supported_vnets=[vnet]))
+                self._link_count += 1
+        
+        else:
+            self._int_links.append(self._IntLink( \
+                                        link_id = self._link_count,
+                                        src_node = node_router,
+                                        dst_node = mesh_router,
+                                        bandwidth_factor = link_bw_factor,
+                                latency = self._router_link_latency))
+            self._link_count += 1
+
+            self._int_links.append(self._IntLink( \
+                                        link_id = self._link_count,
+                                        src_node = mesh_router,
+                                        dst_node = node_router,
+                                        bandwidth_factor = link_bw_factor,
+                                latency = self._router_link_latency))
+            self._link_count += 1
 
         return node_router
 
-    def distributeNodes(self, node_placement_config, node_list):
+    def distributeNodes(self, node_placement_config, node_list,link_bw_factor):
         if len(node_list) == 0:
             return
 
@@ -186,17 +270,29 @@ class CustomMesh(SimpleTopology):
                 # and the mesh router
                 # for non-RNF nodes, node router is mesh router
                 if isinstance(node, CHI.CHI_RNF):
-                    router = self._createRNFRouter(router)
+                    router = self._createRNFRouter(router,link_bw_factor)
 
                 # connect all ctrls in the node to node_router
                 ctrls = node.getNetworkSideControllers()
                 for c in ctrls:
-                    self._ext_links.append(self._ExtLink(
-                                    link_id = self._link_count,
-                                    ext_node = c,
-                                    int_node = router,
-                                    latency = self._node_link_latency))
-                    self._link_count += 1
+                    if self.garnet_separate:
+                        for vnet in range(NUM_VNET):
+                            self._ext_links.append(self._ExtLink(
+                                            link_id = self._link_count,
+                                            ext_node = c,
+                                            int_node = router,
+                                            latency = self._node_link_latency,
+                                            bandwidth_factor = link_bw_factor,
+                                            supported_vnets=[vnet]))
+                            self._link_count += 1
+                    else:
+                        self._ext_links.append(self._ExtLink(
+                                        link_id = self._link_count,
+                                        ext_node = c,
+                                        int_node = router,
+                                        bandwidth_factor = link_bw_factor,
+                                        latency = self._node_link_latency))
+                        self._link_count += 1
         else:
             # try to circulate all nodes to all routers, some routers may be
             # connected to zero or more than one node.
@@ -206,15 +302,27 @@ class CustomMesh(SimpleTopology):
                 router = self._routers[ridx]
 
                 if isinstance(node, CHI.CHI_RNF):
-                    router = self._createRNFRouter(router)
+                    router = self._createRNFRouter(router,link_bw_factor)
                 ctrls = node.getNetworkSideControllers()
                 for c in ctrls:
-                    self._ext_links.append(self._ExtLink( \
-                                                 link_id = self._link_count,
-                                                 ext_node = c,
-                                                 int_node = router,
-                                            latency = self._node_link_latency))
-                    self._link_count += 1
+                    if self.garnet_separate:
+                        for vnet in range(NUM_VNET):
+                            self._ext_links.append(self._ExtLink( \
+                                                        link_id = self._link_count,
+                                                        ext_node = c,
+                                                        int_node = router,
+                                                    latency = self._node_link_latency,
+                                                    bandwidth_factor = link_bw_factor,
+                                                    supported_vnets=[vnet]))
+                            self._link_count += 1
+                    else:
+                        self._ext_links.append(self._ExtLink( \
+                                                    link_id = self._link_count,
+                                                    ext_node = c,
+                                                    int_node = router,
+                                                    bandwidth_factor = link_bw_factor,
+                                                latency = self._node_link_latency))
+                        self._link_count += 1
                 idx = (idx + 1) % len(router_idx_list)
 
     #--------------------------------------------------------------------------
@@ -228,6 +336,8 @@ class CustomMesh(SimpleTopology):
         num_cols = options.num_cols
         num_mesh_routers = num_rows * num_cols
 
+        self.garnet_separate=self._check_garnet_separate(options)
+        self.link_width_bytes = options.link_width_bits/8
         self._IntLink = IntLink
         self._ExtLink = ExtLink
         self._Router = Router
@@ -299,26 +409,26 @@ class CustomMesh(SimpleTopology):
 
         # Create all the mesh internal links.
         self._makeMesh(IntLink, self._router_link_latency, num_rows, num_cols,
-                       options.cross_links, options.cross_link_latency, options.simple_link_bw_factor)
+                       options.cross_links, options.cross_link_latency, options.simple_link_bw_factor/8)
 
         # Place CHI_RNF on the mesh
-        self.distributeNodes(rnf_params, rnf_nodes)
+        self.distributeNodes(rnf_params, rnf_nodes,options.simple_link_bw_factor/8)
 
         # Place CHI_HNF on the mesh
-        self.distributeNodes(hnf_params, hnf_nodes)
+        self.distributeNodes(hnf_params, hnf_nodes,options.simple_link_bw_factor/8)
 
         # Place CHI_MN on the mesh
-        self.distributeNodes(mn_params, mn_nodes)
+        self.distributeNodes(mn_params, mn_nodes,options.simple_link_bw_factor/8)
 
         # Place CHI_SNF_MainMem on the mesh
-        self.distributeNodes(mem_params, mem_nodes)
+        self.distributeNodes(mem_params, mem_nodes,options.simple_link_bw_factor/8)
 
         # Place all IO mem nodes on the mesh
-        self.distributeNodes(io_mem_params, io_mem_nodes)
+        self.distributeNodes(io_mem_params, io_mem_nodes,options.simple_link_bw_factor/8)
 
         # Place all IO request nodes on the mesh
-        self.distributeNodes(rni_dma_params, rni_dma_nodes)
-        self.distributeNodes(rni_io_params, rni_io_nodes)
+        self.distributeNodes(rni_dma_params, rni_dma_nodes,options.simple_link_bw_factor/8)
+        self.distributeNodes(rni_io_params, rni_io_nodes,options.simple_link_bw_factor/8)
 
         # Set up
         network.int_links = self._int_links

@@ -56,3 +56,4 @@ Source('NetworkBridge.cc')
 
 DebugFlag("FlitHop", "Print Flit Head/HeadTail in Ruby Network.")
 DebugFlag("FlitHopFull", "Print All Flits including Tail and Credit.")
+DebugFlag("FlitStatus")

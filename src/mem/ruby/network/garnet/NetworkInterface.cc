@@ -37,6 +37,7 @@
 
 #include "base/cast.hh"
 #include "debug/RubyNetwork.hh"
+#include "debug/FlitStatus.hh"
 #include "mem/ruby/network/MessageBuffer.hh"
 #include "mem/ruby/network/garnet/Credit.hh"
 #include "mem/ruby/network/garnet/flitBuffer.hh"
@@ -236,6 +237,7 @@ NetworkInterface::wakeup()
         if (inNetLink->isReady(curTick())) {
             flit *t_flit = inNetLink->consumeLink();
             DPRINTF(RubyNetwork, "Recieved flit:%s\n", *t_flit);
+            DPRINTF(FlitStatus, "Recieved flit:%s\n", *t_flit);
             assert(t_flit->m_width == iPort->bitWidth());
 
             int vnet = t_flit->get_vnet();
@@ -492,6 +494,21 @@ NetworkInterface::flitisizeMessage(MsgPtr msg_ptr, int vnet)
 int
 NetworkInterface::calculateVC(int vnet)
 {
+    DPRINTF(FlitStatus, "---------------------Checking for free VCs---------------------\n" );
+    for (int i = 0; i < m_vc_per_vnet; i++){
+        int delta = m_vc_allocator[vnet];
+        m_vc_allocator[vnet]++;
+        if (m_vc_allocator[vnet] == m_vc_per_vnet)
+            m_vc_allocator[vnet] = 0;
+        if (outVcState[(vnet*m_vc_per_vnet) + delta].isInState(IDLE_, curTick())) {
+                DPRINTF(FlitStatus, "VC %d is idle, has size %d \n",((vnet*m_vc_per_vnet) + delta),getOutportForVnet(vnet)->outFlitQueue()->getSize()  );
+        }
+        else {
+                DPRINTF(FlitStatus, "VC %d is not idle, has size %d \n",((vnet*m_vc_per_vnet) + delta),getOutportForVnet(vnet)->outFlitQueue()->getSize()  );
+                DPRINTF(FlitStatus, "VC %d credits left: %d \n",((vnet*m_vc_per_vnet) + delta),outVcState[(vnet*m_vc_per_vnet) + delta].get_credit_count() );
+        }
+    }
+    DPRINTF(FlitStatus, "---------------------End check for free VCs---------------------\n");
     for (int i = 0; i < m_vc_per_vnet; i++) {
         int delta = m_vc_allocator[vnet];
         m_vc_allocator[vnet]++;
@@ -509,7 +526,6 @@ NetworkInterface::calculateVC(int vnet)
     panic_if(vc_busy_counter[vnet] > m_deadlock_threshold,
         "%s: Possible network deadlock in vnet: %d at time: %llu \n",
         name(), vnet, curTick());
-
     return -1;
 }
 
@@ -555,7 +571,7 @@ NetworkInterface::scheduleOutputPort(OutputPort *oPort)
 
                // Just removing the top flit
                flit *t_flit = niOutVcs[vc].getTopFlit();
-               t_flit->set_time(clockEdge(Cycles(1)));
+               t_flit->set_time(clockEdge(Cycles(0)));
 
                // Scheduling the flit
                scheduleFlit(t_flit);
@@ -626,10 +642,13 @@ NetworkInterface::scheduleFlit(flit *t_flit)
 
     if (oPort) {
         DPRINTF(RubyNetwork, "Scheduling at %s time:%ld flit:%s Message:%s\n",
-        oPort->outNetLink()->name(), clockEdge(Cycles(1)),
+        oPort->outNetLink()->name(), clockEdge(Cycles(0)),
         *t_flit, *(t_flit->get_msg_ptr()));
-        oPort->outFlitQueue()->insert(t_flit);
-        oPort->outNetLink()->scheduleEventAbsolute(clockEdge(Cycles(1)));
+        DPRINTF(FlitStatus, "Scheduling at %s time:%ld flit:%s Message:%s\n",
+        oPort->outNetLink()->name(), clockEdge(Cycles(0)),
+        *t_flit, *(t_flit->get_msg_ptr()));
+        oPort->outFlitQueue()->insert(t_flit); //flit buffer
+        oPort->outNetLink()->scheduleEventAbsolute(clockEdge(Cycles(0))); //schedule in the same cycle
         return;
     }
 
