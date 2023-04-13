@@ -137,6 +137,8 @@ class flit
 
     // add m_req_ptr to flit
     RequestPtr m_req_ptr;
+
+    std::string flitType_to_string(const flit_type&) const;
 };
 
 inline std::ostream&

@@ -494,21 +494,21 @@ NetworkInterface::flitisizeMessage(MsgPtr msg_ptr, int vnet)
 int
 NetworkInterface::calculateVC(int vnet)
 {
-    DPRINTF(FlitStatus, "---------------------Checking for free VCs---------------------\n" );
+    // DPRINTF(FlitStatus, "---------------------Checking for free VCs---------------------\n" );
     for (int i = 0; i < m_vc_per_vnet; i++){
         int delta = m_vc_allocator[vnet];
         m_vc_allocator[vnet]++;
         if (m_vc_allocator[vnet] == m_vc_per_vnet)
             m_vc_allocator[vnet] = 0;
-        if (outVcState[(vnet*m_vc_per_vnet) + delta].isInState(IDLE_, curTick())) {
-                DPRINTF(FlitStatus, "VC %d is idle, has size %d \n",((vnet*m_vc_per_vnet) + delta),getOutportForVnet(vnet)->outFlitQueue()->getSize()  );
-        }
-        else {
-                DPRINTF(FlitStatus, "VC %d is not idle, has size %d \n",((vnet*m_vc_per_vnet) + delta),getOutportForVnet(vnet)->outFlitQueue()->getSize()  );
-                DPRINTF(FlitStatus, "VC %d credits left: %d \n",((vnet*m_vc_per_vnet) + delta),outVcState[(vnet*m_vc_per_vnet) + delta].get_credit_count() );
-        }
+        // if (outVcState[(vnet*m_vc_per_vnet) + delta].isInState(IDLE_, curTick())) {
+        //         DPRINTF(FlitStatus, "VC %d is idle, has size %d \n",((vnet*m_vc_per_vnet) + delta),getOutportForVnet(vnet)->outFlitQueue()->getSize()  );
+        // }
+        // else {
+        //         DPRINTF(FlitStatus, "VC %d is not idle, has size %d \n",((vnet*m_vc_per_vnet) + delta),getOutportForVnet(vnet)->outFlitQueue()->getSize()  );
+        //         DPRINTF(FlitStatus, "VC %d credits left: %d \n",((vnet*m_vc_per_vnet) + delta),outVcState[(vnet*m_vc_per_vnet) + delta].get_credit_count() );
+        // }
     }
-    DPRINTF(FlitStatus, "---------------------End check for free VCs---------------------\n");
+    // DPRINTF(FlitStatus, "---------------------End check for free VCs---------------------\n");
     for (int i = 0; i < m_vc_per_vnet; i++) {
         int delta = m_vc_allocator[vnet];
         m_vc_allocator[vnet]++;
@@ -644,9 +644,8 @@ NetworkInterface::scheduleFlit(flit *t_flit)
         DPRINTF(RubyNetwork, "Scheduling at %s time:%ld flit:%s Message:%s\n",
         oPort->outNetLink()->name(), clockEdge(Cycles(0)),
         *t_flit, *(t_flit->get_msg_ptr()));
-        DPRINTF(FlitStatus, "Scheduling at %s time:%ld flit:%s Message:%s\n",
-        oPort->outNetLink()->name(), clockEdge(Cycles(0)),
-        *t_flit, *(t_flit->get_msg_ptr()));
+        DPRINTF(FlitStatus, "SchedulingAt:%s, Message:%s\n",
+        oPort->outNetLink()->name(), *(t_flit->get_msg_ptr()));
         oPort->outFlitQueue()->insert(t_flit); //flit buffer
         oPort->outNetLink()->scheduleEventAbsolute(clockEdge(Cycles(0))); //schedule in the same cycle
         return;
