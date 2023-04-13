@@ -51,7 +51,6 @@ if [ "$GATETEST" != "" ]; then
     l1d_assoc=1
     l1i_assoc=1
     l2_assoc=1
-    l3_assoc=1
     NUM_LLC=1
     SEQ_TBE=32
     LoadFactor=10
@@ -72,25 +71,27 @@ if [ "$GATETEST" != "" ]; then
     MultiCoreAddrMode=True
     NETWORK="simple"
     IDEAL_SNOOP_FILTER=False
-    DEBUGFLAGS=SeqMemLatTest,TxnTrace,RubyGenerated
+    DEBUGFLAGS=RubyCHIDebugStr5
     OUTPUT_PREFIX="CHITxnTest_${NETWORK}"
 
     WKSETLIST=(65536) #(4096 8192 10240 12288 16384 65536)
-    NUM_CPU_SET=(1 4 16)
+    NUM_CPU_SET=(1)
     SNOOP_FILTER_SIZE_CONFIG_SET=(128) #(64 128)
     SNOOP_FILTER_ASSOC_CONFIG_SET=4
-    XOR_ADDR_BITS_SET=(4)
-    BLOCK_STRIDE_CONFIG_SET=(0)
+    UNIFY_REPL_TBE_CONFIGSET=(False True)
+    LLC_ASSOC_CONFIGSET=(1 2 4 8 16)
+    XOR_ADDR_BITS=4
     RANDOMIZE_ACC_CONFIG_SET=(False)
+    BLOCK_STRIDE_BITS=0
 
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
         for WKSET in ${WKSETLIST[@]}; do
             for SNOOP_FILTER_SIZE in ${SNOOP_FILTER_SIZE_CONFIG_SET[@]}; do
                 for SNOOP_FILTER_ASSOC in ${SNOOP_FILTER_ASSOC_CONFIG_SET[@]}; do
-                    for BLOCK_STRIDE_BITS in ${BLOCK_STRIDE_CONFIG_SET[@]}; do
-                        for XOR_ADDR_BITS in ${XOR_ADDR_BITS_SET[@]}; do
+                    for l3_assoc in ${LLC_ASSOC_CONFIGSET[@]}; do
+                        for UNIFY_REPL_TBE in ${UNIFY_REPL_TBE_CONFIGSET[@]}; do
                             for RANDOMIZE_ACC in ${RANDOMIZE_ACC_CONFIG_SET[@]}; do
-                                OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}"
+                                OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_L3Assoc${l3_assoc}_UNIFYREPLTBE${UNIFY_REPL_TBE}"
                                 OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
                                 echo "GateTest Started: ${OUTPUT_BASE}"
                                 mkdir -p ${OUTPUT_DIR}
@@ -143,6 +144,7 @@ if [ "$GATETEST" != "" ]; then
                                   --xor-addr-bits=${XOR_ADDR_BITS} \
                                   --block-stride-bits=${BLOCK_STRIDE_BITS} \
                                   --randomize-acc=${RANDOMIZE_ACC} \
+                                  --unify_repl_TBEs=$UNIFY_REPL_TBE \
                                   --num-producers=1 > ${OUTPUT_DIR}/cmd.log 2>&1 &
                             done
                         done
@@ -152,21 +154,26 @@ if [ "$GATETEST" != "" ]; then
         done
     done
     wait
-
+    
+    echo "WS,NumCPUs,L3Assoc,UnifyReplTBE,TBEUtil,RetryAcks,LLCMissRate,BW" > "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
         for WKSET in ${WKSETLIST[@]}; do
             for SNOOP_FILTER_SIZE in ${SNOOP_FILTER_SIZE_CONFIG_SET[@]}; do
                 for SNOOP_FILTER_ASSOC in ${SNOOP_FILTER_ASSOC_CONFIG_SET[@]}; do
-                    for BLOCK_STRIDE_BITS in ${BLOCK_STRIDE_CONFIG_SET[@]}; do
-                        for XOR_ADDR_BITS in ${XOR_ADDR_BITS_SET[@]}; do
+                    for l3_assoc in ${LLC_ASSOC_CONFIGSET[@]}; do
+                        for UNIFY_REPL_TBE in ${UNIFY_REPL_TBE_CONFIGSET[@]}; do
                             for RANDOMIZE_ACC in ${RANDOMIZE_ACC_CONFIG_SET[@]}; do
-                                OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}"
+                                OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_L3Assoc${l3_assoc}_UNIFYREPLTBE${UNIFY_REPL_TBE}"
                                 OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
                                 echo "GateTest Parsing: ${OUTPUT_BASE}"
                                 grep 'hnf' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
-                                ${PY3} reOrderSliccTrace.py \
-                                    --input="${OUTPUT_DIR}/debug.hnf.trace" \
-                                    --output="${OUTPUT_DIR}/debug.hnf.trace.csv"
+                                ${PY3} stats_parser_simple.py \
+                                    --stats_file="${OUTPUT_DIR}/stats.txt" \
+                                    --working-set=$WKSET \
+                                    --num_cpus=$NUMCPUS \
+                                    --unify_repl_TBEs=$UNIFY_REPL_TBE \
+                                    --l3assoc=$l3_assoc \
+                                    --collated_outfile="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
                             done
                         done
                     done

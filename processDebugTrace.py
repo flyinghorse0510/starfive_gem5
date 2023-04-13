@@ -152,7 +152,6 @@ def parseMemTest(logFile, dumpFile):
              end = v['end']
              print(f'{agent},{addr},{it},{start},{end}',file=fw)
     
-
 def analyzeCsv(options,msgDumpCsv,bench='migratory'):
     dfX = pd.read_csv(msgDumpCsv)
     if bench == 'migratory':

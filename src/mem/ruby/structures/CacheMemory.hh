@@ -224,8 +224,6 @@ class CacheMemory : public SimObject
           statistics::Scalar numTagArrayStalls;
           statistics::Scalar numDataArrayStalls;
 
-          //statistics::Scalar m_RetryAcks;
-
           // hardware transactional memory
           statistics::Histogram htmTransCommitReadSet;
           statistics::Histogram htmTransCommitWriteSet;

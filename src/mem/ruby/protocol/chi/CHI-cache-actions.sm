@@ -284,12 +284,10 @@ action(Initiate_Request, desc="") {
   bool doSnoopFilterFill := is_HN && (!directory.allowInfiniteEntries()) && requiresDirEntry(tbe.reqType);
   assert(avail_direntry || (!doSnoopFilterFill));
   if (tbe.requiresDirEntryAlloc) {
-    set_cache_entry(directory.allocate(address, new DirEntry));
-    DPRINTF(RubyCHIDebugStr5,"SnoopFilterAlloc addr=%#x,type=%s\n",tbe.addr,tbe.reqType);
+    directory.allocate(address, new DirEntry);
     directory.profileAlloc();
   }
   if ((is_valid(dir_entry)) && requiresDirEntry(tbe.reqType)) {
-    DPRINTF(RubyCHIDebugStr5,"SnoopFilterHit addr=%#x,type=%s\n",tbe.addr,tbe.reqType);
     directory.profileHit();
   }
 
@@ -2980,7 +2978,6 @@ action(Initiate_SnoopFilterReplacement, desc="") {
 
 action(Profile_SnoopFilterMiss, desc="") {
   assert(is_valid(tbe)); // Why is this necessary?
-  DPRINTF(RubyCHIDebugStr5,"SnoopFilterRepl addr=%#x-->%#x\n",tbe.addr,tbe.evicting_sf_addr);
   directory.profileMiss();
 }
 

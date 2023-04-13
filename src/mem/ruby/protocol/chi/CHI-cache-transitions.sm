@@ -134,9 +134,7 @@ transition({RSD,RUSD,RU,
   Initiate_SnoopFilterReplacement;
   Initiate_SnoopFilterReplacement_WB_BackInv;
   Profile_SnoopFilterMiss;
-  // ResetAndDealloc_DirEntry;
   Pop_SFReplTriggerQueue;
-  // Restore_EvictingSnoopFilterAddr;
   ProcessNextState;
 }
 
@@ -144,9 +142,7 @@ transition({UC_RSC, RUSC, RSC, SC_RSC}, SnoopFilterEviction, BUSY_BLKD) {SfReplT
   Initiate_SnoopFilterReplacement;
   Initiate_SnoopFilterReplacement_Evict_BackInv;
   Profile_SnoopFilterMiss;
-  // ResetAndDealloc_DirEntry;
   Pop_SFReplTriggerQueue;
-  // Restore_EvictingSnoopFilterAddr;
   ProcessNextState;
 }
 

@@ -170,7 +170,7 @@ class Seq2MemTest : public ClockedObject
 
     Addr baseAddr;
     
-    uint64_t num_cpus;
+    uint64_t num_peers;
     
     uint64_t numPerCPUWorkingBlocks;
     

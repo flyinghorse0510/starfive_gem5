@@ -96,6 +96,7 @@ parser.add_argument('--allow-infinite-SF-entries',default=True, type=ast.literal
 parser.add_argument('--xor-addr-bits',default=1,type=int,help='Number of addr bits XORed to obtain the address masks')
 parser.add_argument('--block-stride-bits',default=0,type=int,help='Block address strides, 2^(--block-stride-bits)')
 parser.add_argument('--randomize-acc',default=False,type=ast.literal_eval,help=f'Randomize access patters')
+parser.add_argument('--unify_repl_TBEs',default=False,type=ast.literal_eval,help=f'Unify Repl and Req TBEs')
 
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]
@@ -183,24 +184,19 @@ else :
     cpuProdListMap[args.chs_cons_id]=[args.chs_prod_id]
     cpuConsListMap[args.chs_cons_id]=[args.chs_cons_id]
 
-# for cpu in range(num_cpus):
-#     prod=cpuProdListMap[cpu]
-#     cons=cpuConsListMap[cpu]
-#     print(f'cpu={cpu}|prod={prod},cons={cons}')
-
 if num_cpus > block_size:
      print("Error: Number of testers %d limited to %d because of false sharing"
            % (num_cpus, block_size))
      sys.exit(1)
 
-
+cpus = []
+num_dmas=args.num_dmas
 if num_cpus > 0 :
     cpus = [ MemTestClass(max_loads = args.maxloads,
                      working_set = args.size_ws,
                      interval = args.inj_interval,
-                     num_cpus = num_cpus,
+                     num_peers = num_cpus+num_dmas,
                      addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,
-                     bench_c2cbw_mode = args.bench_c2cbw_mode,
                      id_producers = cpuProdListMap[i],
                      id_consumers = cpuConsListMap[i],
                      outstanding_req = args.outstanding_req,
@@ -208,6 +204,7 @@ if num_cpus > 0 :
                      num_peer_producers = num_peer_producers,
                      block_stride_bits = args.block_stride_bits,
                      randomize_acc = args.randomize_acc,
+                     percent_reads = 50,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
 
@@ -215,13 +212,12 @@ system = System(cpu = cpus,
                 clk_domain = SrcClockDomain(clock = args.sys_clock),
                 mem_ranges = [AddrRange(args.mem_size)])
 
-if args.num_dmas > 0:
+if num_dmas > 0:
     dmas = [ MemTestClass(max_loads = args.maxloads,
                      progress_interval = args.progress,
                      interval = args.inj_interval,
                      working_set = args.size_ws,
-                     num_cpus = num_cpus,
-                     bench_c2cbw_mode = args.bench_c2cbw_mode,
+                     num_peers = num_cpus+num_dmas,
                      id_producers = cpuProdListMap[i],
                      id_consumers = cpuConsListMap[i],
                      outstanding_req = args.outstanding_req,
@@ -230,6 +226,7 @@ if args.num_dmas > 0:
                      addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,
                      block_stride_bits = args.block_stride_bits,
                      randomize_acc = args.randomize_acc,
+                     percent_reads = 100,
                      suppress_func_errors = not args.suppress_func_errors) \
              for i in range(args.num_dmas) ]
     system.dma_devices = dmas
@@ -238,7 +235,8 @@ else:
 
 dma_ports = []
 for (i, dma) in enumerate(dmas):
-    dma_ports.append(dma.test)
+    dma_ports.append(dma.port)
+
 Ruby.create_system(args, False, system, dma_ports = dma_ports)
 
 # Create a top-level voltage domain and clock domain

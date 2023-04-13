@@ -90,11 +90,6 @@ CacheEntry nullCacheEntry(), return_by_pointer="yes" {
 }
 
 DirEntry getDirEntry(Addr addr), return_by_pointer = "yes" {
-  // if (directory.isTagPresent(addr)) {
-  //   return directory.lookup(addr);
-  // } else {
-  //   return OOD;
-  // }
   return static_cast(DirEntry, "pointer", directory.lookup(addr));
 }
 

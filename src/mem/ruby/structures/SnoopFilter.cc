@@ -117,7 +117,7 @@ bool SnoopFilter::cacheAvail(Addr address) const {
 
 // find an Invalid or already allocated entry and sets the tag
 // appropriate for the address
-AbstractCacheEntry* SnoopFilter::allocate(Addr address, AbstractCacheEntry *entry) {
+void SnoopFilter::allocate(Addr address, AbstractCacheEntry *entry) {
     assert(address == makeLineAddress(address));
     assert(!isTagPresent(address));
     assert(cacheAvail(address));
@@ -143,7 +143,6 @@ AbstractCacheEntry* SnoopFilter::allocate(Addr address, AbstractCacheEntry *entr
       panic("SnoopFilter cannot find an entry to allocate");
     }
     set[address]=sf_line;
-    return entry;
 }
 
 // deallocate entry
