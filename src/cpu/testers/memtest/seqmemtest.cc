@@ -107,7 +107,7 @@ SeqMemTest::SeqMemTest(const Params &p)
       maxLoads(p.max_loads),
       atomic(p.system->isAtomicMode()),
       seqIdx(0),
-      num_cpus(p.num_cpus),
+      num_cpus(p.num_peers),
       baseAddr(p.base_addr_1),
       addrInterleavedOrTiled(p.addr_intrlvd_or_tiled),
       percentReads(p.percent_reads),
@@ -218,8 +218,6 @@ SeqMemTest::completeRequest(PacketPtr pkt, bool functional)
     // the packet will delete the data
     delete pkt;
 
-    // finally shift the response timeout forward if we are still
-    // expecting responses; deschedule it otherwise
     if (outstandingAddrs.size() != 0)
         reschedule(noResponseEvent, clockEdge(progressCheck));
     else if (noResponseEvent.scheduled())

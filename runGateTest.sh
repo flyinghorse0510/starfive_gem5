@@ -53,7 +53,7 @@ TRANS=4
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/GateTest"
 # PY3=$(which python3)
 PY3=/home/arka.maity/anaconda3/bin/python3
-DEBUG_FLAGS=TxnTrace,ProdConsMemLatTest,RubyGenerated
+DEBUG_FLAGS=SeqMemLatTest
 DCT_CONFIGS=(False)
 DMT_CONFIGS=(False)
 
@@ -76,8 +76,6 @@ ROUTER_LAT=0
 VC_PER_VNET=2
 LINKWIDTH=256
 PHYVNET=True #True #False
-
-echo "[" > "${OUTPUT_ROOT}/Summary.json"
 
 if [ "$L1L2HIT" != "" ]; then
 l1d_size="4KiB"
@@ -299,12 +297,13 @@ l3_assoc=16
 NUM_LLC=16
 WKSETLIST=(524288)
 NUM_CPU_SET=(16) # For LLC and DDR bw tests, numcpus must be 16
-LoadFactor=100
-SEQ_TBE_SET=(32)
+LoadFactor=10
+SEQ_TBE_SET=(1 32)
 NUM_MEM=4
-NUM_DDR_XP=2
-NUM_DDR_Side=1
+NUM_DDR_XP=4
+NUM_DDR_Side=2
 MultiCoreAddrMode=True
+OUTPUT_PREFIX="DDR_${NETWORK}"
 
 for NUMCPUS in ${NUM_CPU_SET[@]}; do
   for WKSET in ${WKSETLIST[@]}; do
@@ -312,8 +311,11 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
       for DCT in ${DCT_CONFIGS[@]}; do
         for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
           # Latency Tests
-          OUTPUT_PREFIX="DDR_${NETWORK}"
-          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}" 
+          OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}"
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}" 
+          echo "GateTest Started: ${OUTPUT_BASE}"
+          mkdir -p ${OUTPUT_DIR}
+          set > ${OUTPUT_DIR}/Variables.txt
           $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
             --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
             -d $OUTPUT_DIR \
@@ -355,8 +357,9 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
             --sequencer-outstanding-requests=${SEQ_TBE} \
             --num_trans_per_cycle_llc=${TRANS} \
             --num-cpus=${NUMCPUS} \
+            --num-dmas=0 \
             --inj-interval=1 \
-            --num-producers=1 &
+            --num-producers=1 > ${OUTPUT_DIR}/cmd.log 2>&1 &
         done
       done
     done
@@ -364,17 +367,18 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
 done
 wait
 
+echo "WS,NUM_CPUS,SEQ_TBE,NUM_DDR,RETRY_ACKS,HNF_MISSRATE,BW" > "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
 for NUMCPUS in ${NUM_CPU_SET[@]}; do
   for WKSET in ${WKSETLIST[@]}; do
     for DMT in ${DMT_CONFIGS[@]}; do
       for DCT in ${DCT_CONFIGS[@]}; do
         for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
-          OUTPUT_PREFIX="DDR_${NETWORK}"
-          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}" 
-          grep -E 'ReqBegin=LD|ReqDone=LD' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace
-          ${PY3} stats_parser_new.py \
+          OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}" 
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}" 
+          echo "GateTest Parsing: ${OUTPUT_BASE}"
+          ${PY3} stats_parser_bw.py \
              --input-dir ${OUTPUT_DIR} \
-             --output ${OUTPUT_DIR}/stats.log \
+             --output ${OUTPUT_DIR}/stats.txt \
              --num_cpu ${NUMCPUS} \
              --num_llc ${NUM_LLC} \
              --num_ddr ${NUM_MEM} \
@@ -385,8 +389,8 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
              --injintv 1 \
              --seq_tbe ${SEQ_TBE} \
              --bench DDR \
-             --working-set ${WKSET} >> "${OUTPUT_ROOT}/Summary.json"
-          echo "," >> "${OUTPUT_ROOT}/Summary.json"
+             --working-set ${WKSET} \
+             --dump_file "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
         done
       done
     done
@@ -394,9 +398,3 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
 done
 
 fi
-
-head -n -1 ${OUTPUT_ROOT}/Summary.json > ${OUTPUT_ROOT}/Summary2.json # Remove the last comma
-echo "]" >> ${OUTPUT_ROOT}/Summary2.json
-${PY3} getLatBWAll.py \
-       --input=${OUTPUT_ROOT}/Summary2.json \
-       --output=RegTestSummary.csv

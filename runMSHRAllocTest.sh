@@ -44,19 +44,18 @@ fi
 
 
 if [ "$GATETEST" != "" ]; then
-    l1d_size="128B"
-    l1i_size="128B"
-    l2_size="512B"
-    l3_size="2KiB"
-    l1d_assoc=1
-    l1i_assoc=1
-    l2_assoc=1
-    NUM_LLC=1
-    SEQ_TBE=32
+    l1d_size="4KiB"
+    l1i_size="4KiB"
+    l2_size="8KiB"
+    l3_size="4KiB" #"16KiB" #"1024KiB" #"256KiB"
+    l1d_assoc=8
+    l1i_assoc=8
+    l2_assoc=8
+    NUM_LLC=16
     LoadFactor=10
     NUM_MEM=4
-    NUM_DDR_XP=2
-    NUM_DDR_Side=1
+    NUM_DDR_XP=4
+    NUM_DDR_Side=2
     LINK_BW=16
     LINKWIDTH=256
     VC_PER_VNET=2
@@ -74,15 +73,16 @@ if [ "$GATETEST" != "" ]; then
     DEBUGFLAGS=RubyCHIDebugStr5
     OUTPUT_PREFIX="CHITxnTest_${NETWORK}"
 
-    WKSETLIST=(65536) #(4096 8192 10240 12288 16384 65536)
-    NUM_CPU_SET=(1)
-    SNOOP_FILTER_SIZE_CONFIG_SET=(128) #(64 128)
-    SNOOP_FILTER_ASSOC_CONFIG_SET=4
-    UNIFY_REPL_TBE_CONFIGSET=(False True)
-    LLC_ASSOC_CONFIGSET=(1 2 4 8 16)
-    XOR_ADDR_BITS=4
-    RANDOMIZE_ACC_CONFIG_SET=(False)
+    WKSETLIST=(4096) #(524288) #(4096 8192 10240 12288 16384 65536)
+    XOR_ADDR_BITS=1
+    RANDOMIZE_ACC=False
     BLOCK_STRIDE_BITS=0
+    NUM_CPU_SET=(1 2 4 8 16)
+    LLC_ASSOC_CONFIGSET=(16)
+    SNOOP_FILTER_ASSOC_CONFIG_SET=4
+    SNOOP_FILTER_SIZE_CONFIG_SET=(256)
+    UNIFY_REPL_TBE_CONFIGSET=(False True)
+    IDEAL_SNOOPFILTER_CONFIG_SET=(True False)
 
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
         for WKSET in ${WKSETLIST[@]}; do
@@ -90,7 +90,7 @@ if [ "$GATETEST" != "" ]; then
                 for SNOOP_FILTER_ASSOC in ${SNOOP_FILTER_ASSOC_CONFIG_SET[@]}; do
                     for l3_assoc in ${LLC_ASSOC_CONFIGSET[@]}; do
                         for UNIFY_REPL_TBE in ${UNIFY_REPL_TBE_CONFIGSET[@]}; do
-                            for RANDOMIZE_ACC in ${RANDOMIZE_ACC_CONFIG_SET[@]}; do
+                            for IDEAL_SNOOPFILTER in ${IDEAL_SNOOPFILTER_CONFIG_SET[@]}; do
                                 OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_L3Assoc${l3_assoc}_UNIFYREPLTBE${UNIFY_REPL_TBE}"
                                 OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
                                 echo "GateTest Started: ${OUTPUT_BASE}"
@@ -127,17 +127,20 @@ if [ "$GATETEST" != "" ]; then
                                   --size-ws=${WKSET} \
                                   --mem-type=DDR4_3200_8x8 \
                                   --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
-                                  --mem-test-type='bw_test_sf' \
+                                  --mem-test-type='bw_test' \
                                   --addr-intrlvd-or-tiled=$MultiCoreAddrMode  \
                                   --disable-gclk-set \
                                   --enable-DMT=${DMT} \
                                   --enable-DCT=${DCT} \
-                                  --num-HNF-TBE=${HNF_TBE}  \
+                                  --num-HNF-TBE=${HNF_TBE} \
+                                  --num-HNF-ReplTBE=${HNF_TBE} \
                                   --num-SNF-TBE=${SNF_TBE}  \
                                   --sequencer-outstanding-requests=${SEQ_TBE} \
                                   --num_trans_per_cycle_llc=${TRANS} \
                                   --num-cpus=${NUMCPUS} \
+                                  --num-dmas=0 \
                                   --inj-interval=1 \
+                                  --allow-infinite-SF-entries=${IDEAL_SNOOPFILTER} \
                                   --num-snoopfilter-entries=${SNOOP_FILTER_SIZE} \
                                   --num-snoopfilter-assoc=${SNOOP_FILTER_ASSOC} \
                                   --allow-infinite-SF-entries=${IDEAL_SNOOP_FILTER} \
@@ -154,15 +157,15 @@ if [ "$GATETEST" != "" ]; then
         done
     done
     wait
-    
-    echo "WS,NumCPUs,L3Assoc,UnifyReplTBE,TBEUtil,RetryAcks,LLCMissRate,BW" > "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
+
+    echo "WS,NumCPUs,L3Assoc,IdealSnoopFilter,UnifyReplTBE,TBEUtil,RetryAcks,LLCMissRate,BW" > "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
         for WKSET in ${WKSETLIST[@]}; do
             for SNOOP_FILTER_SIZE in ${SNOOP_FILTER_SIZE_CONFIG_SET[@]}; do
                 for SNOOP_FILTER_ASSOC in ${SNOOP_FILTER_ASSOC_CONFIG_SET[@]}; do
                     for l3_assoc in ${LLC_ASSOC_CONFIGSET[@]}; do
                         for UNIFY_REPL_TBE in ${UNIFY_REPL_TBE_CONFIGSET[@]}; do
-                            for RANDOMIZE_ACC in ${RANDOMIZE_ACC_CONFIG_SET[@]}; do
+                            for IDEAL_SNOOPFILTER in ${IDEAL_SNOOPFILTER_CONFIG_SET[@]}; do
                                 OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_L3Assoc${l3_assoc}_UNIFYREPLTBE${UNIFY_REPL_TBE}"
                                 OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
                                 echo "GateTest Parsing: ${OUTPUT_BASE}"
@@ -173,6 +176,7 @@ if [ "$GATETEST" != "" ]; then
                                     --num_cpus=$NUMCPUS \
                                     --unify_repl_TBEs=$UNIFY_REPL_TBE \
                                     --l3assoc=$l3_assoc \
+                                    --allow-infinite-SF-entries=${IDEAL_SNOOPFILTER} \
                                     --collated_outfile="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
                             done
                         done
