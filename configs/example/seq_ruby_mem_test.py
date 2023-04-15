@@ -60,8 +60,10 @@ parser.add_argument('--enable-DMT', default=False, type=ast.literal_eval, help="
 parser.add_argument('--enable-DCT', default=False, type=ast.literal_eval, help="enable DCT")
 parser.add_argument('--allow-SD',default=True, type=ast.literal_eval, help="allow SD state") # True for MOESI, False for MESI
 parser.add_argument('--num-HNF-TBE', type=int, default=16, help="number of oustanding in HN-F")
-parser.add_argument('--num-HNF-ReplTBE', type=int, default=16, help="number of replacement oustanding in HN-F")
-parser.add_argument('--unify_repl_TBEs',default=False,type=ast.literal_eval,help=f'Unify Repl and Req TBEs')
+# parser.add_argument('--num-HNF-ReplTBE', type=int, default=16, help="number of replacement oustanding in HN-F")
+parser.add_argument('--ratio-repl-req-TBE', type=str, default='1:1', help="Ratio of req and repl TBE. Valid if --part-TBEs if True")
+# parser.add_argument('--unify_repl_TBEs',default=False,type=ast.literal_eval,help=f'Unify Repl and Req TBEs')
+parser.add_argument('--part-TBEs',default=False,type=ast.literal_eval,help=f'Partition TBEs')
 parser.add_argument('--num_trans_per_cycle_llc', default=4, help="number of transitions per cycle in HN-F")
 parser.add_argument('--num-SNF-TBE', default=32, help="number of oustanding in HN-F")
 parser.add_argument('--addr-intrlvd-or-tiled',default=False, type=ast.literal_eval, help="If true the address partitioning across CPUs is interleaved (like [0-N-2N;1-N+1-2N+1;...]). Otherwise Tiled [0:N-1,N:2N-1]")
@@ -190,6 +192,7 @@ if num_cpus > block_size:
 
 cpus = []
 num_dmas=args.num_dmas
+
 if num_cpus > 0 :
     cpus = [ MemTestClass(max_loads = args.maxloads,
                      working_set = args.size_ws,
@@ -211,8 +214,6 @@ system = System(cpu = cpus,
                 clk_domain = SrcClockDomain(clock = args.sys_clock),
                 mem_ranges = [AddrRange(args.mem_size)])
 
-if args.unify_repl_TBEs :
-    args.num_HNF_TBE = args.num_HNF_TBE + args.num_HNF_ReplTBE
 
 if num_dmas > 0:
     dmas = [ MemTestClass(max_loads = args.maxloads,
@@ -285,6 +286,7 @@ else:
 # instantiate configuration
 m5.instantiate()
 
+sys.exit(-1)
 # simulate until program terminates
 exit_event = m5.simulate(args.abs_max_tick)
 

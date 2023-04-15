@@ -334,12 +334,22 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.dealloc_backinv_unique = False
         self.dealloc_backinv_shared = False
         # Some reasonable default TBE params
-        self.number_of_TBEs = options.num_HNF_TBE #2
-        self.number_of_repl_TBEs = options.num_HNF_ReplTBE #2
+        splitText=options.ratio_repl_req_TBE.split(':')
+        assert(len(splitText)==2)
+        k1=int(splitText[0])
+        k2=int(splitText[1])
+        num_HNF_ReqTBE=int((k1/(k1+k2))*(options.num_HNF_TBE))
+        num_HNF_ReplTBE=int((k2/(k1+k2))*(options.num_HNF_TBE))
+        unify_repl_tbes=not options.part_TBEs
+        if unify_repl_tbes :
+            num_HNF_ReqTBE=options.num_HNF_TBE
+            num_HNF_ReplTBE=options.num_HNF_TBE
+        self.number_of_TBEs = num_HNF_ReqTBE #2
+        self.number_of_repl_TBEs = num_HNF_ReplTBE #2
         self.number_of_snoop_TBEs = 1 # should not receive any snoop
         self.number_of_DVM_TBEs = 1 # should not receive any dvm
         self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
-        self.unify_repl_TBEs = options.unify_repl_TBEs
+        self.unify_repl_TBEs = unify_repl_tbes
         self.transitions_per_cycle = options.num_trans_per_cycle_llc
 
 class CHI_MNController(MiscNode_Controller):

@@ -51,6 +51,7 @@ if [ "$GATETEST" != "" ]; then
     l1d_assoc=8
     l1i_assoc=8
     l2_assoc=8
+    l3_assoc=16
     NUM_LLC=16
     LoadFactor=10
     NUM_MEM=4
@@ -63,7 +64,6 @@ if [ "$GATETEST" != "" ]; then
     ROUTER_LAT=0
     DMT=False
     DCT=False
-    HNF_TBE=32
     SNF_TBE=32
     SEQ_TBE=32
     TRANS=4
@@ -73,25 +73,26 @@ if [ "$GATETEST" != "" ]; then
     DEBUGFLAGS=RubyCHIDebugStr5
     OUTPUT_PREFIX="CHITxnTest_${NETWORK}"
 
-    WKSETLIST=(4096) #(524288) #(4096 8192 10240 12288 16384 65536)
-    XOR_ADDR_BITS=1
+    WKSETLIST=(524288) #(4096 8192 10240 12288 16384 65536)
+    XOR_ADDR_BITS=4
     RANDOMIZE_ACC=False
     BLOCK_STRIDE_BITS=0
     NUM_CPU_SET=(1 2 4 8 16)
     LLC_ASSOC_CONFIGSET=(16)
     SNOOP_FILTER_ASSOC_CONFIG_SET=4
     SNOOP_FILTER_SIZE_CONFIG_SET=(256)
-    UNIFY_REPL_TBE_CONFIGSET=(False True)
-    IDEAL_SNOOPFILTER_CONFIG_SET=(True False)
+    PART_TBE_CONFIG_SET=(False True)
+    IDEAL_SNOOPFILTER_CONFIG_SET=(False)
+    HNF_TBE_CONFIG_SET=(8 16 32)
 
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
         for WKSET in ${WKSETLIST[@]}; do
             for SNOOP_FILTER_SIZE in ${SNOOP_FILTER_SIZE_CONFIG_SET[@]}; do
                 for SNOOP_FILTER_ASSOC in ${SNOOP_FILTER_ASSOC_CONFIG_SET[@]}; do
-                    for l3_assoc in ${LLC_ASSOC_CONFIGSET[@]}; do
-                        for UNIFY_REPL_TBE in ${UNIFY_REPL_TBE_CONFIGSET[@]}; do
+                    for HNF_TBE in ${HNF_TBE_CONFIG_SET[@]}; do
+                        for PART_TBE in ${PART_TBE_CONFIG_SET[@]}; do
                             for IDEAL_SNOOPFILTER in ${IDEAL_SNOOPFILTER_CONFIG_SET[@]}; do
-                                OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_L3Assoc${l3_assoc}_UNIFYREPLTBE${UNIFY_REPL_TBE}"
+                                OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_HNFTBE${HNF_TBE}_PARTTBE${PART_TBE}"
                                 OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
                                 echo "GateTest Started: ${OUTPUT_BASE}"
                                 mkdir -p ${OUTPUT_DIR}
@@ -127,13 +128,14 @@ if [ "$GATETEST" != "" ]; then
                                   --size-ws=${WKSET} \
                                   --mem-type=DDR4_3200_8x8 \
                                   --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
-                                  --mem-test-type='bw_test' \
+                                  --mem-test-type='bw_test_sf' \
                                   --addr-intrlvd-or-tiled=$MultiCoreAddrMode  \
                                   --disable-gclk-set \
                                   --enable-DMT=${DMT} \
                                   --enable-DCT=${DCT} \
                                   --num-HNF-TBE=${HNF_TBE} \
-                                  --num-HNF-ReplTBE=${HNF_TBE} \
+                                  --ratio-repl-req-TBE='3:1' \
+                                  --part-TBEs=$PART_TBE \
                                   --num-SNF-TBE=${SNF_TBE}  \
                                   --sequencer-outstanding-requests=${SEQ_TBE} \
                                   --num_trans_per_cycle_llc=${TRANS} \
@@ -147,7 +149,6 @@ if [ "$GATETEST" != "" ]; then
                                   --xor-addr-bits=${XOR_ADDR_BITS} \
                                   --block-stride-bits=${BLOCK_STRIDE_BITS} \
                                   --randomize-acc=${RANDOMIZE_ACC} \
-                                  --unify_repl_TBEs=$UNIFY_REPL_TBE \
                                   --num-producers=1 > ${OUTPUT_DIR}/cmd.log 2>&1 &
                             done
                         done
@@ -158,31 +159,32 @@ if [ "$GATETEST" != "" ]; then
     done
     wait
 
-    echo "WS,NumCPUs,L3Assoc,IdealSnoopFilter,UnifyReplTBE,TBEUtil,RetryAcks,LLCMissRate,BW" > "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
-    for NUMCPUS in ${NUM_CPU_SET[@]}; do
-        for WKSET in ${WKSETLIST[@]}; do
-            for SNOOP_FILTER_SIZE in ${SNOOP_FILTER_SIZE_CONFIG_SET[@]}; do
-                for SNOOP_FILTER_ASSOC in ${SNOOP_FILTER_ASSOC_CONFIG_SET[@]}; do
-                    for l3_assoc in ${LLC_ASSOC_CONFIGSET[@]}; do
-                        for UNIFY_REPL_TBE in ${UNIFY_REPL_TBE_CONFIGSET[@]}; do
-                            for IDEAL_SNOOPFILTER in ${IDEAL_SNOOPFILTER_CONFIG_SET[@]}; do
-                                OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_L3Assoc${l3_assoc}_UNIFYREPLTBE${UNIFY_REPL_TBE}"
-                                OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
-                                echo "GateTest Parsing: ${OUTPUT_BASE}"
-                                grep 'hnf' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
-                                ${PY3} stats_parser_simple.py \
-                                    --stats_file="${OUTPUT_DIR}/stats.txt" \
-                                    --working-set=$WKSET \
-                                    --num_cpus=$NUMCPUS \
-                                    --unify_repl_TBEs=$UNIFY_REPL_TBE \
-                                    --l3assoc=$l3_assoc \
-                                    --allow-infinite-SF-entries=${IDEAL_SNOOPFILTER} \
-                                    --collated_outfile="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
-                            done
-                        done
-                    done
-                done
-            done
-        done
-    done
+    # echo "WS,NumCPUs,HNF_TBE,IdealSnoopFilter,UnifyReplTBE,ReqTBEUtil,ReplTBEUtil,RetryAcks,LLCMissRate,BW" > "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
+    # for NUMCPUS in ${NUM_CPU_SET[@]}; do
+    #     for WKSET in ${WKSETLIST[@]}; do
+    #         for SNOOP_FILTER_SIZE in ${SNOOP_FILTER_SIZE_CONFIG_SET[@]}; do
+    #             for SNOOP_FILTER_ASSOC in ${SNOOP_FILTER_ASSOC_CONFIG_SET[@]}; do
+    #                 for HNF_TBE in ${HNF_TBE_CONFIG_SET[@]}; do
+    #                     for PART_TBE in ${PART_TBE_CONFIG_SET[@]}; do
+    #                         for IDEAL_SNOOPFILTER in ${IDEAL_SNOOPFILTER_CONFIG_SET[@]}; do
+    #                             OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_HNFTBE${HNF_TBE}_PARTTBE${PART_TBE}"
+    #                             OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
+    #                             echo "GateTest Parsing: ${OUTPUT_BASE}"
+    #                             grep 'hnf' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
+    #                             ${PY3} stats_parser_simple.py \
+    #                                 --stats_file="${OUTPUT_DIR}/stats.txt" \
+    #                                 --working-set=$WKSET \
+    #                                 --num_cpus=$NUMCPUS \
+    #                                 --num-l3caches=$NUM_LLC \
+    #                                 --part-TBEs=$PART_TBE \
+    #                                 --hnf-tbe=$HNF_TBE \
+    #                                 --allow-infinite-SF-entries=${IDEAL_SNOOPFILTER} \
+    #                                 --collated_outfile="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
+    #                         done
+    #                     done
+    #                 done
+    #             done
+    #         done
+    #     done
+    # done
 fi
