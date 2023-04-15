@@ -303,6 +303,7 @@ NUM_MEM=4
 NUM_DDR_XP=4
 NUM_DDR_Side=2
 MultiCoreAddrMode=True
+XOR_ADDR_BITS=4
 OUTPUT_PREFIX="DDR_${NETWORK}"
 
 for NUMCPUS in ${NUM_CPU_SET[@]}; do
@@ -348,7 +349,8 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
             --mem-type=DDR4_3200_8x8 \
             --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
             --mem-test-type='bw_test' \
-            --addr-intrlvd-or-tiled=$MultiCoreAddrMode  \
+            --addr-intrlvd-or-tiled=$MultiCoreAddrMode \
+            --xor-addr-bits=${XOR_ADDR_BITS} \
             --disable-gclk-set \
             --enable-DMT=${DMT} \
             --enable-DCT=${DCT} \
