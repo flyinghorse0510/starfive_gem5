@@ -334,12 +334,12 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.dealloc_backinv_unique = False
         self.dealloc_backinv_shared = False
         # Some reasonable default TBE params
-        splitText=options.ratio_repl_req_TBE.split(':')
+        splitText=options.ratio_repl_req_TBE.split('-')
         assert(len(splitText)==2)
         k1=int(splitText[0])
         k2=int(splitText[1])
-        num_HNF_ReqTBE=int((k1/(k1+k2))*(options.num_HNF_TBE))
-        num_HNF_ReplTBE=int((k2/(k1+k2))*(options.num_HNF_TBE))
+        num_HNF_ReqTBE=max([1, int((k1/(k1+k2))*(options.num_HNF_TBE))])
+        num_HNF_ReplTBE=max([1, int((k2/(k1+k2))*(options.num_HNF_TBE))])
         unify_repl_tbes=not options.part_TBEs
         if unify_repl_tbes :
             num_HNF_ReqTBE=options.num_HNF_TBE
