@@ -42,7 +42,6 @@ if [ "$BUILD" != "" ]; then
     scons build/${ISA}_${CCPROT}/${BUILDTYPE} --default=RISCV PROTOCOL=${CCPROT} -j`nproc`
 fi
 
-
 if [ "$GATETEST" != "" ]; then
     l1d_size="4KiB"
     l1i_size="4KiB"
@@ -70,29 +69,33 @@ if [ "$GATETEST" != "" ]; then
     MultiCoreAddrMode=True
     NETWORK="simple"
     IDEAL_SNOOP_FILTER=False
-    DEBUGFLAGS=RubyCHIDebugStr5
+    DEBUGFLAGS=SeqMemLatTest
     OUTPUT_PREFIX="CHITxnTest_${NETWORK}"
 
-    WKSETLIST=(524288) #(4096 8192 10240 12288 16384 65536)
+    WKSETLIST=(524288)
     XOR_ADDR_BITS=4
     RANDOMIZE_ACC=False
     BLOCK_STRIDE_BITS=0
     NUM_CPU_SET=(1 2 4 8 16)
     LLC_ASSOC_CONFIGSET=(16)
-    SNOOP_FILTER_ASSOC_CONFIG_SET=4
+    SNOOP_FILTER_ASSOC=4
     SNOOP_FILTER_SIZE_CONFIG_SET=(256)
     PART_TBE_CONFIG_SET=(False True)
     IDEAL_SNOOPFILTER_CONFIG_SET=(False)
-    HNF_TBE_CONFIG_SET=(8 16 32)
+    HNF_TBE_CONFIG_SET=(16 32)
 
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
         for WKSET in ${WKSETLIST[@]}; do
             for SNOOP_FILTER_SIZE in ${SNOOP_FILTER_SIZE_CONFIG_SET[@]}; do
-                for SNOOP_FILTER_ASSOC in ${SNOOP_FILTER_ASSOC_CONFIG_SET[@]}; do
+                for PART_TBE in ${PART_TBE_CONFIG_SET[@]}; do
                     for HNF_TBE in ${HNF_TBE_CONFIG_SET[@]}; do
-                        for PART_TBE in ${PART_TBE_CONFIG_SET[@]}; do
+                        PART_RATIO_CONFIG_SET=('1-1' '3-1' '7-1' '5-3' '15-1' '13-3' '11-5' '9-7' '31-1' '29-3' '27-5' '25-7' '23-9' '21-11' '19-13' '17-15')
+                        if [ "$PART_TBE" == "False" ]; then
+                            PART_RATIO_CONFIG_SET=('1-1')
+                        fi
+                        for PART_RATIO in ${PART_RATIO_CONFIG_SET[@]}; do
                             for IDEAL_SNOOPFILTER in ${IDEAL_SNOOPFILTER_CONFIG_SET[@]}; do
-                                OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_HNFTBE${HNF_TBE}_PARTTBE${PART_TBE}"
+                                OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_HNFTBE${HNF_TBE}_PARTTBE${PART_TBE}_PartRatio${PART_RATIO}"
                                 OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
                                 echo "GateTest Started: ${OUTPUT_BASE}"
                                 mkdir -p ${OUTPUT_DIR}
@@ -134,7 +137,7 @@ if [ "$GATETEST" != "" ]; then
                                   --enable-DMT=${DMT} \
                                   --enable-DCT=${DCT} \
                                   --num-HNF-TBE=${HNF_TBE} \
-                                  --ratio-repl-req-TBE='3:1' \
+                                  --ratio-repl-req-TBE=$PART_RATIO \
                                   --part-TBEs=$PART_TBE \
                                   --num-SNF-TBE=${SNF_TBE}  \
                                   --sequencer-outstanding-requests=${SEQ_TBE} \
@@ -159,32 +162,39 @@ if [ "$GATETEST" != "" ]; then
     done
     wait
 
-    # echo "WS,NumCPUs,HNF_TBE,IdealSnoopFilter,UnifyReplTBE,ReqTBEUtil,ReplTBEUtil,RetryAcks,LLCMissRate,BW" > "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
-    # for NUMCPUS in ${NUM_CPU_SET[@]}; do
-    #     for WKSET in ${WKSETLIST[@]}; do
-    #         for SNOOP_FILTER_SIZE in ${SNOOP_FILTER_SIZE_CONFIG_SET[@]}; do
-    #             for SNOOP_FILTER_ASSOC in ${SNOOP_FILTER_ASSOC_CONFIG_SET[@]}; do
-    #                 for HNF_TBE in ${HNF_TBE_CONFIG_SET[@]}; do
-    #                     for PART_TBE in ${PART_TBE_CONFIG_SET[@]}; do
-    #                         for IDEAL_SNOOPFILTER in ${IDEAL_SNOOPFILTER_CONFIG_SET[@]}; do
-    #                             OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_HNFTBE${HNF_TBE}_PARTTBE${PART_TBE}"
-    #                             OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
-    #                             echo "GateTest Parsing: ${OUTPUT_BASE}"
-    #                             grep 'hnf' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
-    #                             ${PY3} stats_parser_simple.py \
-    #                                 --stats_file="${OUTPUT_DIR}/stats.txt" \
-    #                                 --working-set=$WKSET \
-    #                                 --num_cpus=$NUMCPUS \
-    #                                 --num-l3caches=$NUM_LLC \
-    #                                 --part-TBEs=$PART_TBE \
-    #                                 --hnf-tbe=$HNF_TBE \
-    #                                 --allow-infinite-SF-entries=${IDEAL_SNOOPFILTER} \
-    #                                 --collated_outfile="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
-    #                         done
-    #                     done
-    #                 done
-    #             done
-    #         done
-    #     done
-    # done
+    echo "WS,NumCPUs,ReqTBE,ReplTBE,PartitionTBE,ReqTBEUtil,ReplTBEUtil,HNFRetryAcks,SNFTBE,SNFTBEUtil,SNFRetryAcks,LLCMissRate,BW" > "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
+    for NUMCPUS in ${NUM_CPU_SET[@]}; do
+        for WKSET in ${WKSETLIST[@]}; do
+            for SNOOP_FILTER_SIZE in ${SNOOP_FILTER_SIZE_CONFIG_SET[@]}; do
+                for PART_TBE in ${PART_TBE_CONFIG_SET[@]}; do
+                    for HNF_TBE in ${HNF_TBE_CONFIG_SET[@]}; do
+                        PART_RATIO_CONFIG_SET=('1-1' '3-1' '7-1' '5-3' '15-1' '13-3' '11-5' '9-7' '31-1' '29-3' '27-5' '25-7' '23-9' '21-11' '19-13' '17-15')
+                        if [ "$PART_TBE" == "False" ]; then
+                            PART_RATIO_CONFIG_SET=('1-1')
+                        fi
+                        for PART_RATIO in ${PART_RATIO_CONFIG_SET[@]}; do
+                            for IDEAL_SNOOPFILTER in ${IDEAL_SNOOPFILTER_CONFIG_SET[@]}; do
+                                OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_HNFTBE${HNF_TBE}_PARTTBE${PART_TBE}"
+                                OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_HNFTBE${HNF_TBE}_PARTTBE${PART_TBE}_PartRatio${PART_RATIO}"
+                                OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
+                                echo "GateTest Parsing: ${OUTPUT_BASE}"
+                                # grep 'hnf' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
+                                ${PY3} stats_parser_simple.py \
+                                    --stats_file="${OUTPUT_DIR}/stats.txt" \
+                                    --working-set=$WKSET \
+                                    --num_cpus=$NUMCPUS \
+                                    --num-dirs=${NUM_MEM} \
+                                    --num-l3caches=$NUM_LLC \
+                                    --part-TBEs=$PART_TBE \
+                                    --hnf-tbe=$HNF_TBE \
+                                    --config_file="${OUTPUT_DIR}/config.json" \
+                                    --allow-infinite-SF-entries=${IDEAL_SNOOPFILTER} \
+                                    --collated_outfile="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
+                            done
+                        done
+                    done
+                done
+            done
+        done
+    done
 fi
