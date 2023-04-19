@@ -55,13 +55,15 @@ class CustomMesh(SimpleTopology):
         self.nodes = controllers
         self.garnet_separate=False
         self.link_width_bytes = 32
+        self.int_link_bw_factor = 20
+        self.ext_link_bw_factor = 40
 
     #--------------------------------------------------------------------------
     # _makeMesh
     #--------------------------------------------------------------------------
 
     def _makeMesh(self, IntLink, link_latency, num_rows, num_columns,
-                  cross_links, cross_link_latency, link_bw_factor):
+                  cross_links, cross_link_latency):
         
         # East->West, West->East, North->South, South->North
         # XY routing weights
@@ -84,7 +86,7 @@ class CustomMesh(SimpleTopology):
                                                 dst_node=self._routers[west_in],
                                                 dst_inport="West",
                                                 latency = llat,
-                                                bandwidth_factor = link_bw_factor,
+                                                bandwidth_factor = self.int_link_bw_factor,
                                                 weight=link_weights[0],
                                                 supported_vnets=[vnet]))
                             self._link_count += 1
@@ -95,7 +97,7 @@ class CustomMesh(SimpleTopology):
                                             dst_node=self._routers[west_in],
                                             dst_inport="West",
                                             latency = llat,
-                                            bandwidth_factor = link_bw_factor,
+                                            bandwidth_factor = self.int_link_bw_factor,
                                             weight=link_weights[0]))
                         self._link_count += 1
 
@@ -116,7 +118,7 @@ class CustomMesh(SimpleTopology):
                                                 dst_node=self._routers[east_in],
                                                 dst_inport="East",
                                                 latency = llat,
-                                                bandwidth_factor = link_bw_factor,
+                                                bandwidth_factor = self.int_link_bw_factor,
                                                 weight=link_weights[1],
                                                 supported_vnets=[vnet]))
                             self._link_count += 1
@@ -127,7 +129,7 @@ class CustomMesh(SimpleTopology):
                                             dst_node=self._routers[east_in],
                                             dst_inport="East",
                                             latency = llat,
-                                            bandwidth_factor = link_bw_factor,
+                                            bandwidth_factor = self.int_link_bw_factor,
                                             weight=link_weights[1]))
                         self._link_count += 1
 
@@ -148,7 +150,7 @@ class CustomMesh(SimpleTopology):
                                                 dst_node=self._routers[south_in],
                                                 dst_inport="South",
                                                 latency = llat,
-                                                bandwidth_factor = link_bw_factor,
+                                                bandwidth_factor = self.int_link_bw_factor, #20
                                                 weight=link_weights[2],
                                                 supported_vnets=[vnet]))
                             self._link_count += 1
@@ -159,7 +161,7 @@ class CustomMesh(SimpleTopology):
                                             dst_node=self._routers[south_in],
                                             dst_inport="South",
                                             latency = llat,
-                                            bandwidth_factor = link_bw_factor,
+                                            bandwidth_factor = self.int_link_bw_factor,
                                             weight=link_weights[2]))
                         self._link_count += 1
 
@@ -180,7 +182,7 @@ class CustomMesh(SimpleTopology):
                                                 dst_node=self._routers[north_in],
                                                 dst_inport="North",
                                                 latency = llat,
-                                                bandwidth_factor = link_bw_factor,
+                                                bandwidth_factor = self.int_link_bw_factor,
                                                 weight=link_weights[3],
                                                 supported_vnets=[vnet]))
                             self._link_count += 1
@@ -191,7 +193,7 @@ class CustomMesh(SimpleTopology):
                                             dst_node=self._routers[north_in],
                                             dst_inport="North",
                                             latency = llat,
-                                            bandwidth_factor = link_bw_factor,
+                                            bandwidth_factor = self.int_link_bw_factor,
                                             weight=link_weights[3]))
                         self._link_count += 1
 
@@ -205,7 +207,7 @@ class CustomMesh(SimpleTopology):
             return True
         return False
 
-    def _createRNFRouter(self, mesh_router,link_bw_factor):
+    def _createRNFRouter(self, mesh_router):
         # Create a zero-latency router bridging node controllers
         # and the mesh router
         node_router = self._Router(router_id = len(self._routers),
@@ -220,7 +222,7 @@ class CustomMesh(SimpleTopology):
                                             src_node = node_router,
                                             dst_node = mesh_router,
                                     latency = self._router_link_latency,
-                                    bandwidth_factor = link_bw_factor,
+                                    bandwidth_factor = self.int_link_bw_factor,
                                     supported_vnets=[vnet]))
                 self._link_count += 1
 
@@ -229,7 +231,7 @@ class CustomMesh(SimpleTopology):
                                             src_node = mesh_router,
                                             dst_node = node_router,
                                     latency = self._router_link_latency,
-                                    bandwidth_factor = link_bw_factor,
+                                    bandwidth_factor = self.int_link_bw_factor,
                                     supported_vnets=[vnet]))
                 self._link_count += 1
         
@@ -238,7 +240,7 @@ class CustomMesh(SimpleTopology):
                                         link_id = self._link_count,
                                         src_node = node_router,
                                         dst_node = mesh_router,
-                                        bandwidth_factor = link_bw_factor,
+                                        bandwidth_factor = self.int_link_bw_factor,
                                 latency = self._router_link_latency))
             self._link_count += 1
 
@@ -246,13 +248,13 @@ class CustomMesh(SimpleTopology):
                                         link_id = self._link_count,
                                         src_node = mesh_router,
                                         dst_node = node_router,
-                                        bandwidth_factor = link_bw_factor,
+                                        bandwidth_factor = self.int_link_bw_factor,
                                 latency = self._router_link_latency))
             self._link_count += 1
 
         return node_router
 
-    def distributeNodes(self, node_placement_config, node_list,link_bw_factor):
+    def distributeNodes(self, node_placement_config, node_list):
         if len(node_list) == 0:
             return
 
@@ -271,7 +273,7 @@ class CustomMesh(SimpleTopology):
                 # and the mesh router
                 # for non-RNF nodes, node router is mesh router
                 if isinstance(node, CHI.CHI_RNF):
-                    router = self._createRNFRouter(router,link_bw_factor)
+                    router = self._createRNFRouter(router)
 
                 # connect all ctrls in the node to node_router
                 ctrls = node.getNetworkSideControllers()
@@ -283,7 +285,7 @@ class CustomMesh(SimpleTopology):
                                             ext_node = c,
                                             int_node = router,
                                             latency = self._node_link_latency,
-                                            bandwidth_factor = link_bw_factor,
+                                            bandwidth_factor = self.ext_link_bw_factor,
                                             supported_vnets=[vnet]))
                             self._link_count += 1
                     else:
@@ -291,7 +293,7 @@ class CustomMesh(SimpleTopology):
                                         link_id = self._link_count,
                                         ext_node = c,
                                         int_node = router,
-                                        bandwidth_factor = link_bw_factor,
+                                        bandwidth_factor = self.ext_link_bw_factor,
                                         latency = self._node_link_latency))
                         self._link_count += 1
         else:
@@ -303,7 +305,7 @@ class CustomMesh(SimpleTopology):
                 router = self._routers[ridx]
 
                 if isinstance(node, CHI.CHI_RNF):
-                    router = self._createRNFRouter(router,link_bw_factor)
+                    router = self._createRNFRouter(router)
                 ctrls = node.getNetworkSideControllers()
                 for c in ctrls:
                     if self.garnet_separate:
@@ -313,7 +315,7 @@ class CustomMesh(SimpleTopology):
                                                         ext_node = c,
                                                         int_node = router,
                                                     latency = self._node_link_latency,
-                                                    bandwidth_factor = link_bw_factor,
+                                                    bandwidth_factor = self.ext_link_bw_factor,
                                                     supported_vnets=[vnet]))
                             self._link_count += 1
                     else:
@@ -321,7 +323,7 @@ class CustomMesh(SimpleTopology):
                                                     link_id = self._link_count,
                                                     ext_node = c,
                                                     int_node = router,
-                                                    bandwidth_factor = link_bw_factor,
+                                                    bandwidth_factor = self.ext_link_bw_factor,
                                                 latency = self._node_link_latency))
                         self._link_count += 1
                 idx = (idx + 1) % len(router_idx_list)
@@ -339,6 +341,8 @@ class CustomMesh(SimpleTopology):
 
         self.garnet_separate=self._check_garnet_separate(options)
         self.link_width_bytes = options.link_width_bits/8
+        self.int_link_bw_factor = options.simple_int_link_bw_factor
+        self.ext_link_bw_factor = options.simple_ext_link_bw_factor
         self._IntLink = IntLink
         self._ExtLink = ExtLink
         self._Router = Router
@@ -410,26 +414,26 @@ class CustomMesh(SimpleTopology):
 
         # Create all the mesh internal links.
         self._makeMesh(IntLink, self._router_link_latency, num_rows, num_cols,
-                       options.cross_links, options.cross_link_latency, options.simple_link_bw_factor/8)
+                       options.cross_links, options.cross_link_latency)
 
         # Place CHI_RNF on the mesh
-        self.distributeNodes(rnf_params, rnf_nodes,options.simple_link_bw_factor/8)
+        self.distributeNodes(rnf_params, rnf_nodes)
 
         # Place CHI_HNF on the mesh
-        self.distributeNodes(hnf_params, hnf_nodes,options.simple_link_bw_factor/8)
+        self.distributeNodes(hnf_params, hnf_nodes)
 
         # Place CHI_MN on the mesh
-        self.distributeNodes(mn_params, mn_nodes,options.simple_link_bw_factor/8)
+        self.distributeNodes(mn_params, mn_nodes)
 
         # Place CHI_SNF_MainMem on the mesh
-        self.distributeNodes(mem_params, mem_nodes,options.simple_link_bw_factor/8)
+        self.distributeNodes(mem_params, mem_nodes)
 
         # Place all IO mem nodes on the mesh
-        self.distributeNodes(io_mem_params, io_mem_nodes,options.simple_link_bw_factor/8)
+        self.distributeNodes(io_mem_params, io_mem_nodes)
 
         # Place all IO request nodes on the mesh
-        self.distributeNodes(rni_dma_params, rni_dma_nodes,options.simple_link_bw_factor/8)
-        self.distributeNodes(rni_io_params, rni_io_nodes,options.simple_link_bw_factor/8)
+        self.distributeNodes(rni_dma_params, rni_dma_nodes)
+        self.distributeNodes(rni_io_params, rni_io_nodes)
 
         # Set up
         network.int_links = self._int_links

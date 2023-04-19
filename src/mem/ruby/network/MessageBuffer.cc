@@ -309,12 +309,13 @@ MessageBuffer::txntrace_print(MsgPtr message, \
         NetDest dst = msg->getDestination();
         MachineID const & reqtor = msg->getrequestor();
         CHIRequestType const & typ = msg->gettype();
-        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, reqtor: %s, dest: %s\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, reqtor: %s, bufferSize: %d, dest: %s\n", 
             txSeqNum,
             typ,
             arrivalOrDep,
             msg->getaddr(),
             reqtor,
+            getSize(curTick()),
             denseDst(dst));
     }
     else if (msg_type == typeid(CHIResponseMsg)){
@@ -323,12 +324,13 @@ MessageBuffer::txntrace_print(MsgPtr message, \
         MachineID const & reqtor = msg->getresponder();
         NetDest dst = msg->getDestination();
         CHIResponseType const & typ = msg->gettype();
-        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, reqtor: %s, dest: %s\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, reqtor: %s, bufferSize: %d, dest: %s\n", 
             txSeqNum,
             typ,
             arrivalOrDep,
             msg->getaddr(),
             reqtor,
+            getSize(curTick()),
             denseDst(dst));
     }
     else if (msg_type == typeid(CHIDataMsg)){
@@ -337,12 +339,13 @@ MessageBuffer::txntrace_print(MsgPtr message, \
         MachineID const & reqtor = msg->getresponder();
         txSeqNum = msg->gettxSeqNum();
         CHIDataType const & typ = msg->gettype();
-        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, reqtor: %s, dest: %s\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, reqtor: %s, bufferSize: %d, dest: %s\n", 
             txSeqNum,
             typ,
             arrivalOrDep,
             msg->getaddr(),
             reqtor,
+            getSize(curTick()),
             denseDst(dst));
     }
     else if (msg_type == typeid(MemoryMsg)){
@@ -350,11 +353,12 @@ MessageBuffer::txntrace_print(MsgPtr message, \
         std::string reqtor = "Memory";
         txSeqNum = msg->gettxSeqNum();
         MemoryRequestType const & typ = msg->getType();
-        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, dest: %s\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, bufferSize: %d, dest: %s\n", 
             txSeqNum,
             typ,
             arrivalOrDep,
             msg->getaddr(),
+            getSize(curTick()),
             reqtor);
     }
 }

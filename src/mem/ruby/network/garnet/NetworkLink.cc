@@ -55,6 +55,7 @@ NetworkLink::NetworkLink(const Params &p)
     int num_vnets = (p.supported_vnets).size();
     mVnets.resize(num_vnets);
     bitWidth = p.width;
+    std::cout << p.width << std::endl;
     for (int i = 0; i < num_vnets; i++) {
         mVnets[i] = p.supported_vnets[i];
     }

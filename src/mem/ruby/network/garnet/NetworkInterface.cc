@@ -38,6 +38,7 @@
 #include "base/cast.hh"
 #include "debug/RubyNetwork.hh"
 #include "debug/FlitStatus.hh"
+#include "debug/NIDequeue.hh"
 #include "mem/ruby/network/MessageBuffer.hh"
 #include "mem/ruby/network/garnet/Credit.hh"
 #include "mem/ruby/network/garnet/flitBuffer.hh"
@@ -219,7 +220,14 @@ NetworkInterface::wakeup()
         if (b->isReady(curTime)) { // Is there a message waiting
             msg_ptr = b->peekMsgPtr();
             if (flitisizeMessage(msg_ptr, vnet)) {
+                if (vnet == 3) {
+                    DPRINTF(NIDequeue,"NI(%d)_Router(%d)_vnet(%d):Dequeing MessageBufferSize=%d\n",m_id,oss.str(),vnet,b->getSize(curTick()));
+                }
                 b->dequeue(curTime);
+            } else {
+                if (vnet == 3) {
+                    DPRINTF(NIDequeue,"NI(%d)_Router(%d)_vnet(%d):DequeingWait MessageBufferSize=%d\n",m_id,oss.str(),vnet,b->getSize(curTick()));
+                }
             }
         }
     }

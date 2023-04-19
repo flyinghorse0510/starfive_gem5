@@ -84,8 +84,11 @@ def define_options(parser):
         default=False,
         help="""SimpleNetwork links uses a separate physical
             channel for each virtual network""")
-    parser.add_argument("--simple-link-bw-factor", action="store", type=int, 
-        default=16,
+    parser.add_argument("--simple-int-link-bw-factor", action="store", type=int, 
+        default=20,
+        help="""SimpleNetwork links bw factor""")
+    parser.add_argument("--simple-ext-link-bw-factor", action="store", type=int, 
+        default=40,
         help="""SimpleNetwork links bw factor""")
     parser.add_argument("--buffer-size",type=int, default=4)
 
@@ -128,6 +131,8 @@ def init_network(options, network, InterfaceClass):
         network.num_rows = options.mesh_rows
         network.vcs_per_vnet = options.vcs_per_vnet
         network.ni_flit_size = options.link_width_bits / 8
+        network.int_link_width = options.simple_int_link_bw_factor
+        network.ext_link_width = options.simple_ext_link_bw_factor
         network.routing_algorithm = options.routing_algorithm
         network.garnet_deadlock_threshold = options.garnet_deadlock_threshold
         network.buffers_per_data_vc = options.buffer_size

@@ -37,8 +37,7 @@ while getopts "hbrstp" options; do
            ;;
         p)
          STATS="yes"
-         TEST=${OPTARG}
-         echo "Running STATS parser"
+         echo "Debug txn parser"
          ;;
     esac
 done
@@ -55,10 +54,12 @@ if [ "$BUILD" != "" ]; then
 fi
 
 TRANS=4
-OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/NWModelComparison_Lat1"
+OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/DDR"
 # PY3=$(which python3)
 PY3=/home/arka.maity/anaconda3/bin/python3
 DEBUG_FLAGS=SeqMemLatTest
+DEBUG_FLAGS=TxnTrace
+DEBUG_FLAGS=NIDequeue,TxnTrace
 DCT_CONFIGS=(False)
 DMT_CONFIGS=(True)
 
@@ -98,29 +99,28 @@ l2_assoc=8
 l3_assoc=16
 NUM_LLC=16
 WKSETLIST=(524288)
-NUM_CPU_SET=(1 2 4 8 16) # For LLC and DDR bw tests, numcpus must be 16
-LoadFactor=10
-NUM_MEM_SET=(1 2 4)
+NUM_CPU_SET=(1) # For LLC and DDR bw tests, numcpus must be 16
+LoadFactor=1
+NUM_MEM_SET=(4)
 NUM_DDR_XP=4
 NUM_DDR_Side=2
 INJ_INTV_SET=(1)
 MultiCoreAddrMode=True
 BUFFER_SIZE_SET=(4)
 HNF_TBE=32
-SNF_TBE=32
-SEQ_TBE_CONFIG_SET=(1 32)
-DMT_CONFIGS=(False)
-DMT_CONFIGS=(False)
+SNF_TBE=64
+SEQ_TBE_CONFIG_SET=(64)
+DMT_CONFIGS=(True)
 NETWORK_CONFIG_SET=("simple" "garnet")
 VC_PER_VNET_SET=(4)
 LINKWIDTH=(256)
 INJ_INTV=1
-OUTPUT_PREFIX="DDR_BW"
+OUTPUT_PREFIX="DEBUG_THROTTLE"
 
 for NUMCPUS in ${NUM_CPU_SET[@]}; do
   for WKSET in ${WKSETLIST[@]}; do
     for DMT in ${DMT_CONFIGS[@]}; do
-      for DCT in ${DMT_CONFIGS[@]}; do
+      for DCT in ${DCT_CONFIGS[@]}; do
         for NETWORK in ${NETWORK_CONFIG_SET[@]}; do
           for NUM_MEM in ${NUM_MEM_SET[@]}; do
             for VC_PER_VNET in ${VC_PER_VNET_SET[@]}; do
@@ -149,7 +149,8 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
                     --l2_assoc=${l2_assoc} \
                     --l3_assoc=${l3_assoc} \
                     --network=${NETWORK} \
-                    --simple-link-bw-factor=${LINKWIDTH} \
+                    --simple-ext-link-bw-factor=32 \
+                    --simple-int-link-bw-factor=32 \
                     --simple-physical-channels \
                     --link-width-bits=${LINKWIDTH} \
                     --vcs-per-vnet=${VC_PER_VNET} \
@@ -191,7 +192,7 @@ echo "WS,NUM_CPUS,SeqTBE,NumMem,NWModel,BW,AccLat" > ${OUTPUT_ROOT}/${OUTPUT_PRE
 for NUMCPUS in ${NUM_CPU_SET[@]}; do
   for WKSET in ${WKSETLIST[@]}; do
     for DMT in ${DMT_CONFIGS[@]}; do
-      for DCT in ${DMT_CONFIGS[@]}; do
+      for DCT in ${DCT_CONFIGS[@]}; do
         for NETWORK in ${NETWORK_CONFIG_SET[@]}; do
           for NUM_MEM in ${NUM_MEM_SET[@]}; do
             for VC_PER_VNET in ${VC_PER_VNET_SET[@]}; do
@@ -201,13 +202,23 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
                   OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
                   echo "GateTest Parsing: ${OUTPUT_BASE}"
                   ${PY3} stats_parser_simple.py \
-                         --working-set=$WKSET \
-                         --num_cpus=$NUMCPUS \
-                         --stats_file="$OUTPUT_DIR/stats.txt" \
-                         --nw_model=$NETWORK \
-                         --num_mem=$NUM_MEM \
-                         --seq_tbe=${SEQ_TBE} \
-                         --collated_outfile="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats_collate.csv"
+                    --working-set=$WKSET \
+                    --num_cpus=$NUMCPUS \
+                    --stats_file="$OUTPUT_DIR/stats.txt" \
+                    --nw_model=$NETWORK \
+                    --num_mem=$NUM_MEM \
+                    --seq_tbe=${SEQ_TBE} \
+                    --collated_outfile="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats_collate.csv"
+                  ${PY3} parse_txn.py \
+                    --working-set=$WKSET \
+                    --num_cpus=$NUMCPUS \
+                    --trace_file="$OUTPUT_DIR/debug.trace" \
+                    --nw_model=$NETWORK \
+                    --num_mem=$NUM_MEM \
+                    --seq_tbe=${SEQ_TBE} \
+                    --outfile="$OUTPUT_DIR/dequeue_rate_$NETWORK.csv" \
+                    --outfile2="$OUTPUT_DIR/enqueue_rate_$NETWORK.csv" \
+                    --parse-l2
                 done
               done
             done 
@@ -218,4 +229,16 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
   done
 done
 
+fi
+
+if [ "$STATS" != "" ]; then
+  ${PY3} parse_txn.py \
+    --working-set=500 \
+    --num_cpus=1 \
+    --trace_file="none" \
+    --nw_model=garnet \
+    --num_mem=1 \
+    --seq_tbe=32 \
+    --outfile="none" \
+    --test
 fi

@@ -51,7 +51,8 @@ class BasicExtLink(BasicLink):
     cxx_class = 'gem5::ruby::BasicExtLink'
 
     ext_node = Param.RubyController("External node")
-    int_node = Param.BasicRouter("ID of internal node")
+    int_node = Param.BasicRouter("ID of internal node") 
+    #check this
     bandwidth_factor = Param.Int("generic bandwidth factor, usually in bytes") #40 #16 #128 #80 #60 #56 #48 #64 #44 #40 #36 #32 #28 #24 #20 #ZHIGUO #one data packet bandwidth 40000, 20*1000 = 20000 #16 # only used by simple network
 
 class BasicIntLink(BasicLink):
