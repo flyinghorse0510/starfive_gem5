@@ -34,6 +34,7 @@
 
 #include "base/trace.hh"
 #include "debug/RubyNetwork.hh"
+#include "debug/FlitStatus.hh"
 #include "mem/ruby/network/garnet/CreditLink.hh"
 
 namespace gem5

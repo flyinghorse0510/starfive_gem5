@@ -32,6 +32,7 @@
 #include "mem/ruby/network/garnet/InputUnit.hh"
 
 #include "debug/RubyNetwork.hh"
+#include "debug/FlitStatus.hh"
 #include "mem/ruby/network/garnet/Credit.hh"
 #include "mem/ruby/network/garnet/Router.hh"
 
@@ -86,12 +87,19 @@ InputUnit::wakeup()
     if (m_in_link->isReady(curTick())) {
 
         t_flit = m_in_link->consumeLink();
-        DPRINTF(RubyNetwork, "Router[%d] Consuming:%s Width: %d Flit:%s\n",
-        m_router->get_id(), m_in_link->name(),
-        m_router->getBitWidth(), *t_flit);
+        // DPRINTF(RubyNetwork, "Router[%d] Consuming:%s Width: %d Flit:%s\n",
+        // m_router->get_id(), m_in_link->name(),
+        // m_router->getBitWidth(), *t_flit);
         assert(t_flit->m_width == m_router->getBitWidth());
         int vc = t_flit->get_vc();
         t_flit->increment_hops(); // for stats
+
+        DPRINTF(FlitStatus,"Router[%d]_VC[%d]: Consuming=%s, VCSize=%d\n",
+            m_router->get_id(),
+            vc,
+            m_in_link->name(),
+            virtualChannels[vc].getSize()
+        );
 
         if ((t_flit->get_type() == HEAD_) ||
             (t_flit->get_type() == HEAD_TAIL_)) {

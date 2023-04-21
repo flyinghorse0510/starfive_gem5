@@ -256,35 +256,7 @@ MessageBuffer::txntrace_print(MsgPtr message, \
     } else if (port_name.find("snpRdy") != std::string::npos) {
         return;
     }
-    // else if this line is link, depends on whether we set TxnLink
-    // we need the req/snp/dat/rspIn port to print the latency on the last link
-    // else if(port_name.find("system.ruby.network.int_links") != std::string::npos || port_name.rfind("In") != std::string::npos){
-    //     // port names containing src_node or dst_node are intermediate buffers in routers.
-    //     if(port_name.find("node",29) != std::string::npos){
-    //         return;
-    //     }
-
-    //     if(!::gem5::debug::TxnLink){ // if we not enabled txnlink, skip the rest calculation and dprintf
-    //         return;
-    //     }
-
-    //     // we only update the link_time and link_name when we are in a link.
-    //     // this works for both simple and garnet
-    //     Tick last_link_time = message->getLastLinkTime();
-    //     std::string last_link = message->getLastLinkName();
-    //     int pos = port_name.rfind(".");
-    //     // The outier function only accepts following two scenarios, we only do substr to the first one
-    //     // system.ruby.network.int_links08.buffer08
-    //     // system.cpu.l2.reqIn // len is only 19, will cause error
-    //     if(port_name.rfind("In") == std::string::npos){
-    //         message->setLastLinkName(port_name.substr(20,pos-20));
-    //     }
-    //     message->setLastLinkTime(arrival_time);
-
-    //     // snprintf(link_info, sizeof(link_info), "<-%lu(%s)", last_link_time, last_link.c_str());
-    //     snprintf(link_info, sizeof(link_info), "(%s:%lu)", last_link.c_str(), arrival_time - last_link_time);
-    // }
-
+ 
     // else we always print this line
     // zhiang: we added txSeqNum to CHI protocol msgs so that can print txSeqNum
     uint64_t txSeqNum = 0; 
@@ -688,9 +660,10 @@ MessageBuffer::print(std::ostream& out) const
         ccprintf(out, " consumer-yes ");
     }
 
-    std::vector<MsgPtr> copy(m_prio_heap);
-    std::sort_heap(copy.begin(), copy.end(), std::greater<MsgPtr>());
-    ccprintf(out, "%s] %s", copy, name());
+    // std::vector<MsgPtr> copy(m_prio_heap);
+    // std::sort_heap(copy.begin(), copy.end(), std::greater<MsgPtr>());
+    // ccprintf(out, "%s] %s", copy, name());
+    ccprintf(out, "%s", name());
 }
 
 bool
@@ -758,6 +731,30 @@ MessageBuffer::functionalAccess(Packet *pkt, bool is_read, WriteMask *mask)
     }
 
     return num_functional_accesses;
+}
+
+// Arka: get the Message Type string representation
+std::string getMsgTypeStr(const MsgPtr &message) {
+  std::stringstream ss;
+  const std::type_info& msg_type = typeid(*(message.get()));
+  if (msg_type == typeid(RubyRequest)) {
+    ss << "RubyRequest";
+  } else if (msg_type == typeid(CHIRequestMsg)) {
+    const CHIRequestMsg* msg = dynamic_cast<CHIRequestMsg*>(message.get());
+    CHIRequestType const &typ = msg->gettype();
+    ss << typ;
+  } else if (msg_type == typeid(CHIResponseMsg)) {
+    const CHIResponseMsg* msg = dynamic_cast<CHIResponseMsg*>(message.get());
+    CHIResponseType const &typ = msg->gettype();
+    ss << typ;
+  } else if (msg_type == typeid(CHIDataMsg)) {
+    const CHIDataMsg* msg = dynamic_cast<CHIDataMsg*>(message.get());
+    CHIDataMsg const &typ = msg->gettype();
+    ss << typ;
+  } else {
+    ss << "Uidentified";
+  }
+  return ss.str();
 }
 
 } // namespace ruby

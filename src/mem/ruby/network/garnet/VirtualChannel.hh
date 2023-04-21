@@ -95,6 +95,11 @@ class VirtualChannel
         return inputBuffer.getTopFlit();
     }
 
+    inline int 
+    getSize() const {
+        return inputBuffer.getSize();
+    }
+
     uint32_t functionalWrite(Packet *pkt);
 
   private:
