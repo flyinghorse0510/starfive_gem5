@@ -414,7 +414,7 @@ MessageBuffer::enqueue(MsgPtr message, Tick current_time, Tick delta)
     profileRetry(message);
 
     // zhiang: print the txntrace message
-    txntrace_print(message, arrival_time, true);
+    // txntrace_print(message, arrival_time, true);
     // Schedule the wakeup
     assert(m_consumer != NULL);
     m_consumer->scheduleEventAbsolute(arrival_time);
@@ -456,7 +456,6 @@ MessageBuffer::dequeue(Tick current_time, bool decrement_messages)
         m_buf_msgs--;
         txntrace_print(message, curTick(), false);
     }
-    // txntrace_print(message,curTick()-message->getLastEnqueueTime());
 
     // if a dequeue callback was requested, call it now
     if (m_dequeue_callback) {

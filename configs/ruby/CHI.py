@@ -37,6 +37,7 @@ import m5
 from m5.objects import *
 from m5.defines import buildEnv
 from .Ruby import create_topology
+from common import ObjectList
 
 def define_options(parser):
     parser.add_argument("--chi-config", action="store", type=str,
@@ -109,25 +110,29 @@ def create_system(options, full_system, system, dma_ports, bootmem,
         tagAccessLatency = 4
         size = options.l1i_size
         assoc = options.l1i_assoc
+        replacement_policy = ObjectList.rp_list.get(options.l1repl)
 
     class L1DCache(RubyCache):
         dataAccessLatency = 0
         tagAccessLatency = 4
         size = options.l1d_size
         assoc = options.l1d_assoc
+        replacement_policy = ObjectList.rp_list.get(options.l1repl)
 
     class L2Cache(RubyCache):
         dataAccessLatency = 12
         tagAccessLatency = 4
         size = options.l2_size
         assoc = options.l2_assoc
+        replacement_policy = ObjectList.rp_list.get(options.l2repl)
 
     class HNFCache(RubyCache):
         dataAccessLatency = 20
         tagAccessLatency = 6
         size = options.l3_size
         assoc = options.l3_assoc
-
+        replacement_policy = ObjectList.rp_list.get(options.l3repl)
+    # print(type(L1ICache.replacement_policy))
     # other functions use system.cache_line_size assuming it has been set
     assert(system.cache_line_size.value == options.cacheline_size)
 

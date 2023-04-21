@@ -38,15 +38,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __CPU_ISO_MEMTEST_HH__
-#define __CPU_ISO_MEMTEST_HH__
+#ifndef __CPU_MEMTEST_MEMTEST_HH__
+#define __CPU_MEMTEST_MEMTEST_HH__
 
 #include <unordered_map>
 #include <unordered_set>
-
+#include <list>
+#include "base/trace.hh"
+#include "debug/StreamDBG.hh"
 #include "base/statistics.hh"
 #include "mem/port.hh"
-#include "params/IsolatedMemTest.hh"
+#include "params/StreamMemTest.hh"
 #include "sim/clocked_object.hh"
 #include "sim/eventq.hh"
 #include "sim/stats.hh"
@@ -56,10 +58,10 @@ namespace gem5
 {
 
 
-
 /**
- * The IsolatedMemTest class tests a cache coherent memory system.
- * 1. All requests issued by the IsolatedMemTest instance are a
+ * TODO: update the comment here
+ * The StreamMemTest class tests a cache coherent memory system.
+ * 1. All requests issued by the StreamMemTest instance are a
  *    single byte. 
  * 2. The addresses are generated sequentially and the same
  *    address is generated again, to remove the effects of cold
@@ -70,13 +72,94 @@ namespace gem5
  * both requests and responses, thus checking that the memory-system
  * is making progress.
  */
-class IsolatedMemTest : public ClockedObject
+
+enum class STState {INIT, WAIT_B, WAIT_C, PREP, SENT, CMPL};
+enum class LDState {INIT, PREP, SENT, CMPL};
+
+class STMReq {
+public:
+  uint64_t iter;
+  double val;
+  Addr addr;
+  STMReq(uint64_t iter, double val, Addr addr):iter(iter), val(val), addr(addr) {}
+  virtual ~STMReq(){}
+};
+
+class STReq: public STMReq{
+public:
+  double b;
+  double c;
+  Addr addr_b;
+  Addr addr_c;
+  uint64_t wsSize;
+  STState state;
+
+  void wakeup(Addr addr, double data){
+    DPRINTF(StreamDBG, "In ST[%lu].wakeup: state:%d, addr:%lu, data:%f\n", iter, int(state), addr, data);
+    if(addr>=addr_b && addr<addr_b+wsSize)
+    {
+      b = data;
+      switch(state){
+        case STState::INIT : state = STState::WAIT_C; break;
+        case STState::WAIT_B : state = STState::PREP; break;
+        default: 
+          panic("STReq[%lu](addr:%lu) woke up by LD B in state %d\n", iter, this->addr, int(state));
+      }
+    }
+    else if(addr>=addr_c && addr<addr_c+wsSize)
+    {
+      c = data;
+      switch(state){
+        case STState::INIT : state = STState::WAIT_B; break;
+        case STState::WAIT_C : state = STState::PREP; break;
+        default: 
+          panic("STReq[%lu](addr:%#lx) woke up by in state %d\n", iter, this->addr, int(state));
+      }
+    }
+    else
+    {
+      panic("STReq[%lu](addr:%#lx) recv wired addr %#lx\n", iter, this->addr, addr);
+    }
+    // TODO: here prepare to send out st req
+    if(state == STState::PREP){
+      val = b + c*1.0;
+      DPRINTF(StreamDBG, "In ST[%lu].wakeup: PREP to send, val:%f\n", iter, val);
+    }
+  }
+
+  STReq(uint64_t iter, double val, Addr addr, Addr addr_b, Addr addr_c, uint64_t wsSize, STState state)
+      :STMReq(iter, val, addr), state(state), b(0), c(0), addr_b(addr_b), addr_c(addr_c), wsSize(wsSize)
+  {
+    DPRINTF(StreamDBG, "STReq[%lu](%p) ctor, val:%f, addr:%#lx, state:%d\n", iter, this, val, addr, int(state));
+  }
+};
+
+class LDReq : public STMReq {
+public:
+    LDState state;
+    STReq* streq; // observer
+    
+    void wakeupST(double data){
+      streq->wakeup(addr, data);
+    }
+    
+    LDReq(uint64_t iter, double val, Addr addr, LDState state, STReq* streq)
+        :STMReq(iter, val, addr), state(state), streq(streq)
+    {
+      DPRINTF(StreamDBG, "LDReq[%lu](%p) ctor, val:%f, addr:%#lx, state:%d, streq:%p\n", iter, this, val, addr, int(state), streq);
+    }
+};
+
+enum class ArbiPolicy {RoundRobin=0, StoreFirst};
+
+
+class StreamMemTest : public ClockedObject
 {
 
   public:
 
-    typedef IsolatedMemTestParams Params;
-    IsolatedMemTest(const Params &p);
+    typedef StreamMemTestParams Params;
+    StreamMemTest(const Params &p);
 
 
     Port &getPort(const std::string &if_name,
@@ -99,12 +182,12 @@ class IsolatedMemTest : public ClockedObject
 
     class CpuPort : public RequestPort
     {
-        IsolatedMemTest &seqmemtest;
+        StreamMemTest &streammemtest;
 
       public:
 
-        CpuPort(const std::string &_name, IsolatedMemTest &_memtest)
-            : RequestPort(_name, &_memtest), seqmemtest(_memtest)
+        CpuPort(const std::string &_name, StreamMemTest &_memtest)
+            : RequestPort(_name, &_memtest), streammemtest(_memtest)
         { }
 
       protected:
@@ -121,32 +204,12 @@ class IsolatedMemTest : public ClockedObject
     };
 
     CpuPort port;
-
     PacketPtr retryPkt;
-
-    const unsigned size;
-
     bool waitResponse;
-
     const Cycles interval;
 
     /** Request id for all generated traffic */
     RequestorID requestorId;
-
-    unsigned int id;
-
-    std::unordered_set<uint64_t> outstandingAddrs;
-
-    // store the expected value for the addresses we have touched
-    std::unordered_map<Addr, uint8_t> referenceData;
-
-    const unsigned blockSize;
-
-    const Addr blockAddrMask;
-
-    std::map<Addr,bool> readWriteMap;
-
-    std::vector<Addr> workingSet;
 
     /**
      * Get the block aligned address.
@@ -159,18 +222,39 @@ class IsolatedMemTest : public ClockedObject
         return (addr & ~blockAddrMask);
     }
 
+    const uint64_t maxOutstanding;
+
     const unsigned progressInterval;  // frequency of progress reports
     const Cycles progressCheck;
     Tick nextProgressMessage;   // access # for next progress report
 
 
+    /**
+     * data structures related to stream test
+    */
+  public:
+    const uint64_t wsSize;
+    const Addr a,b,c; // address for stream arr
+    const double scale;
+    const uint32_t id;
+    const uint32_t numCpus;
+    const uint32_t blockSize;
+    const Addr blockAddrMask;
+    const uint64_t maxLoads;
+    uint64_t maxIters;
+    uint64_t numIters;
+
+    ArbiPolicy arbiPolicy;
+    std::unordered_map<Addr, std::list<STReq*>::iterator> outstandingSTAddrs;
+    std::unordered_map<Addr, std::list<LDReq*>::iterator> outstandingLDAddrs;
+
+    std::list<LDReq*> LDList; // list for LD reqs
+    std::list<STReq*> STList; // list for ST reqs
 
     uint64_t numReads;
     uint64_t numWrites;
-    uint64_t maxLoads2;
-    bool isSequential;
-    uint64_t txSeqNum; // zhiang: requestorID + txSeqNum should be the unique ID
-    const uint64_t maxLoads;
+
+    uint64_t txSeqNum; // requestorID + txSeqNum should be the unique ID
 
     const bool atomic;
 
@@ -190,13 +274,11 @@ class IsolatedMemTest : public ClockedObject
      * @param functional Whether the access was functional or not
      */
     void completeRequest(PacketPtr pkt, bool functional = false);
-
     bool sendPkt(PacketPtr pkt);
-
     void recvRetry();
 
 };
 
 } // namespace gem5
 
-#endif // __CPU_ISO_MEMTEST_HH__
+#endif // __CPU_MEMTEST_MEMTEST_HH__

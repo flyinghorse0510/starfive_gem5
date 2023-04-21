@@ -41,24 +41,30 @@ from m5.proxy import *
 
 from m5.objects.ClockedObject import ClockedObject
 
-class IsolatedMemTest(ClockedObject):
-    type = 'IsolatedMemTest'
-    cxx_header = "cpu/testers/memtest/isolatedmemtest.hh"
-    cxx_class = 'gem5::IsolatedMemTest'
+class StreamMemTest(ClockedObject):
+    type = 'StreamMemTest'
+    cxx_header = "cpu/testers/memtest/streammemtest.hh"
+    cxx_class = 'gem5::StreamMemTest'
 
-    # Interval of packet injection, the size of the memory range
-    # touched, and an optional stop condition
-    interval = Param.Cycles(100, "Interval between request packets")
-    size = Param.Unsigned(4194304, "Working set(bytes)")
-    working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
+    id = Param.Counter(0, "ID of the cpu")
     num_cpus = Param.Counter(1, "Total number of CPUs")
-    max_loads = Param.Counter(1, "Number of loads to unique address")
+    maxloads = Param.Counter(1, "Number of loads to execute before exiting")
+    max_outstanding = Param.UInt64(0, "Maximum outstanding request")
+    ws_size = Param.UInt64(0, "Size of working set")
+    arbi_policy = Param.UInt8(0, "round robin by default")
+ 
+    addr_a = Param.Addr(0x0, "starting address of array A")
+    addr_b = Param.Addr(0x0, "starting address of array B")
+    addr_c = Param.Addr(0x0, "starting address of array C")
+
+    scale = Param.Float(1.0, "scale in stream test")
 
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses
-    progress_interval = Param.Counter(1000000,
+    interval = Param.Cycles(1, "Interval between request packets")
+    progress_interval = Param.Counter(1,
         "Progress report interval (in accesses)")
-    progress_check = Param.Cycles(50000, "Cycles before exiting " \
+    progress_check = Param.Cycles(5000000, "Cycles before exiting " \
                                       "due to lack of progress")
 
     port = RequestPort("Port to the memory system")
@@ -68,10 +74,3 @@ class IsolatedMemTest(ClockedObject):
     # accesses as Ruby needs this
     suppress_func_errors = Param.Bool(False, "Suppress panic when "\
                                             "functional accesses fail.")
-    
-    # Extra parameters to comply with seq_mem_ruby_test
-    bench_c2cbw_mode = Param.Bool(False,"[True] Producer Consumer BW or [False] C2C Latency Test")
-    id_producers = VectorParam.Int([], "List of Producer Ids")
-    id_consumers = VectorParam.Int([], "List of Consumer Ids")
-    num_peer_producers = Param.Counter(1, "Number of independent peer producers. Use to partition the working set")
-    addr_intrlvd_or_tiled =  Param.Bool(False,"If true the address partitioning across CPUs is interleaved [0,N,2N;1,N+1,2N+1;...]. Otherwise Tiled [0:N-1,N:2N-1]")

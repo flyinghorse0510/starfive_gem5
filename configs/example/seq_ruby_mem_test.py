@@ -35,6 +35,7 @@ addToPath('../')
 
 from common import Options
 from ruby import Ruby
+import ast
 
 # Get paths we might need.  It's expected this file is in m5/configs/example.
 config_path = os.path.dirname(os.path.abspath(__file__))
@@ -56,17 +57,19 @@ parser.add_argument("--suppress-func-errors", action="store_true",
                     help="suppress panic when functional accesses fail")
 parser.add_argument("--mem-test-type",type=str,default='bw_test',help="The type of Memtest stimulus generator to use")
 parser.add_argument("--size-ws",type=int,default=1024,help='Working set size in bytes. Must be a multiple of Cacheline size')
-parser.add_argument("--enable-DMT", default=False, help="enable DMT")
-parser.add_argument("--enable-DCT", default=False, help="enable DCT")
-parser.add_argument('--allow-SD',default=True, help="allow SD state") # True for MOESI, False for MESI
+parser.add_argument("--enable-DMT", default=False, type=ast.literal_eval, help="enable DMT")
+parser.add_argument("--enable-DCT", default=False, type=ast.literal_eval, help="enable DCT")
+parser.add_argument('--allow-SD',default=True, type=ast.literal_eval, help="allow SD state") # True for MOESI, False for MESI
 parser.add_argument("--num-HNF-TBE", default=16, help="number of oustanding in HN-F")
 parser.add_argument("--num_HNF_ReplTBE", default=16, help="number of replacement oustanding in HN-F")
 parser.add_argument("--num_trans_per_cycle_llc", default=4, help="number of transitions per cycle in HN-F")
 parser.add_argument("--num-SNF-TBE", default=32, help="number of oustanding in HN-F")
-parser.add_argument("--addr-intrlvd-or-tiled",default=False,help="If true the address partitioning across CPUs is interleaved (like [0-N-2N;1-N+1-2N+1;...]). Otherwise Tiled [0:N-1,N:2N-1]")
+parser.add_argument("--addr-intrlvd-or-tiled",default=False, type=ast.literal_eval, help="If true the address partitioning across CPUs is interleaved (like [0-N-2N;1-N+1-2N+1;...]). Otherwise Tiled [0:N-1,N:2N-1]")
 parser.add_argument("--sequencer-outstanding-requests",type=int,default=32,help="Max outstanding sequencer requests")
-parser.add_argument("--bench-c2cbw-mode",default=True,help="[True] Producer Consumer BW or [False] C2C Latency Test")
+parser.add_argument("--bench-c2cbw-mode",default=True, type=ast.literal_eval, help="[True] Producer Consumer BW or [False] C2C Latency Test")
 parser.add_argument("--inj-interval",default=1,type=int,help="The interval between request packets")
+parser.add_argument("--num-snoopfilter-entries", default=4, type=int,help="SnoopFilter: number of entries")
+parser.add_argument("--num-snoopfilter-assoc", default=2, type=int,help="SnoopFilter: assoc")
 """
     The (--producers,--num-producers) are mutually exclusive argument specification 
     as are (--consumers,--num-consumers). --producers an --consumers specify the 
@@ -82,13 +85,15 @@ parser.add_argument("--num-producers",type=int,default=-1,help="number of produc
 parser.add_argument("--num-consumers",type=int,default=-1,help="number of consumers")
 parser.add_argument("--chs-1p1c",action='store_true',help='[Test 1] Run isolated 1p 1c coherence sharing benchmarks')
 parser.add_argument("--chs-cons-id",type=int,default=0,help='[Test 1] Consumer Id')
-parser.add_argument("--chs-prod-id",type=int,default=2,help='[Test 1] Producer Id')
+parser.add_argument("--chs-prod-id",type=int,default=0,help='[Test 1] Producer Id')
 parser.add_argument("--chs-1p1c-num-pairs",default=1,type=int,help='[Test 2] Number of coherence sharing pairs')
 parser.add_argument("--chs-1pMc",action='store_true',help='[Test 3] Run 1 producer M > 1 consumers')
 parser.add_argument("--chs-1p-MSharers",default=2,type=int,help='[Test 3] Number of sharers')
 parser.add_argument('--max-outstanding-requests',default=1,type=int,help='Maximumum number of outstanding requests produced')
 parser.add_argument('--id-starter',default=0,type=int,help='Starter id of the migratory sharing patterns')
 parser.add_argument('--outstanding-req',default=100,type=int,help='Number of oustanding requests')
+parser.add_argument('--allow-infinite-SF-entries',default=True, type=ast.literal_eval, help="Allow infinite SnoopFilter entries.")
+
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]
 
@@ -104,6 +109,10 @@ block_size = 64
 MemTestClass=None
 if args.mem_test_type=='bw_test':
     MemTestClass=SeqMemTest
+elif args.mem_test_type=='bw_test_sf':
+    MemTestClass=Seq2MemTest # Testing the SnoopFilter under extreme configs to trigger outstanding SFRepls
+elif args.mem_test_type=='falsesharing_test':
+    MemTestClass=FalseSharingMemTest
 elif args.mem_test_type=='prod_cons_test':
     MemTestClass=ProdConsMemTest
 elif args.mem_test_type=='random_test':
@@ -171,10 +180,10 @@ else :
     cpuProdListMap[args.chs_cons_id]=[args.chs_prod_id]
     cpuConsListMap[args.chs_cons_id]=[args.chs_cons_id]
 
-for cpu in range(num_cpus):
-    prod=cpuProdListMap[cpu]
-    cons=cpuConsListMap[cpu]
-    print(f'cpu={cpu}|prod={prod},cons={cons}')
+# for cpu in range(num_cpus):
+#     prod=cpuProdListMap[cpu]
+#     cons=cpuConsListMap[cpu]
+#     print(f'cpu={cpu}|prod={prod},cons={cons}')
 
 if num_cpus > block_size:
      print("Error: Number of testers %d limited to %d because of false sharing"

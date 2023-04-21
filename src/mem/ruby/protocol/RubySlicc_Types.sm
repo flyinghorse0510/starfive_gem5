@@ -256,6 +256,7 @@ structure (RubyPrefetcher, external = "yes") {
 enumeration(TBEType, desc="...") {
   Request,   desc="Request TBE";
   Repl,      desc="Replacement TBE";
+  SFRepl,    desc="Snoop Filter Replacement TBE";
   Snp,       desc="Snp Request TBE";
   Dvm,       desc="DVM Request TBE";
   DvmSnp,    desc="DVM Snp request TBE";

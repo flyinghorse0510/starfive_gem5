@@ -67,8 +67,6 @@ action(AllocateTBE_Request, desc="") {
       }
     }
   }
-
-  reqInPort.dequeue(clockEdge());
 }
 
 action(AllocateTBE_Request_WithCredit, desc="") {
@@ -81,13 +79,9 @@ action(AllocateTBE_Request_WithCredit, desc="") {
       out_msg := in_msg;
     }
   }
-  reqInPort.dequeue(clockEdge());
 }
 
 action(AllocateTBE_Snoop, desc="") {
-  // zhiang: 
-  // DPRINTF(RubySlicc, "Enter AllocateTBE_Snoop\n");
-
   // No retry for snoop requests; just create resource stall
   check_allocate(storSnpTBEs);
 
@@ -108,8 +102,6 @@ action(AllocateTBE_Snoop, desc="") {
     destsWaitingRetry.remove(in_msg.requestor);
   }
   snpInPort.dequeue(clockEdge());
-  // zhiang: 
-  // DPRINTF(RubySlicc, "Exit AllocateTBE_Snoop\n");
 }
 
 action(AllocateTBE_DvmSnoop, desc="") {
@@ -267,6 +259,8 @@ action(Initiate_Request, desc="") {
     was_retried := in_msg.allowRetry == false;
   }
   DirEntry dir_entry := getDirEntry(address);
+
+  // CacheEntry+DirEntry --> TBE
   copyCacheAndDir(cache_entry, dir_entry, tbe, initial);
 
   tbe.use_DMT := is_HN && enable_DMT;
@@ -283,6 +277,21 @@ action(Initiate_Request, desc="") {
   tbe.dataToBeInvalid := dealloc_entry ||
                          (is_invalid(cache_entry) && (alloc_entry == false));
   tbe.doCacheFill := alloc_entry || is_valid(cache_entry);
+
+  // Requires a DirEntry allocation
+  tbe.requiresDirEntryAlloc := (is_invalid(dir_entry)) && requiresDirEntry(tbe.reqType);
+  bool avail_direntry := directory.cacheAvail(address);
+  bool doSnoopFilterFill := is_HN && (!allow_infinite_SF_entries) && requiresDirEntry(tbe.reqType);
+  assert(avail_direntry || (!doSnoopFilterFill));
+  if (tbe.requiresDirEntryAlloc) {
+    directory.allocate(address);
+    DPRINTF(RubyCHIDebugStr5,"SnoopFilterAlloc addr=%#x,type=%s\n",tbe.addr,tbe.reqType);
+    directory.profileAlloc();
+  }
+  if ((is_valid(dir_entry)) && requiresDirEntry(tbe.reqType)) {
+    DPRINTF(RubyCHIDebugStr5,"SnoopFilterHit addr=%#x,type=%s\n",tbe.addr,tbe.reqType);
+    directory.profileHit();
+  }
 
   // model the initial tag array read
   tbe.actions.pushNB(Event:TagArrayRead);
@@ -402,14 +411,6 @@ action(Initiate_Replacement, desc="") {
   assert(is_invalid(tbe));
   State initial := getState(tbe, cache_entry, address);
 
-  // zhiang: printTBEState here
-  DPRINTF(RubySlicc, "Enter Initiate_Replacement\n");
-  if(is_invalid(tbe)) {
-    DPRINTF(RubySlicc, "tbe is invalid\n");
-  } else {
-    printTBEState(tbe);
-  }
-
   if (unify_repl_TBEs) {
     peek(replTriggerInPort, ReplacementMsg) {
       set_tbe(allocateReplacementTBEOnSlot(address, in_msg.slot));
@@ -420,31 +421,13 @@ action(Initiate_Replacement, desc="") {
     DPRINTF(RubySlicc, "Allocated replacement TBE on new slot %d\n", tbe.storSlot);
   }
 
-  // zhiang: printTBEState here
-  DPRINTF(RubySlicc, "After allocateReplacementTBE\n");
-  if(is_invalid(tbe)) {
-    DPRINTF(RubySlicc, "tbe is invalid\n");
-  } else {
-    printTBEState(tbe);
-  }
-
   copyCacheAndDir(cache_entry, getDirEntry(address), tbe, initial);
-
-  // zhiang: printTBEState here
-  DPRINTF(RubySlicc, "After copyCacheAndDir\n");
-  if(is_invalid(tbe)) {
-    DPRINTF(RubySlicc, "tbe is invalid\n");
-  } else {
-    printTBEState(tbe);
-  }
 
   // model the initial tag array read
   tbe.actions.pushNB(Event:TagArrayRead);
 
   incomingTransactionStart(address, curTransitionEvent(), initial, false);
 }
-
-
 
 action(StallRequest, desc="") {
   // was stalled because of an existing request
@@ -453,6 +436,17 @@ action(StallRequest, desc="") {
   // tracks pending
   tbe.wakeup_pending_req := true;
   stall_and_wait(reqRdyPort, address);
+}
+
+action(StallRequest_OnSnoopFilterRepl, desc="") {
+  // A valid tbe is not yet allocated. But must stall
+  stall_and_wait(reqRdyPort, address);
+}
+
+action(StallRequest_OnSnoopFilterRepl_Pend, desc="") {
+  // Directory(set,way) is busy servicing other SFRepl requests. Create a Stall for this request
+  stall_and_wait(reqRdyPort, address);
+  snoopFilterPendQ.emplace_entry(address);
 }
 
 action(StallSnoop, desc="") {
@@ -2154,7 +2148,6 @@ action(UpdateDirState_FromSnpResp, desc="") {
 }
 
 action(Receive_ReqResp, desc="") {
-  printTBEStateStr5(tbe);
   assert(tbe.expected_req_resp.hasExpected());
   peek(rspInPort, CHIResponseMsg) {
     // Decrement pending
@@ -2757,8 +2750,6 @@ action(Send_SnpRespI, desc="") {
 
 action(Send_RetryAck, desc="") {
   peek(retryTriggerInPort, RetryTriggerMsg) {
-//    DPRINTF(RubyTxnTrace, "HNFRetry: seqn %#018x\n", tbe.txSeqNum);
-    DPRINTF(RubyTxnTrace, "HNFRetry: \n");
     cache.profileRetryAck();
  
     enqueue(rspOutPort, CHIResponseMsg, response_latency) {
@@ -2818,7 +2809,6 @@ action(CheckUpgrade_FromCU, desc="") {
   tbe.actions.pushFront(Event:SendCompAck);
 }
 
-
 action(Finalize_UpdateCacheFromTBE, desc="") {
   assert(is_valid(tbe));
   State final := tbe.finalState;
@@ -2845,6 +2835,7 @@ action(Finalize_UpdateCacheFromTBE, desc="") {
 action(Finalize_UpdateDirectoryFromTBE, desc="") {
   assert(is_valid(tbe));
   State final := tbe.finalState;
+  bool deallocDirEntry := false;
   if ((final == State:UD_RSC) || (final == State:SD_RSC) || (final == State:UC_RSC) ||
       (final == State:SC_RSC) || (final == State:UC_RU)  || (final == State:UD_RU) ||
       (final == State:UD_RSD) || (final == State:SD_RSD) || (final == State:RU) ||
@@ -2860,8 +2851,18 @@ action(Finalize_UpdateDirectoryFromTBE, desc="") {
   } else {
     assert((tbe.dir_ownerExists == false) && tbe.dir_sharers.isEmpty());
     if(directory.isTagPresent(address)) {
-      directory.deallocate(address);
+      deallocDirEntry := true;
     }
+  }
+
+  /** 
+   * If you de-allocating the dirEntry, make
+   * sure to reset the SnoopFilter way and 
+   * wakeup any pending SnoopFilter repl.
+   */
+  if (deallocDirEntry) {
+    resetDirEntryAndWakeupPendingSFRepl(address);
+    directory.deallocate(address);
   }
 }
 
@@ -2871,15 +2872,127 @@ action(Deallocate_CacheBlock, desc="") {
   unset_cache_entry();
 }
 
-action(Allocate_DirEntry, desc="") {
-  assert(directory.isTagPresent(address) == false);
-  directory.allocate(address);
-}
-
 action(Deallocate_DirEntry, desc="") {
   assert(directory.isTagPresent(address));
   directory.deallocate(address);
 }
+
+// SnoopFilter related actions 
+action(Initiate_SnoopFilterReplacement_WB_BackInv, desc="") {
+  assert(is_HN);
+  assert(is_valid(tbe));
+  assert(tbe.dataDirty || tbe.dataMaybeDirtyUpstream);
+  tbe.doCacheFill := true;
+  tbe.actions.push(Event:SendSnpCleanInvalid);
+  tbe.actions.push(Event:WriteFEPipe);
+  tbe.actions.push(Event:SnoopFilterHNCacheFill);
+}
+
+action(Start_SnoopFilterHNCacheFill, desc="") {
+  assert(is_HN);
+  assert(is_valid(tbe));
+  assert(tbe.dataDirty || tbe.dataUnique);
+  tbe.dataToBeInvalid := is_invalid(cache_entry);
+  if (is_invalid(cache_entry) && (cache.cacheAvail(address))) {
+    /* Cache Entry not valid but space is available. Allocate */
+    tbe.dataToBeInvalid := false;
+    set_cache_entry(cache.allocate(address, new CacheEntry));
+    tbe.actions.pushFront(Event:DataArrayWriteOnFill);
+    tbe.actions.pushFront(Event:FillPipe);
+  } else if (is_invalid(cache_entry) && (!cache.cacheAvail(address))) {
+    if (tbe.dataDirty) {
+      /* Generate WriteNoSnp to SNF */
+      // tbe.actions.push(Event:WriteFEPipe);
+      tbe.actions.push(Event:SendWriteNoSnp);
+      // tbe.actions.pushNB(Event:DataArrayRead);
+      tbe.actions.push(Event:WriteBEPipe);
+      tbe.actions.push(Event:SendWBData);
+      // tbe.actions.pushNB(Event:TagArrayWrite);
+    }
+    tbe.dataToBeInvalid := true;
+  }
+  tbe.actions.push(Event:ResetAndDeallocDirEntry); // pushNB?
+  tbe.actions.push(Event:WakeUpEvictingSnoopFilterAddr); // pushNB?
+}
+
+
+action(Initiate_SnoopFilterReplacement_Evict_BackInv, desc="") {
+  assert(is_HN);
+  assert(is_valid(tbe));
+  tbe.actions.push(Event:SendSnpCleanInvalid);
+  tbe.dataToBeInvalid := is_invalid(cache_entry);
+  tbe.actions.pushNB(Event:TagArrayWrite);
+  tbe.actions.push(Event:ResetAndDeallocDirEntry); // pushNB?
+  tbe.actions.push(Event:WakeUpEvictingSnoopFilterAddr); // pushNB?
+}
+
+action(ResetAndDealloc_DirEntry, desc="") {
+  assert(is_valid(tbe));
+  tbe.actions.push(Event:ResetAndDeallocDirEntry); // pushNB?
+}
+
+action(Reset_DirEntry, desc="") {
+  assert(is_valid(tbe));
+  assert(tbe.addr == address);
+  resetDirEntryAndWakeupPendingSFRepl(address);
+}
+
+action(Restore_EvictingSnoopFilterAddr, desc="") {
+  assert(is_valid(tbe));
+  tbe.actions.push(Event:WakeUpEvictingSnoopFilterAddr); // pushNB?
+}
+
+action(Assert_NoDirEntry, desc="") {
+  DirEntry dir_entry := getDirEntry(address);
+  assert(is_invalid(dir_entry));
+}
+
+action(WakeUp_EvictingSnoopFilterAddr, desc="") {
+  assert(is_valid(tbe));
+  Addr evicting_sf_addr := tbe.evicting_sf_addr;
+  wakeup_port(reqRdyPort, evicting_sf_addr);
+}
+
+action(WakeUp_EvictingSnoopFilterAddr_NoTBE, desc="") {
+  peek(sfReplInPort, SFReplMessage) {
+    Addr evicting_sf_addr := in_msg.toAddr;
+    wakeup_port(reqRdyPort, evicting_sf_addr);
+  }
+}
+
+
+
+action(Initiate_SnoopFilterReplacement, desc="") {
+  assert(is_invalid(tbe));
+  DirEntry dir_entry := getDirEntry(address);
+  assert(is_valid(dir_entry));
+  State initial := getState(tbe, cache_entry, address);
+  peek(sfReplInPort, SFReplMessage) {
+    set_tbe(allocateSnoopFilterTBE(address, machineID, machineID));
+    tbe.evicting_sf_addr := in_msg.toAddr;
+  }
+
+  copyCacheAndDir(cache_entry, dir_entry, tbe, initial);
+
+  // Is this correct?
+  incomingTransactionStart(address, curTransitionEvent(), initial, false);
+}
+
+action(Profile_SnoopFilterMiss, desc="") {
+  assert(is_valid(tbe)); // Why is this necessary?
+  DPRINTF(RubyCHIDebugStr5,"SnoopFilterRepl addr=%#x-->%#x\n",tbe.addr,tbe.evicting_sf_addr);
+  directory.profileMiss();
+}
+
+action(StallSnoopFilterEviction, desc="") {
+  // was stalled because of an existing request
+  assert(is_valid(tbe));
+  assert(tbe.addr == address);
+
+  tbe.wakeup_pending_sfRepl := true;
+  stall_and_wait(sfReplInPort, address);
+}
+
 
 action(CheckCacheFill, desc="") {
   assert(is_valid(tbe));
@@ -2926,6 +3039,7 @@ action(CheckCacheFill, desc="") {
     } else {
       DPRINTF(RubySlicc, "Eviction for %#x victim: %#x state=%s\n",
                           address, victim_addr, victim_tbe.state);
+    
       // just wait until the transaction finishes to try again
       victim_tbe.wakeup_pending_tgr := true;
     }
@@ -2944,21 +3058,21 @@ action(CheckCacheFill, desc="") {
   }
 }
 
-
 action(Finalize_DeallocateRequest, desc="") {
   assert(is_valid(tbe));
   assert(tbe.actions.empty());
   wakeupPendingReqs(tbe);
   wakeupPendingSnps(tbe);
   wakeupPendingTgrs(tbe);
-
+  wakeupPendingSFRepl(tbe);
   if (tbe.is_req_tbe) {
     deallocateReqTBE(tbe);
     processRetryQueue();
 
   } else if (tbe.is_snp_tbe) {
     deallocateSnpTBE(tbe);
-
+  } else if (tbe.is_sfrepl_tbe) {
+    deallocateSnoopFilterTBE(tbe);
   } else {
     deallocateReplacementTBE(tbe);
     if (unify_repl_TBEs) {
@@ -3037,8 +3151,18 @@ action(Pop_RetryTriggerQueue, desc="") {
 action(Pop_SnpInPort, desc="") {
   snpInPort.dequeue(clockEdge());
 }
+
 action(Pop_SeqInPort, desc="") {
   seqInPort.dequeue(clockEdge());
+}
+
+
+action(Pop_SFReplTriggerQueue, desc="") {
+  sfReplInPort.dequeue(clockEdge());
+}
+
+action(Pop_ReqInQueue, desc="") {
+  reqInPort.dequeue(clockEdge());
 }
 
 action(ProcessNextState, desc="") {
