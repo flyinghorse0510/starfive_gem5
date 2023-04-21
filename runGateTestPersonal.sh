@@ -94,7 +94,7 @@ DCT=False
 DMT_CONFIGS=(True)
 NETWORK_CONFIG_SET=("simple" "garnet")
 VC_PER_VNET_SET=(4)
-LINKWIDTH_CONFIG_SET=(256 288 320)
+LINKWIDTH_CONFIG_SET=(256)
 INJ_INTV=1
 OUTPUT_PREFIX="DEBUG_THROTTLE"
 
@@ -191,15 +191,15 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
                     --seq_tbe=${SEQ_TBE} \
                     --linkwidth=$LINKWIDTH \
                     --collated_outfile="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats_collate.csv"
-                  ${PY3} parse_txn.py \
-                    --working-set=$WKSET \
-                    --num_cpus=$NUMCPUS \
-                    --trace_file="$OUTPUT_DIR/debug.trace" \
-                    --nw_model=$NETWORK \
-                    --num_mem=$NUM_MEM \
-                    --seq_tbe=${SEQ_TBE} \
-                    --outfile="$OUTPUT_DIR/MsgBuffer_$NETWORK.csv" \
-                    --parse-l2
+                  # ${PY3} parse_txn.py \
+                  #   --working-set=$WKSET \
+                  #   --num_cpus=$NUMCPUS \
+                  #   --trace_file="$OUTPUT_DIR/debug.trace" \
+                  #   --nw_model=$NETWORK \
+                  #   --num_mem=$NUM_MEM \
+                  #   --seq_tbe=${SEQ_TBE} \
+                  #   --outfile="$OUTPUT_DIR/MsgBuffer_$NETWORK.csv" \
+                  #   --parse-l2
                   grep -E 'NIBusy(8)' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.ni8.trace
                   # ${PY3} netparse.py \
                   #   --input=${OUTPUT_DIR} \
