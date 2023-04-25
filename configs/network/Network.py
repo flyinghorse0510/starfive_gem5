@@ -84,9 +84,13 @@ def define_options(parser):
         default=False,
         help="""SimpleNetwork links uses a separate physical
             channel for each virtual network""")
-    parser.add_argument("--simple-link-bw-factor", action="store", type=int, 
-        default=16,
+    parser.add_argument("--simple-int-link-bw-factor", action="store", type=int, 
+        default=20,
         help="""SimpleNetwork links bw factor""")
+    parser.add_argument("--simple-ext-link-bw-factor", action="store", type=int, 
+        default=40,
+        help="""SimpleNetwork links bw factor""")
+    parser.add_argument("--buffer-size",type=int, default=4)
 
 
 def create_network(options, ruby):
@@ -122,14 +126,16 @@ def create_network(options, ruby):
     return (network, IntLinkClass, ExtLinkClass, RouterClass, InterfaceClass)
 
 def init_network(options, network, InterfaceClass):
-
     if options.network == "garnet":
+        print("garnet network is being used")
         network.num_rows = options.mesh_rows
         network.vcs_per_vnet = options.vcs_per_vnet
         network.ni_flit_size = options.link_width_bits / 8
         network.routing_algorithm = options.routing_algorithm
         network.garnet_deadlock_threshold = options.garnet_deadlock_threshold
-
+        network.buffers_per_data_vc = options.buffer_size
+        network.buffers_per_ctrl_vc = options.buffer_size
+        print(f"set network buffer size to {options.buffer_size} for all buffer types")
         # Create Bridges and connect them to the corresponding links
         for intLink in network.int_links:
             intLink.src_net_bridge = NetworkBridge(
@@ -195,7 +201,10 @@ def init_network(options, network, InterfaceClass):
             extLink.int_cred_bridge = int_cred_bridges
 
     if options.network == "simple":
+        print("simple network is being used")
+        network.buffer_size=options.buffer_size
         if options.simple_physical_channels:
+            print("simple_physical_channels are being used")
             network.physical_vnets_channels = \
                 [1] * int(network.number_of_virtual_networks)
         network.setup_buffers()

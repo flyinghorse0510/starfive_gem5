@@ -79,22 +79,22 @@ l2_assoc=8
 l3_assoc=16
 NUM_LLC=16
 WKSETLIST=(524288)
-NUM_CPU_SET=(8) # For LLC and DDR bw tests, numcpus must be 16
-LoadFactor=10
-NUM_MEM_SET=(1 2 4)
+NUM_CPU_SET=(1) # For LLC and DDR bw tests, numcpus must be 16
+LoadFactor=1
+NUM_MEM_SET=(4)
 NUM_DDR_XP=4
 NUM_DDR_Side=2
 INJ_INTV_SET=(1)
 MultiCoreAddrMode=True
-BUFFER_SIZE_SET=(1 2 4 8)
+BUFFER_SIZE_SET=(4)
 HNF_TBE=32
 SNF_TBE=64
 SEQ_TBE_CONFIG_SET=(64)
 DCT=False
 DMT_CONFIGS=(True)
-NETWORK_CONFIG_SET=("simple" "garnet")
-VC_PER_VNET_SET=(2 4)
-LINKWIDTH_CONFIG_SET=(256 320 512 544 576)
+NETWORK_CONFIG_SET=("garnet")
+VC_PER_VNET_SET=(4)
+LINKWIDTH_CONFIG_SET=(576)
 INJ_INTV=1
 OUTPUT_PREFIX="TEST"
 #                    --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
@@ -200,7 +200,7 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
                   #   --seq_tbe=${SEQ_TBE} \
                   #   --outfile="$OUTPUT_DIR/MsgBuffer_$NETWORK.csv" \
                   #   --parse-l2
-                  grep -E 'NIBusy(8)' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.ni8.trace
+                  # grep -E 'NIBusy(8)' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.ni8.trace
                   # ${PY3} netparse.py \
                   #   --input=${OUTPUT_DIR} \
                   #   --output=${OUTPUT_DIR} \
