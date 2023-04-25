@@ -416,6 +416,7 @@ def variable_file_parser(args:argparse.Namespace, variable_file_path):
         'l1i_size':str,
         'l2_size':str,
         'l3_size':str,
+        'LLC_REPL':str
     }
 
     var_dict = {key:ops(all_var_dict.get(key)) for key,ops in var_list.items()}
@@ -517,6 +518,7 @@ def parse_stats_file(args:argparse.Namespace):
         'linkwid':[args.LINKWIDTH],
         'net':[args.NETWORK],
         'l1d_size':[args.l1d_size],
+        'l3repl':[args.LLC_REPL],
         # 'l1i_size':[args.l1i_size],
         'l2_size':[args.l2_size],
         'l3_size':[args.l3_size],
