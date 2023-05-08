@@ -27,6 +27,7 @@ def main():
     parser.add_argument('--input', required=True, type=str)
     parser.add_argument('--output',required=True, type=str)
     options = parser.parse_args()
+    print(options.input)
     df=pd.read_json(options.input)
     df['Test'] = df.apply(lambda row : punchTestName(row),axis=1)
     df.drop(labels='BENCH',inplace=True,axis=1)

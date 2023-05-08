@@ -305,6 +305,8 @@ operator<<(std::ostream& out, const MessageBuffer& obj)
     return out;
 }
 
+std::string getMsgTypeStr(const MsgPtr &message);
+
 } // namespace ruby
 } // namespace gem5
 

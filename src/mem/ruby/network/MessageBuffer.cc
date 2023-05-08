@@ -210,7 +210,7 @@ MessageBuffer::areNSlotsAvailable(unsigned int n, Tick current_time)
 const Message*
 MessageBuffer::peek() const
 {
-    DPRINTF(RubyQueue, "Peeking at head of queue.\n");
+    DPRINTF(RubyQueue, "Peeking at head of queue. Buffer size: %d.\n",m_prio_heap.size());
     const Message* msg_ptr = m_prio_heap.front().get();
     assert(msg_ptr);
 
@@ -256,7 +256,7 @@ MessageBuffer::txntrace_print(MsgPtr message, \
     } else if (port_name.find("snpRdy") != std::string::npos) {
         return;
     }
-
+ 
     // else we always print this line
     // zhiang: we added txSeqNum to CHI protocol msgs so that can print txSeqNum
     uint64_t txSeqNum = 0; 
@@ -281,12 +281,13 @@ MessageBuffer::txntrace_print(MsgPtr message, \
         NetDest dst = msg->getDestination();
         MachineID const & reqtor = msg->getrequestor();
         CHIRequestType const & typ = msg->gettype();
-        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, reqtor: %s, dest: %s\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, reqtor: %s, bufferSize: %d, dest: %s\n", 
             txSeqNum,
             typ,
             arrivalOrDep,
             msg->getaddr(),
             reqtor,
+            getSize(curTick()),
             denseDst(dst));
     }
     else if (msg_type == typeid(CHIResponseMsg)){
@@ -295,12 +296,13 @@ MessageBuffer::txntrace_print(MsgPtr message, \
         MachineID const & reqtor = msg->getresponder();
         NetDest dst = msg->getDestination();
         CHIResponseType const & typ = msg->gettype();
-        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, reqtor: %s, dest: %s\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, reqtor: %s, bufferSize: %d, dest: %s\n", 
             txSeqNum,
             typ,
             arrivalOrDep,
             msg->getaddr(),
             reqtor,
+            getSize(curTick()),
             denseDst(dst));
     }
     else if (msg_type == typeid(CHIDataMsg)){
@@ -309,12 +311,13 @@ MessageBuffer::txntrace_print(MsgPtr message, \
         MachineID const & reqtor = msg->getresponder();
         txSeqNum = msg->gettxSeqNum();
         CHIDataType const & typ = msg->gettype();
-        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, reqtor: %s, dest: %s\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, reqtor: %s, bufferSize: %d, dest: %s\n", 
             txSeqNum,
             typ,
             arrivalOrDep,
             msg->getaddr(),
             reqtor,
+            getSize(curTick()),
             denseDst(dst));
     }
     else if (msg_type == typeid(MemoryMsg)){
@@ -322,11 +325,12 @@ MessageBuffer::txntrace_print(MsgPtr message, \
         std::string reqtor = "Memory";
         txSeqNum = msg->gettxSeqNum();
         MemoryRequestType const & typ = msg->getType();
-        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, dest: %s\n", 
+        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, bufferSize: %d, dest: %s\n", 
             txSeqNum,
             typ,
             arrivalOrDep,
             msg->getaddr(),
+            getSize(curTick()),
             reqtor);
     }
 }
@@ -655,9 +659,10 @@ MessageBuffer::print(std::ostream& out) const
         ccprintf(out, " consumer-yes ");
     }
 
-    std::vector<MsgPtr> copy(m_prio_heap);
-    std::sort_heap(copy.begin(), copy.end(), std::greater<MsgPtr>());
-    ccprintf(out, "%s] %s", copy, name());
+    // std::vector<MsgPtr> copy(m_prio_heap);
+    // std::sort_heap(copy.begin(), copy.end(), std::greater<MsgPtr>());
+    // ccprintf(out, "%s] %s", copy, name());
+    ccprintf(out, "%s", name());
 }
 
 bool
@@ -725,6 +730,30 @@ MessageBuffer::functionalAccess(Packet *pkt, bool is_read, WriteMask *mask)
     }
 
     return num_functional_accesses;
+}
+
+// Arka: get the Message Type string representation
+std::string getMsgTypeStr(const MsgPtr &message) {
+  std::stringstream ss;
+  const std::type_info& msg_type = typeid(*(message.get()));
+  if (msg_type == typeid(RubyRequest)) {
+    ss << "RubyRequest";
+  } else if (msg_type == typeid(CHIRequestMsg)) {
+    const CHIRequestMsg* msg = dynamic_cast<CHIRequestMsg*>(message.get());
+    CHIRequestType const &typ = msg->gettype();
+    ss << typ;
+  } else if (msg_type == typeid(CHIResponseMsg)) {
+    const CHIResponseMsg* msg = dynamic_cast<CHIResponseMsg*>(message.get());
+    CHIResponseType const &typ = msg->gettype();
+    ss << typ;
+  } else if (msg_type == typeid(CHIDataMsg)) {
+    const CHIDataMsg* msg = dynamic_cast<CHIDataMsg*>(message.get());
+    CHIDataMsg const &typ = msg->gettype();
+    ss << typ;
+  } else {
+    ss << "Uidentified";
+  }
+  return ss.str();
 }
 
 } // namespace ruby

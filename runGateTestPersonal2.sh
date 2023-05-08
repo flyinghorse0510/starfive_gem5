@@ -23,7 +23,7 @@ Help() {
 BUILD=""
 GATETEST=""
 
-while getopts "hbrst" options; do
+while getopts "hbrstp" options; do
     case $options in
         h) Help
            exit;;
@@ -35,6 +35,11 @@ while getopts "hbrst" options; do
            ;;
         t) DDR="yes"
            ;;
+        p)
+         STATS="yes"
+         TEST=${OPTARG}
+         echo "Running STATS parser"
+         ;;
     esac
 done
 
@@ -53,15 +58,12 @@ TRANS=4
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/GateTest"
 # PY3=$(which python3)
 PY3=/home/arka.maity/anaconda3/bin/python3
-<<<<<<< HEAD
-DEBUG_FLAGS=SeqMemLatTest
-=======
 DEBUG_FLAGS=TxnTrace,ProdConsMemLatTest
+# DEBUG_FLAGS=TxnTrace
+DEBUG_FLAGS=PseudoInst
 DEBUG_FLAGS=RubyNetwork
-DEBUG_FLAGS=TxnTrace
->>>>>>> origin/starlink2.0_garnet
 DCT_CONFIGS=(False)
-DMT_CONFIGS=(False)
+DMT_CONFIGS=(True)
 
 # DDR Config parameters
 NUM_MEM=1
@@ -74,14 +76,18 @@ SNF_TBE=32
 
 # Network Specific Parameters
 NETWORK="simple"
+NETWORK="garnet"
 LINK_BW=16
 
 # Garnet related parameters
 LINK_LAT=1
-ROUTER_LAT=0
+ROUTER_LAT=1
 VC_PER_VNET=2
 LINKWIDTH=256
 PHYVNET=True #True #False
+INJ_INTV_SET=(2 4 8 16 20 24 32)
+INJ_INTV_SET=(1)
+echo "[" > "${OUTPUT_ROOT}/Summary.json"
 
 if [ "$L1L2HIT" != "" ]; then
 l1d_size="4KiB"
@@ -93,19 +99,20 @@ l1i_assoc=4
 l2_assoc=8
 l3_assoc=8
 NUM_LLC=16
+# SEQ_TBE_SET=(1 32)
 SEQ_TBE_SET=(1 32)
 WKSETLIST=(2048 8192)
 NUM_CPU_SET=(1) # For LLC and DDR bw tests, numcpus must be 16
-LoadFactor=100 # Set it to large value to ameliorate the effect of cold caches
-
+LoadFactor=1000 # Set it to large value to ameliorate the effect of cold caches
 for NUMCPUS in ${NUM_CPU_SET[@]}; do
   for WKSET in ${WKSETLIST[@]}; do
     for DMT in ${DMT_CONFIGS[@]}; do
       for DCT in ${DCT_CONFIGS[@]}; do
         for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
+          for INJ_INTV in ${INJ_INTV_SET[@]}; do
           # Latency Tests
           OUTPUT_PREFIX="L1L2_${NETWORK}"
-          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}" 
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}_INJINTV${INJ_INTV}" 
           $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
             --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
             -d $OUTPUT_DIR \
@@ -129,7 +136,6 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
             --link-latency=${LINK_LAT} \
             --router-latency=${ROUTER_LAT} \
             --topology=CustomMesh \
-            --simple-physical-channels \
             --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
             --ruby \
             --maxloads=${LoadFactor} \
@@ -147,8 +153,9 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
             --sequencer-outstanding-requests=${SEQ_TBE} \
             --num_trans_per_cycle_llc=${TRANS} \
             --num-cpus=${NUMCPUS} \
-            --inj-interval=1 \
+            --inj-interval=${INJ_INTV} \
             --num-producers=1 &
+          done
         done
       done
     done
@@ -161,8 +168,9 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
     for DMT in ${DMT_CONFIGS[@]}; do
       for DCT in ${DCT_CONFIGS[@]}; do
         for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
+          for INJ_INTV in ${INJ_INTV_SET[@]}; do
           OUTPUT_PREFIX="L1L2_${NETWORK}"
-          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}" 
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}_INJINTV${INJ_INTV}" 
           grep -E 'ReqBegin=LD|ReqDone=LD' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace
           ${PY3} stats_parser_new.py \
              --input-dir ${OUTPUT_DIR} \
@@ -174,11 +182,12 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
              --snf_tbe ${SNF_TBE} \
              --dmt ${DMT} \
              --linkwidth ${LINKWIDTH} \
-             --injintv 1 \
+             --injintv ${INJ_INTV} \
              --seq_tbe ${SEQ_TBE} \
              --bench L1L2Hit \
              --working-set ${WKSET} >> "${OUTPUT_ROOT}/Summary.json"
           echo "," >> "${OUTPUT_ROOT}/Summary.json"
+          done
         done
       done
     done
@@ -200,15 +209,16 @@ NUM_LLC=16
 WKSETLIST=(65536)
 SEQ_TBE_SET=(32)
 NUM_CPU_SET=(16) # For LLC and DDR bw tests, numcpus must be 16
-LoadFactor=100 # Set it to large value to ameliorate the effect of cold caches
+LoadFactor=1000 # Set it to large value to ameliorate the effect of cold caches
 
 for NUMCPUS in ${NUM_CPU_SET[@]}; do
   for WKSET in ${WKSETLIST[@]}; do
     for DMT in ${DMT_CONFIGS[@]}; do
       for DCT in ${DCT_CONFIGS[@]}; do
         for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
+          for INJ_INTV in ${INJ_INTV_SET[@]}; do
           OUTPUT_PREFIX="L3Hit_${NETWORK}"
-          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}" 
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}_INJINTV${INJ_INTV}" 
           $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
             --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
             -d $OUTPUT_DIR \
@@ -232,7 +242,6 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
             --link-latency=${LINK_LAT} \
             --router-latency=${ROUTER_LAT} \
             --topology=CustomMesh \
-            --simple-physical-channels \
             --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
             --ruby \
             --maxloads=${LoadFactor} \
@@ -250,8 +259,9 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
             --sequencer-outstanding-requests=${SEQ_TBE} \
             --num_trans_per_cycle_llc=${TRANS} \
             --num-cpus=${NUMCPUS} \
-            --inj-interval=1 \
+            --inj-interval=${INJ_INTV} \
             --num-producers=1 &
+          done
         done
       done
     done
@@ -264,8 +274,9 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
     for DMT in ${DMT_CONFIGS[@]}; do
       for DCT in ${DCT_CONFIGS[@]}; do
         for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
+          for INJ_INTV in ${INJ_INTV_SET[@]}; do
           OUTPUT_PREFIX="L3Hit_${NETWORK}"
-          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}" 
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}_INJINTV${INJ_INTV}" 
           grep -E 'ReqBegin=LD|ReqDone=LD' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace
           ${PY3} stats_parser_new.py \
              --input-dir ${OUTPUT_DIR} \
@@ -277,11 +288,12 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
              --snf_tbe ${SNF_TBE} \
              --dmt ${DMT} \
              --linkwidth ${LINKWIDTH} \
-             --injintv 1 \
+             --injintv ${INJ_INTV} \
              --seq_tbe ${SEQ_TBE} \
              --bench L3Hit \
              --working-set ${WKSET} >> "${OUTPUT_ROOT}/Summary.json"
           echo "," >> "${OUTPUT_ROOT}/Summary.json"
+          done
         done
       done
     done
@@ -292,6 +304,7 @@ fi
 
 
 if [ "$DDR" != "" ]; then
+#
 l1d_size="4KiB"
 l1i_size="4KiB"
 l2_size="8KiB"
@@ -302,28 +315,32 @@ l2_assoc=8
 l3_assoc=16
 NUM_LLC=16
 WKSETLIST=(524288)
-NUM_CPU_SET=(16) # For LLC and DDR bw tests, numcpus must be 16
-LoadFactor=10
-SEQ_TBE_SET=(1 32)
-NUM_MEM=4
-NUM_DDR_XP=4
-NUM_DDR_Side=2
+NUM_CPU_SET=(1) # For LLC and DDR bw tests, numcpus must be 16
+LoadFactor=10 #10 is enough to test latency, 20 for bw
+SEQ_TBE_SET=(32)
+NUM_MEM_SET=(2)
+NUM_DDR_XP=1
+NUM_DDR_Side=1
+INJ_INTV_SET=(1)
 MultiCoreAddrMode=True
-XOR_ADDR_BITS=4
-OUTPUT_PREFIX="DDR_${NETWORK}"
+BUFFER_SIZE_SET=(8)
+NETWORK="garnet"
+VC_PER_VNET_SET=(4)
+LINKWIDTH=(256)
 
 for NUMCPUS in ${NUM_CPU_SET[@]}; do
   for WKSET in ${WKSETLIST[@]}; do
     for DMT in ${DMT_CONFIGS[@]}; do
       for DCT in ${DCT_CONFIGS[@]}; do
         for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
+        for VC_PER_VNET in ${VC_PER_VNET_SET[@]}; do
+          for BUFFER_SIZE in ${BUFFER_SIZE_SET[@]}; do
           for NUM_MEM in ${NUM_MEM_SET[@]}; do
+
+        for INJ_INTV in ${INJ_INTV_SET[@]}; do
           # Latency Tests
-          OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}"
-          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}" 
-          echo "GateTest Started: ${OUTPUT_BASE}"
-          mkdir -p ${OUTPUT_DIR}
-          set > ${OUTPUT_DIR}/Variables.txt
+          OUTPUT_PREFIX="DDR_${NETWORK}"
+          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}_INJINTV${INJ_INTV}_BUF${BUFFER_SIZE}_VCVNET${VC_PER_VNET}"
           $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
             --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
             -d $OUTPUT_DIR \
@@ -341,13 +358,13 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
             --l2_assoc=${l2_assoc} \
             --l3_assoc=${l3_assoc} \
             --network=${NETWORK} \
-            --simple-link-bw-factor=${LINKWIDTH} \
             --simple-physical-channels \
+            --simple-link-bw-factor=${LINKWIDTH} \
             --link-width-bits=${LINKWIDTH} \
             --vcs-per-vnet=${VC_PER_VNET} \
+            --buffer-size=${BUFFER_SIZE} \
             --link-latency=${LINK_LAT} \
             --router-latency=${ROUTER_LAT} \
-            --buffer-size=${BUFFER_SIZE} \
             --topology=CustomMesh \
             --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
             --ruby \
@@ -357,8 +374,7 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
             --mem-type=DDR4_3200_8x8 \
             --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
             --mem-test-type='bw_test' \
-            --addr-intrlvd-or-tiled=$MultiCoreAddrMode \
-            --xor-addr-bits=${XOR_ADDR_BITS} \
+            --addr-intrlvd-or-tiled=$MultiCoreAddrMode  \
             --disable-gclk-set \
             --enable-DMT=${DMT} \
             --enable-DCT=${DCT} \
@@ -367,9 +383,12 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
             --sequencer-outstanding-requests=${SEQ_TBE} \
             --num_trans_per_cycle_llc=${TRANS} \
             --num-cpus=${NUMCPUS} \
-            --num-dmas=0 \
-            --inj-interval=1 \
-            --num-producers=1 > ${OUTPUT_DIR}/cmd.log 2>&1 &
+            --inj-interval=${INJ_INTV} \
+            --num-producers=1 &
+          done
+          done
+          done
+          done
         done
       done
     done
@@ -377,30 +396,62 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
 done
 wait
 
-echo "WS,NUM_CPUS,SEQ_TBE,NUM_DDR,RETRY_ACKS,HNF_MISSRATE,BW" > "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
+# for NUMCPUS in ${NUM_CPU_SET[@]}; do
+#   for WKSET in ${WKSETLIST[@]}; do
+#     for DMT in ${DMT_CONFIGS[@]}; do
+#       for DCT in ${DCT_CONFIGS[@]}; do
+#         for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
+#         for NETWORK in ${NETWORKS[@]}; do
+#         for INJ_INTV in ${INJ_INTV_SET[@]}; do
+#           OUTPUT_PREFIX="DDR_${NETWORK}"
+#           OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}_INJINTV${INJ_INTV}"
+#           grep -E 'ReqBegin=LD|ReqDone=LD' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/simple.trace
+#           ${PY3} stats_parser_new.py \
+#              --input-dir ${OUTPUT_DIR} \
+#              --output ${OUTPUT_DIR}/stats.log \
+#              --num_cpu ${NUMCPUS} \
+#              --num_llc ${NUM_LLC} \
+#              --num_ddr ${NUM_MEM} \
+#              --trans ${TRANS} \
+#              --snf_tbe ${SNF_TBE} \
+#              --dmt ${DMT} \
+#              --linkwidth ${LINKWIDTH} \
+#              --injintv ${INJ_INTV} \
+#              --seq_tbe ${SEQ_TBE} \
+#              --bench DDR \
+#              --working-set ${WKSET} >> "${OUTPUT_ROOT}/Summary.json"
+#           echo "," >> "${OUTPUT_ROOT}/Summary.json"
+#           done
+#           done
+#         done
+#       done
+#     done
+#   done
+# done
+touch throughput1.txt
+dd if=/dev/null of=throughput1.txt
+    #OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
 for NUMCPUS in ${NUM_CPU_SET[@]}; do
   for WKSET in ${WKSETLIST[@]}; do
     for DMT in ${DMT_CONFIGS[@]}; do
       for DCT in ${DCT_CONFIGS[@]}; do
         for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
-          OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}" 
-          OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}" 
-          echo "GateTest Parsing: ${OUTPUT_BASE}"
-          ${PY3} stats_parser_bw.py \
-             --input-dir ${OUTPUT_DIR} \
-             --output ${OUTPUT_DIR}/stats.txt \
-             --num_cpu ${NUMCPUS} \
-             --num_llc ${NUM_LLC} \
-             --num_ddr ${NUM_MEM} \
-             --trans ${TRANS} \
-             --snf_tbe ${SNF_TBE} \
-             --dmt ${DMT} \
-             --linkwidth ${LINKWIDTH} \
-             --injintv 1 \
-             --seq_tbe ${SEQ_TBE} \
-             --bench DDR \
-             --working-set ${WKSET} \
-             --dump_file "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
+        for VC_PER_VNET in ${VC_PER_VNET_SET[@]}; do
+          for BUFFER_SIZE in ${BUFFER_SIZE_SET[@]}; do
+        for INJ_INTV in ${INJ_INTV_SET[@]}; do 
+        for NUM_MEM in ${NUM_MEM_SET[@]}; do
+                   
+            OUTPUT_PREFIX="DDR_${NETWORK}"
+            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}_INJINTV${INJ_INTV}_BUF${BUFFER_SIZE}_VCVNET${VC_PER_VNET}" 
+
+          ## by default will only print cpu,ddr,llc
+          ## python3 stats_parser.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM}
+          ## also print l2p,l1d,l1i
+          python3 stats_parser2.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --seq_tbe ${SEQ_TBE} --num_llc ${NUM_LLC} --buffer-size ${BUFFER_SIZE} --vcvnet ${VC_PER_VNET} --num_ddr ${NUM_MEM} --trans ${TRANS} --snf_tbe ${SNF_TBE} --hnf_tbe ${HNF_TBE} --dmt ${DMT} --linkwidth ${LINKWIDTH} --injintv ${INJ_INTV} --print l1d,l1i,l2p,llc,cpu,ddr
+          done
+          done
+          done
+          done
         done
       done
     done
@@ -408,3 +459,48 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
 done
 
 fi
+if [ "$STATS" != "" ]; then
+l1d_size="4KiB"
+l1i_size="4KiB"
+l2_size="8KiB"
+l3_size="4KiB" #"16KiB" #"1024KiB" #"256KiB"
+l1d_assoc=8
+l1i_assoc=8
+l2_assoc=8
+l3_assoc=16
+NUM_LLC=16
+WKSETLIST=(524288)
+NUM_CPU_SET=(1) # For LLC and DDR bw tests, numcpus must be 16
+LoadFactor=100
+SEQ_TBE_SET=(32)
+NUM_MEM=1
+NUM_DDR_XP=1
+NUM_DDR_Side=1
+MultiCoreAddrMode=True
+for NUMCPUS in ${NUM_CPU_SET[@]}; do
+  for WKSET in ${WKSETLIST[@]}; do
+    for DMT in ${DMT_CONFIGS[@]}; do
+      for DCT in ${DCT_CONFIGS[@]}; do
+        for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
+        for INJ_INTV in ${INJ_INTV_SET[@]}; do 
+                   
+            OUTPUT_PREFIX="DDR_${NETWORK}"
+            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}_INJINTV${INJ_INTV}" 
+
+          ## by default will only print cpu,ddr,llc
+          ## python3 stats_parser.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM}
+          ## also print l2p,l1d,l1i
+          python3 stats_parser.py --input ${OUTPUT_DIR}/stats.txt --output ${OUTPUT_DIR}/stats.log --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --trans ${TRANS} --snf_tbe ${SNF_TBE} --dmt ${DMT} --linkwidth ${LINKWIDTH} --injintv ${INJ_INTV} --print l1d,l1i,l2p,llc,cpu,ddr
+          done
+        done
+      done
+    done
+  done
+done
+fi
+head -n -1 ${OUTPUT_ROOT}/Summary.json > ${OUTPUT_ROOT}/Summary2.json # Remove the last comma
+echo "]" >> ${OUTPUT_ROOT}/Summary2.json
+${PY3} getLatBWAll.py \
+       --input=${OUTPUT_ROOT}/Summary2.json \
+       --output=RegTestSummary.csv
+    

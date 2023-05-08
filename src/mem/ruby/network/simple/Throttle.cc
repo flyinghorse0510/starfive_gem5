@@ -192,9 +192,8 @@ Throttle::operateVnet(int vnet, int channel, int &total_bw_remaining,
             Tick msg_enqueue_time = msg_ptr->getLastEnqueueTime();
             units_remaining = network_message_to_size(net_msg_ptr);
 
-            DPRINTF(RubyNetwork, "throttle: %d my bw %d bw spent "
-                    "enqueueing net msg %d time: %lld.\n",
-                    m_node, getLinkBandwidth(vnet), units_remaining,
+            DPRINTF(RubyNetwork, "vnet %d: mybw: %d units_remaining_for_msg: %d time: %lld\n",
+                    vnet, getLinkBandwidth(vnet), units_remaining,
                     m_ruby_system->curCycle());
 
             // Move the message
@@ -222,6 +221,8 @@ Throttle::operateVnet(int vnet, int channel, int &total_bw_remaining,
         units_remaining -= spent;
         bw_remaining -= spent;
         total_bw_remaining -= spent;
+        DPRINTF(RubyNetwork, "Amount of bandwidth spent: %d, Link Bandwidth: %d, Bw remaining for this link: %d\n", 
+        spent, getLinkBandwidth(vnet),bw_remaining);
     }
 
     gem5_assert(units_remaining >= 0);

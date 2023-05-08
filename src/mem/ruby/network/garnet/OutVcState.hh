@@ -31,6 +31,7 @@
 #ifndef __MEM_RUBY_NETWORK_GARNET_0_OUTVCSTATE_HH__
 #define __MEM_RUBY_NETWORK_GARNET_0_OUTVCSTATE_HH__
 
+#include <string>
 #include "mem/ruby/network/garnet/CommonTypes.hh"
 #include "mem/ruby/network/garnet/GarnetNetwork.hh"
 
@@ -63,6 +64,18 @@ class OutVcState
     {
         m_vc_state = state;
         m_time = time;
+    }
+
+    inline std::string
+    getVCStateStr() {
+      switch(m_vc_state) {
+        case IDLE_: return std::string("IDLE");
+        case VC_AB_: return std::string("VC_AB");
+        case ACTIVE_: return std::string("ACTIVE_");
+        case NUM_VC_STATE_TYPE_: return std::string("NUM_VC_STATE_TYPE_");
+        default: break;
+      }
+      return std::string("UNKNOWN");
     }
 
   private:

@@ -1,16 +1,25 @@
 import re
 import os
+<<<<<<< HEAD
 import argparse
 import json
 import ast
 import pandas as pd
 import numpy as np
+=======
+import json
+import ast
+import argparse
+import numpy as np
+import pandas as pd
+>>>>>>> origin/starlink2.0_garnet
 
 def getReadWriteStats(options):
     readsPat=re.compile(f'system.cpu(\d*).numReads( +)(\d+)')
     writesPat=re.compile(f'system.cpu(\d*).numWrites( +)(\d+)')
     tickPerCycPat=re.compile(f'system.clk_domain.clock( +)(\d+)')
     simTicksPat=re.compile(f'simTicks( +)(\d+)')
+<<<<<<< HEAD
     hnfHitPat=re.compile(f'system.ruby.hnf(\d*).cntrl.cache.m_demand_hits( +)(\d+)')
     hnfMissPat=re.compile(f'system.ruby.hnf(\d*).cntrl.cache.m_demand_misses( +)(\d+)')
     reqTbeSizePat=re.compile(f'system.ruby.hnf(\d*).cntrl.avg_size( +)(\d*[.,]?\d*)( +)# TBE Request Occupancy')
@@ -31,12 +40,21 @@ def getReadWriteStats(options):
     hnfRetryAcks=0
     snfRetryAcks=0
     snfSizeUtil=0
+=======
+    numReads=0
+    numWrites=0
+    tickPerCyc=0
+    cyc=0
+    simTicks=0
+    statsFile=options.stats_file
+>>>>>>> origin/starlink2.0_garnet
     with open(statsFile,'r') as sf:
         for line in sf:
             readsMatch=readsPat.search(line)
             writesMatch=writesPat.search(line)
             tickPerCycMatch=tickPerCycPat.search(line)
             simTickMatch=simTicksPat.search(line)
+<<<<<<< HEAD
             hnfHitMatch=hnfHitPat.search(line)
             hnfMissMatch=hnfMissPat.search(line)
             reqTbeUtilMatch=reqTbeSizePat.search(line)
@@ -44,6 +62,8 @@ def getReadWriteStats(options):
             snfRetryAckMatch=snfRetryAckPats.search(line)
             replTbeSizeMatch=replTbeSizePat.search(line)
             snfTbeSizeMatch=snfTbeSizePat.search(line)
+=======
+>>>>>>> origin/starlink2.0_garnet
             if readsMatch :
                 numReads += int(readsMatch.group(3))
             elif writesMatch :
@@ -52,6 +72,7 @@ def getReadWriteStats(options):
                 tickPerCyc = int(tickPerCycMatch.group(2))
             elif simTickMatch :
                 simTicks = int(simTickMatch.group(2))
+<<<<<<< HEAD
             elif hnfHitMatch :
                 numHNFHits += int(hnfHitMatch.group(3))
             elif hnfMissMatch :
@@ -108,6 +129,26 @@ def main():
     parser.add_argument('--num-l3caches',required=True,type=int,help=f'Num of L3 caches')
     parser.add_argument('--allow-infinite-SF-entries',default=True, type=ast.literal_eval, help="Allow infinite SnoopFilter entries.")
     parser.add_argument('--num-dirs',default=1,type=int,help=f'Number of memory controllers')
+=======
+    assert(tickPerCyc > 0)
+    cyc=simTicks/tickPerCyc
+    bw=64*(numReads+numWrites)/cyc
+    accLat=cyc/(numReads+numWrites)
+    with open(options.collated_outfile,'a+') as fsw:
+        print(f'{options.working_set},{options.num_cpus},{options.seq_tbe},{options.num_mem},{options.nw_model},{options.linkwidth},{options.buffer_depth},{bw},{accLat}',file=fsw)
+
+def main():
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('--working-set',required=True,type=str,help='Working set')
+    parser.add_argument('--num_cpus',required=True,type=str,help='Number of CPUs')
+    parser.add_argument('--stats_file',required=True,type=str,help='Statistic file')
+    parser.add_argument('--collated_outfile',required=True,type=str,help='Collated stats file')
+    parser.add_argument('--nw_model',required=True,type=str,help='NW model')
+    parser.add_argument('--num_mem',required=True,type=str,help='Number of MCs')
+    parser.add_argument('--seq_tbe',required=True,type=str,help='Number of sequencer TBEs')
+    parser.add_argument('--buffer_depth',required=True, type=int, help = 'Buffer Depth')
+    parser.add_argument('--linkwidth',required=True,type=int,help='Link Width')
+>>>>>>> origin/starlink2.0_garnet
     options=parser.parse_args()
     getReadWriteStats(options)
 

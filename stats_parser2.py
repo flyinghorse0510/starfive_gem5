@@ -448,8 +448,8 @@ if __name__ == '__main__':
     # --num_cpu ${NUMCPUS} --num_llc ${NUM_LLC} --num_ddr ${NUM_MEM} --dmt ${DMT} --trans ${TRANS} --snf_tbe ${SNF_TBE} --linkwidth ${LINKWIDTH}
 
     # generate the header for throughput.txt
-    if not os.path.getsize('throughput.txt'):
-        with open('throughput.txt', 'w') as f:
+    if not os.path.getsize('throughput1.txt'):
+        with open('throughput1.txt', 'w') as f:
             if args.print_path:
                 f.write(f'{"CPU":^8}{"LLC":^8}{"DDR":^8}{"DMT":^8}{"TRANS":^8}{"SNF_TBE":^8}{"HNF_TBE":^8}{"SEQ_TBE":^8}{"BUF_SIZE":^8}{"VC/VNET":^8}{"LINKWD":^8}{"INJINTV":^8}{"READ(B)":^16}{"WRITE(B)":16}{"TICK(ps)":^16}{"THROUGHPUT(GB/s)":^16}{"HNF_RETRY_ACK:":^16}{"SNF_RETRY_MSG":^16}{"PATH"}\n')
             else:
@@ -459,10 +459,10 @@ if __name__ == '__main__':
     total_snf_remsg = reduce(lambda x,y:x+y, [snf.remsg for snf in snfs])
     total_hnf_reack = reduce(lambda x,y:x+y, [llc.reack for llc in llcs])
     
-    with open('throughput.txt', 'a+') as f:
+    with open('throughput1.txt', 'a+') as f:
         if args.print_path:
             f.write(f'{args.num_cpu:^8}{args.num_llc:^8}{args.num_ddr:^8}{args.dmt:^8}{args.trans:^8}{args.snf_tbe:^8}{args.hnf_tbe:^8}{args.seq_tbe:^8}{args.buffer_size:^8}{args.vcvnet:^8}{args.linkwidth:^8}{args.injintv:^8}{cpu_read_byte:^16}{cpu_write_byte:^16}{tick:^16}{throughput:^16}{total_hnf_reack:^16}{total_snf_remsg:^16}{args.input}\n')
         else:
             f.write(f'{args.num_cpu:^8}{args.num_llc:^8}{args.num_ddr:^8}{args.dmt:^8}{args.trans:^8}{args.snf_tbe:^8}{args.hnf_tbe:^8}{args.seq_tbe:^8}{args.buffer_size:^8}{args.vcvnet:^8}{args.linkwidth:^8}{args.injintv:^8}{cpu_read_byte:^16}{cpu_write_byte:^16}{tick:^16}{throughput:^16}{total_hnf_reack:^16}{total_snf_remsg:^16}\n')
     
-    print(f'written to ./throughput.txt')
+    print(f'written to ./throughput1.txt')

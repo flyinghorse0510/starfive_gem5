@@ -60,6 +60,8 @@ flit::flit(int packet_id, int id, int  vc, int vnet, RouteInfo route, int size,
     m_stage.second = curTime;
     m_width = bWidth;
     msgSize = MsgSize;
+    start_router = route.src_router;
+    start_time = curTime;
 
     if (size == 1) {
         m_type = HEAD_TAIL_;
@@ -105,21 +107,31 @@ flit::deserialize(int des_id, int num_flits, uint32_t bWidth)
     return fl;
 }
 
+std::string flit::flitType_to_string(const flit_type &flit_type) const {
+    switch(flit_type) {
+        case HEAD_: return "HEAD_";
+        case BODY_: return "BODY_";
+        case TAIL_: return "TAIL_";
+        case HEAD_TAIL_: return "HEAD_TAIL_";
+        case CREDIT_: return "CREDIT_";
+        case NUM_FLIT_TYPE_: return "NUM_FLIT_TYPE_";
+    }
+}
+
 // Flit can be printed out for debugging purposes
 void
 flit::print(std::ostream& out) const
 {
-    out << "[flit:: ";
+    out << "flit[";
     out << "PacketId=" << m_packet_id << " ";
+    out << "StartTime=" << start_time << " ";
     out << "Id=" << m_id << " ";
-    out << "Type=" << m_type << " ";
+    out << "Type=" << flitType_to_string(m_type) << " ";
     out << "Size=" << m_size << " ";
     out << "Vnet=" << m_vnet << " ";
     out << "VC=" << m_vc << " ";
-    out << "Src NI=" << m_route.src_ni << " ";
-    out << "Src Router=" << m_route.src_router << " ";
-    out << "Dest NI=" << m_route.dest_ni << " ";
-    out << "Dest Router=" << m_route.dest_router << " ";
+    out << "Src=(" << m_route.src_ni <<"," << m_route.src_router << ")" << " ";
+    out << "Dst=(" << m_route.dest_ni << ","<< m_route.dest_router <<")"<< " ";
     out << "Set Time=" << m_time << " ";
     out << "Width=" << m_width<< " ";
     out << "]";

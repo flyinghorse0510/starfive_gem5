@@ -196,6 +196,10 @@ PerfectSwitch::operateMessageBuffer(MessageBuffer *buffer, int vnet)
 
     Tick current_time = m_switch->clockEdge();
 
+    if (!buffer->isReady(current_time)) {
+        DPRINTF(RubyNetwork, "incoming (Not Ready): %d\n", buffer->getIncomingLink());
+    }
+
     while (buffer->isReady(current_time)) {
         DPRINTF(RubyNetwork, "incoming: %d\n", buffer->getIncomingLink());
 
@@ -220,8 +224,8 @@ PerfectSwitch::operateMessageBuffer(MessageBuffer *buffer, int vnet)
                 enough = false;
 
             DPRINTF(RubyNetwork, "Checking if node is blocked ..."
-                    "outgoing: %d, vnet: %d, enough: %d\n",
-                    outgoing, vnet, enough);
+                    "outgoing: %d, vnet: %d, enough: %d, message-buffer: %s\n",
+                    outgoing, vnet, enough, *(out_port.buffers[vnet]));
         }
 
         // There were not enough resources
