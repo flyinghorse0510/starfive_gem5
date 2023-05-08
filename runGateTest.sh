@@ -53,13 +53,7 @@ TRANS=4
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/GateTest"
 # PY3=$(which python3)
 PY3=/home/arka.maity/anaconda3/bin/python3
-<<<<<<< HEAD
 DEBUG_FLAGS=SeqMemLatTest
-=======
-DEBUG_FLAGS=TxnTrace,ProdConsMemLatTest
-DEBUG_FLAGS=RubyNetwork
-DEBUG_FLAGS=TxnTrace
->>>>>>> origin/starlink2.0_garnet
 DCT_CONFIGS=(False)
 DMT_CONFIGS=(False)
 
@@ -68,7 +62,6 @@ NUM_MEM=1
 NUM_DDR_XP=2
 NUM_DDR_Side=1
 MultiCoreAddrMode=True
-MAX_MEMTEST_OUTSTANDING_SET=(1 32)
 HNF_TBE=32
 SNF_TBE=32
 
@@ -80,7 +73,7 @@ LINK_BW=16
 LINK_LAT=1
 ROUTER_LAT=0
 VC_PER_VNET=2
-LINKWIDTH=256
+LINKWIDTH=320
 PHYVNET=True #True #False
 
 if [ "$L1L2HIT" != "" ]; then
@@ -304,7 +297,8 @@ NUM_LLC=16
 WKSETLIST=(524288)
 NUM_CPU_SET=(16) # For LLC and DDR bw tests, numcpus must be 16
 LoadFactor=10
-SEQ_TBE_SET=(1 32)
+SEQ_TBE_SET=(32)
+BUFFER_SIZE=1
 NUM_MEM=4
 NUM_DDR_XP=4
 NUM_DDR_Side=2
@@ -317,7 +311,6 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
     for DMT in ${DMT_CONFIGS[@]}; do
       for DCT in ${DCT_CONFIGS[@]}; do
         for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
-          for NUM_MEM in ${NUM_MEM_SET[@]}; do
           # Latency Tests
           OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_DMT${DMT}_DCT${DCT}_SEQ${SEQ_TBE}_LoadFactor${LoadFactor}"
           OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}" 
@@ -341,7 +334,8 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
             --l2_assoc=${l2_assoc} \
             --l3_assoc=${l3_assoc} \
             --network=${NETWORK} \
-            --simple-link-bw-factor=${LINKWIDTH} \
+            --simple-ext-link-bw-factor=${LINKWIDTH/8} \
+            --simple-int-link-bw-factor=${LINKWIDTH/8} \
             --simple-physical-channels \
             --link-width-bits=${LINKWIDTH} \
             --vcs-per-vnet=${VC_PER_VNET} \
