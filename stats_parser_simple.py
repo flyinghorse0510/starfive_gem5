@@ -36,7 +36,7 @@ def getReadWriteStats(options):
     bw=64*(numReads+numWrites)/cyc
     accLat=cyc/(numReads+numWrites)
     with open(options.collated_outfile,'a+') as fsw:
-        print(f'{options.working_set},{options.num_cpus},{options.seq_tbe},{options.num_mem},{options.nw_model},{options.linkwidth},{bw},{accLat}',file=fsw)
+        print(f'{options.working_set},{options.num_cpus},{options.seq_tbe},{options.num_mem},{options.nw_model},{options.linkwidth},{options.buffer_depth},{bw},{accLat}',file=fsw)
 
 def main():
     parser = argparse.ArgumentParser(description='')
@@ -47,6 +47,7 @@ def main():
     parser.add_argument('--nw_model',required=True,type=str,help='NW model')
     parser.add_argument('--num_mem',required=True,type=str,help='Number of MCs')
     parser.add_argument('--seq_tbe',required=True,type=str,help='Number of sequencer TBEs')
+    parser.add_argument('--buffer_depth',required=True, type=int, help = 'Buffer Depth')
     parser.add_argument('--linkwidth',required=True,type=int,help='Link Width')
     options=parser.parse_args()
     getReadWriteStats(options)

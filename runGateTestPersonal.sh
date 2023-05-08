@@ -79,24 +79,25 @@ l2_assoc=8
 l3_assoc=16
 NUM_LLC=16
 WKSETLIST=(524288)
-NUM_CPU_SET=(1) # For LLC and DDR bw tests, numcpus must be 16
+NUM_CPU_SET=(16) # For LLC and DDR bw tests, numcpus must be 16
 LoadFactor=1
-NUM_MEM_SET=(4)
+NUM_MEM_SET=(2)
 NUM_DDR_XP=4
 NUM_DDR_Side=2
 INJ_INTV_SET=(1)
 MultiCoreAddrMode=True
-BUFFER_SIZE_SET=(16)
+BUFFER_SIZE_SET=(1)
 HNF_TBE=32
 SNF_TBE=64
 SEQ_TBE_CONFIG_SET=(64)
 DCT=False
 DMT_CONFIGS=(True)
-NETWORK_CONFIG_SET=("simple" "garnet")
-VC_PER_VNET_SET=(4)
-LINKWIDTH_CONFIG_SET=(256)
+NETWORK_CONFIG_SET=("garnet")
+VC_PER_VNET_SET=(2)
+LINKWIDTH_CONFIG_SET=(256 320 512 544 576)
+LINKWIDTH_CONFIG_SET=(320)
 INJ_INTV=1
-OUTPUT_PREFIX="DEBUG_THROTTLE"
+OUTPUT_PREFIX="TEST"
 
 for NUMCPUS in ${NUM_CPU_SET[@]}; do
   for WKSET in ${WKSETLIST[@]}; do
@@ -114,8 +115,8 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
                   mkdir -p ${OUTPUT_DIR}
                   set > ${OUTPUT_DIR}/Variables.txt
                   $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
-                    --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
                     -d $OUTPUT_DIR \
+                    --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
                     ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
                     --num-dirs=${NUM_MEM} \
                     --DDR-loc-num=${NUM_DDR_XP} \
@@ -130,8 +131,8 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
                     --l2_assoc=${l2_assoc} \
                     --l3_assoc=${l3_assoc} \
                     --network=${NETWORK} \
-                    --simple-ext-link-bw-factor=32 \
-                    --simple-int-link-bw-factor=32 \
+                    --simple-ext-link-bw-factor=${LINKWIDTH/8} \
+                    --simple-int-link-bw-factor=${LINKWIDTH/8} \
                     --simple-physical-channels \
                     --link-width-bits=${LINKWIDTH} \
                     --vcs-per-vnet=${VC_PER_VNET} \
@@ -169,7 +170,7 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
 done
 wait
 
-echo "WS,NUM_CPUS,SeqTBE,NumMem,NWModel,LinkWidth,BW,AccLat" > ${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats_collate.csv
+echo "WS,NUM_CPUS,SeqTBE,NumMem,NWModel,LinkWidth,BufferDepth,BW,AccLat" > ${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats_collate.csv
 for NUMCPUS in ${NUM_CPU_SET[@]}; do
   for WKSET in ${WKSETLIST[@]}; do
     for DMT in ${DMT_CONFIGS[@]}; do
@@ -181,7 +182,7 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
                 for SEQ_TBE in ${SEQ_TBE_CONFIG_SET[@]}; do
                   OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_Network${NETWORK}_DMT${DMT}_DCT${DCT}_BUF${BUFFER_SIZE}_VCVNET${VC_PER_VNET}_NumMem${NUM_MEM}_SeqTBE${SEQ_TBE}_LW${LINKWIDTH}"
                   OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
-                  echo "GateTest Parsing: ${OUTPUT_BASE}"
+                  echo "GateTest Parsing: ${OUTPUT_DIR}"
                   ${PY3} stats_parser_simple.py \
                     --working-set=$WKSET \
                     --num_cpus=$NUMCPUS \
@@ -190,6 +191,7 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
                     --num_mem=$NUM_MEM \
                     --seq_tbe=${SEQ_TBE} \
                     --linkwidth=$LINKWIDTH \
+                    --buffer_depth=$BUFFER_SIZE \
                     --collated_outfile="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats_collate.csv"
                   # ${PY3} parse_txn.py \
                   #   --working-set=$WKSET \
@@ -200,7 +202,7 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
                   #   --seq_tbe=${SEQ_TBE} \
                   #   --outfile="$OUTPUT_DIR/MsgBuffer_$NETWORK.csv" \
                   #   --parse-l2
-                  grep -E 'NIBusy(8)' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.ni8.trace
+                  # grep -E 'NIBusy(8)' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.ni8.trace
                   # ${PY3} netparse.py \
                   #   --input=${OUTPUT_DIR} \
                   #   --output=${OUTPUT_DIR} \
