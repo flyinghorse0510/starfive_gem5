@@ -274,7 +274,7 @@ l1i_assoc=8
 l2_assoc=8
 l3_assoc=16
 NUM_LLC=16
-NETWORK="simple" #"garnet" #"simple"
+#NETWORK="simple" #"garnet" #"simple"
 
 DMT_Config=(True False)
 NUM_CPU_SET=(16) # = #2 #4 #16
@@ -284,7 +284,7 @@ SNF_TBE_SET=(32)
 HNF_TBE=32
 fi
 
-DMT_Config=(True False) #(True False)
+DMT_Config=(True) #(True False)
 
 NUM_CPU_SET=(16) # = #2 #4 #16
 DCT_CONFIGS=(True)
@@ -313,12 +313,18 @@ LLC_REPL_SET=("TreePLRURP")
 
 
 #Network/Garnet
-LINKWIDTH_SET=(256) #(128 256 512)
-NETWORK="simple"
+LINKWIDTH_SET=(320) #(256 320)
+#NETWORK="simple"
 LINK_LAT=1
 ROUTER_LAT=0
 VC_PER_VNET=2
 PHYVNET=True #True #False
+NETWORK_CONFIG_SET=("garnet")
+BUFFER_SIZE_SET=(1 2 4)
+VC_PER_VNET_SET=(2 4) #(2 4 8)
+#TH_CONFIG_SET=(320)
+
+
 #
 
 INJ_INTV_SET=(4)
@@ -329,7 +335,7 @@ DEBUG_FLAGS=PseudoInst
 
 SNPFILTER_ENTRIES=32768 #16384 # covfactor*(512KiB*NUMCPUS)/(NUM_LLC*64B)=2*(512Ki)/64
 SNPFILTER_ASSOC=8
-FS_ROOT="${WORKSPACE}/GEM5_ARM_FS_SNPFILTER_L1L2TreePLRUL3REPL_TestLLC_20230505_O3/Garnet_COVFACTOR_2"
+FS_ROOT="${WORKSPACE}/GEM5_ARM_FS_SNPFILTER_GARNET_20230507_O3/Garnet_COVFACTOR_2"
 
 # SNPFILTER_ENTRIES=8192 # covfactor*(512KiB*NUMCPUS)/(NUM_LLC*64B)=2*(512Ki)/64
 # SNPFILTER_ASSOC=8
@@ -351,11 +357,14 @@ if [ "$CHECKPNT" != "" ]; then
             for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
               for HNF_TBE in ${HNF_TBE_SET[@]}; do 
                 for  SNF_TBE in ${SNF_TBE_SET[@]}; do
-                   for LINKWIDTH in ${LINKWIDTH_SET[@]}; do
-                      for NUM_MEM in ${NUM_MEM_SET[@]}; do
-                          for NUM_DDR_XP in ${NUM_DDR_XP_SET[@]}; do
-                             for NUM_DDR_Side in ${NUM_DDR_SIDE_SET[@]}; do
-                                for LLC_REPL in ${LLC_REPL_SET[@]}; do
+                  for LINKWIDTH in ${LINKWIDTH_SET[@]}; do
+                     for VC_PER_VNET in ${VC_PER_VNET_SET[@]}; do
+                        for BUFFER_SIZE in ${BUFFER_SIZE_SET[@]}; do
+                          for NETWORK in ${NETWORK_CONFIG_SET[@]}; do  
+                            for NUM_MEM in ${NUM_MEM_SET[@]}; do
+                               for NUM_DDR_XP in ${NUM_DDR_XP_SET[@]}; do
+                                  for NUM_DDR_Side in ${NUM_DDR_SIDE_SET[@]}; do
+                                     for LLC_REPL in ${LLC_REPL_SET[@]}; do
                               if [[ $NUM_DDR_Side > $NUM_DDR_XP ]]; then
                                   continue #continue
                               fi
@@ -367,7 +376,7 @@ if [ "$CHECKPNT" != "" ]; then
                               echo "-------- Exec_NUMMEM(${NUM_MEM})_DDRXP(${NUM_DDR_XP}_DDRSide${NUM_DDR_Side}) ----------------"
 
             OUTPUT_ROOT="$FS_ROOT/PHYVNET${PHYVNET}_DDRLocDMT"
-            OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}"
+            OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}_BUFSZ${BUFFER_SIZE}"
             OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_LLCREPL${LLC_REPL}_DCT${DCT}_MEM${NUM_MEM}_MEMLOC${NUM_DDR_XP}Side${NUM_DDR_Side}_INTERLV${MultiCoreAddrMode}_SEQTBE${SEQ_TBE}_HNFTBE${HNF_TBE}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}" 
             CHECKPNT_DIR="${OUTPUT_DIR}/CHECKPNT"
 
@@ -413,7 +422,9 @@ if [ "$CHECKPNT" != "" ]; then
               --script=$CHECKPNT_SCRIPT &
 
               echo ${LLC_REPL}
-
+                             done
+                           done
+                         done 
                        done
                      done
                    done 
@@ -439,11 +450,14 @@ if [ "$RESTORE" != "" ]; then
             for SEQ_TBE in ${SEQ_TBE_SET[@]}; do
               for HNF_TBE in ${HNF_TBE_SET[@]}; do 
                  for  SNF_TBE in ${SNF_TBE_SET[@]}; do
+                   for NETWORK in ${NETWORK_CONFIG_SET[@]}; do   
                    for LINKWIDTH in ${LINKWIDTH_SET[@]}; do
-                      for NUM_MEM in ${NUM_MEM_SET[@]}; do
-                          for NUM_DDR_XP in ${NUM_DDR_XP_SET[@]}; do
-                              for NUM_DDR_Side in ${NUM_DDR_SIDE_SET[@]}; do
-                                 for LLC_REPL in ${LLC_REPL_SET[@]}; do
+                     for VC_PER_VNET in ${VC_PER_VNET_SET[@]}; do
+                        for BUFFER_SIZE in ${BUFFER_SIZE_SET[@]}; do
+                           for NUM_MEM in ${NUM_MEM_SET[@]}; do
+                               for NUM_DDR_XP in ${NUM_DDR_XP_SET[@]}; do
+                                   for NUM_DDR_Side in ${NUM_DDR_SIDE_SET[@]}; do
+                                      for LLC_REPL in ${LLC_REPL_SET[@]}; do
                               if [[ $NUM_DDR_Side > $NUM_DDR_XP ]]; then
                                   continue #continue
                               fi
@@ -463,7 +477,7 @@ if [ "$RESTORE" != "" ]; then
             for BENCHMARK in ${BENCHMARK_SET[@]}; do
             for RESTORE_CPU in ${RESTORE_CPU_SET[@]}; do
             OUTPUT_ROOT="$FS_ROOT/PHYVNET${PHYVNET}_DDRLocDMT"
-            OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}"
+            OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}_BUFSZ${BUFFER_SIZE}"
 
             OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_LLCREPL${LLC_REPL}_DCT${DCT}_MEM${NUM_MEM}_MEMLOC${NUM_DDR_XP}Side${NUM_DDR_Side}_INTERLV${MultiCoreAddrMode}_SEQTBE${SEQ_TBE}_HNFTBE${HNF_TBE}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}" 
 
@@ -497,6 +511,7 @@ if [ "$RESTORE" != "" ]; then
               --network=${NETWORK} \
               --link-width-bits=${LINKWIDTH} \
               --vcs-per-vnet=${VC_PER_VNET} \
+              --buffer-size=${BUFFER_SIZE} \
               --link-latency=${LINK_LAT} \
               --router-latency=${ROUTER_LAT} \
               --topology=CustomMesh \
@@ -530,8 +545,9 @@ if [ "$RESTORE" != "" ]; then
               --script=${PARSEC_SCRIPT_DIR}/$BENCHMARK.rcS > "${OUTPUT_DIR}/progress.log" 2>&1 &
 
               echo ${LLC_REPL}
-
-
+                                done
+                              done
+                            done
                           done
                         done
                       done
