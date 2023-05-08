@@ -61,7 +61,7 @@ parser.add_argument('--enable-DCT', default=False, type=ast.literal_eval, help="
 parser.add_argument('--allow-SD',default=True, type=ast.literal_eval, help="allow SD state") # True for MOESI, False for MESI
 parser.add_argument('--num-HNF-TBE', type=int, default=16, help="number of oustanding in HN-F")
 # parser.add_argument('--num-HNF-ReplTBE', type=int, default=16, help="number of replacement oustanding in HN-F")
-parser.add_argument('--ratio-repl-req-TBE', type=str, default='1:1', help="Ratio of req and repl TBE. Valid if --part-TBEs if True")
+parser.add_argument('--ratio-repl-req-TBE', type=str, default='1-1', help="Ratio of req and repl TBE. Valid if --part-TBEs if True")
 # parser.add_argument('--unify_repl_TBEs',default=False,type=ast.literal_eval,help=f'Unify Repl and Req TBEs')
 parser.add_argument('--part-TBEs',default=False,type=ast.literal_eval,help=f'Partition TBEs')
 parser.add_argument('--num_trans_per_cycle_llc', default=4, help="number of transitions per cycle in HN-F")
@@ -286,6 +286,7 @@ else:
 # instantiate configuration
 m5.instantiate()
 
+sys.exit(-1)
 # simulate until program terminates
 exit_event = m5.simulate(args.abs_max_tick)
 
