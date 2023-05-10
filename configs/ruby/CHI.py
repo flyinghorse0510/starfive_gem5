@@ -85,7 +85,8 @@ def create_system(options, full_system, system, dma_ports, bootmem,
 
     # NoC params
     params = chi_defs.NoC_Params
-
+    params.data_width = options.chi_data_width
+    print(f'{options.chi_data_width},{params.data_width}')
     
     # Node types
     CHI_RNF = chi_defs.CHI_RNF
