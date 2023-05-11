@@ -70,21 +70,23 @@ if [ "$GATETEST" != "" ]; then
     NETWORK="simple"
     # NETWORK="garnet"
     IDEAL_SNOOP_FILTER=False
-    DEBUGFLAGS=SeqMemLatTest
-    OUTPUT_PREFIX="MSHRAlloc_${NETWORK}"
+    DEBUGFLAGS=SeqMemLatTest,SimpleNetworkDebug
+    OUTPUT_PREFIX="MSHRAlloc_${NETWORK}_Dbg"
     WKSET=524288
     XOR_ADDR_BITS=4
     RANDOMIZE_ACC=False
     BLOCK_STRIDE_BITS=0
-    NUM_CPU_SET=(1 2 4 8 16)
+    # NUM_CPU_SET=(1 2 4 8 16)
+    NUM_CPU_SET=(16)
     LLC_ASSOC_CONFIGSET=(16)
     SNOOP_FILTER_ASSOC=4
     SNOOP_FILTER_SIZE=256
-    PART_TBE_CONFIG_SET=(False True)
+    # PART_TBE_CONFIG_SET=(False True)
+    PART_TBE_CONFIG_SET=(False)
     IDEAL_SNOOPFILTER_CONFIG_SET=(False)
     HNF_TBE_CONFIG_SET=(16 32)
     IDEAL_SNOOPFILTER=False
-    CHI_DATA_WIDTH_CONFIGSET=(16 32 64)
+    CHI_DATA_WIDTH_CONFIGSET=(64)
     BUFFER_SIZE_CONFIGSET=(0 4)
 
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
@@ -163,10 +165,11 @@ if [ "$GATETEST" != "" ]; then
                         done
                     done
                 done
-                wait
+                # wait
             done
         done
     done
+    wait
 
     echo "WS,NumCPUs,CHIDataWidth,BuffSize,ReqTBE,ReplTBE,PartitionTBE,ReqTBEUtil,ReplTBEUtil,HNFRetryAcks,SNFTBE,SNFTBEUtil,SNFRetryAcks,LLCMissRate,BW" > "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
     for NUMCPUS in ${NUM_CPU_SET[@]}; do

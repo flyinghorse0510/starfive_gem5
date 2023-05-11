@@ -44,7 +44,7 @@ Source('MessageBuffer.cc')
 Source('Network.cc')
 Source('Topology.cc')
 
-DebugFlag('MsgBufDebug', "For Packet DataFlow Tracing.")
-
-DebugFlag("TxnTrace", "Print TxnSeqNum Info.")
-DebugFlag("TxnLink", "Enable TxnSeqNum Info for Link Node.")
+DebugFlag('MsgBufDebug','For Packet DataFlow Tracing')
+DebugFlag('SimpleNetworkDebug','Tracing messages passing through Simple Ruby Network')
+DebugFlag('TxnTrace','Print TxnSeqNum Info')
+DebugFlag('TxnLink','Enable TxnSeqNum Info for Link Node')

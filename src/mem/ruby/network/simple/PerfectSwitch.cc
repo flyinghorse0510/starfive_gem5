@@ -53,6 +53,7 @@
 
 #include "debug/TxnTrace.hh"
 #include "debug/TxnLink.hh"
+#include "debug/SimpleNetworkDebug.hh"
 
 namespace gem5
 {
@@ -180,13 +181,13 @@ PerfectSwitch::operateVnet(int vnet)
             int in_port = (i + start_in_port) % in.size();
             MessageBuffer *buffer = in[in_port];
             if (buffer)
-                operateMessageBuffer(buffer, vnet);
+                operateMessageBuffer(in_port, buffer, vnet);
         }
     }
 }
 
 void
-PerfectSwitch::operateMessageBuffer(MessageBuffer *buffer, int vnet)
+PerfectSwitch::operateMessageBuffer(int in_port, MessageBuffer *buffer, int vnet)
 {
     MsgPtr msg_ptr;
     Message *net_msg_ptr = NULL;
@@ -226,14 +227,17 @@ PerfectSwitch::operateMessageBuffer(MessageBuffer *buffer, int vnet)
             DPRINTF(RubyNetwork, "Checking if node is blocked ..."
                     "outgoing: %d, vnet: %d, enough: %d, message-buffer: %s\n",
                     outgoing, vnet, enough, *(out_port.buffers[vnet]));
+
+            if (!enough) {
+                DPRINTF(SimpleNetworkDebug,"VNET_%d Input_%d Outgoing_%d blocked\n",vnet,in_port,outgoing);
+            }
         }
 
         // There were not enough resources
         if (!enough) {
             scheduleEvent(Cycles(1));
-            DPRINTF(RubyNetwork, "Can't deliver message since a node "
-                    "is blocked\n");
-            DPRINTF(RubyNetwork, "Message: %s\n", (*net_msg_ptr));
+            // DPRINTF(SimpleNetworkDebug, "Can't deliver message since a node is blocked\n");
+            // DPRINTF(RubyNetwork, "Message: %s\n", (*net_msg_ptr));
             break; // go to next incoming port
         }
 
