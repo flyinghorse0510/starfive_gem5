@@ -70,8 +70,9 @@ if [ "$GATETEST" != "" ]; then
     NETWORK="simple"
     # NETWORK="garnet"
     IDEAL_SNOOP_FILTER=False
-    DEBUGFLAGS=SeqMemLatTest,SimpleNetworkDebug
-    OUTPUT_PREFIX="MSHRAlloc_${NETWORK}_Dbg"
+    # DEBUGFLAGS=SeqMemLatTest,SimpleNetworkDebug
+    DEBUGFLAGS=SeqMemLatTest
+    OUTPUT_PREFIX="MSHRAlloc_${NETWORK}"
     WKSET=524288
     XOR_ADDR_BITS=4
     RANDOMIZE_ACC=False
@@ -81,24 +82,24 @@ if [ "$GATETEST" != "" ]; then
     LLC_ASSOC_CONFIGSET=(16)
     SNOOP_FILTER_ASSOC=4
     SNOOP_FILTER_SIZE=256
-    # PART_TBE_CONFIG_SET=(False True)
-    PART_TBE_CONFIG_SET=(False)
+    PART_TBE_CONFIG_SET=(False True)
     IDEAL_SNOOPFILTER_CONFIG_SET=(False)
     HNF_TBE_CONFIG_SET=(16 32)
     IDEAL_SNOOPFILTER=False
     CHI_DATA_WIDTH_CONFIGSET=(64)
-    BUFFER_SIZE_CONFIGSET=(0 4)
+    BUFFER_SIZE_CONFIGSET=(4)
 
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
         for CHI_DATA_WIDTH in ${CHI_DATA_WIDTH_CONFIGSET[@]}; do
             for SNF_TBE in ${SNF_TBE_CONFIG_SET[@]}; do
                 for PART_TBE in ${PART_TBE_CONFIG_SET[@]}; do
-                    for HNF_TBE in ${HNF_TBE_CONFIG_SET[@]}; do
-                        for BUFFER_SIZE in ${BUFFER_SIZE_CONFIGSET[@]}; do
-                            PART_RATIO_CONFIG_SET=('1-1' '3-1' '7-1' '5-3' '15-1' '13-3' '11-5' '9-7' '31-1' '29-3' '27-5' '25-7' '23-9' '21-11' '19-13' '17-15')
-                            if [ "$PART_TBE" == "False" ]; then
-                                PART_RATIO_CONFIG_SET=('1-1')
-                            fi
+                    for BUFFER_SIZE in ${BUFFER_SIZE_CONFIGSET[@]}; do
+                        PART_RATIO_CONFIG_SET=('1-1' '15-1' '13-3' '11-5' '9-7' '31-1' '25-7' '23-9' '19-13' '17-15' '1-15' '3-13' '5-11' '7-9' '1-31' '7-25' '9-23' '13-19' '15-17')
+                        if [ "$PART_TBE" == "False" ]; then
+                            PART_RATIO_CONFIG_SET=('1-1')
+                            HNF_TBE_CONFIG_SET=(2 4 8 16 24 32)
+                        fi
+                        for HNF_TBE in ${HNF_TBE_CONFIG_SET[@]}; do
                             for PART_RATIO in ${PART_RATIO_CONFIG_SET[@]}; do
                                 OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_HNFTBE${HNF_TBE}_SNFTBE${SNF_TBE}_CHIDATAWIDTH${CHI_DATA_WIDTH}_PARTTBE${PART_TBE}_PartRatio${PART_RATIO}_BuffSize${BUFFER_SIZE}"
                                 OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
@@ -153,7 +154,6 @@ if [ "$GATETEST" != "" ]; then
                                   --num-cpus=${NUMCPUS} \
                                   --num-dmas=0 \
                                   --inj-interval=1 \
-                                  --allow-infinite-SF-entries=${IDEAL_SNOOPFILTER} \
                                   --num-snoopfilter-entries=${SNOOP_FILTER_SIZE} \
                                   --num-snoopfilter-assoc=${SNOOP_FILTER_ASSOC} \
                                   --allow-infinite-SF-entries=${IDEAL_SNOOP_FILTER} \
@@ -163,25 +163,26 @@ if [ "$GATETEST" != "" ]; then
                                   --num-producers=1 > ${OUTPUT_DIR}/cmd.log 2>&1 &
                             done
                         done
+                        wait
                     done
                 done
-                # wait
             done
         done
     done
-    wait
+    # wait
 
     echo "WS,NumCPUs,CHIDataWidth,BuffSize,ReqTBE,ReplTBE,PartitionTBE,ReqTBEUtil,ReplTBEUtil,HNFRetryAcks,SNFTBE,SNFTBEUtil,SNFRetryAcks,LLCMissRate,BW" > "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
         for CHI_DATA_WIDTH in ${CHI_DATA_WIDTH_CONFIGSET[@]}; do
             for SNF_TBE in ${SNF_TBE_CONFIG_SET[@]}; do
                 for PART_TBE in ${PART_TBE_CONFIG_SET[@]}; do
-                    for HNF_TBE in ${HNF_TBE_CONFIG_SET[@]}; do
-                        for BUFFER_SIZE in ${BUFFER_SIZE_CONFIGSET[@]}; do
-                            PART_RATIO_CONFIG_SET=('1-1' '3-1' '7-1' '5-3' '15-1' '13-3' '11-5' '9-7' '31-1' '29-3' '27-5' '25-7' '23-9' '21-11' '19-13' '17-15')
-                            if [ "$PART_TBE" == "False" ]; then
-                                PART_RATIO_CONFIG_SET=('1-1')
-                            fi
+                    for BUFFER_SIZE in ${BUFFER_SIZE_CONFIGSET[@]}; do
+                        PART_RATIO_CONFIG_SET=('1-1' '15-1' '13-3' '11-5' '9-7' '31-1' '25-7' '23-9' '19-13' '17-15' '1-15' '3-13' '5-11' '7-9' '1-31' '7-25' '9-23' '13-19' '15-17')
+                        if [ "$PART_TBE" == "False" ]; then
+                            PART_RATIO_CONFIG_SET=('1-1')
+                            HNF_TBE_CONFIG_SET=(2 4 8 16 24 32)
+                        fi
+                        for HNF_TBE in ${HNF_TBE_CONFIG_SET[@]}; do
                             for PART_RATIO in ${PART_RATIO_CONFIG_SET[@]}; do
                                 OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_HNFTBE${HNF_TBE}_SNFTBE${SNF_TBE}_CHIDATAWIDTH${CHI_DATA_WIDTH}_PARTTBE${PART_TBE}_PartRatio${PART_RATIO}_BuffSize${BUFFER_SIZE}"
                                 OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
