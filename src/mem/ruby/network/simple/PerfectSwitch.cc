@@ -229,15 +229,19 @@ PerfectSwitch::operateMessageBuffer(int in_port, MessageBuffer *buffer, int vnet
                     outgoing, vnet, enough, *(out_port.buffers[vnet]));
 
             if (!enough) {
-                DPRINTF(SimpleNetworkDebug,"VNET_%d Input_%d Outgoing_%d blocked\n",vnet,in_port,outgoing);
+                DPRINTF(SimpleNetworkDebug,"VNET_%d Incoming_%d Outgoing_%d Msg_%s blocked\n",
+                        vnet,
+                        in_port,
+                        buffer->getCHITypeStr(msg_ptr),
+                        outgoing);
             }
         }
 
         // There were not enough resources
         if (!enough) {
             scheduleEvent(Cycles(1));
-            // DPRINTF(SimpleNetworkDebug, "Can't deliver message since a node is blocked\n");
-            // DPRINTF(RubyNetwork, "Message: %s\n", (*net_msg_ptr));
+            DPRINTF(RubyNetwork, "Can't deliver message since a node is blocked\n");
+            DPRINTF(RubyNetwork, "Message: %s\n", (*net_msg_ptr));
             break; // go to next incoming port
         }
 
@@ -278,12 +282,18 @@ PerfectSwitch::operateMessageBuffer(int in_port, MessageBuffer *buffer, int vnet
                     "inport[%d][%d] to outport [%d][%d].\n",
                     buffer->getIncomingLink(), vnet, outgoing, vnet);
 
-            DPRINTF(TxnLink, "msg [%d][%d] to [%d][%d]. %d pending.\n",
-                    buffer->getIncomingLink(), vnet, 
-                    outgoing, vnet,
-                    m_pending_message_count[vnet]
-                    );
+            // DPRINTF(SimpleNetworkDebug, "msg [%d][%d] to [%d][%d]. %d pending.\n",
+            //         buffer->getIncomingLink(), vnet, 
+            //         outgoing, vnet,
+            //         m_pending_message_count[vnet]
+            //         );
 
+            DPRINTF(SimpleNetworkDebug, "VNET_%d Incoming_%d Outgoing_%d Msg_%s Pending_%d\n",
+                    vnet,
+                    buffer->getIncomingLink(),
+                    outgoing,
+                    buffer->getCHITypeStr(msg_ptr),
+                    m_pending_message_count[vnet]);
             out_port.buffers[vnet]->enqueue(msg_ptr, current_time,
                                            out_port.latency);
         }

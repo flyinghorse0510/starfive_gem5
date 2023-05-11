@@ -477,7 +477,7 @@ std::string MessageBuffer::getCHITypeStr(const MsgPtr& message) {
         const CHIDataMsg* msg = dynamic_cast<CHIDataMsg*>(message.get());
         return CHIDataType_to_string(msg->gettype());
     } else {
-        return std::string("");
+        return std::string("NonCHIMessage");
     }
 }
 
