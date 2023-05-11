@@ -63,7 +63,7 @@ NUM_DDR_XP=2
 NUM_DDR_Side=1
 MultiCoreAddrMode=True
 HNF_TBE=32
-SNF_TBE=32
+SNF_TBE=64
 
 # Network Specific Parameters
 NETWORK="simple"
@@ -298,13 +298,17 @@ WKSETLIST=(524288)
 NUM_CPU_SET=(16) # For LLC and DDR bw tests, numcpus must be 16
 LoadFactor=10
 SEQ_TBE_SET=(32)
-BUFFER_SIZE=1
+BUFFER_SIZE=4
 NUM_MEM=4
 NUM_DDR_XP=4
 NUM_DDR_Side=2
 MultiCoreAddrMode=True
 XOR_ADDR_BITS=4
 OUTPUT_PREFIX="DDR_${NETWORK}"
+CHI_DATA_WIDTH=64
+SNOOP_FILTER_SIZE=256
+SNOOP_FILTER_ASSOC=4
+IDEAL_SNOOP_FILTER=False
 
 for NUMCPUS in ${NUM_CPU_SET[@]}; do
   for WKSET in ${WKSETLIST[@]}; do
@@ -321,6 +325,7 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
             --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
             -d $OUTPUT_DIR \
             ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
+            --chi-data-width=${CHI_DATA_WIDTH} \
             --num-dirs=${NUM_MEM} \
             --DDR-loc-num=${NUM_DDR_XP} \
             --DDR-side-num=${NUM_DDR_Side} \
@@ -334,8 +339,8 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
             --l2_assoc=${l2_assoc} \
             --l3_assoc=${l3_assoc} \
             --network=${NETWORK} \
-            --simple-ext-link-bw-factor=${LINKWIDTH/8} \
-            --simple-int-link-bw-factor=${LINKWIDTH/8} \
+            --simple-ext-link-bw-factor=$(($LINKWIDTH/8)) \
+            --simple-int-link-bw-factor=$(($LINKWIDTH/8)) \
             --simple-physical-channels \
             --link-width-bits=${LINKWIDTH} \
             --vcs-per-vnet=${VC_PER_VNET} \
@@ -350,7 +355,7 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
             --size-ws=${WKSET} \
             --mem-type=DDR4_3200_8x8 \
             --addr-mapping="RoRaBaBg1CoBg0Co53Dp" \
-            --mem-test-type='bw_test' \
+            --mem-test-type='bw_test_sf' \
             --addr-intrlvd-or-tiled=$MultiCoreAddrMode \
             --xor-addr-bits=${XOR_ADDR_BITS} \
             --disable-gclk-set \
@@ -363,6 +368,9 @@ for NUMCPUS in ${NUM_CPU_SET[@]}; do
             --num-cpus=${NUMCPUS} \
             --num-dmas=0 \
             --inj-interval=1 \
+            --num-snoopfilter-entries=${SNOOP_FILTER_SIZE} \
+            --num-snoopfilter-assoc=${SNOOP_FILTER_ASSOC} \
+            --allow-infinite-SF-entries=${IDEAL_SNOOP_FILTER} \
             --num-producers=1 > ${OUTPUT_DIR}/cmd.log 2>&1 &
         done
       done
