@@ -60,15 +60,12 @@ parser.add_argument('--enable-DMT', default=False, type=ast.literal_eval, help="
 parser.add_argument('--enable-DCT', default=False, type=ast.literal_eval, help="enable DCT")
 parser.add_argument('--allow-SD',default=True, type=ast.literal_eval, help="allow SD state") # True for MOESI, False for MESI
 parser.add_argument('--num-HNF-TBE', type=int, default=16, help="number of oustanding in HN-F")
-# parser.add_argument('--num-HNF-ReplTBE', type=int, default=16, help="number of replacement oustanding in HN-F")
 parser.add_argument('--ratio-repl-req-TBE', type=str, default='1-1', help="Ratio of req and repl TBE. Valid if --part-TBEs if True")
-# parser.add_argument('--unify_repl_TBEs',default=False,type=ast.literal_eval,help=f'Unify Repl and Req TBEs')
 parser.add_argument('--part-TBEs',default=False,type=ast.literal_eval,help=f'Partition TBEs')
 parser.add_argument('--num_trans_per_cycle_llc', default=4, help="number of transitions per cycle in HN-F")
 parser.add_argument('--num-SNF-TBE', default=32, help="number of oustanding in HN-F")
 parser.add_argument('--addr-intrlvd-or-tiled',default=False, type=ast.literal_eval, help="If true the address partitioning across CPUs is interleaved (like [0-N-2N;1-N+1-2N+1;...]). Otherwise Tiled [0:N-1,N:2N-1]")
 parser.add_argument('--sequencer-outstanding-requests',type=int,default=32,help="Max outstanding sequencer requests")
-parser.add_argument('--bench-c2cbw-mode',default=True, type=ast.literal_eval, help="[True] Producer Consumer BW or [False] C2C Latency Test")
 parser.add_argument('--inj-interval',default=1,type=int,help="The interval between request packets")
 parser.add_argument('--num-snoopfilter-entries', default=4, type=int,help="SnoopFilter: number of entries")
 parser.add_argument('--num-snoopfilter-assoc', default=2, type=int,help="SnoopFilter: assoc")
@@ -99,6 +96,7 @@ parser.add_argument('--xor-addr-bits',default=1,type=int,help='Number of addr bi
 parser.add_argument('--block-stride-bits',default=0,type=int,help='Block address strides, 2^(--block-stride-bits)')
 parser.add_argument('--randomize-acc',default=False,type=ast.literal_eval,help=f'Randomize access patters')
 parser.add_argument('--chi-data-width',default=16,type=int,help=f'CHI Controller data width (in bytes)')
+parser.add_argument('--ratio-read-write',type=str, default='1-1', help=f'Read write ratio')
 
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]
@@ -111,6 +109,11 @@ Ruby.define_options(parser)
 args = parser.parse_args()
 
 block_size = 64
+
+splitText=args.ratio_read_write.split('-')
+k1=int(splitText[0])
+k2=int(splitText[1])
+percent_read=int((k1/(k1+k2))*100)
 
 MemTestClass=None
 if args.mem_test_type=='bw_test':
@@ -207,7 +210,7 @@ if num_cpus > 0 :
                      num_peer_producers = num_peer_producers,
                      block_stride_bits = args.block_stride_bits,
                      randomize_acc = args.randomize_acc,
-                     percent_reads = 100,
+                     percent_reads = percent_read,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
 
@@ -230,7 +233,7 @@ if num_dmas > 0:
                      addr_intrlvd_or_tiled = args.addr_intrlvd_or_tiled,
                      block_stride_bits = args.block_stride_bits,
                      randomize_acc = args.randomize_acc,
-                     percent_reads = 100,
+                     percent_reads = percent_read,
                      suppress_func_errors = not args.suppress_func_errors) \
              for i in range(args.num_dmas) ]
     system.dma_devices = dmas
