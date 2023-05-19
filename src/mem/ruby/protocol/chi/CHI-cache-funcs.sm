@@ -1489,8 +1489,12 @@ bool _checkResourceAvailable(RequestType request_type, Addr addr) {
   } else if (request_type == RequestType:DestinationAvailable) {
     if (throttle_req_on_retry) {
       MachineID dest := mapAddressToDownstreamMachine(addr);
-      DPRINTF(RubySlicc, "Checking %s for addr %#x dest %s\n", request_type, addr, dest);
-      return destsWaitingRetry.isElement(dest) == false;
+      bool canSend := destsWaitingRetry.isElement(dest) == false;
+      // DPRINTF(RubySlicc, "Checking %s for addr %#x dest %s\n", request_type, addr, dest);
+      if (canSend == false) {
+        DPRINTF(RubyCHIDebugStr5, "addr: %#x, Stalled reqType: %s, dest: %s\n", addr, request_type, dest);
+      }
+      return canSend;
     } else {
       return true;
     }
