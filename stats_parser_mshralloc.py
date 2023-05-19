@@ -86,15 +86,15 @@ def getReadWriteStats(options):
             reqTBE=cfg['system']['ruby']['hnf'][0]['cntrl']['number_of_TBEs']
             replTBE=cfg['system']['ruby']['hnf'][0]['cntrl']['number_of_repl_TBEs']
         else :
-            reqTBE=cfg['system']['ruby']['hnf']['cntrl']['number_of_TBEs']
-            replTBE=cfg['system']['ruby']['hnf']['cntrl']['number_of_repl_TBEs']
+            reqTBE=cfg['system']['ruby']['hnf'][0]['cntrl']['number_of_TBEs']
+            replTBE=cfg['system']['ruby']['hnf'][0]['cntrl']['number_of_repl_TBEs']
         if options.num_dirs > 1:
             snfTBE=cfg['system']['ruby']['snf'][0]['cntrl']['number_of_TBEs']
         else :
-            snfTBE=cfg['system']['ruby']['snf']['cntrl']['number_of_TBEs']
+            snfTBE=cfg['system']['ruby']['snf'][0]['cntrl']['number_of_TBEs']
 
     with open(options.collated_outfile,'a+') as fsw:
-        print(f'{options.working_set},{options.num_cpus},{options.chi_data_width},{options.buffer_size},{options.ratio_read_write},{reqTBE},{replTBE},{options.part_TBEs},{reqTbeUtil},{replTbeSizeUtil},{hnfRetryAcks},{snfTBE},{snfSizeUtil},{snfRetryAcks},{hnfMissRate},{bw}',file=fsw)
+        print(f'{options.working_set},{options.num_cpus},{options.num_dirs},{options.num_l3caches},{options.ratio_read_write},{options.rnf_tbe},{reqTBE},{replTBE},{options.part_TBEs},{reqTbeUtil},{replTbeSizeUtil},{hnfRetryAcks},{snfTBE},{snfSizeUtil},{snfRetryAcks},{hnfMissRate},{bw}',file=fsw)
 
 def main():
     parser = argparse.ArgumentParser(description='')
@@ -105,10 +105,11 @@ def main():
     parser.add_argument('--config_file',required=True,type=str,help='Config file (json)')
     parser.add_argument('--collated_outfile',required=True,type=str,help='Collated stats file')
     parser.add_argument('--hnf-tbe',required=True,type=str,help='Collated stats file')
+    parser.add_argument('--rnf-tbe',required=True,type=str,help='Collated stats file')
     parser.add_argument('--num-l3caches',required=True,type=int,help=f'Num of L3 caches')
     parser.add_argument('--num-dirs',default=1,type=int,help=f'Number of memory controllers')
     parser.add_argument('--chi-data-width',default=16,type=int,help=f'DAT channel width of CHI cache controllers. Same for all controllers')
-    parser.add_argument('--buffer-size',default=4,type=int,help=f'Network buffer size. 0 represents infinite buffering')
+    parser.add_argument('--buffer-size',default=4,type=int,help=f'Network buffer size')
     parser.add_argument('--ratio-read-write',type=str, default='1-1', help=f'Read write ratio')
     options=parser.parse_args()
     getReadWriteStats(options)

@@ -51,11 +51,8 @@ if [ "$GATETEST" != "" ]; then
     l1i_assoc=8
     l2_assoc=8
     l3_assoc=16
-    NUM_LLC=16
+    NUM_LLC_CONFIG_SET=(16)
     LoadFactor=10
-    NUM_MEM=4
-    NUM_DDR_XP=4
-    NUM_DDR_Side=2
     LINK_BW=16
     LINKWIDTH=320
     VC_PER_VNET=2
@@ -63,51 +60,68 @@ if [ "$GATETEST" != "" ]; then
     ROUTER_LAT=0
     DMT=False
     DCT=False
-    # SNF_TBE_CONFIG_SET=(64 128)
-    SNF_TBE_CONFIG_SET=(128)
     SEQ_TBE=32
     TRANS=4
     MultiCoreAddrMode=True
     NETWORK="simple"
-    # NETWORK="garnet"
     IDEAL_SNOOP_FILTER=False
-    DEBUGFLAGS=SeqMemLatTest,TxnTrace,RubyCHIDebugStr5
-    # DEBUGFLAGS=SeqMemLatTest
-    OUTPUT_PREFIX="MSHRAlloc_${NETWORK}_Dbg"
+    # DEBUGFLAGS=SeqMemLatTest,TxnTrace,RubyCHIDebugStr5,RubyGenerated
+    DEBUGFLAGS=SeqMemLatTest
+    OUTPUT_PREFIX="MSHRAlloc_${NETWORK}_2"
     WKSET=524288
     XOR_ADDR_BITS=4
     RANDOMIZE_ACC=False
     BLOCK_STRIDE_BITS=0
-    # NUM_CPU_SET=(1 2 4 8 16)
     NUM_CPU_SET=(16)
     LLC_ASSOC_CONFIGSET=(16)
     SNOOP_FILTER_ASSOC=4
     SNOOP_FILTER_SIZE=256
-    # PART_TBE_CONFIG_SET=(False True)
-    PART_TBE_CONFIG_SET=(True)
+    PART_TBE_CONFIG_SET=(True False)
     IDEAL_SNOOPFILTER_CONFIG_SET=(False)
     # HNF_TBE_CONFIG_SET=(16 32)
-    HNF_TBE_CONFIG_SET=(32)
+    HNF_TBE_CONFIG_SET=(8 16 32)
     IDEAL_SNOOPFILTER=False
     CHI_DATA_WIDTH_CONFIGSET=(64)
-    BUFFER_SIZE_CONFIGSET=(4)
-    # READ_WRITE_RATIO_CONFIG_SET=('3-1' '2-1' '1-1' '0-1')
+    BUFFER_SIZE=4
+    CHI_DATA_WIDTH=64
+    NUM_MEM_CONFIG_SET=(1 2 4)
+    # NUM_MEM_CONFIG_SET=(4)
+    NUM_DDR_XP=4
+    NUM_DDR_Side=2
+    SNF_TBE_CONFIG_SET=(128)
     READ_WRITE_RATIO_CONFIG_SET=('0-1')
+    RNF_TBE_CONFIG_SET=(16 32 48)
+    NUM_LLC=16
 
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
-        for CHI_DATA_WIDTH in ${CHI_DATA_WIDTH_CONFIGSET[@]}; do
-            for SNF_TBE in ${SNF_TBE_CONFIG_SET[@]}; do
-                for PART_TBE in ${PART_TBE_CONFIG_SET[@]}; do
-                    for BUFFER_SIZE in ${BUFFER_SIZE_CONFIGSET[@]}; do
+        for RNF_TBE in ${RNF_TBE_CONFIG_SET[@]}; do
+            for NUM_MEM in ${NUM_MEM_CONFIG_SET[@]}; do
+                # if [ "$NUM_MEM" -lt 2 ]; then
+                #     SNF_TBE_CONFIG_SET=(64)
+                # elif [ "$NUM_MEM" -lt 4 ]; then
+                #     SNF_TBE_CONFIG_SET=(32 64)
+                # else
+                #     SNF_TBE_CONFIG_SET=(16 32 64)
+                # fi
+                # SNF_TBE_CONFIG_SET=(16)
+                for SNF_TBE in ${SNF_TBE_CONFIG_SET[@]}; do
+                    for PART_TBE in ${PART_TBE_CONFIG_SET[@]}; do
                         for HNF_TBE in ${HNF_TBE_CONFIG_SET[@]}; do
-                            PART_RATIO_CONFIG_SET=('1-1' '3-1' '7-1' '5-3' '15-1' '11-5' '13-3')
-                            # PART_RATIO_CONFIG_SET=('3-1')
+                            PART_RATIO_CONFIG_SET=('1-1' '4-12' '10-6' '12-4')
                             if [ "$PART_TBE" == "False" ]; then
                                 PART_RATIO_CONFIG_SET=('1-1')
+                            else
+                                if [ "$HNF_TBE" -eq 8 ]; then
+                                    PART_RATIO_CONFIG_SET=('2-6' '3-5' '1-1' '5-3' '6-2')
+                                elif [ "$HNF_TBE" -eq 16 ]; then
+                                    PART_RATIO_CONFIG_SET=('1-1' '4-12' '10-6' '12-4')
+                                else
+                                    PART_RATIO_CONFIG_SET=('1-1' '26-6' '22-10' '20-12' '16-14')
+                                fi
                             fi
                             for PART_RATIO in ${PART_RATIO_CONFIG_SET[@]}; do
                                 for READ_WRITE_RATIO in ${READ_WRITE_RATIO_CONFIG_SET[@]}; do
-                                    OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_HNFTBE${HNF_TBE}_SNFTBE${SNF_TBE}_CHIDATAWIDTH${CHI_DATA_WIDTH}_PARTTBE${PART_TBE}_PartRatio${PART_RATIO}_BuffSize${BUFFER_SIZE}_ReadWrite${READ_WRITE_RATIO}"
+                                    OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_NumMem${NUM_MEM}_RNFTBE${RNF_TBE}_HNFTBE${HNF_TBE}_SNFTBE${SNF_TBE}_PARTTBE${PART_TBE}_PartRatio${PART_RATIO}_ReadWrite${READ_WRITE_RATIO}"
                                     OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
                                     echo "GateTest Started: ${OUTPUT_BASE}"
                                     mkdir -p ${OUTPUT_DIR}
@@ -172,79 +186,59 @@ if [ "$GATETEST" != "" ]; then
                             done
                         done
                     done
+                    wait
                 done
             done
         done
     done
-    wait
 
-    # echo "WS,NumCPUs,CHIDataWidth,BuffSize,ReadWriteRatio,HNFReqTBE,HNFReplTBE,PartitionTBE,ReqTBEUtil,ReplTBEUtil,HNFRetryAcks,SNFTBE,SNFTBEUtil,SNFRetryAcks,LLCMissRate,BW" > "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
-    # for NUMCPUS in ${NUM_CPU_SET[@]}; do
-    #     for CHI_DATA_WIDTH in ${CHI_DATA_WIDTH_CONFIGSET[@]}; do
-    #         for SNF_TBE in ${SNF_TBE_CONFIG_SET[@]}; do
-    #             for PART_TBE in ${PART_TBE_CONFIG_SET[@]}; do
-    #                 for BUFFER_SIZE in ${BUFFER_SIZE_CONFIGSET[@]}; do
-    #                     for HNF_TBE in ${HNF_TBE_CONFIG_SET[@]}; do
-    #                         # PART_RATIO_CONFIG_SET=('1-1' '3-1' '7-1' '5-3' '11-5' '13-3')
-    #                         PART_RATIO_CONFIG_SET=('1-1' '3-1' '7-1' '5-3' '15-1' '11-5' '13-3')
-    #                         # PART_RATIO_CONFIG_SET=('3-1')
-    #                         if [ "$PART_TBE" == "False" ]; then
-    #                             PART_RATIO_CONFIG_SET=('1-1')
-    #                         fi
-    #                         for PART_RATIO in ${PART_RATIO_CONFIG_SET[@]}; do
-    #                             for READ_WRITE_RATIO in ${READ_WRITE_RATIO_CONFIG_SET[@]}; do
-    #                             OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_HNFTBE${HNF_TBE}_SNFTBE${SNF_TBE}_CHIDATAWIDTH${CHI_DATA_WIDTH}_PARTTBE${PART_TBE}_PartRatio${PART_RATIO}_BuffSize${BUFFER_SIZE}_ReadWrite${READ_WRITE_RATIO}"
-    #                             OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
-    #                             echo "GateTest Parsing: ${OUTPUT_BASE}"
-    #                             ${PY3} stats_parser_mshralloc.py \
-    #                                 --stats_file="${OUTPUT_DIR}/stats.txt" \
-    #                                 --working-set=$WKSET \
-    #                                 --chi-data-width=${CHI_DATA_WIDTH} \
-    #                                 --buffer-size=${BUFFER_SIZE} \
-    #                                 --num_cpus=$NUMCPUS \
-    #                                 --num-dirs=${NUM_MEM} \
-    #                                 --num-l3caches=$NUM_LLC \
-    #                                 --part-TBEs=$PART_TBE \
-    #                                 --hnf-tbe=$HNF_TBE \
-    #                                 --ratio-read-write=$READ_WRITE_RATIO \
-    #                                 --config_file="${OUTPUT_DIR}/config.json" \
-    #                                 --collated_outfile="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
-    #                             done
-    #                         done
-    #                     done
-    #                 done
-    #             done
-    #         done
-    #     done
-    # done
-
-    # ${PY3} AggAllStatsMSHR.py --collated_outfile="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
-
+    echo "WS,NumCPUs,NumMem,NumLLC,ReadWriteRatio,RNFReqTBE,HNFReqTBE,HNFReplTBE,PartitionTBE,ReqTBEAvg,ReplTBEAvg,HNFRetryAcks,SNFTBE,SNFTBEUtil,SNFRetryAcks,LLCMissRate,BW" > "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
     for NUMCPUS in ${NUM_CPU_SET[@]}; do
-        for CHI_DATA_WIDTH in ${CHI_DATA_WIDTH_CONFIGSET[@]}; do
-            for SNF_TBE in ${SNF_TBE_CONFIG_SET[@]}; do
-                for PART_TBE in ${PART_TBE_CONFIG_SET[@]}; do
-                    for BUFFER_SIZE in ${BUFFER_SIZE_CONFIGSET[@]}; do
+        for RNF_TBE in ${RNF_TBE_CONFIG_SET[@]}; do
+            for NUM_MEM in ${NUM_MEM_CONFIG_SET[@]}; do
+                # if [ "$NUM_MEM" -lt 2 ]; then
+                #     SNF_TBE_CONFIG_SET=(64)
+                # elif [ "$NUM_MEM" -lt 4 ]; then
+                #     SNF_TBE_CONFIG_SET=(32 64)
+                # else
+                #     SNF_TBE_CONFIG_SET=(16 32 64)
+                # fi
+                # SNF_TBE_CONFIG_SET=(16)
+                for SNF_TBE in ${SNF_TBE_CONFIG_SET[@]}; do
+                    for PART_TBE in ${PART_TBE_CONFIG_SET[@]}; do
                         for HNF_TBE in ${HNF_TBE_CONFIG_SET[@]}; do
-                            # PART_RATIO_CONFIG_SET=('1-1' '3-1' '7-1' '5-3' '15-1' '11-5' '13-3')
-                            PART_RATIO_CONFIG_SET=('1-1' '13-3')
-                            # PART_RATIO_CONFIG_SET=('1-1')
-                            # PART_RATIO_CONFIG_SET=('3-1')
+                            PART_RATIO_CONFIG_SET=('1-1' '4-12' '10-6' '12-4')
                             if [ "$PART_TBE" == "False" ]; then
                                 PART_RATIO_CONFIG_SET=('1-1')
+                            else
+                                if [ "$HNF_TBE" -eq 8 ]; then
+                                    PART_RATIO_CONFIG_SET=('2-6' '3-5' '1-1' '5-3' '6-2')
+                                elif [ "$HNF_TBE" -eq 16 ]; then
+                                    PART_RATIO_CONFIG_SET=('1-1' '4-12' '10-6' '12-4')
+                                else
+                                    PART_RATIO_CONFIG_SET=('1-1' '26-6' '22-10' '20-12' '16-14')
+                                fi
                             fi
                             for PART_RATIO in ${PART_RATIO_CONFIG_SET[@]}; do
                                 for READ_WRITE_RATIO in ${READ_WRITE_RATIO_CONFIG_SET[@]}; do
-                                    OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_HNFTBE${HNF_TBE}_SNFTBE${SNF_TBE}_CHIDATAWIDTH${CHI_DATA_WIDTH}_PARTTBE${PART_TBE}_PartRatio${PART_RATIO}_BuffSize${BUFFER_SIZE}_ReadWrite${READ_WRITE_RATIO}"
+                                    OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_NumMem${NUM_MEM}_RNFTBE${RNF_TBE}_HNFTBE${HNF_TBE}_SNFTBE${SNF_TBE}_PARTTBE${PART_TBE}_PartRatio${PART_RATIO}_ReadWrite${READ_WRITE_RATIO}"
                                     OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
-                                    echo "Parsing Debugtrace: ${OUTPUT_BASE}"
-                                    grep -E 'system\.ruby\.hnf[0-9]+\.cntrl' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
-                                    grep -E 'system\.ruby\.hnf10\.cntrl' ${OUTPUT_DIR}/debug.hnf.trace > ${OUTPUT_DIR}/debug.hnf10.trace
-                                    grep -E 'WriteBackFull' ${OUTPUT_DIR}/debug.hnf10.trace > ${OUTPUT_DIR}/debug.hnf10.wbfull.trace
-                                    grep -E 'CompDBIDResp' ${OUTPUT_DIR}/debug.hnf10.trace > ${OUTPUT_DIR}/debug.hnf10.compdbid.trace
-                                    ${PY3} HNFtoSNFTxnTraceDebug.py \
-                                        --trc_file="${OUTPUT_DIR}/debug.hnf.trace" \
-                                        --csv_file="${OUTPUT_DIR}/debug.hnf2snf.csv"
+                                    echo "GateTest Parsing: ${OUTPUT_BASE}"
+                                    ${PY3} stats_parser_mshralloc.py \
+                                        --stats_file="${OUTPUT_DIR}/stats.txt" \
+                                        --working-set=$WKSET \
+                                        --chi-data-width=${CHI_DATA_WIDTH} \
+                                        --buffer-size=${BUFFER_SIZE} \
+                                        --num_cpus=$NUMCPUS \
+                                        --num-dirs=${NUM_MEM} \
+                                        --num-l3caches=$NUM_LLC \
+                                        --part-TBEs=$PART_TBE \
+                                        --hnf-tbe=$HNF_TBE \
+                                        --rnf-tbe=$RNF_TBE \
+                                        --ratio-read-write=$READ_WRITE_RATIO \
+                                        --config_file="${OUTPUT_DIR}/config.json" \
+                                        --collated_outfile="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
+                                  
                                 done
                             done
                         done
@@ -253,4 +247,7 @@ if [ "$GATETEST" != "" ]; then
             done
         done
     done
+
+    ${PY3} AggAllStatsMSHR.py --collated_outfile="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv"
+    mv "${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.xlsx" "${OUTPUT_ROOT}/stats_$(date -I).xlsx"
 fi
