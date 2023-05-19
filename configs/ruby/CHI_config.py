@@ -293,7 +293,7 @@ class CHI_L2Controller(CHI_Cache_Controller):
         self.dealloc_backinv_unique = True
         self.dealloc_backinv_shared = True
         # Some reasonable default TBE params
-        self.number_of_TBEs = 64 #ZHIGUO #32
+        self.number_of_TBEs = options.num_RNF_TBE
         self.number_of_repl_TBEs = 32
         self.number_of_snoop_TBEs = 16
         self.number_of_DVM_TBEs = 1 # should not receive any dvm
