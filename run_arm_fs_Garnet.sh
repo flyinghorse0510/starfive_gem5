@@ -166,8 +166,6 @@ NUM_LOAD_SET=(200)
 #DEBUG_FLAGS=SeqMemLatTest
 DEBUG_FLAGS=PseudoInst
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MEMBW_MultCore_WorkSetAddressNoGap"
-#OUTPUT_PREFIX="LLC_HIT_BW_MEM1_TestHNFTBE"
-#OUTPUT_PREFIX="SysClkRubyClk2GHz_LLC_HIT_BW_MEM1_HNF${HNF_TBE}"
 fi
 
 if [ "$TEST" == "L2_Hit" ]; then
@@ -313,7 +311,7 @@ LLC_REPL_SET=("TreePLRURP")
 
 
 #Network/Garnet
-LINKWIDTH_SET=(320) #(256 320)
+LINKWIDTH_SET=(256) #(256 320)
 #NETWORK="simple"
 LINK_LAT=1
 ROUTER_LAT=0
@@ -366,12 +364,12 @@ if [ "$CHECKPNT" != "" ]; then
                                   for NUM_DDR_Side in ${NUM_DDR_SIDE_SET[@]}; do
                                      for LLC_REPL in ${LLC_REPL_SET[@]}; do
                               if [[ $NUM_DDR_Side > $NUM_DDR_XP ]]; then
-                                  continue #continue
+                                  continue
                               fi
  
                               if [[ $NUM_MEM < $NUM_DDR_XP ]]; then
                                  echo " $NUM_MEM < $NUM_DDR_XP "
-                                 continue #continue [2]
+                                 continue
                               fi
                               echo "-------- Exec_NUMMEM(${NUM_MEM})_DDRXP(${NUM_DDR_XP}_DDRSide${NUM_DDR_Side}) ----------------"
 
@@ -478,9 +476,7 @@ if [ "$RESTORE" != "" ]; then
             for RESTORE_CPU in ${RESTORE_CPU_SET[@]}; do
             OUTPUT_ROOT="$FS_ROOT/PHYVNET${PHYVNET}_DDRLocDMT"
             OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}_BUFSZ${BUFFER_SIZE}"
-
             OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_LLCREPL${LLC_REPL}_DCT${DCT}_MEM${NUM_MEM}_MEMLOC${NUM_DDR_XP}Side${NUM_DDR_Side}_INTERLV${MultiCoreAddrMode}_SEQTBE${SEQ_TBE}_HNFTBE${HNF_TBE}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}" 
-
             CHECKPNT_DIR="${OUTPUT_DIR}/CHECKPNT"
             OUTPUT_DIR="${OUTPUT_DIR}/${BENCHMARK}"
 
@@ -596,8 +592,8 @@ if [ "$DIRRUN" != "" ]; then
             for BENCHMARK in ${BENCHMARK_SET[@]}; do
             for RESTORE_CPU in ${RESTORE_CPU_SET[@]}; do
             OUTPUT_ROOT="$FS_ROOT/PHYVNET${PHYVNET}_DDRLocDMT"
-            OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}"
-            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}_MEM${NUM_MEM}_MEMLOC${NUM_DDR_XP}Side${NUM_DDR_Side}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}" 
+            OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}_BUFSZ${BUFFER_SIZE}"
+            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_LLCREPL${LLC_REPL}_DCT${DCT}_MEM${NUM_MEM}_MEMLOC${NUM_DDR_XP}Side${NUM_DDR_Side}_INTERLV${MultiCoreAddrMode}_SEQTBE${SEQ_TBE}_HNFTBE${HNF_TBE}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}" 
             CHECKPNT_DIR="${OUTPUT_DIR}/CHECKPNT"
             OUTPUT_DIR="${OUTPUT_DIR}/${BENCHMARK}"
 
@@ -668,7 +664,7 @@ if [ "$DIRRUN" != "" ]; then
 fi
 
 
-  if [ "$ANALYSIS" != "" ]; then
+if [ "$ANALYSIS" != "" ]; then
     #OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
     for DMT in ${DMT_Config[@]}; do
        for NUMCPUS in ${NUM_CPU_SET[@]}; do
@@ -678,8 +674,8 @@ fi
                     for LINKWIDTH in ${LINKWIDTH_SET[@]}; do
 
 
-            OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}"
-            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_MEM${NUM_MEM}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}_NUMLOAD${NUM_LOAD}" 
+            OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}_BUFSZ${BUFFER_SIZE}"
+            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_LLCREPL${LLC_REPL}_DCT${DCT}_MEM${NUM_MEM}_MEMLOC${NUM_DDR_XP}Side${NUM_DDR_Side}_INTERLV${MultiCoreAddrMode}_SEQTBE${SEQ_TBE}_HNFTBE${HNF_TBE}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}" 
  
 
       #grep -rwI -e 'system\.cpu0' $OUTPUT_DIR/debug.trace > $OUTPUT_DIR/debug.cpu0.trace
@@ -711,14 +707,14 @@ fi
  done
 fi
 
-  if [ "$STATS" != "" ]; then 
+if [ "$STATS" != "" ]; then 
     OUTPUT_ROOT="$FS_ROOT"
     # to print output dir, add --print-dir. By default no print.
     # python3 stats_parser_fs.py --root-dir ${OUTPUT_ROOT} --print-dir
     python3 stats_parser_fs.py --root-dir ${OUTPUT_ROOT}
 fi
 
-   if [ "$GRAPH" != "" ]; then
+if [ "$GRAPH" != "" ]; then
      #OUTPUT_ROOT="${WORKSPACE}/04_gem5dump/HAS0.5_4x4_BW"
      echo "GRAPH"
 
@@ -749,8 +745,8 @@ fi
             for RESTORE_CPU in ${RESTORE_CPU_SET[@]}; do
 
             OUTPUT_ROOT="$FS_ROOT/PHYVNET${PHYVNET}_DDRLocDMT"
-            OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}"
-            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}_MEM${NUM_MEM}_MEMLOC${NUM_DDR_XP}Side${NUM_DDR_Side}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}" 
+            OUTPUT_PREFIX="NETWORK${NETWORK}_LW${LINKWIDTH}_LL${LINK_LAT}_RL${ROUTER_LAT}_VC${VC_PER_VNET}_BUFSZ${BUFFER_SIZE}"
+            OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_LLCREPL${LLC_REPL}_DCT${DCT}_MEM${NUM_MEM}_MEMLOC${NUM_DDR_XP}Side${NUM_DDR_Side}_INTERLV${MultiCoreAddrMode}_SEQTBE${SEQ_TBE}_HNFTBE${HNF_TBE}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}" 
             OUTPUT_DIR="${OUTPUT_DIR}/${BENCHMARK}"
  
            # grep -E "^[[:space:]]+[0-9]+: system\.ruby\.network\.int_links[0-9]+\.buffers[0-9]+" ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/link.log
