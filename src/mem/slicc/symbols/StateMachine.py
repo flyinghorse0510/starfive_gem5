@@ -1096,7 +1096,7 @@ $c_ident::recordCacheTrace(int cntrl, CacheRecorder* tr)
 void
 $c_ident::${{action.ident}}(${{self.TBEType.c_ident}}*& m_tbe_ptr, ${{self.EntryType.c_ident}}*& m_cache_entry_ptr, Addr addr)
 {
-    DPRINTF(RubyGenerated, "executing ${{action.ident}}\\n");
+    DPRINTF(RubyGenerated, "addr: %#x, executing ${{action.ident}}\\n", addr);
     try {
        ${{action["c_code"]}}
     } catch (const RejectException & e) {
@@ -1117,7 +1117,7 @@ $c_ident::${{action.ident}}(${{self.TBEType.c_ident}}*& m_tbe_ptr, ${{self.Entry
 void
 $c_ident::${{action.ident}}(${{self.TBEType.c_ident}}*& m_tbe_ptr, Addr addr)
 {
-    DPRINTF(RubyGenerated, "executing ${{action.ident}}\\n");
+    DPRINTF(RubyGenerated, "addr: %#x, executing ${{action.ident}}\\n", addr);
     ${{action["c_code"]}}
 }
 
@@ -1132,7 +1132,7 @@ $c_ident::${{action.ident}}(${{self.TBEType.c_ident}}*& m_tbe_ptr, Addr addr)
 void
 $c_ident::${{action.ident}}(${{self.EntryType.c_ident}}*& m_cache_entry_ptr, Addr addr)
 {
-    DPRINTF(RubyGenerated, "executing ${{action.ident}}\\n");
+    DPRINTF(RubyGenerated, "addr: %#x, executing ${{action.ident}}\\n", addr);
     ${{action["c_code"]}}
 }
 
@@ -1147,7 +1147,7 @@ $c_ident::${{action.ident}}(${{self.EntryType.c_ident}}*& m_cache_entry_ptr, Add
 void
 $c_ident::${{action.ident}}(Addr addr)
 {
-    DPRINTF(RubyGenerated, "executing ${{action.ident}}\\n");
+    DPRINTF(RubyGenerated, "addr: %#x, executing ${{action.ident}}\\n", addr);
     ${{action["c_code"]}}
 }
 
@@ -1445,8 +1445,8 @@ TransitionResult result =
         code('''
 
 if (result == TransitionResult_Valid) {
-    DPRINTF(RubyGenerated, "next_state: %s\\n",
-            ${ident}_State_to_string(next_state));
+    DPRINTF(RubyGenerated, "addr: %#x, next_state: %s\\n",
+            addr, ${ident}_State_to_string(next_state));
     countTransition(state, event);
 
     DPRINTFR(ProtocolTrace, "%15d %3s %10s%20s %6s>%-6s %#x %s\\n",
@@ -1480,7 +1480,7 @@ if (result == TransitionResult_Valid) {
              ${ident}_State_to_string(next_state),
              printAddress(addr), "Resource Stall");
 } else if (result == TransitionResult_ProtocolStall) {
-    DPRINTF(RubyGenerated, "stalling\\n");
+    DPRINTF(RubyGenerated, "addr: %#x, stalling\\n",addr);
     DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %#x %s\\n",
              curTick(), m_version, "${ident}",
              ${ident}_Event_to_string(event),
