@@ -34,22 +34,26 @@ WORKSPACE="$(pwd)/output"
 GEM5_DIR=$(pwd)
 ISA="ARM"
 CCPROT="CHI"
+BUILD_DIR="build/${ISA}_${CCPROT}_AFFINITY"
 CHECKPNT_IDX="1"
 CHECKPNT_CPU="NonCachingSimpleCPU"  # NonCachingSimpleCPU
 RESTORE_CPU_SET=("O3CPU")  # AtomicSimpleCPU, TimingSimpleCPU
 
 CHECKPNT_SCRIPT="${GEM5_DIR}/configs/boot/hack_back_ckpt.rcS"
 PARSEC_SCRIPT_DIR="/home/zhiang.li/arm/m5_path/parsec_scripts"
-DISK_IMG="expanded-ubuntu-18.04-arm64-docker.img"
+
+## thread affinity or not
+# DISK_IMG="expanded-ubuntu-18.04-arm64-docker.img"
+DISK_IMG="expanded-ubuntu-18.04-arm64-docker-affinity.img"
 
 BENCHMARK_NAMES=("blackscholes" "canneal" "facesim" "ferret" "fluidanimate" "freqmine" "streamcluster" "swaptions")
 # BENCHMARK_NAMES=("facesim")
 
-# BENCHMARK_NAMES=("splash2x.barnes" "splash2x.cholesky" "splash2x.fft" "splash2x.fmm" "splash2x.lu_cb"
-#       "splash2x.lu_ncb" "splash2x.ocean_cp" "splash2x.ocean_ncp" "splash2x.radiosity" "splash2x.radix"
-#       "splash2x.raytrace" "splash2x.water_nsquared" "splash2x.water_spatial")
+# splash2x is also supported
+# BENCHMARK_NAMES=("splash2x.fft" "splash2x.lu_cb" "splash2x.lu_ncb" "splash2x.ocean_cp" "splash2x.ocean_ncp"
+#       "splash2x.water_nsquared" "splash2x.water_spatial")
 
-BENCHMARK_SIZE="simsmall" # simmedium
+BENCHMARK_SIZES=("simsmall") # simmedium
 
 buildType="gem5.opt"
 
@@ -250,7 +254,9 @@ l3_assoc=16
 NUM_LLC=16
 NETWORK="simple" #"garnet" #"simple"
 
+NUM_CPU_SET=(16) # = #2 #4 #16
 DMT_Config=(True False)
+DCT_CONFIGS=(True False)
 NUM_CPU_SET=(16) # = #2 #4 #16
 NUM_MEM=1
 TRANS_SET=(4)
@@ -258,10 +264,7 @@ SNF_TBE_SET=(32)
 HNF_TBE=32
 fi
 
-DMT_Config=(True False) #(True False)
 
-NUM_CPU_SET=(16) # = #2 #4 #16
-DCT_CONFIGS=(True False)
 
 #Memory Retry Test
 NUM_MEM_SET=(2)
@@ -295,15 +298,15 @@ DEBUG_FLAGS=PseudoInst
 
 SNPFILTER_ENTRIES=16384 # covfactor*(512KiB*NUMCPUS)/(NUM_LLC*64B)=2*(512Ki)/64
 SNPFILTER_ASSOC=8
-FS_ROOT="${WORKSPACE}/GEM5_ARM_FS_SNPFILTER/COVFACTOR_2"
+FS_ROOT="${WORKSPACE}/GEM5_ARM_FS_SNPFILTER_AFFINITY/COVFACTOR_2"
 
 # SNPFILTER_ENTRIES=8192 # covfactor*(512KiB*NUMCPUS)/(NUM_LLC*64B)=2*(512Ki)/64
 # SNPFILTER_ASSOC=8
-# FS_ROOT="${WORKSPACE}/GEM5_ARM_FS_SNPFILTER_KEEPDIR/COVFACTOR_1"
+# FS_ROOT="${WORKSPACE}/GEM5_ARM_FS_SNPFILTER_AFFINITY/COVFACTOR_1"
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"
-    scons build/${ISA}_${CCPROT}/${buildType} --default=${ISA} PROTOCOL=${CCPROT} NUMBER_BITS_PER_SET='128' -j`nproc`
+    scons ${BUILD_DIR}/${buildType} --default=${ISA} PROTOCOL=${CCPROT} NUMBER_BITS_PER_SET='128' -j`nproc`
 fi
 
 
@@ -334,7 +337,7 @@ if [ "$CHECKPNT" != "" ]; then
             OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}_DCT${DCT}_MEM${NUM_MEM}_MEMLOC${NUM_DDR_XP}Side${NUM_DDR_Side}_INTERLV${MultiCoreAddrMode}_SNFTBE${SNF_TBE}_DMT${DMT}_TRANS${TRANS}" 
             CHECKPNT_DIR="${OUTPUT_DIR}/CHECKPNT"
 
-            $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
+            $GEM5_DIR/${BUILD_DIR}/${buildType} \
             --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
               -d $CHECKPNT_DIR \
               ${GEM5_DIR}/configs/example/fs_starlink.py \
@@ -366,7 +369,7 @@ if [ "$CHECKPNT" != "" ]; then
               --kernel=$M5_PATH/binaries/vmlinux.vexpress_gem5_v1_64 \
               --bootloader=$M5_PATH/binaries/boot_emm.arm64 \
               --dtb-filename=$M5_PATH/binaries/armv8_gem5_v1_${NUMCPUS}cpu.dtb \
-              --disk-image=$M5_PATH/disks/$DISK_IMG \
+              --disk-image=$M5_PATH/disks/${DISK_IMG} \
               --param 'system.realview.gic.gem5_extensions = True' \
               --cpu-type=$CHECKPNT_CPU \
               --checkpoint-dir=$CHECKPNT_DIR \
@@ -407,9 +410,12 @@ if [ "$RESTORE" != "" ]; then
                               echo "-------- Exec_NUMMEM(${NUM_MEM})_DDRXP(${NUM_DDR_XP}_DDRSide${NUM_DDR_Side}) ----------------"
 
             n=${#BENCHMARK_NAMES[@]}
+            m=${#BENCHMARK_SIZES[@]}
             for ((i=0;i<$n;i++)); do
-              BENCHMARK_SET[$i]="${BENCHMARK_NAMES[$i]}_${BENCHMARK_SIZE}_${NUMCPUS}"
-              echo "Running BENCHMARK ${BENCHMARK_SET[$i]}"
+              for ((j=0;j<$m;j++)); do
+                BENCHMARK_SET[${#BENCHMARK_SET[@]}]="${BENCHMARK_NAMES[$i]}_${BENCHMARK_SIZES[$j]}_${NUMCPUS}"
+                echo "Running BENCHMARK:${BENCHMARK_SET[${#BENCHMARK_SET[@]}-1]}"
+              done
             done
 
             for BENCHMARK in ${BENCHMARK_SET[@]}; do
@@ -425,7 +431,7 @@ if [ "$RESTORE" != "" ]; then
             echo "PROGRESS CHECKING: ${OUTPUT_DIR}/progress.log"
             set > "${OUTPUT_DIR}/variables.txt"
 
-            $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
+            $GEM5_DIR/${BUILD_DIR}/${buildType} \
             --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
               -d $OUTPUT_DIR \
               ${GEM5_DIR}/configs/example/fs_starlink.py \
@@ -471,7 +477,7 @@ if [ "$RESTORE" != "" ]; then
               --kernel=$M5_PATH/binaries/vmlinux.vexpress_gem5_v1_64 \
               --bootloader=$M5_PATH/binaries/boot_emm.arm64 \
               --dtb-filename=$M5_PATH/binaries/armv8_gem5_v1_${NUMCPUS}cpu.dtb \
-              --disk-image=$M5_PATH/disks/$DISK_IMG \
+              --disk-image=$M5_PATH/disks/${DISK_IMG} \
               --param 'system.realview.gic.gem5_extensions = True' \
               --checkpoint-dir ${CHECKPNT_DIR} \
               --script=${PARSEC_SCRIPT_DIR}/$BENCHMARK.rcS > "${OUTPUT_DIR}/progress.log" 2>&1 &
@@ -531,7 +537,7 @@ if [ "$DIRRUN" != "" ]; then
             echo "PROGRESS CHECKING: ${OUTPUT_DIR}/progress.log"
             set > "${OUTPUT_DIR}/variables.txt"
             
-            $GEM5_DIR/build/${ISA}_${CCPROT}/${buildType} \
+            $GEM5_DIR/${BUILD_DIR}/${buildType} \
               -d $OUTPUT_DIR \
               --debug-flags=$DEBUG_FLAGS --debug-file=debug.trace \
               ${GEM5_DIR}/configs/example/fs_starlink.py \
@@ -575,7 +581,7 @@ if [ "$DIRRUN" != "" ]; then
               --kernel=$M5_PATH/binaries/vmlinux.vexpress_gem5_v1_64 \
               --bootloader=$M5_PATH/binaries/boot_emm.arm64 \
               --dtb-filename=$M5_PATH/binaries/armv8_gem5_v1_${NUMCPUS}cpu.dtb \
-              --disk-image=$M5_PATH/disks/$DISK_IMG \
+              --disk-image=$M5_PATH/disks/${DISK_IMG} \
               --param 'system.realview.gic.gem5_extensions = True' \
               --script=${PARSEC_SCRIPT_DIR}/$BENCHMARK.rcS > "${OUTPUT_DIR}/progress.log" 2>&1 &
 
