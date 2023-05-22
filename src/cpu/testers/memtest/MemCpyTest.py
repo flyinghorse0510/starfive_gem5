@@ -41,17 +41,16 @@ from m5.proxy import *
 
 from m5.objects.ClockedObject import ClockedObject
 
-class Seq2MemTest(ClockedObject):
-    type = 'Seq2MemTest'
-    cxx_header = "cpu/testers/memtest/seq2memtest.hh"
-    cxx_class = 'gem5::Seq2MemTest'
+class MemCpyTest(ClockedObject):
+    type = 'MemCpyTest'
+    cxx_header = "cpu/testers/memtest/memcpytest.hh"
+    cxx_class = 'gem5::MemCpyTest'
 
     # Interval of packet injection, the size of the memory range
     # touched, and an optional stop condition
     interval = Param.Cycles(1, "Interval between request packets")
-    size = Param.Unsigned(4194304, "Size of memory region to use (bytes)")
-    base_addr_1 = Param.Addr(0x0, "Start of the first testing region")
-    base_addr_2 = Param.Addr(0x0, "Start of the second testing region. Optional here")
+    base_addr_1 = Param.Addr(0x0, "Addr region for reading")
+    base_addr_2 = Param.Addr(0x0, "Addr region for writing")
     
     mod_stream_triad = Param.Bool(False, "Generate Stream TRIAD like Mem requestes. 2 independent loads, 1 dependent stores")
     
@@ -65,7 +64,7 @@ class Seq2MemTest(ClockedObject):
     id_producers = VectorParam.Int([], '[Not Used Here] List of Producer Ids')
     id_consumers = VectorParam.Int([], '[Not Used Here] List of Consumer Ids')
     num_peer_producers = Param.Counter(1, "[Not Used Here] Number of independent peer producers. Use to partition the working set")
-    outstanding_req = Param.Int(1,"[Not Used Here] Number of outstanding requests. Set 1 if you want to measure latency or to a very large value if you want measure bw")
+    outstanding_req = Param.Int(1,"Number of outstanding requests. Set 1 if you want to measure latency or to a very large value if you want measure bw")
     id_starter = Param.Int(0,'[Not Used Here] Start CPU id of Migratory pattern. [Unused] here')
     block_stride_bits = Param.Int(0,'Block address bits. stride=2^(block_stride_bits)')
     randomize_acc = Param.Bool(False,'[True] pseudo-randomize access patterns')

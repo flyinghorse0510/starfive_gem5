@@ -98,6 +98,8 @@ parser.add_argument('--block-stride-bits',default=0,type=int,help='Block address
 parser.add_argument('--randomize-acc',default=False,type=ast.literal_eval,help=f'Randomize access patters')
 parser.add_argument('--chi-data-width',default=16,type=int,help=f'CHI Controller data width (in bytes)')
 parser.add_argument('--ratio-read-write',type=str, default='1-1', help=f'Read write ratio')
+parser.add_argument('--base_addr_1',type=int, default=0, help=f'First address region')
+parser.add_argument('--base_addr_2',type=int, default=524288, help=f'Second address region')
 
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]
@@ -133,6 +135,8 @@ elif args.mem_test_type=='migratory_test':
     MemTestClass=MigratoryMemTest
 elif args.mem_test_type=='true_prod_cons':
     MemTestClass=TrueProdConsMemTest
+elif args.mem_test_type=='memcpy_test':
+    MemTestClass=MemCpyTest
 else:
     raise ValueError(f'MemTest type undefined')
 
@@ -212,6 +216,8 @@ if num_cpus > 0 :
                      block_stride_bits = args.block_stride_bits,
                      randomize_acc = args.randomize_acc,
                      percent_reads = percent_read,
+                     base_addr_1=args.base_addr_1,
+                     base_addr_2=args.base_addr_2,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
 
