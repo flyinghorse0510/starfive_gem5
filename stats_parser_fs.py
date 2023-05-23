@@ -29,6 +29,7 @@ logging.addLevelName(LOG_MSG, 'MSG')
 # sim_tick's pattern & clk_domain's pattern
 sim_tick_pat = re.compile('^simTicks\s+(\d+)')
 clk_domain_pat = re.compile('^system\.cpu_clk_domain\.clock\s+(\d+)')
+sim_freq_pat = re.compile('^simFreq\s+(\d+)')
 
 # llc_demand's pattern
 # three groups we need : 1) hnf's id 2) hit/miss/access 3) num of hit/miss/access
@@ -171,14 +172,21 @@ class DDR(Printable):
         self.write = write
 
 class CLK(Printable):
-    def __init__(self, sim_tick=0, clk_domain=0):
+    def __init__(self, sim_tick=0, clk_domain=0, sim_freq=0):
         self.sim_tick = sim_tick
         self.clk_domain = clk_domain
+        self.sim_freq = sim_freq
+    
+    @classmethod
+    def sim_second(cls, clk_df:pd.DataFrame):
+        clk_df['sim_second'] = clk_df['sim_tick']/clk_df['sim_freq']
+        return clk_df
 
 # parse one line each time
 def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], snps:List[SNP], ddrs:List[DDR], l1ds:List[L1D], l1is:List[L1I], l2ps:List[L2P]):
     sim_tick_sch = re.search(sim_tick_pat, line)
     clk_domain_sch = re.search(clk_domain_pat, line)
+    sim_freq_sch = re.search(sim_freq_pat, line)
     llc_demand_sch = re.search(llc_demand_pat, line)
     l2p_txn_sch = re.search(l2p_txn_pat, line)
     llc_txn_sch = re.search(llc_txn_pat, line)
@@ -199,6 +207,9 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], s
     
     elif clk_domain_sch:
         clk.clk_domain = int(clk_domain_sch.group(1))
+
+    elif sim_freq_sch:
+        clk.sim_freq = int(sim_freq_sch.group(1))
     
     elif llc_demand_sch:
         llc_id = 0 if len(llcs) == 1 else int(llc_demand_sch.group(1))
@@ -490,6 +501,9 @@ def parse_stats_file(args:argparse.Namespace):
     # snoop filter
     df_dict['snp'] = SNP.cache_miss_rate(df_dict['snp'])
 
+    # clk
+    df_dict['clk'] = CLK.sim_second(df_dict['clk'])
+
     logging.debug(f'DataFrames:\ncpu:\n{df_dict["cpu"]}\nl1d:\n{df_dict["l1d"]}\nl1i:\n{df_dict["l1i"]}\nl2p:\n{df_dict["l2p"]}\nllc:\n{df_dict["llc"]}')
 
     [df.to_csv(f'{args.OUTPUT_DIR}/{name}.csv') for name, df in df_dict.items()]
@@ -503,6 +517,7 @@ def parse_stats_file(args:argparse.Namespace):
     # aggregate stats together
     agg_df = pd.DataFrame({
         'benchmark':[args.BENCHMARK],
+        'sim_second':[clk.sim_tick/clk.sim_freq],
         '#cpu':[args.NUMCPUS],
         '#llc':[args.NUM_LLC],
         '#mem':[args.NUM_MEM],
