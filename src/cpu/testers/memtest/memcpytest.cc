@@ -304,7 +304,6 @@ MemCpyTest::tick()
     bool readOrWrite = false;
     if (readRespRecvQueue.size() > 0) {
         auto memLoc = readRespRecvQueue.front();
-        DPRINTF(SeqMemLatTest,"%s\n",memLoc->getStr());
         assert(memLoc->getState() == MemCpyAddrState::READ_RESP_RECVD);
         pBaseAddr = memLoc->getAddr();
         assert(transientAddrMap.count(pBaseAddr) > 0);
