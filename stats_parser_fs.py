@@ -421,7 +421,15 @@ def variable_file_parser(args:argparse.Namespace, variable_file_path):
         'LLC_REPL':str
     }
 
-    var_dict = {key:ops(all_var_dict.get(key)) for key,ops in var_list.items()}
+    var_dict = dict()
+    for key,ops in var_list.items():
+        # logging.info(f'key={key}, value={all_var_dict.get(key)}, ops={ops}')    
+        try:
+            var_dict[key]=ops(all_var_dict.get(key))
+        except:
+            pass
+    # {key:ops(all_var_dict.get(key)) for key,ops in var_list.items()}
+
     logging.debug(f'variable_file_parser:var_dict: {var_dict}')
 
     import copy
@@ -519,7 +527,7 @@ def parse_stats_file(args:argparse.Namespace):
         'trans':[args.TRANS],
         'linkwid':[args.LINKWIDTH],
         'vc/vnet':[args.VC_PER_VNET],
-        'bufsz':[args.BUFFER_SIZE],
+        'bufsz':[args.BUFFER_SIZE] if hasattr(args, "BUFFER_SIZE") else None,
         'net':[args.NETWORK],
         'l1d_size':[args.l1d_size],
         'l3repl':[args.LLC_REPL],
