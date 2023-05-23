@@ -172,7 +172,7 @@ class DDR(Printable):
         self.write = write
 
 class CLK(Printable):
-    def __init__(self, sim_tick=0, clk_domain=0, sim_freq=0):
+    def __init__(self, sim_tick=None, clk_domain=None, sim_freq=None):
         self.sim_tick = sim_tick
         self.clk_domain = clk_domain
         self.sim_freq = sim_freq
@@ -202,13 +202,13 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], s
     l2p_snpin_sch = re.search(l2p_snpin_pat, line)
     snp_ftr_sch = re.search(snp_ftr_pat, line)
 
-    if sim_tick_sch:
+    if clk.sim_tick==None and sim_tick_sch:
         clk.sim_tick = int(sim_tick_sch.group(1))
     
-    elif clk_domain_sch:
+    elif clk.clk_domain==None and clk_domain_sch:
         clk.clk_domain = int(clk_domain_sch.group(1))
 
-    elif sim_freq_sch:
+    elif clk.sim_freq==None and sim_freq_sch:
         clk.sim_freq = int(sim_freq_sch.group(1))
     
     elif llc_demand_sch:
