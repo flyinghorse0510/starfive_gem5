@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 
 def getReadWriteStats(options):
+    gen_memcpy_bw=options.gen_memcpy_bw
     readsPat=re.compile(f'system.cpu(\d*).numReads( +)(\d+)')
     writesPat=re.compile(f'system.cpu(\d*).numWrites( +)(\d+)')
     tickPerCycPat=re.compile(f'system.clk_domain.clock( +)(\d+)')
@@ -69,6 +70,12 @@ def getReadWriteStats(options):
     assert(tickPerCyc > 0)
     cyc=simTicks/tickPerCyc
     bw=64*(numReads+numWrites)/cyc
+    ratio_read_write=-1
+    benchname=options.benchname
+    if gen_memcpy_bw :
+        bw=(64*numReads)/cyc
+    else:
+        ratio_read_write=options.ratio_read_write
     totalHNFAcc=numHNFHits+numHNFMisses
     hnfMissRate=-1
     replTbeSizeUtil=replTbeSizeUtil/(options.num_l3caches)
@@ -94,7 +101,7 @@ def getReadWriteStats(options):
             snfTBE=cfg['system']['ruby']['snf'][0]['cntrl']['number_of_TBEs']
 
     with open(options.collated_outfile,'a+') as fsw:
-        print(f'{options.working_set},{options.num_cpus},{options.num_dirs},{options.num_l3caches},{options.ratio_read_write},{options.rnf_tbe},{reqTBE},{replTBE},{options.part_TBEs},{reqTbeUtil},{replTbeSizeUtil},{hnfRetryAcks},{snfTBE},{snfSizeUtil},{snfRetryAcks},{hnfMissRate},{bw}',file=fsw)
+        print(f'{benchname},{options.working_set},{options.num_cpus},{options.num_dirs},{options.num_l3caches},{ratio_read_write},{options.rnf_tbe},{reqTBE},{replTBE},{options.part_TBEs},{reqTbeUtil},{replTbeSizeUtil},{hnfRetryAcks},{snfTBE},{snfSizeUtil},{snfRetryAcks},{hnfMissRate},{bw}',file=fsw)
 
 def main():
     parser = argparse.ArgumentParser(description='')
@@ -111,6 +118,9 @@ def main():
     parser.add_argument('--chi-data-width',default=16,type=int,help=f'DAT channel width of CHI cache controllers. Same for all controllers')
     parser.add_argument('--buffer-size',default=4,type=int,help=f'Network buffer size')
     parser.add_argument('--ratio-read-write',type=str, default='1-1', help=f'Read write ratio')
+    parser.add_argument('--gen-memcpy-bw',action='store_true',help=f'Generate memcpy bandwidth')
+    parser.add_argument('--num-iters',default=10,type=int,help=f'Number of iterations')
+    parser.add_argument('--benchname',required=True,type=str,help=f'Benchmark name')
     options=parser.parse_args()
     getReadWriteStats(options)
 
