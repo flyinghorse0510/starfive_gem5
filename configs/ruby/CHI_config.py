@@ -50,31 +50,7 @@ import math
 import m5
 from m5.objects import *
 
-##from m5.util import addToPath
-##
-##import os, argparse, sys
 from common import Options
-##from ruby import Ruby
-##
-##addToPath('../')
-##from common.FileSystemConfig import config_filesystem
-##
-##
-##config_path = os.path.dirname(os.path.abspath(__file__))
-##config_root = os.path.dirname(config_path)
-##
-##parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-##
-##parser.add_argument("--enable-DMT",default=True, help="Enable DMT")
-##Options.addNoISAOptions(parser)
-##
-###
-### Add the ruby specific and protocol specific options
-###
-##Ruby.define_options(parser)
-##args = parser.parse_args()
-
-
 
 class Versions:
     '''
@@ -160,19 +136,19 @@ class CHI_Node(SubSystem):
         for c in self.getNetworkSideControllers():
             c.downstream_destinations = cntrls
 
-    def connectController(self, cntrl):
+    def connectController(self, options, cntrl):
         '''
-        Creates and configures the messages buffers for the CHI input/output
-        ports that connect to the network
+            Creates and configures the messages buffers for the CHI input/output
+            ports that connect to the network
         '''
-        cntrl.reqOut = MessageBuffer()
-        cntrl.rspOut = MessageBuffer()
-        cntrl.snpOut = MessageBuffer()
-        cntrl.datOut = MessageBuffer()
-        cntrl.reqIn = MessageBuffer()
-        cntrl.rspIn = MessageBuffer()
-        cntrl.snpIn = MessageBuffer()
-        cntrl.datIn = MessageBuffer()
+        cntrl.reqOut = MessageBuffer(buffer_size=options.chi_buffer_depth,max_dequeue_rate=options.chi_buffer_max_deq_rate)
+        cntrl.rspOut = MessageBuffer(buffer_size=options.chi_buffer_depth,max_dequeue_rate=options.chi_buffer_max_deq_rate)
+        cntrl.snpOut = MessageBuffer(buffer_size=options.chi_buffer_depth,max_dequeue_rate=options.chi_buffer_max_deq_rate)
+        cntrl.datOut = MessageBuffer(buffer_size=options.chi_buffer_depth,max_dequeue_rate=options.chi_buffer_max_deq_rate)
+        cntrl.reqIn = MessageBuffer(buffer_size=options.chi_buffer_depth,max_dequeue_rate=options.chi_buffer_max_deq_rate)
+        cntrl.rspIn = MessageBuffer(buffer_size=options.chi_buffer_depth,max_dequeue_rate=options.chi_buffer_max_deq_rate)
+        cntrl.snpIn = MessageBuffer(buffer_size=options.chi_buffer_depth,max_dequeue_rate=options.chi_buffer_max_deq_rate)
+        cntrl.datIn = MessageBuffer(buffer_size=options.chi_buffer_depth,max_dequeue_rate=options.chi_buffer_max_deq_rate)
 
         # All CHI ports are always connected to the network.
         # Controllers that are not part of the getNetworkSideControllers list
@@ -520,12 +496,12 @@ class CHI_RNF(CHI_Node):
             cpu.inst_sequencer.dcache = NULL
             cpu.data_sequencer.dcache = cpu.l1d.cache
 
-            cpu.l1d.sc_lock_enabled = True 
+            cpu.l1d.sc_lock_enabled = True
 
             cpu._ll_cntrls = [cpu.l1i, cpu.l1d]
             for c in cpu._ll_cntrls:
                 self._cntrls.append(c)
-                self.connectController(c)
+                self.connectController(options, c)
                 self._ll_cntrls.append(c)
 
     def getSequencers(self):
@@ -557,7 +533,7 @@ class CHI_RNF(CHI_Node):
             cpu.l2 = CHI_L2Controller(options, self._ruby_system, l2_cache, l2_pf)
 
             self._cntrls.append(cpu.l2)
-            self.connectController(cpu.l2)
+            self.connectController(options, cpu.l2)
 
             self._ll_cntrls.append(cpu.l2)
 
@@ -617,7 +593,7 @@ class CHI_HNF(CHI_Node):
 
     # The CHI controller can be a child of this object or another if
     # 'parent' if specified
-    def __init__(self,options, hnf_idx, ruby_system, llcache_type, snoopfilter_type, parent):
+    def __init__(self, options, hnf_idx, ruby_system, llcache_type, snoopfilter_type, parent):
         super(CHI_HNF, self).__init__(ruby_system)
 
         addr_ranges,intlvHighBit = self.getAddrRanges(hnf_idx)
@@ -633,7 +609,7 @@ class CHI_HNF(CHI_Node):
         else:
             parent.cntrl = self._cntrl
 
-        self.connectController(self._cntrl)
+        self.connectController(options, self._cntrl)
 
     def getAllControllers(self):
         return [self._cntrl]
@@ -653,7 +629,7 @@ class CHI_MN(CHI_Node):
 
     # The CHI controller can be a child of this object or another if
     # 'parent' if specified
-    def __init__(self, ruby_system, l1d_caches, early_nonsync_comp=False):
+    def __init__(self, options, ruby_system, l1d_caches, early_nonsync_comp=False):
         super(CHI_MN, self).__init__(ruby_system)
 
         # MiscNode has internal address range starting at 0
@@ -664,10 +640,10 @@ class CHI_MN(CHI_Node):
 
         self.cntrl = self._cntrl
 
-        self.connectController(self._cntrl)
+        self.connectController(options, self._cntrl)
 
-    def connectController(self, cntrl):
-        CHI_Node.connectController(self, cntrl)
+    def connectController(self, options, cntrl):
+        CHI_Node.connectController(self, options, cntrl)
 
     def getAllControllers(self):
         return [self._cntrl]
@@ -694,7 +670,7 @@ class CHI_SNF_Base(CHI_Node):
                           reqRdy = TriggerMessageBuffer(),
                           number_of_TBEs=options.num_SNF_TBE)
 
-        self.connectController(self._cntrl)
+        self.connectController(options,self._cntrl)
 
         if parent:
             parent.cntrl = self._cntrl
@@ -744,7 +720,7 @@ class CHI_RNI_Base(CHI_Node):
 
     # The CHI controller can be a child of this object or another if
     # 'parent' if specified
-    def __init__(self, ruby_system, parent):
+    def __init__(self, options, ruby_system, parent):
         super(CHI_RNI_Base, self).__init__(ruby_system)
 
         self._sequencer = RubySequencer(version = Versions.getSeqId(),
@@ -757,7 +733,7 @@ class CHI_RNI_Base(CHI_Node):
         else:
             self.cntrl = self._cntrl
 
-        self.connectController(self._cntrl)
+        self.connectController(options, self._cntrl)
 
     def getAllControllers(self):
         return [self._cntrl]
@@ -770,8 +746,8 @@ class CHI_RNI_DMA(CHI_RNI_Base):
     DMA controller wiredup to a given dma port
     '''
 
-    def __init__(self, ruby_system, dma_port, parent):
-        super(CHI_RNI_DMA, self).__init__(ruby_system, parent)
+    def __init__(self, options, ruby_system, dma_port, parent):
+        super(CHI_RNI_DMA, self).__init__(options, ruby_system, parent)
         assert(dma_port != None)
         self._sequencer.in_ports = dma_port
 
@@ -780,6 +756,6 @@ class CHI_RNI_IO(CHI_RNI_Base):
     DMA controller wiredup to ruby_system IO port
     '''
 
-    def __init__(self, ruby_system, parent):
-        super(CHI_RNI_IO, self).__init__(ruby_system, parent)
+    def __init__(self, options, ruby_system, parent):
+        super(CHI_RNI_IO, self).__init__(options, ruby_system, parent)
         ruby_system._io_port = self._sequencer

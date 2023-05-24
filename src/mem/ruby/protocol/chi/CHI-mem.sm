@@ -707,7 +707,6 @@ machine(MachineType:Memory, "Memory controller interface") :
 
   action(sendRetryAck, desc="") {
     peek(triggerInPort, TriggerMsg) {
-//      DPRINTF(RubyTxnTrace, "MemRetry: seqn %#018x\n", tbe.txSeqNum);
       DPRINTF(RubyTxnTrace, "MemRetry: \n");
  
       enqueue(rspOutPort, CHIResponseMsg, response_latency) {
