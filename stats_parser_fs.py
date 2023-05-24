@@ -44,7 +44,7 @@ priv_cache_demand_pat = re.compile('^system\.cpu(\d*)\.(\w*)\.cache\.m_demand_([
 
 # ddr's pattern
 # groupes we need: 1) mem_ctrls's id 2) write/read 3) num of read/write requests
-ddr_pat = re.compile('system\.mem_ctrls(\d*)\.([a-z]+)Reqs\s+(\d+)')
+ddr_pat = re.compile('^system\.mem_ctrls(\d*)\.([a-z]+)Reqs\s+(\d+)')
 
 # cpu's pattern
 # groups we need: 1) cpu's id 2) load/store 3) num of load/store requests
@@ -52,6 +52,7 @@ cpu_inst_pat = re.compile('^system\.cpu(\d*)\.exec_context\.thread_0\.num(Load|S
 cpu_o3inst_pat = re.compile('^system\.cpu(\d*)\.committedInsts\s+(\d+)')
 cpu_o3mem_pat = re.compile('^system\.cpu(\d*)\.commit\.(loads|memRefs)\s+(\d+)')
 cpu_cycle_pat = re.compile('^system\.cpu(\d*)\.numCycles\s+(\d+)')
+cpu_qscyc_pat = re.compile('^system\.cpu(\d*)\.quiesceCycles\s+(\d+)')
 
 ## sequencer's pattern
 ## TODO: Current stats taken from two parts. 
@@ -78,12 +79,13 @@ class CPU(Printable):
     # CPU type
     typ = None
 
-    def __init__(self,id=0,read=0,write=0,inst=0, cycle=0):
+    def __init__(self,id=0,read=0,write=0,inst=0, cycle=0, qscyc=0):
         self.id = id
         self.read = read
         self.write = write
         self.inst = inst
         self.cycle = cycle
+        self.qscyc = qscyc
 
     @classmethod
     def cpu_ipc(cls, cpu_df:pd.DataFrame):
@@ -195,6 +197,7 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], s
     cpu_o3inst_sch = re.search(cpu_o3inst_pat, line) if CPU.typ == 'O3CPU' else None
     cpu_o3mem_sch = re.search(cpu_o3mem_pat, line) if CPU.typ == 'O3CPU' else None
     cpu_cycle_sch = re.search(cpu_cycle_pat, line)
+    cpu_qscyc_sch = re.search(cpu_qscyc_pat, line) if CPU.typ == 'O3CPU' else None
     priv_cache_sch = re.search(priv_cache_demand_pat, line)
     seq_lat_cpu_sch = re.search(seq_lat_cpu_pat, line)
     seq_lat_all_sch = re.search(seq_lat_all_pat, line)
@@ -320,6 +323,10 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], s
     elif cpu_cycle_sch:
         cpu_id = 0 if len(cpus) == 1 else int(cpu_cycle_sch.group(1))
         cpus[cpu_id].cycle = int(cpu_cycle_sch.group(2))
+
+    elif cpu_qscyc_sch:
+        cpu_id = 0 if len(cpus) == 1 else int(cpu_qscyc_sch.group(1))
+        cpus[cpu_id].qscyc = int(cpu_qscyc_sch.group(2))
 
     elif seq_lat_cpu_sch:
         seq_id = 0 if len(seqs) == 1 else int(seq_lat_cpu_sch.group(1))
@@ -550,6 +557,7 @@ def parse_stats_file(args:argparse.Namespace):
         'l2_size':[args.l2_size],
         'l3_size':[args.l3_size],
         'cpu_ipc':[df_dict['cpu'].loc['Total','ipc']],
+        'cpu_qscyc':[df_dict['cpu'].loc['Total','qscyc']],
         'ld_lat':SEQ.ld_lat,
         'st_lat':SEQ.st_lat,
         # 'll_lat':SEQ.ll_lat,
