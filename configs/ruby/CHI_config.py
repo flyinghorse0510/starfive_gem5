@@ -185,12 +185,12 @@ class CHI_Cache_Controller(Cache_Controller):
     a pure directory if all cache allocation policies are disabled.
     '''
 
-    def __init__(self, ruby_system):
+    def __init__(self, options, ruby_system):
         super(CHI_Cache_Controller, self).__init__(
             version = Versions.getVersion(Cache_Controller),
             ruby_system = ruby_system,
-            mandatoryQueue = MessageBuffer(),
-            prefetchQueue = MessageBuffer(),
+            mandatoryQueue = MessageBuffer(buffer_size=options.chi_buffer_depth,max_dequeue_rate=options.chi_buffer_max_deq_rate),
+            prefetchQueue = MessageBuffer(buffer_size=options.chi_buffer_depth,max_dequeue_rate=options.chi_buffer_max_deq_rate),
             triggerQueue = TriggerMessageBuffer(),
             retryTriggerQueue = OrderedTriggerMessageBuffer(),
             replTriggerQueue = OrderedTriggerMessageBuffer(),
@@ -212,7 +212,7 @@ class CHI_L1Controller(CHI_Cache_Controller):
     '''
 
     def __init__(self, options, ruby_system, sequencer, cache, prefetcher):  #modification
-        super(CHI_L1Controller, self).__init__(ruby_system)
+        super(CHI_L1Controller, self).__init__(options, ruby_system)
         self.sequencer = sequencer
         self.cache = cache
         self.directory = CHI_IdealSnoopFilter()
@@ -247,7 +247,7 @@ class CHI_L2Controller(CHI_Cache_Controller):
     '''
 
     def __init__(self, options, ruby_system, cache, prefetcher):         #New modification
-        super(CHI_L2Controller, self).__init__(ruby_system)
+        super(CHI_L2Controller, self).__init__(options, ruby_system)
         self.sequencer = NULL
         self.cache = cache
         self.directory = CHI_IdealSnoopFilter()
@@ -287,7 +287,7 @@ class CHI_HNFController(CHI_Cache_Controller):
                        real_snoopfilter, \
                        prefetcher, \
                        addr_ranges):
-        super(CHI_HNFController, self).__init__(ruby_system)
+        super(CHI_HNFController, self).__init__(options, ruby_system)
         self.sequencer = NULL
         self.cache = cache
         self.directory = real_snoopfilter
@@ -364,8 +364,8 @@ class CHI_DMAController(CHI_Cache_Controller):
     Default parameters for a DMA controller
     '''
 
-    def __init__(self, ruby_system, sequencer):
-        super(CHI_DMAController, self).__init__(ruby_system)
+    def __init__(self, options, ruby_system, sequencer):
+        super(CHI_DMAController, self).__init__(options, ruby_system)
         self.sequencer = sequencer
         class DummyCache(RubyCache):
             dataAccessLatency = 0
@@ -668,7 +668,8 @@ class CHI_SNF_Base(CHI_Node):
                           responseFromMemory = MessageBuffer(),
                           requestToMemory = MessageBuffer(ordered = True),
                           reqRdy = TriggerMessageBuffer(),
-                          number_of_TBEs=options.num_SNF_TBE)
+                          number_of_TBEs=options.num_SNF_TBE,
+                          snf_allow_retry=options.snf_allow_retry)
 
         self.connectController(options,self._cntrl)
 
@@ -726,7 +727,7 @@ class CHI_RNI_Base(CHI_Node):
         self._sequencer = RubySequencer(version = Versions.getSeqId(),
                                          ruby_system = ruby_system,
                                          clk_domain = ruby_system.clk_domain)
-        self._cntrl = CHI_DMAController(ruby_system, self._sequencer)
+        self._cntrl = CHI_DMAController(ruby_system, options, self._sequencer)
 
         if parent:
             parent.cntrl = self._cntrl

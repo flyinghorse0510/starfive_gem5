@@ -46,6 +46,8 @@ machine(MachineType:Memory, "Memory controller interface") :
 
   int data_channel_size;
 
+  bool snf_allow_retry;
+
   // Interface to the network
   // Note vnet_type is used by Garnet only. "response" type is assumed to
   // have data, so use it for data channels and "none" for the rest.
@@ -99,6 +101,8 @@ machine(MachineType:Memory, "Memory controller interface") :
     // Checks if a request can allocate a TBE be moved to reqRdy
     CheckAllocTBE, desc="";
     CheckAllocTBE_WithCredit, desc="";
+    
+    CheckAllocTBE_NoRetry, desc="If retry from SNF is disabled";
 
     // Requests
     WriteNoSnpPtl, desc="";
@@ -430,13 +434,17 @@ machine(MachineType:Memory, "Memory controller interface") :
     if (reqInPort.isReady(clockEdge())) {
       printResources();
       peek(reqInPort, CHIRequestMsg) {
-        if (in_msg.allowRetry) {
-          trigger(Event:CheckAllocTBE, in_msg.addr, TBEs[in_msg.addr]);
+        if (snf_allow_retry) {
+          if (in_msg.allowRetry) {
+            trigger(Event:CheckAllocTBE, in_msg.addr, TBEs[in_msg.addr]);
+          } else {
+            // Only expected requests that do not allow retry are the ones that
+            // are being retried after receiving credit
+            trigger(Event:CheckAllocTBE_WithCredit,
+                    in_msg.addr, TBEs[in_msg.addr]);
+          }
         } else {
-          // Only expected requests that do not allow retry are the ones that
-          // are being retried after receiving credit
-          trigger(Event:CheckAllocTBE_WithCredit,
-                  in_msg.addr, TBEs[in_msg.addr]);
+          trigger(Event:CheckAllocTBE_NoRetry, in_msg.addr, TBEs[in_msg.addr]);
         }
       }
     }
@@ -449,6 +457,7 @@ machine(MachineType:Memory, "Memory controller interface") :
   ////////////////////////////////////////////////////////////////////////////
 
   action(checkAllocateTBE, desc="") {
+    assert(snf_allow_retry);
     // Move to reqRdy if resources available, otherwise send retry
     if (storTBEs.areNSlotsAvailable(1)) {
       // reserve a slot for this request
@@ -474,8 +483,22 @@ machine(MachineType:Memory, "Memory controller interface") :
     reqInPort.dequeue(clockEdge());
   }
 
+  action(checkAllocateTBE_NoRetry, desc="") {
+    check_allocate(storTBEs);
+
+    storTBEs.incrementReserved();
+
+    peek(reqInPort, CHIRequestMsg) {
+      enqueue(reqRdyOutPort, CHIRequestMsg, 0) {
+        out_msg := in_msg;
+      }
+    }
+    reqInPort.dequeue(clockEdge());
+  }
+
   action(checkAllocateTBE_withCredit, desc="") {
     // We must have reserved resources for this request
+    assert(snf_allow_retry);
     peek(reqInPort, CHIRequestMsg) {
       assert(in_msg.allowRetry == false);
       enqueue(reqRdyOutPort, CHIRequestMsg, 0) {
@@ -822,6 +845,11 @@ machine(MachineType:Memory, "Memory controller interface") :
   transition({READING_MEM,WAITING_NET_DATA,SENDING_NET_DATA,READY},
               CheckAllocTBE) {
     checkAllocateTBE;
+  }
+
+   transition({READING_MEM,WAITING_NET_DATA,SENDING_NET_DATA,READY},
+              CheckAllocTBE_NoRetry) {
+    checkAllocateTBE_NoRetry;
   }
 
   transition({READING_MEM,WAITING_NET_DATA,SENDING_NET_DATA,READY},
