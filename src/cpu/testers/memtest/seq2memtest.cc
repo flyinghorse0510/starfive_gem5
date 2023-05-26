@@ -152,8 +152,6 @@ Seq2MemTest::Seq2MemTest(const Params &p)
 
     maxLoads = maxLoads * perCPUWorkingBlocks.size();
 
-    printf("*** CPU%d workingBlocks(numCacheLines) in the CPU: %d, Working set load times:%d, maxLoads:%d  \n", id, perCPUWorkingBlocks.size(),  p.max_loads, maxLoads);
-
     // set up counters
     numReadsGenerated = 0;
     numReadsCompleted = 0;
