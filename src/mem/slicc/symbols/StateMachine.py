@@ -1473,6 +1473,7 @@ if (result == TransitionResult_Valid) {
 
         code('''
 } else if (result == TransitionResult_ResourceStall) {
+    DPRINTF(RubyGenerated, "addr: %#x, Resource Stall\\n",addr);
     DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %#x %s\\n",
              curTick(), m_version, "${ident}",
              ${ident}_Event_to_string(event),
@@ -1480,7 +1481,7 @@ if (result == TransitionResult_Valid) {
              ${ident}_State_to_string(next_state),
              printAddress(addr), "Resource Stall");
 } else if (result == TransitionResult_ProtocolStall) {
-    DPRINTF(RubyGenerated, "addr: %#x, stalling\\n",addr);
+    DPRINTF(RubyGenerated, "addr: %#x, Protocol Stall\\n",addr);
     DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %#x %s\\n",
              curTick(), m_version, "${ident}",
              ${ident}_Event_to_string(event),
