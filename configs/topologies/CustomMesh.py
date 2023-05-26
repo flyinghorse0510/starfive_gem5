@@ -203,7 +203,6 @@ class CustomMesh(SimpleTopology):
 
     def _check_garnet_separate(self,options): #check if we want separate channels for garnet or not
         if(options.network=="garnet" and options.simple_physical_channels==True): 
-            print("using garnet network with separate vnet links")
             return True
         return False
 
