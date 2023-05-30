@@ -555,7 +555,7 @@ NetworkInterface::scheduleOutputPort(OutputPort *oPort)
 
                // Just removing the top flit
                flit *t_flit = niOutVcs[vc].getTopFlit();
-               t_flit->set_time(clockEdge(Cycles(1)));
+               t_flit->set_time(clockEdge(Cycles(0)));
 
                // Scheduling the flit
                scheduleFlit(t_flit);
@@ -626,10 +626,10 @@ NetworkInterface::scheduleFlit(flit *t_flit)
 
     if (oPort) {
         DPRINTF(RubyNetwork, "Scheduling at %s time:%ld flit:%s Message:%s\n",
-        oPort->outNetLink()->name(), clockEdge(Cycles(1)),
+        oPort->outNetLink()->name(), clockEdge(Cycles(0)),
         *t_flit, *(t_flit->get_msg_ptr()));
         oPort->outFlitQueue()->insert(t_flit);
-        oPort->outNetLink()->scheduleEventAbsolute(clockEdge(Cycles(1)));
+        oPort->outNetLink()->scheduleEventAbsolute(clockEdge(Cycles(0)));
         return;
     }
 

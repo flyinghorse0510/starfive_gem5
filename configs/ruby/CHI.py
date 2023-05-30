@@ -108,21 +108,21 @@ def create_system(options, full_system, system, dma_ports, bootmem,
         tagAccessLatency = 4
         size = options.l1i_size
         assoc = options.l1i_assoc
-        replacement_policy = ObjectList.rp_list.get(options.l1repl)
+        replacement_policy = ObjectList.rp_list.get(options.l1repl)()
 
     class L1DCache(RubyCache):
         dataAccessLatency = 0
         tagAccessLatency = 4
         size = options.l1d_size
         assoc = options.l1d_assoc
-        replacement_policy = ObjectList.rp_list.get(options.l1repl)
+        replacement_policy = ObjectList.rp_list.get(options.l1repl)()
 
     class L2Cache(RubyCache):
         dataAccessLatency = 12
         tagAccessLatency = 4
         size = options.l2_size
         assoc = options.l2_assoc
-        replacement_policy = ObjectList.rp_list.get(options.l2repl)
+        replacement_policy = ObjectList.rp_list.get(options.l2repl)()
 
     class HNFCache(RubyCache):
         dataAccessLatency = 20

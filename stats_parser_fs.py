@@ -29,6 +29,7 @@ logging.addLevelName(LOG_MSG, 'MSG')
 # sim_tick's pattern & clk_domain's pattern
 sim_tick_pat = re.compile('^simTicks\s+(\d+)')
 clk_domain_pat = re.compile('^system\.cpu_clk_domain\.clock\s+(\d+)')
+sim_freq_pat = re.compile('^simFreq\s+(\d+)')
 
 # llc_demand's pattern
 # three groups we need : 1) hnf's id 2) hit/miss/access 3) num of hit/miss/access
@@ -43,7 +44,7 @@ priv_cache_demand_pat = re.compile('^system\.cpu(\d*)\.(\w*)\.cache\.m_demand_([
 
 # ddr's pattern
 # groupes we need: 1) mem_ctrls's id 2) write/read 3) num of read/write requests
-ddr_pat = re.compile('system\.mem_ctrls(\d*)\.([a-z]+)Reqs\s+(\d+)')
+ddr_pat = re.compile('^system\.mem_ctrls(\d*)\.([a-z]+)Reqs\s+(\d+)')
 
 # cpu's pattern
 # groups we need: 1) cpu's id 2) load/store 3) num of load/store requests
@@ -51,6 +52,7 @@ cpu_inst_pat = re.compile('^system\.cpu(\d*)\.exec_context\.thread_0\.num(Load|S
 cpu_o3inst_pat = re.compile('^system\.cpu(\d*)\.committedInsts\s+(\d+)')
 cpu_o3mem_pat = re.compile('^system\.cpu(\d*)\.commit\.(loads|memRefs)\s+(\d+)')
 cpu_cycle_pat = re.compile('^system\.cpu(\d*)\.numCycles\s+(\d+)')
+cpu_qscyc_pat = re.compile('^system\.cpu(\d*)\.quiesceCycles\s+(\d+)')
 
 ## sequencer's pattern
 ## TODO: Current stats taken from two parts. 
@@ -77,12 +79,13 @@ class CPU(Printable):
     # CPU type
     typ = None
 
-    def __init__(self,id=0,read=0,write=0,inst=0, cycle=0):
+    def __init__(self,id=0,read=0,write=0,inst=0, cycle=0, qscyc=0):
         self.id = id
         self.read = read
         self.write = write
         self.inst = inst
         self.cycle = cycle
+        self.qscyc = qscyc
 
     @classmethod
     def cpu_ipc(cls, cpu_df:pd.DataFrame):
@@ -171,14 +174,21 @@ class DDR(Printable):
         self.write = write
 
 class CLK(Printable):
-    def __init__(self, sim_tick=0, clk_domain=0):
+    def __init__(self, sim_tick=None, clk_domain=None, sim_freq=None):
         self.sim_tick = sim_tick
         self.clk_domain = clk_domain
+        self.sim_freq = sim_freq
+    
+    @classmethod
+    def sim_second(cls, clk_df:pd.DataFrame):
+        clk_df['sim_second'] = clk_df['sim_tick']/clk_df['sim_freq']
+        return clk_df
 
 # parse one line each time
 def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], snps:List[SNP], ddrs:List[DDR], l1ds:List[L1D], l1is:List[L1I], l2ps:List[L2P]):
     sim_tick_sch = re.search(sim_tick_pat, line)
     clk_domain_sch = re.search(clk_domain_pat, line)
+    sim_freq_sch = re.search(sim_freq_pat, line)
     llc_demand_sch = re.search(llc_demand_pat, line)
     l2p_txn_sch = re.search(l2p_txn_pat, line)
     llc_txn_sch = re.search(llc_txn_pat, line)
@@ -187,6 +197,7 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], s
     cpu_o3inst_sch = re.search(cpu_o3inst_pat, line) if CPU.typ == 'O3CPU' else None
     cpu_o3mem_sch = re.search(cpu_o3mem_pat, line) if CPU.typ == 'O3CPU' else None
     cpu_cycle_sch = re.search(cpu_cycle_pat, line)
+    cpu_qscyc_sch = re.search(cpu_qscyc_pat, line) if CPU.typ == 'O3CPU' else None
     priv_cache_sch = re.search(priv_cache_demand_pat, line)
     seq_lat_cpu_sch = re.search(seq_lat_cpu_pat, line)
     seq_lat_all_sch = re.search(seq_lat_all_pat, line)
@@ -194,11 +205,14 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], s
     l2p_snpin_sch = re.search(l2p_snpin_pat, line)
     snp_ftr_sch = re.search(snp_ftr_pat, line)
 
-    if sim_tick_sch:
+    if clk.sim_tick==None and sim_tick_sch:
         clk.sim_tick = int(sim_tick_sch.group(1))
     
-    elif clk_domain_sch:
+    elif clk.clk_domain==None and clk_domain_sch:
         clk.clk_domain = int(clk_domain_sch.group(1))
+
+    elif clk.sim_freq==None and sim_freq_sch:
+        clk.sim_freq = int(sim_freq_sch.group(1))
     
     elif llc_demand_sch:
         llc_id = 0 if len(llcs) == 1 else int(llc_demand_sch.group(1))
@@ -310,6 +324,10 @@ def parse_stats(line, clk:CLK, cpus:List[CPU], seqs:List[SEQ], llcs:List[LLC], s
         cpu_id = 0 if len(cpus) == 1 else int(cpu_cycle_sch.group(1))
         cpus[cpu_id].cycle = int(cpu_cycle_sch.group(2))
 
+    elif cpu_qscyc_sch:
+        cpu_id = 0 if len(cpus) == 1 else int(cpu_qscyc_sch.group(1))
+        cpus[cpu_id].qscyc = int(cpu_qscyc_sch.group(2))
+
     elif seq_lat_cpu_sch:
         seq_id = 0 if len(seqs) == 1 else int(seq_lat_cpu_sch.group(1))
         seq_op:str = seq_lat_cpu_sch.group(2) # LD/ST/LL/SC
@@ -399,7 +417,7 @@ def variable_file_parser(args:argparse.Namespace, variable_file_path):
         'NUMCPUS':int,
         'NUM_LLC':int,
         'RESTORE_CPU':str,
-        'SNPFILTER_ENTRIES':int,
+        'SNPFILTER_ENTRIES':str,
         'NUM_MEM':int,
         'NUM_DDR_Side':int,
         'NUM_DDR_XP':int,
@@ -410,15 +428,26 @@ def variable_file_parser(args:argparse.Namespace, variable_file_path):
         'SEQ_TBE':int,
         'TRANS':int,
         'LINKWIDTH':int,
+        'VC_PER_VNET':int,
+        'BUFFER_SIZE':int,
         'NETWORK':str,
         'OUTPUT_DIR':str,
         'l1d_size':str,
         'l1i_size':str,
         'l2_size':str,
         'l3_size':str,
+        'LLC_REPL':str
     }
 
-    var_dict = {key:ops(all_var_dict[key]) for key,ops in var_list.items()}
+    var_dict = dict()
+    for key,ops in var_list.items():
+        # logging.info(f'key={key}, value={all_var_dict.get(key)}, ops={ops}')    
+        try:
+            var_dict[key]=ops(all_var_dict.get(key))
+        except:
+            pass
+    # {key:ops(all_var_dict.get(key)) for key,ops in var_list.items()}
+
     logging.debug(f'variable_file_parser:var_dict: {var_dict}')
 
     import copy
@@ -489,6 +518,9 @@ def parse_stats_file(args:argparse.Namespace):
     # snoop filter
     df_dict['snp'] = SNP.cache_miss_rate(df_dict['snp'])
 
+    # clk
+    df_dict['clk'] = CLK.sim_second(df_dict['clk'])
+
     logging.debug(f'DataFrames:\ncpu:\n{df_dict["cpu"]}\nl1d:\n{df_dict["l1d"]}\nl1i:\n{df_dict["l1i"]}\nl2p:\n{df_dict["l2p"]}\nllc:\n{df_dict["llc"]}')
 
     [df.to_csv(f'{args.OUTPUT_DIR}/{name}.csv') for name, df in df_dict.items()]
@@ -502,6 +534,7 @@ def parse_stats_file(args:argparse.Namespace):
     # aggregate stats together
     agg_df = pd.DataFrame({
         'benchmark':[args.BENCHMARK],
+        'sim_second':[clk.sim_tick/clk.sim_freq],
         '#cpu':[args.NUMCPUS],
         '#llc':[args.NUM_LLC],
         '#mem':[args.NUM_MEM],
@@ -515,16 +548,21 @@ def parse_stats_file(args:argparse.Namespace):
         'snf_tbe':[args.SNF_TBE],
         'trans':[args.TRANS],
         'linkwid':[args.LINKWIDTH],
+        'vc/vnet':[args.VC_PER_VNET],
+        'bufsz':[args.BUFFER_SIZE] if hasattr(args, "BUFFER_SIZE") else None,
         'net':[args.NETWORK],
         'l1d_size':[args.l1d_size],
+        'l3repl':[args.LLC_REPL],
         # 'l1i_size':[args.l1i_size],
         'l2_size':[args.l2_size],
         'l3_size':[args.l3_size],
         'cpu_ipc':[df_dict['cpu'].loc['Total','ipc']],
+        'cpu_qscyc':[df_dict['cpu'].loc['Total','qscyc']],
         'ld_lat':SEQ.ld_lat,
         'st_lat':SEQ.st_lat,
         # 'll_lat':SEQ.ll_lat,
         # 'sc_lat':SEQ.sc_lat,
+        'l1i_hitrate':[df_dict['l1i'].loc['Total','hit_rate']],
         'l1d_hitrate':[df_dict['l1d'].loc['Total','hit_rate']],
         'l2p_read': [df_dict['l2p'].loc['Total','ReadS/U']],
         'l2p_write': [df_dict['l2p'].loc['Total','WriteB']],
