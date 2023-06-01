@@ -41,8 +41,12 @@
 #include <cassert>
 #include <stack>
 #include <unordered_map>
+#include <set>
 
 #include <base/statistics.hh>
+#include "mem/ruby/common/Address.hh"
+#include "debug/RubyCHIDebugStr5.hh"
+#include "base/trace.hh"
 
 namespace gem5
 {
@@ -82,6 +86,8 @@ class TBEStorage
     TBEStorage(statistics::Group *parent, int number_of_TBEs);
 
     TBEStorage(statistics::Group *parent, std::string tbeDesc, int number_of_TBEs);
+    
+    TBEStorage(statistics::Group *parent, std::string tbeDesc, int number_of_TBEs, bool block_on_set);
 
     // Returns the current number of slots allocated
     int size() const { return m_slots_used.size(); }
@@ -93,7 +99,7 @@ class TBEStorage
     int reserved() const { return m_reserved; }
 
     // Returns the number of slots available
-    int slotsAvailable() const { return m_slots_avail.size() - m_reserved; }
+    int slotsAvailable() const;
 
     // Returns the TBEStorage utilization
     float utilization() const { return size() / (float)capacity(); }
@@ -121,10 +127,37 @@ class TBEStorage
     // available again when the number of assigned entries == 0
     void removeEntryFromSlot(int slot);
 
+    // The following are used only when
+    // block_on_set is set to true.
+    // This is used to simulate the scenerios
+    // when slots are allocated based on the
+    // address sets. Different address with same
+    // sets will conflict and not be allocated
+    // simultaneously.
+    // [Arka]: Note SLICC interface does not
+    // support method overloading so the following
+    // methods are suffixed with 2.
+    bool areNSlotsAvailable2(Addr addr, int n, Tick current_time = 0) const;
+
+    int addEntryToNewSlot2(Addr addr);
+
+    void addEntryToSlot2(Addr addr, int slot);
+
+    void removeEntryFromSlot2(Addr addr, int slot);
+
   private:
     int m_reserved;
     std::stack<int> m_slots_avail;
     std::unordered_map<int, int> m_slots_used;
+
+    // The following are used only when
+    // block_on_set is set to true.
+    
+    bool m_block_on_set;
+    int m_num_set_bits;
+    int m_start_index_bit;
+    std::unordered_map<int64_t, int> m_slots_bocked_by_set; // set -> slot map
+    int64_t addressToCacheSet(Addr address) const;
 
     struct TBEStorageStats : public statistics::Group
     {
@@ -138,10 +171,40 @@ class TBEStorage
     } m_stats;
 };
 
+// Returns the number of slots available
+inline int 
+TBEStorage::slotsAvailable() const { 
+    return m_slots_avail.size() - m_reserved;
+}
+
+inline int64_t 
+TBEStorage::addressToCacheSet(Addr address) const {
+    assert(address == makeLineAddress(address));
+    return bitSelect(address, m_start_index_bit, 
+            m_start_index_bit + m_num_set_bits - 1);
+}
+
 inline bool
 TBEStorage::areNSlotsAvailable(int n, Tick current_time) const
 {
+    assert(!m_block_on_set);
     return slotsAvailable() >= n;
+}
+
+inline bool 
+TBEStorage::areNSlotsAvailable2(Addr addr, int n, Tick current_time) const {
+    if (m_block_on_set) {
+        auto cacheSet = addressToCacheSet(addr);
+        if (m_slots_bocked_by_set.count(cacheSet) > 0) {
+            // The set is already present
+            DPRINTF(RubyCHIDebugStr5,"addr: %#x blocked on set %d\n",addr,cacheSet);
+            return false;
+        } else {
+            return slotsAvailable() >= n;
+        }
+    } else {
+        return slotsAvailable() >= n;
+    }
 }
 
 inline void
@@ -162,11 +225,29 @@ TBEStorage::decrementReserved()
 inline int
 TBEStorage::addEntryToNewSlot()
 {
+    assert(!m_block_on_set); // Must be called only when MSHRs are not blocked on set
     assert(slotsAvailable() > 0);
     assert(m_slots_avail.size() > 0);
     int slot = m_slots_avail.top();
     m_slots_used[slot] = 1;
     m_slots_avail.pop();
+    m_stats.avg_size = size();
+    m_stats.avg_util = utilization();
+    return slot;
+}
+
+inline int
+TBEStorage::addEntryToNewSlot2(Addr addr) {
+    auto cacheSet = addressToCacheSet(addr);
+    assert(m_slots_bocked_by_set.count(cacheSet) <= 0);
+    assert(slotsAvailable() > 0);
+    assert(m_slots_avail.size() > 0);
+    int slot = m_slots_avail.top();
+    m_slots_used[slot] = 1;
+    m_slots_avail.pop();
+    if (m_block_on_set) {
+        m_slots_bocked_by_set[cacheSet] = slot;
+    }
     m_stats.avg_size = size();
     m_stats.avg_util = utilization();
     return slot;
@@ -181,7 +262,29 @@ TBEStorage::addEntryToSlot(int slot)
 }
 
 inline void
+TBEStorage::addEntryToSlot2(Addr addr, int slot)
+{
+    addEntryToSlot(slot);
+}
+
+inline void
 TBEStorage::removeEntryFromSlot(int slot)
+{
+    assert(!m_block_on_set);
+    auto iter = m_slots_used.find(slot);
+    assert(iter != m_slots_used.end());
+    assert(iter->second > 0);
+    iter->second -= 1;
+    if (iter->second == 0) {
+        m_slots_used.erase(iter);
+        m_slots_avail.push(slot);
+    }
+    m_stats.avg_size = size();
+    m_stats.avg_util = utilization();
+}
+
+inline void
+TBEStorage::removeEntryFromSlot2(Addr addr, int slot)
 {
     auto iter = m_slots_used.find(slot);
     assert(iter != m_slots_used.end());
@@ -190,6 +293,11 @@ TBEStorage::removeEntryFromSlot(int slot)
     if (iter->second == 0) {
         m_slots_used.erase(iter);
         m_slots_avail.push(slot);
+        if (m_block_on_set) {
+            auto cacheSet = addressToCacheSet(addr);
+            assert(m_slots_bocked_by_set.count(cacheSet) > 0);
+            m_slots_bocked_by_set.erase(cacheSet);
+        }
     }
     m_stats.avg_size = size();
     m_stats.avg_util = utilization();

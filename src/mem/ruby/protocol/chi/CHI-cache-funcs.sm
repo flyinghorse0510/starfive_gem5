@@ -403,12 +403,15 @@ void initializeTBE(TBE tbe, Addr addr, int storSlot) {
 TBE allocateRequestTBE(Addr addr, CHIRequestMsg in_msg), return_by_pointer="yes" {
   // We must have reserved resources for this allocation
   storTBEs.decrementReserved();
-  assert(storTBEs.areNSlotsAvailable(1));
+  if (storTBEs.areNSlotsAvailable2(addr, 1) == false) {
+    DPRINTF(RubyCHIDebugStr5,"addr: %#x Cannot allocate the msg. retry_attr = %d\n",addr,in_msg.allowRetry);
+  }
+  assert(storTBEs.areNSlotsAvailable2(addr, 1));
 
   TBEs.allocate(addr);
   TBE tbe := TBEs[addr];
 
-  initializeTBE(tbe, addr, storTBEs.addEntryToNewSlot());
+  initializeTBE(tbe, addr, storTBEs.addEntryToNewSlot2(addr));
 
   assert(tbe.is_snp_tbe == false);
   assert(tbe.is_repl_tbe == false);
@@ -713,9 +716,9 @@ void enqueueDoRetry(TBE tbe) {
   }
 }
 
-void processRetryQueue() {
+void processRetryQueue(Addr addr) {
   // send credit if requestor waiting for it and we have resources
-  bool has_avail := storTBEs.areNSlotsAvailable(1);
+  bool has_avail := storTBEs.areNSlotsAvailable2(addr, 1);
   assert(unify_repl_TBEs || has_avail);
   // the slot might still be used by a replacement if unify_repl_TBEs is set
   if (retryQueue.empty() == false && has_avail) {
@@ -958,7 +961,7 @@ void copyCacheAndDirTBEs(TBE src, TBE dst) {
 void deallocateReqTBE(TBE tbe) {
   assert(is_valid(tbe));
   assert(tbe.is_req_tbe);
-  storTBEs.removeEntryFromSlot(tbe.storSlot);
+  storTBEs.removeEntryFromSlot2(tbe.addr, tbe.storSlot);
   TBEs.deallocate(tbe.addr);
 }
 
@@ -1490,10 +1493,6 @@ bool _checkResourceAvailable(RequestType request_type, Addr addr) {
     if (throttle_req_on_retry) {
       MachineID dest := mapAddressToDownstreamMachine(addr);
       bool canSend := destsWaitingRetry.isElement(dest) == false;
-      // DPRINTF(RubySlicc, "Checking %s for addr %#x dest %s\n", request_type, addr, dest);
-      if (canSend == false) {
-        DPRINTF(RubyCHIDebugStr5, "addr: %#x, Stalled reqType: %s, dest: %s\n", addr, request_type, dest);
-      }
       return canSend;
     } else {
       return true;

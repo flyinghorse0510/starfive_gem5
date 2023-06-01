@@ -41,7 +41,8 @@
 ////////////////////////////////////////////////////////////////////////////
 
 action(AllocateTBE_Request, desc="") {
-  if (storTBEs.areNSlotsAvailable(1)) {
+  bool can_allocate := storTBEs.areNSlotsAvailable2(address, 1);
+  if (can_allocate) {
     // reserve a slot for this request
     storTBEs.incrementReserved();
 
@@ -3065,7 +3066,7 @@ action(Finalize_DeallocateRequest, desc="") {
   wakeupPendingSFRepl(tbe);
   if (tbe.is_req_tbe) {
     deallocateReqTBE(tbe);
-    processRetryQueue();
+    processRetryQueue(address);
 
   } else if (tbe.is_snp_tbe) {
     deallocateSnpTBE(tbe);
@@ -3074,7 +3075,7 @@ action(Finalize_DeallocateRequest, desc="") {
   } else {
     deallocateReplacementTBE(tbe);
     if (unify_repl_TBEs) {
-      processRetryQueue();
+      processRetryQueue(address);
     }
   }
   unset_tbe();

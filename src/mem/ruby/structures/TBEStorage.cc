@@ -44,14 +44,21 @@ namespace ruby
 {
 
 TBEStorage::TBEStorage(statistics::Group *parent, std::string tbeDesc, int number_of_TBEs)
-    : m_reserved(0), m_stats(parent, tbeDesc)
+    : m_reserved(0), m_stats(parent, tbeDesc), m_block_on_set(false)
 {
     for (int i = 0; i < number_of_TBEs; ++i)
         m_slots_avail.push(i);
 }
 
 TBEStorage::TBEStorage(statistics::Group *parent, int number_of_TBEs)
-    : m_reserved(0), m_stats(parent)
+    : m_reserved(0), m_stats(parent), m_block_on_set(false)
+{
+    for (int i = 0; i < number_of_TBEs; ++i)
+        m_slots_avail.push(i);
+}
+
+TBEStorage::TBEStorage(statistics::Group *parent, std::string tbeDesc, int number_of_TBEs, bool block_on_set)
+    : m_reserved(0), m_stats(parent, tbeDesc), m_block_on_set(block_on_set) 
 {
     for (int i = 0; i < number_of_TBEs; ++i)
         m_slots_avail.push(i);
