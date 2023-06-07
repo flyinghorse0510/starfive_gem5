@@ -402,8 +402,10 @@ void initializeTBE(TBE tbe, Addr addr, int storSlot) {
 
 TBE allocateRequestTBE(Addr addr, CHIRequestMsg in_msg), return_by_pointer="yes" {
   // We must have reserved resources for this allocation
-  storTBEs.decrementReserved();
+  storTBEs.removeReserveSlot(addr);
   if (storTBEs.areNSlotsAvailable2(addr, 1) == false) {
+    int occupiedSlot := storTBEs.getAllocSlot(addr);
+    DPRINTF(RubyCHIDebugStr5,"addr: %#x reserved slot = %d, alloc slot = %d, slot occupied by = %#x\n",addr,storTBEs.getReserveSlot(addr),storTBEs.getAllocSlot(addr),storTBEs.getOccupySlotAddr(occupiedSlot));
     DPRINTF(RubyCHIDebugStr5,"addr: %#x Cannot allocate the msg. retry_attr = %d\n",addr,in_msg.allowRetry);
   }
   assert(storTBEs.areNSlotsAvailable2(addr, 1));
@@ -713,23 +715,27 @@ void enqueueDoRetry(TBE tbe) {
       out_msg.event := Event:DoRetry;
     }
     destsWaitingRetry.removeNetDest(tbe.pendReqDest);
+    DPRINTF(RubyCHIDebugStr5,"addr: %#x DoRetry\n",tbe.addr);
   }
 }
 
 void processRetryQueue(Addr addr) {
   // send credit if requestor waiting for it and we have resources
-  bool has_avail := storTBEs.areNSlotsAvailable2(addr, 1);
-  assert(unify_repl_TBEs || has_avail);
+  // assert(unify_repl_TBEs || has_avail);
   // the slot might still be used by a replacement if unify_repl_TBEs is set
-  if (retryQueue.empty() == false && has_avail) {
-    storTBEs.incrementReserved();
+  if (retryQueue.empty() == false) {
     RetryQueueEntry e := retryQueue.next();
-    retryQueue.pop();
-    enqueue(retryTriggerOutPort, RetryTriggerMsg, 0) {
-      out_msg.addr := e.addr;
-      out_msg.usesTxnId := e.usesTxnId;
-      out_msg.retryDest := e.retryDest;
-      out_msg.event := Event:SendPCrdGrant;
+    bool has_avail := storTBEs.areNSlotsAvailable2(e.addr, 1);
+    if (has_avail) {
+      storTBEs.addReserveSlot(e.addr);
+      DPRINTF(RubyCHIDebugStr5,"Sending PCrdGrant to addr: %#x, dest: %s\n",e.addr,e.retryDest);
+      enqueue(retryTriggerOutPort, RetryTriggerMsg, 0) {
+        out_msg.addr := e.addr;
+        out_msg.usesTxnId := e.usesTxnId;
+        out_msg.retryDest := e.retryDest;
+        out_msg.event := Event:SendPCrdGrant;
+      }
+      retryQueue.pop();
     }
   }
 }
@@ -979,11 +985,11 @@ void deallocateSnoopFilterTBE(TBE tbe) {
   sfReplTBEs.deallocate(tbe.addr);
 }
 
-void deallocateReplacementTBE(TBE tbe) {
+void deallocateReplacementTBE(Addr addr, TBE tbe) {
   assert(is_valid(tbe));
   assert(tbe.is_repl_tbe);
   if (unify_repl_TBEs) {
-    storTBEs.removeEntryFromSlot(tbe.storSlot);
+    storTBEs.removeEntryFromSlot2(addr, tbe.storSlot);
   } else {
     storReplTBEs.removeEntryFromSlot(tbe.storSlot);
   }

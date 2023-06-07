@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 def getReadWriteStats(options):
-    gen_memcpy_bw=options.gen_memcpy_bw
+    gen_memcpy_bw = (options.benchname == 'memcpy')
     readsPat=re.compile(f'system.cpu(\d*).numReads( +)(\d+)')
     writesPat=re.compile(f'system.cpu(\d*).numWrites( +)(\d+)')
     tickPerCycPat=re.compile(f'system.clk_domain.clock( +)(\d+)')
@@ -118,7 +118,6 @@ def main():
     parser.add_argument('--chi-data-width',default=16,type=int,help=f'DAT channel width of CHI cache controllers. Same for all controllers')
     parser.add_argument('--buffer-size',default=4,type=int,help=f'Network buffer size')
     parser.add_argument('--ratio-read-write',type=str, default='1-1', help=f'Read write ratio')
-    parser.add_argument('--gen-memcpy-bw',action='store_true',help=f'Generate memcpy bandwidth')
     parser.add_argument('--num-iters',default=10,type=int,help=f'Number of iterations')
     parser.add_argument('--benchname',required=True,type=str,help=f'Benchmark name')
     options=parser.parse_args()

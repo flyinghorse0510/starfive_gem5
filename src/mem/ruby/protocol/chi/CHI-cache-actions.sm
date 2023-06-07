@@ -44,7 +44,9 @@ action(AllocateTBE_Request, desc="") {
   bool can_allocate := storTBEs.areNSlotsAvailable2(address, 1);
   if (can_allocate) {
     // reserve a slot for this request
-    storTBEs.incrementReserved();
+    storTBEs.addReserveSlot(address);
+
+    // DPRINTF(RubyCHIDebugStr5,"addr: %#x reserved slot = %d, alloc slot = %d\n",address,storTBEs.getReserveSlot(address),storTBEs.getAllocSlot(address));
 
     // Move request to rdy queue
     peek(reqInPort, CHIRequestMsg) {
@@ -76,6 +78,7 @@ action(AllocateTBE_Request_WithCredit, desc="") {
   peek(reqInPort, CHIRequestMsg) {
     assert(in_msg.allowRetry == false);
     enqueue(reqRdyOutPort, CHIRequestMsg, allocation_latency) {
+      DPRINTF(RubyCHIDebugStr5,"addr: %#x request arriving with a credit\n",in_msg.addr);
       assert(in_msg.addr == address);
       out_msg := in_msg;
     }
@@ -127,7 +130,7 @@ action(AllocateTBE_SeqRequest, desc="") {
   check_allocate(storTBEs);
 
   // reserve a slot for this request
-  storTBEs.incrementReserved();
+  storTBEs.addReserveSlot(address);
 
   // Move request to rdy queue
   peek(seqInPort, RubyRequest) {
@@ -218,7 +221,7 @@ action(AllocateTBE_PfRequest, desc="Allocate TBE for prefetch request") {
   check_allocate(storTBEs);
 
   // reserve a slot for this request
-  storTBEs.incrementReserved();
+  storTBEs.addReserveSlot(address);
 
   // Move request to rdy queue
   peek(pfInPort, RubyRequest) {
@@ -3073,7 +3076,7 @@ action(Finalize_DeallocateRequest, desc="") {
   } else if (tbe.is_sfrepl_tbe) {
     deallocateSnoopFilterTBE(tbe);
   } else {
-    deallocateReplacementTBE(tbe);
+    deallocateReplacementTBE(address, tbe);
     if (unify_repl_TBEs) {
       processRetryQueue(address);
     }

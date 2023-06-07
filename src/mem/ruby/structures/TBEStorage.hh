@@ -89,6 +89,13 @@ class TBEStorage
     
     TBEStorage(statistics::Group *parent, std::string tbeDesc, int number_of_TBEs, bool block_on_set);
 
+    TBEStorage(statistics::Group *parent, \
+               std::string tbeDesc, \
+               int number_of_TBEs, \
+               bool block_on_set, \
+               int start_index_bit, \
+               int num_set_bits);
+
     // Returns the current number of slots allocated
     int size() const { return m_slots_used.size(); }
 
@@ -145,6 +152,19 @@ class TBEStorage
 
     void removeEntryFromSlot2(Addr addr, int slot);
 
+    void addReserveSlot(Addr addr);
+
+    void removeReserveSlot(Addr addr);
+
+    // The following are used for debugging only
+    int getReserveSlot(Addr addr) const ;
+
+    int getAllocSlot(Addr addr) const ;
+
+    int getTopSlot() const;
+
+    Addr getOccupySlotAddr(int slot) const;
+
   private:
     int m_reserved;
     std::stack<int> m_slots_avail;
@@ -154,9 +174,21 @@ class TBEStorage
     // block_on_set is set to true.
     
     bool m_block_on_set;
+
     int m_num_set_bits;
+
     int m_start_index_bit;
+
     std::unordered_map<int64_t, int> m_slots_bocked_by_set; // set -> slot map
+
+    std::unordered_map<int64_t, int> m_slots_reserved_by_set; // set -> slot reserved map
+
+    // The following are only used for debugging
+
+    std::unordered_map<int, Addr> m_slots_occupied_by_addr; // slot -> addr map
+
+    // std::unordered_map<int, Addr> m_slots_reserved_by_addr; // slot -> addr reserved map
+
     int64_t addressToCacheSet(Addr address) const;
 
     struct TBEStorageStats : public statistics::Group
@@ -179,7 +211,6 @@ TBEStorage::slotsAvailable() const {
 
 inline int64_t 
 TBEStorage::addressToCacheSet(Addr address) const {
-    assert(address == makeLineAddress(address));
     return bitSelect(address, m_start_index_bit, 
             m_start_index_bit + m_num_set_bits - 1);
 }
@@ -197,9 +228,12 @@ TBEStorage::areNSlotsAvailable2(Addr addr, int n, Tick current_time) const {
         auto cacheSet = addressToCacheSet(addr);
         if (m_slots_bocked_by_set.count(cacheSet) > 0) {
             // The set is already present
-            DPRINTF(RubyCHIDebugStr5,"addr: %#x blocked on set %d\n",addr,cacheSet);
             return false;
-        } else {
+        } else if (m_slots_reserved_by_set.count(cacheSet) > 0) {
+            // Reserved by another set
+            return false;
+        }
+        else {
             return slotsAvailable() >= n;
         }
     } else {
@@ -247,6 +281,7 @@ TBEStorage::addEntryToNewSlot2(Addr addr) {
     m_slots_avail.pop();
     if (m_block_on_set) {
         m_slots_bocked_by_set[cacheSet] = slot;
+        m_slots_occupied_by_addr[slot] = addr;
     }
     m_stats.avg_size = size();
     m_stats.avg_util = utilization();
@@ -297,6 +332,7 @@ TBEStorage::removeEntryFromSlot2(Addr addr, int slot)
             auto cacheSet = addressToCacheSet(addr);
             assert(m_slots_bocked_by_set.count(cacheSet) > 0);
             m_slots_bocked_by_set.erase(cacheSet);
+            m_slots_occupied_by_addr.erase(slot);
         }
     }
     m_stats.avg_size = size();

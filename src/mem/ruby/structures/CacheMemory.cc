@@ -84,11 +84,7 @@ CacheMemory::CacheMemory(const Params &p)
     m_block_size = p.block_size;  // may be 0 at this point. Updated in init()
     m_use_occupancy = dynamic_cast<replacement_policy::WeightedLRU*>(
                                     m_replacementPolicy_ptr) ? true : false;
-}
-
-void
-CacheMemory::init()
-{
+    
     if (m_block_size == 0) {
         m_block_size = RubySystem::getBlockSizeBytes();
     }
@@ -96,7 +92,11 @@ CacheMemory::init()
     assert(m_cache_num_sets > 1);
     m_cache_num_set_bits = floorLog2(m_cache_num_sets);
     assert(m_cache_num_set_bits > 0);
+}
 
+void
+CacheMemory::init()
+{
     m_cache.resize(m_cache_num_sets,
                     std::vector<AbstractCacheEntry*>(m_cache_assoc, nullptr));
     replacement_data.resize(m_cache_num_sets,

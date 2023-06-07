@@ -43,22 +43,45 @@ namespace gem5
 namespace ruby
 {
 
+// m_start_index_bit is set to default value of 6 assuming a block size of 64Bytes
 TBEStorage::TBEStorage(statistics::Group *parent, std::string tbeDesc, int number_of_TBEs)
-    : m_reserved(0), m_stats(parent, tbeDesc), m_block_on_set(false)
+    : m_reserved(0), m_stats(parent, tbeDesc), m_block_on_set(false),
+      m_start_index_bit(6),
+      m_num_set_bits(3)
 {
     for (int i = 0; i < number_of_TBEs; ++i)
         m_slots_avail.push(i);
 }
 
 TBEStorage::TBEStorage(statistics::Group *parent, int number_of_TBEs)
-    : m_reserved(0), m_stats(parent), m_block_on_set(false)
+    : m_reserved(0), m_stats(parent), m_block_on_set(false),
+      m_start_index_bit(6),
+      m_num_set_bits(3)
 {
     for (int i = 0; i < number_of_TBEs; ++i)
         m_slots_avail.push(i);
 }
 
 TBEStorage::TBEStorage(statistics::Group *parent, std::string tbeDesc, int number_of_TBEs, bool block_on_set)
-    : m_reserved(0), m_stats(parent, tbeDesc), m_block_on_set(block_on_set) 
+    : m_reserved(0), m_stats(parent, tbeDesc), m_block_on_set(block_on_set), 
+      m_start_index_bit(6),
+      m_num_set_bits(3)
+{
+    for (int i = 0; i < number_of_TBEs; ++i)
+        m_slots_avail.push(i);
+}
+
+TBEStorage::TBEStorage(statistics::Group *parent, \
+                       std::string tbeDesc, \
+                       int number_of_TBEs, \
+                       bool block_on_set, \
+                       int start_index_bit, \
+                       int num_set_bits)
+    : m_reserved(0), 
+      m_stats(parent, tbeDesc), 
+      m_block_on_set(block_on_set),
+      m_start_index_bit(start_index_bit),
+      m_num_set_bits(num_set_bits)
 {
     for (int i = 0; i < number_of_TBEs; ++i)
         m_slots_avail.push(i);
@@ -78,6 +101,61 @@ TBEStorage::TBEStorageStats::TBEStorageStats(statistics::Group *parent)
       ADD_STAT(avg_util, "Avg. utilization"),
       ADD_STAT(avg_reserved, "Avg. number of slots reserved")
 {
+}
+
+void TBEStorage::addReserveSlot(Addr addr) {
+    if(m_block_on_set) {
+        auto cacheSet = addressToCacheSet(addr);
+        if (m_slots_reserved_by_set.count(cacheSet) > 0) {
+            m_slots_reserved_by_set[cacheSet]++;
+        } else {
+            m_slots_reserved_by_set[cacheSet] = 1;
+        }
+    }
+    incrementReserved();
+}
+
+void TBEStorage::removeReserveSlot(Addr addr) {
+    if(m_block_on_set) {
+        auto cacheSet = addressToCacheSet(addr);
+        assert(m_slots_reserved_by_set.count(cacheSet) > 0);
+        m_slots_reserved_by_set[cacheSet]--;
+        if (m_slots_reserved_by_set[cacheSet] == 0) {
+            m_slots_reserved_by_set.erase(cacheSet);
+        }
+    }
+    decrementReserved();
+}
+
+int TBEStorage::getTopSlot() const {
+    assert(m_slots_avail.size() > 0);
+    return m_slots_avail.top();
+}
+
+int TBEStorage::getReserveSlot(Addr addr) const  {
+    auto cacheSet = addressToCacheSet(addr);
+    if (m_slots_reserved_by_set.count(cacheSet) > 0) {
+        return m_slots_reserved_by_set.at(cacheSet);
+    } else {
+        return -1;
+    }
+}
+
+int TBEStorage::getAllocSlot(Addr addr) const {
+    auto cacheSet = addressToCacheSet(addr);
+    if (m_slots_bocked_by_set.count(cacheSet) > 0) {
+        return m_slots_bocked_by_set.at(cacheSet);
+    } else {
+        return -1;
+    }
+}
+
+Addr TBEStorage::getOccupySlotAddr(int slot) const {
+    if (m_slots_occupied_by_addr.count(slot) > 0) {
+        return m_slots_occupied_by_addr.at(slot);
+    } else {
+        return 0xffffffffffffffff;
+    }
 }
 
 } // namespace ruby

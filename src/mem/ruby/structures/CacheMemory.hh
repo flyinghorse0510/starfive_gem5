@@ -153,6 +153,13 @@ class CacheMemory : public SimObject
     void htmAbortTransaction();
     void htmCommitTransaction();
 
+    // Accessing set info to be used by the Cache Controllers that instantiate it
+    int getNumSetBits() const { 
+      assert(m_cache_num_set_bits > 0);
+      return m_cache_num_set_bits; 
+    }
+    int getStartSetBit() const { return m_start_index_bit; }
+
   public:
     int getCacheSize() const { return m_cache_size; }
     int getCacheAssoc() const { return m_cache_assoc; }

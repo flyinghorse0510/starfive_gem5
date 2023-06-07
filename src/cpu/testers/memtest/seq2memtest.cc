@@ -356,9 +356,10 @@ Seq2MemTest::tick()
         // finally shift the timeout for sending of requests forwards
         // as we have successfully sent a packet
         reschedule(noRequestEvent, clockEdge(progressCheck), true);
-    } else {
-        DPRINTF(SeqMemLatTest, "Waiting for retry\n");
-    }
+    } 
+    // else {
+    //     DPRINTF(SeqMemLatTest, "Waiting for retry\n");
+    // }
 
     // Schedule noResponseEvent now if we are not expecting a response
     if (!noResponseEvent.scheduled() && (outstandingAddrs.size() != 0))
@@ -382,7 +383,7 @@ Seq2MemTest::recvRetry()
 {
     assert(retryPkt);
     if (port.sendTimingReq(retryPkt)) {
-        DPRINTF(SeqMemLatTest, "Proceeding after successful retry\n");
+        // DPRINTF(SeqMemLatTest, "Proceeding after successful retry\n");
 
         retryPkt = nullptr;
         // kick things into action again
