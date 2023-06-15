@@ -1,10 +1,8 @@
-
 ## Export these for bash. Change as per your convenience
 ```
 export WORKSPACE=${HOME}/Desktop
-export GEM5_DIR=${WORKSPACE}/gem5_starlink2.0 && \
-export OUTPUT_DIR=${WORKSPACE}/04_gem5Dump/DMACHI/SimpleRubyCHI && \
-export ISA=RISCV
+export GEM5_DIR=${WORKSPACE}/gem5_public && \
+export ISA=RISCV && \
 export CCPROT=CHI
 ```
 
@@ -17,8 +15,8 @@ scons build/${ISA}_${CCPROT}/gem5.opt --default=RISCV PROTOCOL=${CCPROT} -j`npro
 export CCPROT=MESI_Two_Level && \
 build/${ISA}_${CCPROT}/gem5.opt \
 --debug-flags=MemRandomTest,RubyCacheCalibSTR5 --debug-file=debug.trace \
--d $OUTPUT_DIR \
- ${GEM5_DIR}/configs/example/se_memtest.py \
+-d m5TmpOut \
+ ${GEM5_DIR}/configs/example/ruby_mem_test.py \
     --num-cpus=1 \
     --ruby \
     --mem-size=4GB \
@@ -28,11 +26,14 @@ build/${ISA}_${CCPROT}/gem5.opt \
     --progress=1000000 \
     --maxloads=1000000
 
+## List of help
+build/RISCV_CHI/gem5.opt --help
+
 ## Running SE mode (CHI)
-build/${ISA}_${CCPROT}/gem5.opt\
+build/${ISA}_${CCPROT}/gem5.opt \
        --debug-flags=MemRandomTest,RubyCacheCalibSTR5 --debug-file=debug.trace \
-       -d $OUTPUT_DIR \
-       ${GEM5_DIR}/configs/example/se_memtest.py \
+       -d m5TmpOut \
+       ${GEM5_DIR}/configs/example/ruby_mem_test.py \
        --num-cpus=1 \
        --num-dirs=1 \
        --num-l3caches=1 \
