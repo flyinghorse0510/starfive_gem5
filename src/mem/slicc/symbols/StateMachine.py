@@ -111,6 +111,8 @@ class StateMachine(Symbol):
         self.debug_flags = set()
         self.debug_flags.add('RubyGenerated')
         self.debug_flags.add('RubySlicc')
+        self.debug_flags.add('RubyTxnTrace')
+        self.debug_flags.add('RubyCHIDebugStr5')
 
     def __repr__(self):
         return "[StateMachine: %s]" % self.ident
@@ -1379,6 +1381,7 @@ ${ident}_Controller::wakeup()
 #include "base/trace.hh"
 #include "debug/ProtocolTrace.hh"
 #include "debug/RubyGenerated.hh"
+#include "debug/RubyResourceStalls.hh"
 #include "mem/ruby/protocol/${ident}_Controller.hh"
 #include "mem/ruby/protocol/${ident}_Event.hh"
 #include "mem/ruby/protocol/${ident}_State.hh"
@@ -1473,7 +1476,7 @@ if (result == TransitionResult_Valid) {
 
         code('''
 } else if (result == TransitionResult_ResourceStall) {
-    DPRINTF(RubyGenerated, "addr: %#x, Resource Stall\\n",addr);
+    DPRINTF(RubyResourceStalls, "addr: %#x, Resource Stall (is:%s,e:%s,fs:%s)\\n",addr,${ident}_State_to_string(state),${ident}_Event_to_string(event),${ident}_State_to_string(next_state));
     DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %#x %s\\n",
              curTick(), m_version, "${ident}",
              ${ident}_Event_to_string(event),

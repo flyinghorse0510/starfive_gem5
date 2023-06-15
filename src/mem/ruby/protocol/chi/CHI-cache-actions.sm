@@ -46,8 +46,6 @@ action(AllocateTBE_Request, desc="") {
     // reserve a slot for this request
     storTBEs.addReserveSlot(address);
 
-    // DPRINTF(RubyCHIDebugStr5,"addr: %#x reserved slot = %d, alloc slot = %d\n",address,storTBEs.getReserveSlot(address),storTBEs.getAllocSlot(address));
-
     // Move request to rdy queue
     peek(reqInPort, CHIRequestMsg) {
       enqueue(reqRdyOutPort, CHIRequestMsg, allocation_latency) {
@@ -78,7 +76,6 @@ action(AllocateTBE_Request_WithCredit, desc="") {
   peek(reqInPort, CHIRequestMsg) {
     assert(in_msg.allowRetry == false);
     enqueue(reqRdyOutPort, CHIRequestMsg, allocation_latency) {
-      DPRINTF(RubyCHIDebugStr5,"addr: %#x request arriving with a credit\n",in_msg.addr);
       assert(in_msg.addr == address);
       out_msg := in_msg;
     }
@@ -3036,12 +3033,10 @@ action(CheckCacheFill, desc="") {
           out_msg.slot := tbe.storSlot;
           DPRINTF(RubySlicc, "Reusing slot %d\n", out_msg.slot);
         }
-        DPRINTF(RubyCHIDebugStr5, "ReplTriggered addr: %#x, victim addr: %#x\n",address, victim_addr);
       }
     } else {
       DPRINTF(RubySlicc, "Eviction for %#x victim: %#x state=%s\n",
                           address, victim_addr, victim_tbe.state);
-      DPRINTF(RubyCHIDebugStr5, "ReplTriggered addr: %#x, transient victim addr: %#x\n",address, victim_addr);
       // just wait until the transaction finishes to try again
       victim_tbe.wakeup_pending_tgr := true;
     }
