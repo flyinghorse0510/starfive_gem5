@@ -196,6 +196,10 @@ class MessageBuffer : public SimObject
 
     int routingPriority() const { return m_routing_priority; }
 
+    std::string getMsgBufferContents() const;
+
+    bool targetBufferName(const std::string target_str) const;
+
   private:
     void reanalyzeList(std::list<MsgPtr> &, Tick);
 

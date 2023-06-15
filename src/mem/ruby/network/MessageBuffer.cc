@@ -202,6 +202,8 @@ MessageBuffer::areNSlotsAvailable(unsigned int n, Tick current_time)
                 "m_max_size: %d\n",
                 n, current_size + current_stall_size,
                 m_prio_heap.size(), m_max_size);
+
+        DPRINTF(TxnTrace, "MessageBufferContents: %s\n",getMsgBufferContents());
         m_not_avail_count++;
         return false;
     }
@@ -414,7 +416,7 @@ MessageBuffer::enqueue(MsgPtr message, Tick current_time, Tick delta)
     profileRetry(message);
 
     // zhiang: print the txntrace message
-    // txntrace_print(message, arrival_time, true);
+    txntrace_print(message, arrival_time, true);
     // Schedule the wakeup
     assert(m_consumer != NULL);
     m_consumer->scheduleEventAbsolute(arrival_time);
@@ -665,6 +667,67 @@ MessageBuffer::print(std::ostream& out) const
     ccprintf(out, "%s", name());
 }
 
+std::string MessageBuffer::getMsgBufferContents() const {
+    std::vector<MsgPtr> copy(m_prio_heap);
+    std::sort_heap(copy.begin(), copy.end(), std::greater<MsgPtr>());
+    std::stringstream ss;
+    unsigned count = 0;
+    unsigned buf_size = copy.size();
+    ss << "[";
+    for (auto &msgptr : copy) {
+        const std::type_info& msg_type = typeid(*(msgptr.get()));
+        if (msg_type == typeid(RubyRequest)) {
+            const RubyRequest* msg = dynamic_cast<RubyRequest*>(msgptr.get());
+            ss << "addr: 0x" << std::hex << msg->getLineAddress() 
+               << "|RubyRequest";
+            if (count < (buf_size-1)) {
+                ss << ", ";
+            }
+        } else if (msg_type == typeid(CHIRequestMsg)) {
+            const CHIRequestMsg* msg = dynamic_cast<CHIRequestMsg*>(msgptr.get());
+            ss << "addr: 0x" << std::hex << msg->getaddr()
+               << "|" << msg->gettype()
+               << "|" << msg->getallowRetry();
+            if (count < (buf_size-1)) {
+                ss << ", ";
+            }
+        } else if (msg_type == typeid(CHIResponseMsg)) {
+            const CHIResponseMsg* msg = dynamic_cast<CHIResponseMsg*>(msgptr.get());
+            ss << "addr: 0x" << std::hex << msg->getaddr()
+               << "|" << msg->gettype();
+            if (count < (buf_size-1)) {
+                ss << ", ";
+            }
+
+        } else if (msg_type == typeid(CHIDataMsg)) {
+            const CHIDataMsg* msg = dynamic_cast<CHIDataMsg*>(msgptr.get());
+            ss << "addr: 0x" << std::hex << msg->getaddr()
+               << "|" << msg->gettype();
+            if (count < (buf_size-1)) {
+                ss << ", ";
+            }
+
+        } else {
+            ss << "undefined:";
+            if (count < (buf_size-1)) {
+                ss << ", ";
+            }
+        }
+        count++;
+    }
+    ss << "]";
+    return ss.str();
+}
+
+bool MessageBuffer::targetBufferName(const std::string target_str) const {
+    std::string port_name = name();
+    if (port_name.find(target_str) != std::string::npos) {
+        return true;
+    }
+    return false;
+}
+
+
 bool
 MessageBuffer::isReady(Tick current_time) const
 {
@@ -674,6 +737,7 @@ MessageBuffer::isReady(Tick current_time) const
                        (m_dequeues_this_cy < m_max_dequeue_rate);
     bool is_ready = (m_prio_heap.size() > 0) &&
                    (m_prio_heap.front()->getLastEnqueueTime() <= current_time);
+    // DPRINTF(TxnTrace,"can_dequeue: %d, is_ready: %d\n",can_dequeue,is_ready);
     if (!can_dequeue && is_ready) {
         // Make sure the Consumer executes next cycle to dequeue the ready msg
         m_consumer->scheduleEvent(Cycles(1));
