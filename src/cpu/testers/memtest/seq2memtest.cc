@@ -158,6 +158,7 @@ Seq2MemTest::Seq2MemTest(const Params &p)
     numWritesGenerated = 0;
     numWritesCompleted = 0;
     writeSyncDataBase = 0x8f1;
+    all_txns_complete = false;
 
     // Set the number of max outstanding transactions
     maxOutstandingReq = p.outstanding_req;
@@ -234,6 +235,8 @@ Seq2MemTest::completeRequest(PacketPtr pkt, bool functional)
             stats.numWrites++;
         }
         if ((numReadsCompleted+numWritesCompleted) >= maxLoads) {
+            DPRINTF(SeqMemLatTest,"Completed All %d\n",id);
+            all_txns_complete = true;
             NUM_CPUS_COMPLETED++;
         }
     }
@@ -329,19 +332,19 @@ Seq2MemTest::tick()
         }
         pkt->dataDynamic(pkt_data);
 
-        DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Start:R\n",\
-                paddr,\
-                addrIterMap[paddr],\
-                id);
+        // DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Start:R\n",\
+        //         paddr,\
+        //         addrIterMap[paddr],\
+        //         id);
         numReadsGenerated++;
     } else {
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
         pkt_data[0] = data;
-        DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Start:W\n",\
-                paddr,\
-                addrIterMap[paddr],\
-                id);
+        // DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Start:W\n",\
+        //         paddr,\
+        //         addrIterMap[paddr],\
+        //         id);
         numWritesGenerated++;
     }
 
@@ -369,7 +372,9 @@ Seq2MemTest::tick()
 void
 Seq2MemTest::noRequest()
 {
-    panic("%s did not send a request for %d cycles", name(), progressCheck);
+    if (!all_txns_complete) {
+        panic("%s did not send a request for %d cycles", name(), progressCheck);
+    }
 }
 
 void

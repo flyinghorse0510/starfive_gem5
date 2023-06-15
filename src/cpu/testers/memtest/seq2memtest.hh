@@ -192,6 +192,8 @@ class Seq2MemTest : public ClockedObject
 
     uint64_t maxOutstandingReq;
 
+    bool all_txns_complete;
+
     uint64_t txSeqNum; // requestorID + txSeqNum should be the unique ID
 
     uint64_t blockStrideBits;
