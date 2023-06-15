@@ -227,7 +227,7 @@ in_port(retryTriggerInPort, RetryTriggerMsg, retryTriggerQueue, rank=6,
 bool retryTriggerInPort_rsc_stall_handler() {
   DPRINTF(RubySlicc, "Retry trigger queue resource stall\n");
   retryTriggerInPort.recycle(clockEdge(), cyclesToTicks(stall_recycle_lat));
-  return true;
+  return false; // Setting it to true might block the REQ channel
 }
 
 
@@ -263,7 +263,7 @@ in_port(triggerInPort, TriggerMsg, triggerQueue, rank=5,
 bool triggerInPort_rsc_stall_handler() {
   DPRINTF(RubySlicc, "Trigger queue resource stall\n");
   triggerInPort.recycle(clockEdge(), cyclesToTicks(stall_recycle_lat));
-  return true;
+  return false;  // Setting it to true might block the REQ channel
 }
 void wakeupPendingTgrs(TBE tbe) {
   if (tbe.wakeup_pending_tgr) {
