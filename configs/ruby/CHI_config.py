@@ -189,8 +189,8 @@ class CHI_Cache_Controller(Cache_Controller):
         super(CHI_Cache_Controller, self).__init__(
             version = Versions.getVersion(Cache_Controller),
             ruby_system = ruby_system,
-            mandatoryQueue = MessageBuffer(buffer_size=options.chi_buffer_depth,max_dequeue_rate=options.chi_buffer_max_deq_rate),
-            prefetchQueue = MessageBuffer(buffer_size=options.chi_buffer_depth,max_dequeue_rate=options.chi_buffer_max_deq_rate),
+            mandatoryQueue = MessageBuffer(),
+            prefetchQueue = MessageBuffer(),
             triggerQueue = TriggerMessageBuffer(),
             retryTriggerQueue = OrderedTriggerMessageBuffer(),
             replTriggerQueue = OrderedTriggerMessageBuffer(),
