@@ -45,15 +45,15 @@ if [ "$RUN" != "" ]; then
     l1i_size="4KiB"
     l2_size="8KiB"
     # l3_size="4KiB"
-    # L3_SIZE_CONFIG=(32 64 512) # Sizes in KiB ("16KiB" "32KiB" "64KiB" "238KiB")
-    L3_SIZE_CONFIG=(64) # Sizes in KiB ("16KiB" "32KiB" "64KiB" "238KiB")
+    L3_SIZE_CONFIG=(1024) # Sizes in KiB ("16KiB" "32KiB" "64KiB" "238KiB")
+    # L3_SIZE_CONFIG=(64) # Sizes in KiB ("16KiB" "32KiB" "64KiB" "238KiB")
     l1d_assoc=1
     l1i_assoc=1
     l2_assoc=1
     l3_assoc=4
     NUM_LLC=16
     # NUMCPUS=16
-    CONFIG_NUMCPUS=(8)
+    CONFIG_NUMCPUS=(1 4 8 16)
     LoadFactor=10
     LINK_BW=16
     LINKWIDTH=320
@@ -68,7 +68,7 @@ if [ "$RUN" != "" ]; then
     NETWORK="simple"
     # DEBUGFLAGS=RubyResourceStalls,RubyTxnTrace,TxnTrace,RubyCHIDebugStr5
     DEBUGFLAGS=SeqMemLatTest
-    OUTPUT_PREFIX="MSHRSetConflicts2_LargeLLC_Deadlock"
+    OUTPUT_PREFIX="MSHRSetConflicts2_LargeLLC"
     XOR_ADDR_BITS=4
     RANDOMIZE_ACC=False
     BLOCK_STRIDE_BITS=0
@@ -86,9 +86,9 @@ if [ "$RUN" != "" ]; then
     
     PART_RATIO='1-1'
     RNF_TBE=32
-    # CONFIG_BENCHNAME=("bw_test_sf" "memcpy_test")
-    CONFIG_BENCHNAME=("bw_test_sf")
-    CONFIG_SLOTS_BLOCKED_BY_SET=(False)
+    CONFIG_BENCHNAME=("bw_test_sf" "memcpy_test")
+    # CONFIG_BENCHNAME=("bw_test_sf")
+    CONFIG_SLOTS_BLOCKED_BY_SET=(False True)
 
     for l3_size in ${L3_SIZE_CONFIG[@]}; do
         for NUMCPUS in ${CONFIG_NUMCPUS[@]}; do
@@ -165,7 +165,7 @@ if [ "$RUN" != "" ]; then
                             --randomize-acc=${RANDOMIZE_ACC} \
                             --ratio-read-write=${READ_WRITE_RATIO} \
                             --slots_bocked_by_set=${SLOTS_BLOCKED_BY_SET} \
-                            --chi-buffer-depth=2 \
+                            --chi-buffer-depth=16 \
                             --chi-buffer-max-deq-rate=1 \
                             --num-producers=1 > ${OUTPUT_DIR}/cmd.log 2>&1 &
                     done

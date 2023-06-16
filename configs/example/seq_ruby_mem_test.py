@@ -99,7 +99,7 @@ parser.add_argument('--randomize-acc',default=False,type=ast.literal_eval,help=f
 parser.add_argument('--chi-data-width',default=16,type=int,help=f'CHI Controller data width (in bytes)')
 parser.add_argument('--ratio-read-write',type=str, default='1-1', help=f'Read write ratio')
 parser.add_argument('--base_addr_1',type=int, default=0, help=f'First address region')
-parser.add_argument('--base_addr_2',type=int, default=8388608, help=f'Second address region')
+parser.add_argument('--base_addr_2',type=int, default=1073741824, help=f'Second address region')
 parser.add_argument('--chi-buffer-depth',type=int,default=16,help=f'CHI buffer depth. Zero implies infinite buffering')
 parser.add_argument('--chi-buffer-max-deq-rate',type=int,default=1,help=f'CHI buffer max deq rate. Zero implies infinite deq rate')
 parser.add_argument('--snf_allow_retry',type=ast.literal_eval,default=True,help=f'Should SNF send retries')

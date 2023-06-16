@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 def getReadWriteStats(options):
-    gen_memcpy_bw = (options.benchname == 'memcpy')
+    gen_memcpy_bw = (options.benchname == 'memcpy_test')
     readsPat=re.compile(f'system.cpu(\d*).numReads( +)(\d+)')
     writesPat=re.compile(f'system.cpu(\d*).numWrites( +)(\d+)')
     tickPerCycPat=re.compile(f'system.clk_domain.clock( +)(\d+)')
@@ -101,7 +101,7 @@ def getReadWriteStats(options):
             snfTBE=cfg['system']['ruby']['snf'][0]['cntrl']['number_of_TBEs']
 
     with open(options.collated_outfile,'a+') as fsw:
-        print(f'{benchname},{options.working_set},{options.num_cpus},{options.num_dirs},{options.num_l3caches},{ratio_read_write},{options.rnf_tbe},{reqTBE},{replTBE},{options.part_TBEs},{reqTbeUtil},{replTbeSizeUtil},{hnfRetryAcks},{snfTBE},{snfSizeUtil},{snfRetryAcks},{hnfMissRate},{bw}',file=fsw)
+        print(f'{benchname},{options.working_set},{options.num_cpus},{options.num_dirs},{options.mshr_blocked_by_set},{options.num_l3caches},{ratio_read_write},{options.hnf_tbe},{hnfRetryAcks},{hnfMissRate},{bw}',file=fsw)
 
 def main():
     parser = argparse.ArgumentParser(description='')
@@ -120,6 +120,7 @@ def main():
     parser.add_argument('--ratio-read-write',type=str, default='1-1', help=f'Read write ratio')
     parser.add_argument('--num-iters',default=10,type=int,help=f'Number of iterations')
     parser.add_argument('--benchname',required=True,type=str,help=f'Benchmark name')
+    parser.add_argument('--mshr-blocked-by-set',required=True,type=str,help=f'MSHR blocked by set')
     options=parser.parse_args()
     getReadWriteStats(options)
 
