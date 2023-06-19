@@ -46,6 +46,13 @@ transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_R
   Pop_ReqInQueue;
 }
 
+// Allocate resources and move to the ready queue
+transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,SD_RSD,RUSC
+            BUSY_INTR,BUSY_BLKD}, AllocRequestChecked) {RetryBufferEntryAvailable} {
+  AllocateTBE_Request_Checked;
+  Pop_ReqInQueue;
+}
+
 transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,SD_RSD,RUSC
             BUSY_INTR,BUSY_BLKD}, AllocRequestWithCredit) {
   AllocateTBE_Request_WithCredit;

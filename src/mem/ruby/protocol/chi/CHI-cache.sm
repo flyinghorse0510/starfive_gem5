@@ -210,6 +210,15 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // TBE slots blocked by cache sets
   bool slots_bocked_by_set := "False";
 
+  /**
+   * Enabled checked allocation of TBEs.
+   * This is useful, to model realistic
+   * scenerios, when there are only a 
+   * few entries in the retry buffer
+   */
+  bool enable_checked_allocate := "True";
+  
+  int number_of_retry_entries := 2;
 {
 
   ////////////////////////////////////////////////////////////////////////////
@@ -286,7 +295,8 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     AllocSeqDvmRequest,     desc="Allocates a TBE for a sequencer DVM request. Stalls requests if table is full";
     AllocPfRequest,         desc="Allocates a TBE for a prefetch request. Stalls requests if table is full";
     AllocSnoop,             desc="Allocates a TBE for a snoop. Stalls snoop if table is full";
-    AllocDvmSnoop,          desc="Allocated a TBE for a DVM snoop. Stalls snoop if table is full";
+    AllocDvmSnoop,          desc="Allocates a TBE for a DVM snoop. Stalls snoop if table is full";
+    AllocRequestChecked,    desc="Allocates a TBE for a request. Stalls if enough resources not available";
 
     // Events triggered by sequencer requests or snoops in the rdy queue
     // See CHIRequestType in CHi-msg.sm for descriptions
@@ -581,6 +591,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     Addr addr,           desc="Line address";
     bool usesTxnId,      desc="Uses a transaction ID instead of a memory address";
     MachineID retryDest, desc="Retry destination";
+    int slot,            desc="Slot id for the retry entry";
   }
 
   structure(SnoopFilterReplPendEntry) {
@@ -602,7 +613,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     void pushFrontNB(Event);
     void pop();
     // For the retry queue
-    void emplace(Addr,bool,MachineID);
+    void emplace(Addr,bool,MachineID,int);
     RetryQueueEntry next(); //SLICC won't allow to reuse front()
     // For SnoopFilter operations
     void emplace_entry(Addr); //SLICC won't allow to reuse emplace()
@@ -818,7 +829,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
 
   // Destinations that will be sent PCrdGrant when a TBE becomes available
   TriggerQueue retryQueue, template="<Cache_RetryQueueEntry>";
-
+  TBEStorage storRetryBuffer, constructor="this, TBEType_to_string(TBEType_RetryEntry), m_number_of_retry_entries";
 
   // Pending RetryAck/PCrdGrant/DoRetry
   structure(RetryTriggerMsg, interface="Message") {
@@ -826,6 +837,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     Event event;
     MachineID retryDest;
     bool usesTxnId;
+    int retryBufSlot;
 
     bool functionalRead(Packet *pkt) { return false; }
     bool functionalRead(Packet *pkt, WriteMask &mask) { return false; }

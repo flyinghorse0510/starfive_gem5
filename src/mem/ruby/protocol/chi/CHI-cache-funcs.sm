@@ -730,6 +730,10 @@ void processRetryQueue(Addr addr) {
         out_msg.usesTxnId := e.usesTxnId;
         out_msg.retryDest := e.retryDest;
         out_msg.event := Event:SendPCrdGrant;
+        out_msg.retryBufSlot := e.slot;
+      }
+      if (enable_checked_allocate) {
+        storRetryBuffer.removeEntryFromSlot2(e.addr, e.slot);
       }
       retryQueue.pop();
     }
@@ -1468,6 +1472,8 @@ enumeration(RequestType, desc="To communicate stats from transitions to recordSt
   ReplTBEAvailable, desc="Check if a replacement TBE is available";
 
   SfReplTBEAvailable, desc="Check if TBE for SnoopFilter eviction is available";
+
+  RetryBufferEntryAvailable, desc="Retry buffer entries are available";
 }
 
 void recordRequestType(RequestType request_type, Addr addr) {
@@ -1505,6 +1511,12 @@ bool _checkResourceAvailable(RequestType request_type, Addr addr) {
     return unify_repl_TBEs || storReplTBEs.areNSlotsAvailable(1);
   } else if (request_type == RequestType:SfReplTBEAvailable) {
     return storSFReplTBEs.areNSlotsAvailable(1);
+  } else if (request_type == RequestType:RetryBufferEntryAvailable) {
+    if (storTBEs.areNSlotsAvailable2(addr, 1)) {
+      return true; // A retry buffer entry is not required in this case
+    } else {
+      return storRetryBuffer.areNSlotsAvailable(1);
+    }
   } else {
     error("Invalid RequestType type in checkResourceAvailable");
     return true;

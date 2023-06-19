@@ -428,8 +428,13 @@ in_port(reqInPort, CHIRequestMsg, reqIn, rank=2,
       // but they aren't implemented yet.
       assert(!in_msg.usesTxnId);
       if (in_msg.allowRetry) {
-        trigger(Event:AllocRequest, in_msg.addr,
-              getCacheEntry(in_msg.addr), getCurrentActiveTBE(in_msg.addr));
+        if (enable_checked_allocate) {
+          trigger(Event:AllocRequestChecked, in_msg.addr,
+                  getCacheEntry(in_msg.addr), getCurrentActiveTBE(in_msg.addr)); 
+        } else {
+          trigger(Event:AllocRequest, in_msg.addr,
+                  getCacheEntry(in_msg.addr), getCurrentActiveTBE(in_msg.addr));
+        }
       } else {
         trigger(Event:AllocRequestWithCredit, in_msg.addr,
               getCacheEntry(in_msg.addr), getCurrentActiveTBE(in_msg.addr));
@@ -438,7 +443,11 @@ in_port(reqInPort, CHIRequestMsg, reqIn, rank=2,
   }
 }
 bool reqInPort_rsc_stall_handler() {
-  error("reqInPort must never stall\n");
+  if (enable_checked_allocate) {
+    DPRINTF(RubySlicc, "reqIn stall\n");
+  } else {
+    error("reqInPort must never stall\n");
+  }
   return false;
 }
 

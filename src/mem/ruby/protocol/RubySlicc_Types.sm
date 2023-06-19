@@ -271,10 +271,11 @@ structure (RubyPrefetcher, external = "yes") {
 
 // Definitions of the TBE tables
 enumeration(TBEType, desc="...") {
-  Request,   desc="Request TBE";
-  Repl,      desc="Replacement TBE";
-  SFRepl,    desc="Snoop Filter Replacement TBE";
-  Snp,       desc="Snp Request TBE";
-  Dvm,       desc="DVM Request TBE";
-  DvmSnp,    desc="DVM Snp request TBE";
+  Request,    desc="Request TBE";
+  Repl,       desc="Replacement TBE";
+  SFRepl,     desc="Snoop Filter Replacement TBE";
+  Snp,        desc="Snp Request TBE";
+  Dvm,        desc="DVM Request TBE";
+  DvmSnp,     desc="DVM Snp request TBE";
+  RetryEntry, desc="Requests that have been sent a retry-ack";
 }
