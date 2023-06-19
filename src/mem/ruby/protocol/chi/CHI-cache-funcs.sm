@@ -722,7 +722,7 @@ void processRetryQueue(Addr addr) {
   // the slot might still be used by a replacement if unify_repl_TBEs is set
   if (retryQueue.empty() == false) {
     RetryQueueEntry e := retryQueue.next();
-    bool has_avail := storTBEs.areNSlotsAvailable2(e.addr, 1);
+    bool has_avail := storTBEs.areNSlotsAvailable2(e.addr, number_of_mshrs_reserved_for_normal_requests + 1);
     if (has_avail) {
       storTBEs.addReserveSlot(e.addr);
       enqueue(retryTriggerOutPort, RetryTriggerMsg, 0) {
