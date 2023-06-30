@@ -218,7 +218,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
    */
   bool enable_checked_allocate := "True";
   
-  int number_of_retry_entries := 2;
+  int number_of_retry_entries := 16;
 
   int number_of_mshrs_reserved_for_normal_requests := 1;
 {
