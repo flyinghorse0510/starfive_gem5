@@ -9,6 +9,8 @@ from typing import Dict,List
 import logging
 import pandas as pd
 from collections import namedtuple
+import subprocess
+import pprint as pp
 
 logging.basicConfig(level=logging.INFO)
 
@@ -242,6 +244,11 @@ class Router:
         return f'R{self.id}'
 
 class Link:
+
+    intLinkPathPat = re.compile(r'system.ruby.network.int_links(\d+).buffers(\d+)')
+    extLinkRNFPathPat = re.compile(r'system.cpu(\d+).(l1i|l1d|l2).(reqIn|reqOut|rspOut|rspIn|snpIn|snpOut|datOut|datIn)')
+    extLinkHNFPathPat = re.compile(r'system.ruby.hnf(\d+).cntrl.(reqIn|reqOut|rspOut|rspIn|snpIn|snpOut|datOut|datIn)')
+
     def __init__(self, name, path, id):
         self.name = name
         self.path = path
@@ -249,6 +256,26 @@ class Link:
 
     def __repr__(self):
         return self.name
+    
+    @classmethod
+    def getLinkAliasFromPath(cls, linkPath):
+        intLinkPathMatch = cls.intLinkPathPat.search(linkPath)
+        extLinkRNFPathMatch = cls.extLinkRNFPathPat.search(linkPath)
+        extLinkHNFPathMatch = cls.extLinkHNFPathPat.search(linkPath)
+        if intLinkPathMatch :
+            intLinkId = int(intLinkPathMatch.group(1))
+            return f'int.links{intLinkId:02d}'
+        elif extLinkRNFPathMatch :
+            cpuId = int(extLinkRNFPathMatch.group(1))
+            cacheTy = extLinkRNFPathMatch.group(2)
+            linkTy = extLinkRNFPathMatch.group(3)
+            return f'cpu{cpuId:02d}.{cacheTy}.{linkTy}'
+        elif extLinkHNFPathMatch :
+            hnfId = int(extLinkHNFPathMatch.group(1))
+            linkTy = extLinkHNFPathMatch.group(2)
+            return f'hnf{hnfId:02d}.{linkTy}'
+        else:
+            raise ValueError(f'Undefined string pattern for link path: {linkPath}')
 
 class ExtLink(Link):
     def __init__(self, name, path, id, int_node=None, ext_node=None):
@@ -439,7 +466,7 @@ def dump_log(ext_links:List[ExtLink],int_links:List[IntLink],routers:List[Router
     logging.info(f'details dump to {dump_path}')
 
 
-if __name__ == '__main__':
+def getAvgTraffic():
     # test_msg_pat()
 
     parser = argparse.ArgumentParser(description='')
@@ -457,7 +484,6 @@ if __name__ == '__main__':
     diagram_path = os.path.join(options.output, 'noc_diagram.png')
     dump_path = os.path.join(options.output, 'noc_details.json')
 
-    import subprocess
     subprocess.run(['grep','-E', '^[[:space:]]+[0-9]+: system\.ruby\.network\.int_links[0-9]+\.buffers[0-9]+|^[[:space:]]+[0-9]+: system.*In:', debug_trace], stdout=open(link_log,'w+'))
 
     logging.info(f'Parsing network from {json_file}')
@@ -475,3 +501,69 @@ if __name__ == '__main__':
                  num_int_router=options.num_int_router, 
                  num_ext_router=len(routers)-options.num_int_router, 
                  num_ctrl=len(controllers), draw_ctrl=options.draw_ctrl)
+
+
+def getDeadLockedSubGraph(intLinksList: List[IntLink], link_contents_log):
+    intLinkLogPat=re.compile(r'^(\s*\d*): (\S+): MessageBufferContents:')
+    intLinkSet = set()
+    intLinkMap = dict([(intLink.path,intLink) for intLink in intLinksList])
+    with open(link_contents_log,'r') as fr:
+        for line in fr:
+            intLinkLogMatch = intLinkLogPat.match(line)
+            if intLinkLogMatch :
+                intPath = intLinkLogMatch.group(2).replace('.buffers0','')
+                intLinkSet.add(intLinkMap[intPath])
+    G = nx.DiGraph()
+    for i in intLinkSet:
+        G.add_edge(i.src_node, i.dst_node, data=i)
+    return G
+
+def getDeadlockChains():
+    parser = argparse.ArgumentParser(description='')
+    parser.add_argument('--input', required=True, type=str)
+    parser.add_argument('--output', required=True, type=str)
+    parser.add_argument('--draw-ctrl', required=False, action='store_true')
+    parser.add_argument('--num-int-router', required=False, default=16, type=int)
+    parser.add_argument('--start-time', required=False, default=0, type=int)
+    parser.add_argument('--end-time', required=False, default=float('inf'), type=float)
+    options = parser.parse_args()
+    
+    json_file = os.path.join(options.input,'config.json')
+    debug_trace = os.path.join(options.input, 'debug.trace')
+    link_contents_log = os.path.join(options.input, 'deadlock_path.trace')
+    diagram_path = os.path.join(options.input, 'noc_diagram_deadlocked.png')
+    grep_cmd = ['grep', '-E']
+    tgt_links_id = list(range(21,24)) + list(range(9,12))
+    hnf_ids = [12,15]
+    grep_str='|'.join([f'system\.ruby\.network\.int_links{i}\.buffers[0-9]+' for i in tgt_links_id]+\
+                       [f'system\.ruby\.hnf{i}\.cntrl' for i in hnf_ids]+\
+                       [f'PerfectSwitch-{i}' for i in hnf_ids]+\
+                       [f'system\.ruby\.network\.int_links{i}\.dst_node\.port_buffers[0-9]+' for i in list(range(9,12))])
+    grep_cmd.append(grep_str)
+    grep_cmd.append(debug_trace)
+    # if not os.path.isfile(link_contents_log) :
+    pc=subprocess.run(grep_cmd, stdout=open(link_contents_log,'w+'))
+    
+    # Build the system graph
+    # ext_links, int_links, routers = None, None, None
+    # with open(json_file,'r') as f:
+    #     JSON = json.load(f)
+    #     ext_links, int_links, routers, cyc_tick = parse_json(JSON)
+
+    # G = build_network(ext_links,int_links,routers,draw_ctrl=options.draw_ctrl)
+
+    # G2 = getDeadLockedSubGraph(int_links,link_contents_log)
+    
+    # C = nx.simple_cycles(G2)
+    # for c in C :
+    #     for r in c :
+    #         print(r.path)
+    #     print('-----------------------')
+    # print('-----------------------')
+    # print(G2.edges)
+    # print('-----------------------')
+    # print(G.edges)
+
+
+if __name__ == '__main__':
+    getDeadlockChains()

@@ -672,7 +672,7 @@ std::string MessageBuffer::getMsgBufferContents() const {
     std::sort_heap(copy.begin(), copy.end(), std::greater<MsgPtr>());
     std::stringstream ss;
     unsigned count = 0;
-    unsigned buf_size = copy.size();
+    unsigned buf_size = 1; // copy.size();
     ss << "[";
     for (auto &msgptr : copy) {
         const std::type_info& msg_type = typeid(*(msgptr.get()));
@@ -685,8 +685,11 @@ std::string MessageBuffer::getMsgBufferContents() const {
             }
         } else if (msg_type == typeid(CHIRequestMsg)) {
             const CHIRequestMsg* msg = dynamic_cast<CHIRequestMsg*>(msgptr.get());
-            ss << "addr: 0x" << std::hex << msg->getaddr()
-               << "|" << msg->gettype()
+            NetDest net_dest = msg->getDestination();
+            ss << "addr: 0x" << std::hex << msg->getaddr();
+            ss << std::dec << "|" << msg->gettype()
+               << "|" << msg->getrequestor()
+               << "-->" << denseDst(net_dest)
                << "|" << msg->getallowRetry();
             if (count < (buf_size-1)) {
                 ss << ", ";
@@ -714,6 +717,7 @@ std::string MessageBuffer::getMsgBufferContents() const {
             }
         }
         count++;
+        break;
     }
     ss << "]";
     return ss.str();

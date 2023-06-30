@@ -86,6 +86,10 @@ PerfectSwitch::addInPort(const std::vector<MessageBuffer*>& in)
 {
     NodeID port = m_in.size();
     m_in.push_back(in);
+    
+    std::cout << "Switch_" << name() << " "
+              << "Inport_" << port << ": "
+              << "Link " << in[0]->name() << "\n";
 
     for (int i = 0; i < in.size(); ++i) {
         if (in[i] != nullptr) {
@@ -129,6 +133,8 @@ PerfectSwitch::addOutPort(const std::vector<MessageBuffer*>& out,
                           Tick routing_latency,
                           int link_weight)
 {
+
+
     // Add to routing unit
     m_switch->getRoutingUnit().addOutPort(m_out.size(),
                                           out,
@@ -232,8 +238,8 @@ PerfectSwitch::operateMessageBuffer(int in_port, MessageBuffer *buffer, int vnet
                 DPRINTF(SimpleNetworkDebug,"VNET_%d Incoming_%d Outgoing_%d Msg_%s blocked\n",
                         vnet,
                         in_port,
-                        buffer->getCHITypeStr(msg_ptr),
-                        outgoing);
+                        outgoing,
+                        buffer->getMsgBufferContents());
             }
         }
 
@@ -282,11 +288,6 @@ PerfectSwitch::operateMessageBuffer(int in_port, MessageBuffer *buffer, int vnet
                     "inport[%d][%d] to outport [%d][%d].\n",
                     buffer->getIncomingLink(), vnet, outgoing, vnet);
 
-            // DPRINTF(SimpleNetworkDebug, "msg [%d][%d] to [%d][%d]. %d pending.\n",
-            //         buffer->getIncomingLink(), vnet, 
-            //         outgoing, vnet,
-            //         m_pending_message_count[vnet]
-            //         );
 
             DPRINTF(SimpleNetworkDebug, "VNET_%d Incoming_%d Outgoing_%d Msg_%s Pending_%d\n",
                     vnet,

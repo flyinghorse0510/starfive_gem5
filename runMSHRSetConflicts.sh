@@ -205,7 +205,8 @@ if [ "$RUN" != "" ]; then
                         # done
                         # wait
                         ${PY3} parseRouterIncomingMsg.py \
-                              --input ${OUTPUT_DIR}
+                              --input ${OUTPUT_DIR} \
+                              --input-sw-port ${GEM5_DIR}/SwitchPortLinkMapping.txt
                     done
                 done
             done
