@@ -1501,6 +1501,11 @@ bool _checkResourceAvailable(RequestType request_type, Addr addr) {
     if (throttle_req_on_retry) {
       MachineID dest := mapAddressToDownstreamMachine(addr);
       bool canSend := destsWaitingRetry.isElement(dest) == false;
+      if (canSend == false) {
+        if (is_HN) {
+          DPRINTF(RubyResourceStalls,"Downstream: %s busy\n",dest);
+        }
+      }
       return canSend;
     } else {
       return true;
@@ -1515,7 +1520,13 @@ bool _checkResourceAvailable(RequestType request_type, Addr addr) {
     if (storTBEs.areNSlotsAvailable2(addr, 1)) {
       return true; // A retry buffer entry is not required in this case
     } else {
-      return storRetryBuffer.areNSlotsAvailable(1);
+      bool retryEntryAvail := storRetryBuffer.areNSlotsAvailable(1);
+      if (retryEntryAvail == false) {
+        DPRINTF(RubyResourceStalls,"Resources(used/rsvd/max): TBEs=%d/%d/%d, RetryBuffers=%d/%d/%d\n",
+                                    storTBEs.size(), storTBEs.reserved(), storTBEs.capacity(),
+                                    storRetryBuffer.size(), storRetryBuffer.reserved(), storRetryBuffer.capacity());
+      }
+      return retryEntryAvail;
     }
   } else {
     error("Invalid RequestType type in checkResourceAvailable");
