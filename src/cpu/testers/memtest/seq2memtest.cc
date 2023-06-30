@@ -208,10 +208,10 @@ Seq2MemTest::completeRequest(PacketPtr pkt, bool functional)
             if (pkt_data[0] != ref_data) {
                 panic("Read of %x returns %x, expected %x\n", remove_paddr,pkt_data[0], ref_data);
             } else {
-                // DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:R\n",\
-                //                        remove_paddr,\
-                //                        addrIterMap[remove_paddr],\
-                //                        id);
+                DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:R\n",\
+                                       remove_paddr,\
+                                       addrIterMap[remove_paddr],\
+                                       id);
                 
                 numReadsCompleted++;
                 stats.numReads++;
@@ -225,10 +225,10 @@ Seq2MemTest::completeRequest(PacketPtr pkt, bool functional)
             }
         } else {
             assert(pkt->isWrite());
-            // DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:W\n",\
-            //     remove_paddr,\
-            //     addrIterMap[remove_paddr],\
-            //     id);
+            DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:W\n",\
+                remove_paddr,\
+                addrIterMap[remove_paddr],\
+                id);
             // update the reference data
             referenceData[req->getPaddr()] = pkt_data[0];
             numWritesCompleted++;
