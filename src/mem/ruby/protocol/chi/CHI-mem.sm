@@ -46,8 +46,6 @@ machine(MachineType:Memory, "Memory controller interface") :
 
   int data_channel_size;
 
-  bool snf_allow_retry;
-
   // Interface to the network
   // Note vnet_type is used by Garnet only. "response" type is assumed to
   // have data, so use it for data channels and "none" for the rest.
@@ -74,6 +72,13 @@ machine(MachineType:Memory, "Memory controller interface") :
   // Trigger queue for internal events
   MessageBuffer * triggerQueue;
 
+  // 
+  bool snf_allow_retry;
+
+  int number_of_retry_entries := 2;
+
+  int number_of_mshrs_reserved_for_normal_requests := 1;
+
 {
 
   ////////////////////////////////////////////////////////////////////////////
@@ -99,10 +104,9 @@ machine(MachineType:Memory, "Memory controller interface") :
 
   enumeration(Event, desc="Memory events") {
     // Checks if a request can allocate a TBE be moved to reqRdy
-    CheckAllocTBE, desc="";
+    CheckAllocTBE,            desc="";
     CheckAllocTBE_WithCredit, desc="";
-    
-    CheckAllocTBE_NoRetry, desc="If retry from SNF is disabled";
+    CheckAllocTBE_NoRetry,    desc="If retry from SNF is disabled";
 
     // Requests
     WriteNoSnpPtl, desc="";
@@ -211,6 +215,7 @@ machine(MachineType:Memory, "Memory controller interface") :
     Addr addr;
     Event event;
     MachineID retryDest;
+    int retryBufSlot;
 
     bool functionalRead(Packet *pkt) { return false; }
     bool functionalRead(Packet *pkt, WriteMask &mask) { return false; }
@@ -221,16 +226,22 @@ machine(MachineType:Memory, "Memory controller interface") :
   structure(RetryQueueEntry) {
     Addr addr,           desc="Line address";
     MachineID retryDest, desc="Retry destination";
+    int slot,            desc="Slots occupied in the retry buffer entry";
   }
 
   structure(TriggerQueue, external ="yes") {
     void pop();
     bool empty();
-    void emplace(Addr,MachineID);
+    void emplace(Addr,MachineID,int);
     RetryQueueEntry next();
   }
 
+  ////////////////////////////////////////////////////////////////////////////
+  // Handling retry
+  ////////////////////////////////////////////////////////////////////////////
   TriggerQueue retryQueue, template="<Memory_RetryQueueEntry>";
+  TBEStorage storRetryBuffer, constructor="this, TBEType_to_string(TBEType_RetryEntry), m_number_of_retry_entries";
+
 
   ////////////////////////////////////////////////////////////////////////////
   // External functions
@@ -432,7 +443,7 @@ machine(MachineType:Memory, "Memory controller interface") :
     if (reqInPort.isReady(clockEdge())) {
       printResources();
       peek(reqInPort, CHIRequestMsg) {
-        DPRINTF(RubyTxnTrace,"addr: %#x, reqtor: %s\n",in_msg.addr,in_msg.requestor);
+        DPRINTF(RubyTxnTrace,"addr: %#x, reqtor: %s, Resources(avail/max/reserved): %d/%d/%d\n",in_msg.addr,in_msg.requestor,storTBEs.size(),storTBEs.capacity(),storTBEs.reserved());
         if (snf_allow_retry) {
           if (in_msg.allowRetry) {
             trigger(Event:CheckAllocTBE, in_msg.addr, TBEs[in_msg.addr]);
@@ -449,7 +460,35 @@ machine(MachineType:Memory, "Memory controller interface") :
     }
   }
 
+  ////////////////////////////////////////////////////////////////////////////
+  // Resource limitations
+  ////////////////////////////////////////////////////////////////////////////
+  enumeration(RequestType, desc="Block transitions if request cannot be allocated") {
+    RetryBufferEntryAvailable, desc="Retry buffer entries are available";
+  }
 
+  bool _checkResourceAvailable(RequestType request_type, Addr addr) {
+    if (request_type == RequestType:RetryBufferEntryAvailable) {
+      if (storTBEs.areNSlotsAvailable(1)) {
+        return true;
+      } else {
+        bool retryEntryAvail := storRetryBuffer.areNSlotsAvailable(1);
+        if (retryEntryAvail == false) {
+          DPRINTF(RubyResourceStalls,"No Retry buffer entries\n");
+        }
+        return retryEntryAvail;
+      }
+    }  else {
+      error("Invalid RequestType type in checkResourceAvailable");
+      return true;
+    }
+  }
+  
+  bool checkResourceAvailable(RequestType request_type, Addr addr) {
+    return _checkResourceAvailable(request_type, addr);
+  }
+
+  void recordRequestType(RequestType request_type, Addr addr) {}
 
   ////////////////////////////////////////////////////////////////////////////
   // Actions
@@ -469,13 +508,18 @@ machine(MachineType:Memory, "Memory controller interface") :
       }
 
     } else {
+      assert(storRetryBuffer.areNSlotsAvailable(1));
       peek(reqInPort, CHIRequestMsg) {
         assert(in_msg.allowRetry);
         enqueue(triggerOutPort, TriggerMsg, 0) {
+          int retryBufSlot := storRetryBuffer.addEntryToNewSlot();
+          
           out_msg.addr := in_msg.addr;
           out_msg.event := Event:Trigger_SendRetry;
           out_msg.retryDest := in_msg.requestor;
-          retryQueue.emplace(in_msg.addr,in_msg.requestor);
+          out_msg.retryBufSlot := retryBufSlot;
+
+          retryQueue.emplace(in_msg.addr,in_msg.requestor,retryBufSlot);
         }
       }
     }
@@ -549,16 +593,21 @@ machine(MachineType:Memory, "Memory controller interface") :
     storTBEs.removeEntryFromSlot(tbe.storSlot);
     TBEs.deallocate(address);
     unset_tbe();
-    // send credit if requestor waiting for it
+    
+    // send credit if a requestor waiting for it
     if (retryQueue.empty() == false) {
-      assert(storTBEs.areNSlotsAvailable(1));
-      storTBEs.incrementReserved();
-      RetryQueueEntry e := retryQueue.next();
-      retryQueue.pop();
-      enqueue(triggerOutPort, TriggerMsg, 0) {
-        out_msg.addr := e.addr;
-        out_msg.retryDest := e.retryDest;
-        out_msg.event := Event:Trigger_SendPCrdGrant;
+      bool has_avail := storTBEs.areNSlotsAvailable(number_of_mshrs_reserved_for_normal_requests + 1);
+      if (has_avail) {
+        storTBEs.incrementReserved();
+        RetryQueueEntry e := retryQueue.next();
+        enqueue(triggerOutPort, TriggerMsg, 0) {
+          out_msg.addr := e.addr;
+          out_msg.retryDest := e.retryDest;
+          out_msg.event := Event:Trigger_SendPCrdGrant;
+          out_msg.retryBufSlot := e.slot;
+        }
+        storRetryBuffer.removeEntryFromSlot(e.slot);
+        retryQueue.pop();
       }
     }
   }
@@ -665,8 +714,6 @@ machine(MachineType:Memory, "Memory controller interface") :
       out_msg.Destination.add(tbe.destination);
     }
 
-    //DPRINTF(RubySlicc, "rxtxBytes=%d\n", tbe.rxtxBytes);
-
     tbe.rxtxBytes := tbe.rxtxBytes + data_channel_size;
 
     // end or send next chunk next cycle
@@ -684,7 +731,6 @@ machine(MachineType:Memory, "Memory controller interface") :
 
   action(checkForReceiveCompletion, "cWc", desc="Check if all data is received") {
     assert(is_valid(tbe));
-    DPRINTF(RubySlicc, "rxtxBytes=%d\n", tbe.rxtxBytes);
     assert((tbe.rxtxBytes <= tbe.accSize) && (tbe.rxtxBytes > 0));
     if (tbe.rxtxBytes == tbe.accSize) {
       enqueue(triggerOutPort, TriggerMsg, 0) {
@@ -837,7 +883,7 @@ machine(MachineType:Memory, "Memory controller interface") :
   }
 
   transition({READING_MEM,WAITING_NET_DATA,SENDING_NET_DATA,READY},
-              CheckAllocTBE) {
+              CheckAllocTBE) {RetryBufferEntryAvailable} {
     checkAllocateTBE;
   }
 
