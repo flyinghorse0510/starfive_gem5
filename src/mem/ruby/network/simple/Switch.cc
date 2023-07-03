@@ -124,9 +124,9 @@ Switch::addOutPort(const std::vector<MessageBuffer*>& out,
         intermediateBuffers.push_back(buffer_ptr);
     }
     
-    std::cout << "Switch_" << name() << " "
-              << "OutPortBuffer " << intermediateBuffers[0]->name()  << " "
-              << "Link " << out[0]->name() << "\n";
+    // std::cout << "Switch_" << name() << " "
+    //           << "OutPortBuffer " << intermediateBuffers[0]->name()  << " "
+    //           << "Link " << out[0]->name() << "\n";
 
     Tick routing_latency = is_external ? cyclesToTicks(m_ext_routing_latency) :
                                          cyclesToTicks(m_int_routing_latency);

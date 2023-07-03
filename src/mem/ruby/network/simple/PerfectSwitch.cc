@@ -87,9 +87,9 @@ PerfectSwitch::addInPort(const std::vector<MessageBuffer*>& in)
     NodeID port = m_in.size();
     m_in.push_back(in);
     
-    std::cout << "Switch_" << name() << " "
-              << "Inport_" << port << ": "
-              << "Link " << in[0]->name() << "\n";
+    // std::cout << "Switch_" << name() << " "
+    //           << "Inport_" << port << ": "
+    //           << "Link " << in[0]->name() << "\n";
 
     for (int i = 0; i < in.size(); ++i) {
         if (in[i] != nullptr) {
