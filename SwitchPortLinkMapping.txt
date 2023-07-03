@@ -1,0 +1,298 @@
+Switch_PerfectSwitch-16 Inport_0: Link system.cpu00.l1i.reqOut
+Switch_PerfectSwitch-16 Inport_1: Link system.cpu00.l1d.reqOut
+Switch_PerfectSwitch-17 Inport_0: Link system.cpu01.l1i.reqOut
+Switch_PerfectSwitch-17 Inport_1: Link system.cpu01.l1d.reqOut
+Switch_PerfectSwitch-18 Inport_0: Link system.cpu02.l1i.reqOut
+Switch_PerfectSwitch-18 Inport_1: Link system.cpu02.l1d.reqOut
+Switch_PerfectSwitch-19 Inport_0: Link system.cpu03.l1i.reqOut
+Switch_PerfectSwitch-19 Inport_1: Link system.cpu03.l1d.reqOut
+Switch_PerfectSwitch-20 Inport_0: Link system.cpu04.l1i.reqOut
+Switch_PerfectSwitch-20 Inport_1: Link system.cpu04.l1d.reqOut
+Switch_PerfectSwitch-21 Inport_0: Link system.cpu05.l1i.reqOut
+Switch_PerfectSwitch-21 Inport_1: Link system.cpu05.l1d.reqOut
+Switch_PerfectSwitch-22 Inport_0: Link system.cpu06.l1i.reqOut
+Switch_PerfectSwitch-22 Inport_1: Link system.cpu06.l1d.reqOut
+Switch_PerfectSwitch-23 Inport_0: Link system.cpu07.l1i.reqOut
+Switch_PerfectSwitch-23 Inport_1: Link system.cpu07.l1d.reqOut
+Switch_PerfectSwitch-24 Inport_0: Link system.cpu08.l1i.reqOut
+Switch_PerfectSwitch-24 Inport_1: Link system.cpu08.l1d.reqOut
+Switch_PerfectSwitch-25 Inport_0: Link system.cpu09.l1i.reqOut
+Switch_PerfectSwitch-25 Inport_1: Link system.cpu09.l1d.reqOut
+Switch_PerfectSwitch-26 Inport_0: Link system.cpu10.l1i.reqOut
+Switch_PerfectSwitch-26 Inport_1: Link system.cpu10.l1d.reqOut
+Switch_PerfectSwitch-27 Inport_0: Link system.cpu11.l1i.reqOut
+Switch_PerfectSwitch-27 Inport_1: Link system.cpu11.l1d.reqOut
+Switch_PerfectSwitch-28 Inport_0: Link system.cpu12.l1i.reqOut
+Switch_PerfectSwitch-28 Inport_1: Link system.cpu12.l1d.reqOut
+Switch_PerfectSwitch-29 Inport_0: Link system.cpu13.l1i.reqOut
+Switch_PerfectSwitch-29 Inport_1: Link system.cpu13.l1d.reqOut
+Switch_PerfectSwitch-30 Inport_0: Link system.cpu14.l1i.reqOut
+Switch_PerfectSwitch-30 Inport_1: Link system.cpu14.l1d.reqOut
+Switch_PerfectSwitch-31 Inport_0: Link system.cpu15.l1i.reqOut
+Switch_PerfectSwitch-31 Inport_1: Link system.cpu15.l1d.reqOut
+Switch_PerfectSwitch-16 Inport_2: Link system.cpu00.l2.reqOut
+Switch_PerfectSwitch-17 Inport_2: Link system.cpu01.l2.reqOut
+Switch_PerfectSwitch-18 Inport_2: Link system.cpu02.l2.reqOut
+Switch_PerfectSwitch-19 Inport_2: Link system.cpu03.l2.reqOut
+Switch_PerfectSwitch-20 Inport_2: Link system.cpu04.l2.reqOut
+Switch_PerfectSwitch-21 Inport_2: Link system.cpu05.l2.reqOut
+Switch_PerfectSwitch-22 Inport_2: Link system.cpu06.l2.reqOut
+Switch_PerfectSwitch-23 Inport_2: Link system.cpu07.l2.reqOut
+Switch_PerfectSwitch-24 Inport_2: Link system.cpu08.l2.reqOut
+Switch_PerfectSwitch-25 Inport_2: Link system.cpu09.l2.reqOut
+Switch_PerfectSwitch-26 Inport_2: Link system.cpu10.l2.reqOut
+Switch_PerfectSwitch-27 Inport_2: Link system.cpu11.l2.reqOut
+Switch_PerfectSwitch-28 Inport_2: Link system.cpu12.l2.reqOut
+Switch_PerfectSwitch-29 Inport_2: Link system.cpu13.l2.reqOut
+Switch_PerfectSwitch-30 Inport_2: Link system.cpu14.l2.reqOut
+Switch_PerfectSwitch-31 Inport_2: Link system.cpu15.l2.reqOut
+Switch_PerfectSwitch-0 Inport_0: Link system.ruby.hnf00.cntrl.reqOut
+Switch_PerfectSwitch-1 Inport_0: Link system.ruby.hnf01.cntrl.reqOut
+Switch_PerfectSwitch-2 Inport_0: Link system.ruby.hnf02.cntrl.reqOut
+Switch_PerfectSwitch-3 Inport_0: Link system.ruby.hnf03.cntrl.reqOut
+Switch_PerfectSwitch-4 Inport_0: Link system.ruby.hnf04.cntrl.reqOut
+Switch_PerfectSwitch-5 Inport_0: Link system.ruby.hnf05.cntrl.reqOut
+Switch_PerfectSwitch-6 Inport_0: Link system.ruby.hnf06.cntrl.reqOut
+Switch_PerfectSwitch-7 Inport_0: Link system.ruby.hnf07.cntrl.reqOut
+Switch_PerfectSwitch-8 Inport_0: Link system.ruby.hnf08.cntrl.reqOut
+Switch_PerfectSwitch-9 Inport_0: Link system.ruby.hnf09.cntrl.reqOut
+Switch_PerfectSwitch-10 Inport_0: Link system.ruby.hnf10.cntrl.reqOut
+Switch_PerfectSwitch-11 Inport_0: Link system.ruby.hnf11.cntrl.reqOut
+Switch_PerfectSwitch-12 Inport_0: Link system.ruby.hnf12.cntrl.reqOut
+Switch_PerfectSwitch-13 Inport_0: Link system.ruby.hnf13.cntrl.reqOut
+Switch_PerfectSwitch-14 Inport_0: Link system.ruby.hnf14.cntrl.reqOut
+Switch_PerfectSwitch-15 Inport_0: Link system.ruby.hnf15.cntrl.reqOut
+Switch_PerfectSwitch-13 Inport_1: Link system.ruby.snf0.cntrl.reqOut
+Switch_PerfectSwitch-14 Inport_1: Link system.ruby.snf1.cntrl.reqOut
+Switch_PerfectSwitch-1 Inport_1: Link system.ruby.snf2.cntrl.reqOut
+Switch_PerfectSwitch-2 Inport_1: Link system.ruby.snf3.cntrl.reqOut
+Switch_PerfectSwitch-3 Inport_1: Link system.ruby.mn.cntrl.reqOut
+Switch_system.ruby.network.int_links00.src_node OutPortBuffer system.ruby.network.int_links00.src_node.port_buffers00 Link system.ruby.hnf00.cntrl.reqIn
+Switch_PerfectSwitch-1 Inport_2: Link system.ruby.network.int_links00.buffers0
+Switch_system.ruby.network.int_links00.src_node OutPortBuffer system.ruby.network.int_links00.src_node.port_buffers04 Link system.ruby.network.int_links00.buffers0
+Switch_PerfectSwitch-4 Inport_1: Link system.ruby.network.int_links24.buffers0
+Switch_system.ruby.network.int_links00.src_node OutPortBuffer system.ruby.network.int_links00.src_node.port_buffers08 Link system.ruby.network.int_links24.buffers0
+Switch_PerfectSwitch-16 Inport_3: Link system.ruby.network.int_links49.buffers0
+Switch_system.ruby.network.int_links00.src_node OutPortBuffer system.ruby.network.int_links00.src_node.port_buffers12 Link system.ruby.network.int_links49.buffers0
+Switch_system.ruby.network.int_links00.dst_node OutPortBuffer system.ruby.network.int_links00.dst_node.port_buffers00 Link system.ruby.hnf01.cntrl.reqIn
+Switch_system.ruby.network.int_links00.dst_node OutPortBuffer system.ruby.network.int_links00.dst_node.port_buffers04 Link system.ruby.snf2.cntrl.reqIn
+Switch_PerfectSwitch-0 Inport_1: Link system.ruby.network.int_links12.buffers0
+Switch_system.ruby.network.int_links00.dst_node OutPortBuffer system.ruby.network.int_links00.dst_node.port_buffers08 Link system.ruby.network.int_links12.buffers0
+Switch_PerfectSwitch-2 Inport_2: Link system.ruby.network.int_links01.buffers0
+Switch_system.ruby.network.int_links00.dst_node OutPortBuffer system.ruby.network.int_links00.dst_node.port_buffers12 Link system.ruby.network.int_links01.buffers0
+Switch_PerfectSwitch-5 Inport_1: Link system.ruby.network.int_links27.buffers0
+Switch_system.ruby.network.int_links00.dst_node OutPortBuffer system.ruby.network.int_links00.dst_node.port_buffers16 Link system.ruby.network.int_links27.buffers0
+Switch_PerfectSwitch-17 Inport_3: Link system.ruby.network.int_links51.buffers0
+Switch_system.ruby.network.int_links00.dst_node OutPortBuffer system.ruby.network.int_links00.dst_node.port_buffers20 Link system.ruby.network.int_links51.buffers0
+Switch_system.ruby.network.int_links01.dst_node OutPortBuffer system.ruby.network.int_links01.dst_node.port_buffers00 Link system.ruby.hnf02.cntrl.reqIn
+Switch_system.ruby.network.int_links01.dst_node OutPortBuffer system.ruby.network.int_links01.dst_node.port_buffers04 Link system.ruby.snf3.cntrl.reqIn
+Switch_PerfectSwitch-1 Inport_3: Link system.ruby.network.int_links13.buffers0
+Switch_system.ruby.network.int_links01.dst_node OutPortBuffer system.ruby.network.int_links01.dst_node.port_buffers08 Link system.ruby.network.int_links13.buffers0
+Switch_PerfectSwitch-3 Inport_2: Link system.ruby.network.int_links02.buffers0
+Switch_system.ruby.network.int_links01.dst_node OutPortBuffer system.ruby.network.int_links01.dst_node.port_buffers12 Link system.ruby.network.int_links02.buffers0
+Switch_PerfectSwitch-6 Inport_1: Link system.ruby.network.int_links30.buffers0
+Switch_system.ruby.network.int_links01.dst_node OutPortBuffer system.ruby.network.int_links01.dst_node.port_buffers16 Link system.ruby.network.int_links30.buffers0
+Switch_PerfectSwitch-18 Inport_3: Link system.ruby.network.int_links53.buffers0
+Switch_system.ruby.network.int_links01.dst_node OutPortBuffer system.ruby.network.int_links01.dst_node.port_buffers20 Link system.ruby.network.int_links53.buffers0
+Switch_system.ruby.network.int_links02.dst_node OutPortBuffer system.ruby.network.int_links02.dst_node.port_buffers00 Link system.ruby.hnf03.cntrl.reqIn
+Switch_system.ruby.network.int_links02.dst_node OutPortBuffer system.ruby.network.int_links02.dst_node.port_buffers04 Link system.ruby.mn.cntrl.reqIn
+Switch_PerfectSwitch-2 Inport_3: Link system.ruby.network.int_links14.buffers0
+Switch_system.ruby.network.int_links02.dst_node OutPortBuffer system.ruby.network.int_links02.dst_node.port_buffers08 Link system.ruby.network.int_links14.buffers0
+Switch_PerfectSwitch-7 Inport_1: Link system.ruby.network.int_links33.buffers0
+Switch_system.ruby.network.int_links02.dst_node OutPortBuffer system.ruby.network.int_links02.dst_node.port_buffers12 Link system.ruby.network.int_links33.buffers0
+Switch_PerfectSwitch-19 Inport_3: Link system.ruby.network.int_links55.buffers0
+Switch_system.ruby.network.int_links02.dst_node OutPortBuffer system.ruby.network.int_links02.dst_node.port_buffers16 Link system.ruby.network.int_links55.buffers0
+Switch_system.ruby.network.int_links03.src_node OutPortBuffer system.ruby.network.int_links03.src_node.port_buffers00 Link system.ruby.hnf04.cntrl.reqIn
+Switch_PerfectSwitch-0 Inport_2: Link system.ruby.network.int_links36.buffers0
+Switch_system.ruby.network.int_links03.src_node OutPortBuffer system.ruby.network.int_links03.src_node.port_buffers04 Link system.ruby.network.int_links36.buffers0
+Switch_PerfectSwitch-5 Inport_2: Link system.ruby.network.int_links03.buffers0
+Switch_system.ruby.network.int_links03.src_node OutPortBuffer system.ruby.network.int_links03.src_node.port_buffers08 Link system.ruby.network.int_links03.buffers0
+Switch_PerfectSwitch-8 Inport_1: Link system.ruby.network.int_links25.buffers0
+Switch_system.ruby.network.int_links03.src_node OutPortBuffer system.ruby.network.int_links03.src_node.port_buffers12 Link system.ruby.network.int_links25.buffers0
+Switch_PerfectSwitch-20 Inport_3: Link system.ruby.network.int_links57.buffers0
+Switch_system.ruby.network.int_links03.src_node OutPortBuffer system.ruby.network.int_links03.src_node.port_buffers16 Link system.ruby.network.int_links57.buffers0
+Switch_system.ruby.network.int_links03.dst_node OutPortBuffer system.ruby.network.int_links03.dst_node.port_buffers00 Link system.ruby.hnf05.cntrl.reqIn
+Switch_PerfectSwitch-1 Inport_4: Link system.ruby.network.int_links39.buffers0
+Switch_system.ruby.network.int_links03.dst_node OutPortBuffer system.ruby.network.int_links03.dst_node.port_buffers04 Link system.ruby.network.int_links39.buffers0
+Switch_PerfectSwitch-4 Inport_2: Link system.ruby.network.int_links15.buffers0
+Switch_system.ruby.network.int_links03.dst_node OutPortBuffer system.ruby.network.int_links03.dst_node.port_buffers08 Link system.ruby.network.int_links15.buffers0
+Switch_PerfectSwitch-6 Inport_2: Link system.ruby.network.int_links04.buffers0
+Switch_system.ruby.network.int_links03.dst_node OutPortBuffer system.ruby.network.int_links03.dst_node.port_buffers12 Link system.ruby.network.int_links04.buffers0
+Switch_PerfectSwitch-9 Inport_1: Link system.ruby.network.int_links28.buffers0
+Switch_system.ruby.network.int_links03.dst_node OutPortBuffer system.ruby.network.int_links03.dst_node.port_buffers16 Link system.ruby.network.int_links28.buffers0
+Switch_PerfectSwitch-21 Inport_3: Link system.ruby.network.int_links59.buffers0
+Switch_system.ruby.network.int_links03.dst_node OutPortBuffer system.ruby.network.int_links03.dst_node.port_buffers20 Link system.ruby.network.int_links59.buffers0
+Switch_system.ruby.network.int_links04.dst_node OutPortBuffer system.ruby.network.int_links04.dst_node.port_buffers00 Link system.ruby.hnf06.cntrl.reqIn
+Switch_PerfectSwitch-2 Inport_4: Link system.ruby.network.int_links42.buffers0
+Switch_system.ruby.network.int_links04.dst_node OutPortBuffer system.ruby.network.int_links04.dst_node.port_buffers04 Link system.ruby.network.int_links42.buffers0
+Switch_PerfectSwitch-5 Inport_3: Link system.ruby.network.int_links16.buffers0
+Switch_system.ruby.network.int_links04.dst_node OutPortBuffer system.ruby.network.int_links04.dst_node.port_buffers08 Link system.ruby.network.int_links16.buffers0
+Switch_PerfectSwitch-7 Inport_2: Link system.ruby.network.int_links05.buffers0
+Switch_system.ruby.network.int_links04.dst_node OutPortBuffer system.ruby.network.int_links04.dst_node.port_buffers12 Link system.ruby.network.int_links05.buffers0
+Switch_PerfectSwitch-10 Inport_1: Link system.ruby.network.int_links31.buffers0
+Switch_system.ruby.network.int_links04.dst_node OutPortBuffer system.ruby.network.int_links04.dst_node.port_buffers16 Link system.ruby.network.int_links31.buffers0
+Switch_PerfectSwitch-22 Inport_3: Link system.ruby.network.int_links61.buffers0
+Switch_system.ruby.network.int_links04.dst_node OutPortBuffer system.ruby.network.int_links04.dst_node.port_buffers20 Link system.ruby.network.int_links61.buffers0
+Switch_system.ruby.network.int_links05.dst_node OutPortBuffer system.ruby.network.int_links05.dst_node.port_buffers00 Link system.ruby.hnf07.cntrl.reqIn
+Switch_PerfectSwitch-3 Inport_3: Link system.ruby.network.int_links45.buffers0
+Switch_system.ruby.network.int_links05.dst_node OutPortBuffer system.ruby.network.int_links05.dst_node.port_buffers04 Link system.ruby.network.int_links45.buffers0
+Switch_PerfectSwitch-6 Inport_3: Link system.ruby.network.int_links17.buffers0
+Switch_system.ruby.network.int_links05.dst_node OutPortBuffer system.ruby.network.int_links05.dst_node.port_buffers08 Link system.ruby.network.int_links17.buffers0
+Switch_PerfectSwitch-11 Inport_1: Link system.ruby.network.int_links34.buffers0
+Switch_system.ruby.network.int_links05.dst_node OutPortBuffer system.ruby.network.int_links05.dst_node.port_buffers12 Link system.ruby.network.int_links34.buffers0
+Switch_PerfectSwitch-23 Inport_3: Link system.ruby.network.int_links63.buffers0
+Switch_system.ruby.network.int_links05.dst_node OutPortBuffer system.ruby.network.int_links05.dst_node.port_buffers16 Link system.ruby.network.int_links63.buffers0
+Switch_system.ruby.network.int_links06.src_node OutPortBuffer system.ruby.network.int_links06.src_node.port_buffers00 Link system.ruby.hnf08.cntrl.reqIn
+Switch_PerfectSwitch-4 Inport_3: Link system.ruby.network.int_links37.buffers0
+Switch_system.ruby.network.int_links06.src_node OutPortBuffer system.ruby.network.int_links06.src_node.port_buffers04 Link system.ruby.network.int_links37.buffers0
+Switch_PerfectSwitch-9 Inport_2: Link system.ruby.network.int_links06.buffers0
+Switch_system.ruby.network.int_links06.src_node OutPortBuffer system.ruby.network.int_links06.src_node.port_buffers08 Link system.ruby.network.int_links06.buffers0
+Switch_PerfectSwitch-12 Inport_1: Link system.ruby.network.int_links26.buffers0
+Switch_system.ruby.network.int_links06.src_node OutPortBuffer system.ruby.network.int_links06.src_node.port_buffers12 Link system.ruby.network.int_links26.buffers0
+Switch_PerfectSwitch-24 Inport_3: Link system.ruby.network.int_links65.buffers0
+Switch_system.ruby.network.int_links06.src_node OutPortBuffer system.ruby.network.int_links06.src_node.port_buffers16 Link system.ruby.network.int_links65.buffers0
+Switch_system.ruby.network.int_links06.dst_node OutPortBuffer system.ruby.network.int_links06.dst_node.port_buffers00 Link system.ruby.hnf09.cntrl.reqIn
+Switch_PerfectSwitch-5 Inport_4: Link system.ruby.network.int_links40.buffers0
+Switch_system.ruby.network.int_links06.dst_node OutPortBuffer system.ruby.network.int_links06.dst_node.port_buffers04 Link system.ruby.network.int_links40.buffers0
+Switch_PerfectSwitch-8 Inport_2: Link system.ruby.network.int_links18.buffers0
+Switch_system.ruby.network.int_links06.dst_node OutPortBuffer system.ruby.network.int_links06.dst_node.port_buffers08 Link system.ruby.network.int_links18.buffers0
+Switch_PerfectSwitch-10 Inport_2: Link system.ruby.network.int_links07.buffers0
+Switch_system.ruby.network.int_links06.dst_node OutPortBuffer system.ruby.network.int_links06.dst_node.port_buffers12 Link system.ruby.network.int_links07.buffers0
+Switch_PerfectSwitch-13 Inport_2: Link system.ruby.network.int_links29.buffers0
+Switch_system.ruby.network.int_links06.dst_node OutPortBuffer system.ruby.network.int_links06.dst_node.port_buffers16 Link system.ruby.network.int_links29.buffers0
+Switch_PerfectSwitch-25 Inport_3: Link system.ruby.network.int_links67.buffers0
+Switch_system.ruby.network.int_links06.dst_node OutPortBuffer system.ruby.network.int_links06.dst_node.port_buffers20 Link system.ruby.network.int_links67.buffers0
+Switch_system.ruby.network.int_links07.dst_node OutPortBuffer system.ruby.network.int_links07.dst_node.port_buffers00 Link system.ruby.hnf10.cntrl.reqIn
+Switch_PerfectSwitch-6 Inport_4: Link system.ruby.network.int_links43.buffers0
+Switch_system.ruby.network.int_links07.dst_node OutPortBuffer system.ruby.network.int_links07.dst_node.port_buffers04 Link system.ruby.network.int_links43.buffers0
+Switch_PerfectSwitch-9 Inport_3: Link system.ruby.network.int_links19.buffers0
+Switch_system.ruby.network.int_links07.dst_node OutPortBuffer system.ruby.network.int_links07.dst_node.port_buffers08 Link system.ruby.network.int_links19.buffers0
+Switch_PerfectSwitch-11 Inport_2: Link system.ruby.network.int_links08.buffers0
+Switch_system.ruby.network.int_links07.dst_node OutPortBuffer system.ruby.network.int_links07.dst_node.port_buffers12 Link system.ruby.network.int_links08.buffers0
+Switch_PerfectSwitch-14 Inport_2: Link system.ruby.network.int_links32.buffers0
+Switch_system.ruby.network.int_links07.dst_node OutPortBuffer system.ruby.network.int_links07.dst_node.port_buffers16 Link system.ruby.network.int_links32.buffers0
+Switch_PerfectSwitch-26 Inport_3: Link system.ruby.network.int_links69.buffers0
+Switch_system.ruby.network.int_links07.dst_node OutPortBuffer system.ruby.network.int_links07.dst_node.port_buffers20 Link system.ruby.network.int_links69.buffers0
+Switch_system.ruby.network.int_links08.dst_node OutPortBuffer system.ruby.network.int_links08.dst_node.port_buffers00 Link system.ruby.hnf11.cntrl.reqIn
+Switch_PerfectSwitch-7 Inport_3: Link system.ruby.network.int_links46.buffers0
+Switch_system.ruby.network.int_links08.dst_node OutPortBuffer system.ruby.network.int_links08.dst_node.port_buffers04 Link system.ruby.network.int_links46.buffers0
+Switch_PerfectSwitch-10 Inport_3: Link system.ruby.network.int_links20.buffers0
+Switch_system.ruby.network.int_links08.dst_node OutPortBuffer system.ruby.network.int_links08.dst_node.port_buffers08 Link system.ruby.network.int_links20.buffers0
+Switch_PerfectSwitch-15 Inport_1: Link system.ruby.network.int_links35.buffers0
+Switch_system.ruby.network.int_links08.dst_node OutPortBuffer system.ruby.network.int_links08.dst_node.port_buffers12 Link system.ruby.network.int_links35.buffers0
+Switch_PerfectSwitch-27 Inport_3: Link system.ruby.network.int_links71.buffers0
+Switch_system.ruby.network.int_links08.dst_node OutPortBuffer system.ruby.network.int_links08.dst_node.port_buffers16 Link system.ruby.network.int_links71.buffers0
+Switch_system.ruby.network.int_links09.src_node OutPortBuffer system.ruby.network.int_links09.src_node.port_buffers00 Link system.ruby.hnf12.cntrl.reqIn
+Switch_PerfectSwitch-8 Inport_3: Link system.ruby.network.int_links38.buffers0
+Switch_system.ruby.network.int_links09.src_node OutPortBuffer system.ruby.network.int_links09.src_node.port_buffers04 Link system.ruby.network.int_links38.buffers0
+Switch_PerfectSwitch-13 Inport_3: Link system.ruby.network.int_links09.buffers0
+Switch_system.ruby.network.int_links09.src_node OutPortBuffer system.ruby.network.int_links09.src_node.port_buffers08 Link system.ruby.network.int_links09.buffers0
+Switch_PerfectSwitch-28 Inport_3: Link system.ruby.network.int_links73.buffers0
+Switch_system.ruby.network.int_links09.src_node OutPortBuffer system.ruby.network.int_links09.src_node.port_buffers12 Link system.ruby.network.int_links73.buffers0
+Switch_system.ruby.network.int_links09.dst_node OutPortBuffer system.ruby.network.int_links09.dst_node.port_buffers00 Link system.ruby.hnf13.cntrl.reqIn
+Switch_system.ruby.network.int_links09.dst_node OutPortBuffer system.ruby.network.int_links09.dst_node.port_buffers04 Link system.ruby.snf0.cntrl.reqIn
+Switch_PerfectSwitch-9 Inport_4: Link system.ruby.network.int_links41.buffers0
+Switch_system.ruby.network.int_links09.dst_node OutPortBuffer system.ruby.network.int_links09.dst_node.port_buffers08 Link system.ruby.network.int_links41.buffers0
+Switch_PerfectSwitch-12 Inport_2: Link system.ruby.network.int_links21.buffers0
+Switch_system.ruby.network.int_links09.dst_node OutPortBuffer system.ruby.network.int_links09.dst_node.port_buffers12 Link system.ruby.network.int_links21.buffers0
+Switch_PerfectSwitch-14 Inport_3: Link system.ruby.network.int_links10.buffers0
+Switch_system.ruby.network.int_links09.dst_node OutPortBuffer system.ruby.network.int_links09.dst_node.port_buffers16 Link system.ruby.network.int_links10.buffers0
+Switch_PerfectSwitch-29 Inport_3: Link system.ruby.network.int_links75.buffers0
+Switch_system.ruby.network.int_links09.dst_node OutPortBuffer system.ruby.network.int_links09.dst_node.port_buffers20 Link system.ruby.network.int_links75.buffers0
+Switch_system.ruby.network.int_links10.dst_node OutPortBuffer system.ruby.network.int_links10.dst_node.port_buffers00 Link system.ruby.hnf14.cntrl.reqIn
+Switch_system.ruby.network.int_links10.dst_node OutPortBuffer system.ruby.network.int_links10.dst_node.port_buffers04 Link system.ruby.snf1.cntrl.reqIn
+Switch_PerfectSwitch-10 Inport_4: Link system.ruby.network.int_links44.buffers0
+Switch_system.ruby.network.int_links10.dst_node OutPortBuffer system.ruby.network.int_links10.dst_node.port_buffers08 Link system.ruby.network.int_links44.buffers0
+Switch_PerfectSwitch-13 Inport_4: Link system.ruby.network.int_links22.buffers0
+Switch_system.ruby.network.int_links10.dst_node OutPortBuffer system.ruby.network.int_links10.dst_node.port_buffers12 Link system.ruby.network.int_links22.buffers0
+Switch_PerfectSwitch-15 Inport_2: Link system.ruby.network.int_links11.buffers0
+Switch_system.ruby.network.int_links10.dst_node OutPortBuffer system.ruby.network.int_links10.dst_node.port_buffers16 Link system.ruby.network.int_links11.buffers0
+Switch_PerfectSwitch-30 Inport_3: Link system.ruby.network.int_links77.buffers0
+Switch_system.ruby.network.int_links10.dst_node OutPortBuffer system.ruby.network.int_links10.dst_node.port_buffers20 Link system.ruby.network.int_links77.buffers0
+Switch_system.ruby.network.int_links11.dst_node OutPortBuffer system.ruby.network.int_links11.dst_node.port_buffers00 Link system.ruby.hnf15.cntrl.reqIn
+Switch_PerfectSwitch-11 Inport_3: Link system.ruby.network.int_links47.buffers0
+Switch_system.ruby.network.int_links11.dst_node OutPortBuffer system.ruby.network.int_links11.dst_node.port_buffers04 Link system.ruby.network.int_links47.buffers0
+Switch_PerfectSwitch-14 Inport_4: Link system.ruby.network.int_links23.buffers0
+Switch_system.ruby.network.int_links11.dst_node OutPortBuffer system.ruby.network.int_links11.dst_node.port_buffers08 Link system.ruby.network.int_links23.buffers0
+Switch_PerfectSwitch-31 Inport_3: Link system.ruby.network.int_links79.buffers0
+Switch_system.ruby.network.int_links11.dst_node OutPortBuffer system.ruby.network.int_links11.dst_node.port_buffers12 Link system.ruby.network.int_links79.buffers0
+Switch_system.ruby.network.int_links48.src_node OutPortBuffer system.ruby.network.int_links48.src_node.port_buffers00 Link system.cpu00.l1i.reqIn
+Switch_system.ruby.network.int_links48.src_node OutPortBuffer system.ruby.network.int_links48.src_node.port_buffers04 Link system.cpu00.l1d.reqIn
+Switch_system.ruby.network.int_links48.src_node OutPortBuffer system.ruby.network.int_links48.src_node.port_buffers08 Link system.cpu00.l2.reqIn
+Switch_PerfectSwitch-0 Inport_3: Link system.ruby.network.int_links48.buffers0
+Switch_system.ruby.network.int_links48.src_node OutPortBuffer system.ruby.network.int_links48.src_node.port_buffers12 Link system.ruby.network.int_links48.buffers0
+Switch_system.ruby.network.int_links50.src_node OutPortBuffer system.ruby.network.int_links50.src_node.port_buffers00 Link system.cpu01.l1i.reqIn
+Switch_system.ruby.network.int_links50.src_node OutPortBuffer system.ruby.network.int_links50.src_node.port_buffers04 Link system.cpu01.l1d.reqIn
+Switch_system.ruby.network.int_links50.src_node OutPortBuffer system.ruby.network.int_links50.src_node.port_buffers08 Link system.cpu01.l2.reqIn
+Switch_PerfectSwitch-1 Inport_5: Link system.ruby.network.int_links50.buffers0
+Switch_system.ruby.network.int_links50.src_node OutPortBuffer system.ruby.network.int_links50.src_node.port_buffers12 Link system.ruby.network.int_links50.buffers0
+Switch_system.ruby.network.int_links52.src_node OutPortBuffer system.ruby.network.int_links52.src_node.port_buffers00 Link system.cpu02.l1i.reqIn
+Switch_system.ruby.network.int_links52.src_node OutPortBuffer system.ruby.network.int_links52.src_node.port_buffers04 Link system.cpu02.l1d.reqIn
+Switch_system.ruby.network.int_links52.src_node OutPortBuffer system.ruby.network.int_links52.src_node.port_buffers08 Link system.cpu02.l2.reqIn
+Switch_PerfectSwitch-2 Inport_5: Link system.ruby.network.int_links52.buffers0
+Switch_system.ruby.network.int_links52.src_node OutPortBuffer system.ruby.network.int_links52.src_node.port_buffers12 Link system.ruby.network.int_links52.buffers0
+Switch_system.ruby.network.int_links54.src_node OutPortBuffer system.ruby.network.int_links54.src_node.port_buffers00 Link system.cpu03.l1i.reqIn
+Switch_system.ruby.network.int_links54.src_node OutPortBuffer system.ruby.network.int_links54.src_node.port_buffers04 Link system.cpu03.l1d.reqIn
+Switch_system.ruby.network.int_links54.src_node OutPortBuffer system.ruby.network.int_links54.src_node.port_buffers08 Link system.cpu03.l2.reqIn
+Switch_PerfectSwitch-3 Inport_4: Link system.ruby.network.int_links54.buffers0
+Switch_system.ruby.network.int_links54.src_node OutPortBuffer system.ruby.network.int_links54.src_node.port_buffers12 Link system.ruby.network.int_links54.buffers0
+Switch_system.ruby.network.int_links56.src_node OutPortBuffer system.ruby.network.int_links56.src_node.port_buffers00 Link system.cpu04.l1i.reqIn
+Switch_system.ruby.network.int_links56.src_node OutPortBuffer system.ruby.network.int_links56.src_node.port_buffers04 Link system.cpu04.l1d.reqIn
+Switch_system.ruby.network.int_links56.src_node OutPortBuffer system.ruby.network.int_links56.src_node.port_buffers08 Link system.cpu04.l2.reqIn
+Switch_PerfectSwitch-4 Inport_4: Link system.ruby.network.int_links56.buffers0
+Switch_system.ruby.network.int_links56.src_node OutPortBuffer system.ruby.network.int_links56.src_node.port_buffers12 Link system.ruby.network.int_links56.buffers0
+Switch_system.ruby.network.int_links58.src_node OutPortBuffer system.ruby.network.int_links58.src_node.port_buffers00 Link system.cpu05.l1i.reqIn
+Switch_system.ruby.network.int_links58.src_node OutPortBuffer system.ruby.network.int_links58.src_node.port_buffers04 Link system.cpu05.l1d.reqIn
+Switch_system.ruby.network.int_links58.src_node OutPortBuffer system.ruby.network.int_links58.src_node.port_buffers08 Link system.cpu05.l2.reqIn
+Switch_PerfectSwitch-5 Inport_5: Link system.ruby.network.int_links58.buffers0
+Switch_system.ruby.network.int_links58.src_node OutPortBuffer system.ruby.network.int_links58.src_node.port_buffers12 Link system.ruby.network.int_links58.buffers0
+Switch_system.ruby.network.int_links60.src_node OutPortBuffer system.ruby.network.int_links60.src_node.port_buffers00 Link system.cpu06.l1i.reqIn
+Switch_system.ruby.network.int_links60.src_node OutPortBuffer system.ruby.network.int_links60.src_node.port_buffers04 Link system.cpu06.l1d.reqIn
+Switch_system.ruby.network.int_links60.src_node OutPortBuffer system.ruby.network.int_links60.src_node.port_buffers08 Link system.cpu06.l2.reqIn
+Switch_PerfectSwitch-6 Inport_5: Link system.ruby.network.int_links60.buffers0
+Switch_system.ruby.network.int_links60.src_node OutPortBuffer system.ruby.network.int_links60.src_node.port_buffers12 Link system.ruby.network.int_links60.buffers0
+Switch_system.ruby.network.int_links62.src_node OutPortBuffer system.ruby.network.int_links62.src_node.port_buffers00 Link system.cpu07.l1i.reqIn
+Switch_system.ruby.network.int_links62.src_node OutPortBuffer system.ruby.network.int_links62.src_node.port_buffers04 Link system.cpu07.l1d.reqIn
+Switch_system.ruby.network.int_links62.src_node OutPortBuffer system.ruby.network.int_links62.src_node.port_buffers08 Link system.cpu07.l2.reqIn
+Switch_PerfectSwitch-7 Inport_4: Link system.ruby.network.int_links62.buffers0
+Switch_system.ruby.network.int_links62.src_node OutPortBuffer system.ruby.network.int_links62.src_node.port_buffers12 Link system.ruby.network.int_links62.buffers0
+Switch_system.ruby.network.int_links64.src_node OutPortBuffer system.ruby.network.int_links64.src_node.port_buffers00 Link system.cpu08.l1i.reqIn
+Switch_system.ruby.network.int_links64.src_node OutPortBuffer system.ruby.network.int_links64.src_node.port_buffers04 Link system.cpu08.l1d.reqIn
+Switch_system.ruby.network.int_links64.src_node OutPortBuffer system.ruby.network.int_links64.src_node.port_buffers08 Link system.cpu08.l2.reqIn
+Switch_PerfectSwitch-8 Inport_4: Link system.ruby.network.int_links64.buffers0
+Switch_system.ruby.network.int_links64.src_node OutPortBuffer system.ruby.network.int_links64.src_node.port_buffers12 Link system.ruby.network.int_links64.buffers0
+Switch_system.ruby.network.int_links66.src_node OutPortBuffer system.ruby.network.int_links66.src_node.port_buffers00 Link system.cpu09.l1i.reqIn
+Switch_system.ruby.network.int_links66.src_node OutPortBuffer system.ruby.network.int_links66.src_node.port_buffers04 Link system.cpu09.l1d.reqIn
+Switch_system.ruby.network.int_links66.src_node OutPortBuffer system.ruby.network.int_links66.src_node.port_buffers08 Link system.cpu09.l2.reqIn
+Switch_PerfectSwitch-9 Inport_5: Link system.ruby.network.int_links66.buffers0
+Switch_system.ruby.network.int_links66.src_node OutPortBuffer system.ruby.network.int_links66.src_node.port_buffers12 Link system.ruby.network.int_links66.buffers0
+Switch_system.ruby.network.int_links68.src_node OutPortBuffer system.ruby.network.int_links68.src_node.port_buffers00 Link system.cpu10.l1i.reqIn
+Switch_system.ruby.network.int_links68.src_node OutPortBuffer system.ruby.network.int_links68.src_node.port_buffers04 Link system.cpu10.l1d.reqIn
+Switch_system.ruby.network.int_links68.src_node OutPortBuffer system.ruby.network.int_links68.src_node.port_buffers08 Link system.cpu10.l2.reqIn
+Switch_PerfectSwitch-10 Inport_5: Link system.ruby.network.int_links68.buffers0
+Switch_system.ruby.network.int_links68.src_node OutPortBuffer system.ruby.network.int_links68.src_node.port_buffers12 Link system.ruby.network.int_links68.buffers0
+Switch_system.ruby.network.int_links70.src_node OutPortBuffer system.ruby.network.int_links70.src_node.port_buffers00 Link system.cpu11.l1i.reqIn
+Switch_system.ruby.network.int_links70.src_node OutPortBuffer system.ruby.network.int_links70.src_node.port_buffers04 Link system.cpu11.l1d.reqIn
+Switch_system.ruby.network.int_links70.src_node OutPortBuffer system.ruby.network.int_links70.src_node.port_buffers08 Link system.cpu11.l2.reqIn
+Switch_PerfectSwitch-11 Inport_4: Link system.ruby.network.int_links70.buffers0
+Switch_system.ruby.network.int_links70.src_node OutPortBuffer system.ruby.network.int_links70.src_node.port_buffers12 Link system.ruby.network.int_links70.buffers0
+Switch_system.ruby.network.int_links72.src_node OutPortBuffer system.ruby.network.int_links72.src_node.port_buffers00 Link system.cpu12.l1i.reqIn
+Switch_system.ruby.network.int_links72.src_node OutPortBuffer system.ruby.network.int_links72.src_node.port_buffers04 Link system.cpu12.l1d.reqIn
+Switch_system.ruby.network.int_links72.src_node OutPortBuffer system.ruby.network.int_links72.src_node.port_buffers08 Link system.cpu12.l2.reqIn
+Switch_PerfectSwitch-12 Inport_3: Link system.ruby.network.int_links72.buffers0
+Switch_system.ruby.network.int_links72.src_node OutPortBuffer system.ruby.network.int_links72.src_node.port_buffers12 Link system.ruby.network.int_links72.buffers0
+Switch_system.ruby.network.int_links74.src_node OutPortBuffer system.ruby.network.int_links74.src_node.port_buffers00 Link system.cpu13.l1i.reqIn
+Switch_system.ruby.network.int_links74.src_node OutPortBuffer system.ruby.network.int_links74.src_node.port_buffers04 Link system.cpu13.l1d.reqIn
+Switch_system.ruby.network.int_links74.src_node OutPortBuffer system.ruby.network.int_links74.src_node.port_buffers08 Link system.cpu13.l2.reqIn
+Switch_PerfectSwitch-13 Inport_5: Link system.ruby.network.int_links74.buffers0
+Switch_system.ruby.network.int_links74.src_node OutPortBuffer system.ruby.network.int_links74.src_node.port_buffers12 Link system.ruby.network.int_links74.buffers0
+Switch_system.ruby.network.int_links76.src_node OutPortBuffer system.ruby.network.int_links76.src_node.port_buffers00 Link system.cpu14.l1i.reqIn
+Switch_system.ruby.network.int_links76.src_node OutPortBuffer system.ruby.network.int_links76.src_node.port_buffers04 Link system.cpu14.l1d.reqIn
+Switch_system.ruby.network.int_links76.src_node OutPortBuffer system.ruby.network.int_links76.src_node.port_buffers08 Link system.cpu14.l2.reqIn
+Switch_PerfectSwitch-14 Inport_5: Link system.ruby.network.int_links76.buffers0
+Switch_system.ruby.network.int_links76.src_node OutPortBuffer system.ruby.network.int_links76.src_node.port_buffers12 Link system.ruby.network.int_links76.buffers0
+Switch_system.ruby.network.int_links78.src_node OutPortBuffer system.ruby.network.int_links78.src_node.port_buffers00 Link system.cpu15.l1i.reqIn
+Switch_system.ruby.network.int_links78.src_node OutPortBuffer system.ruby.network.int_links78.src_node.port_buffers04 Link system.cpu15.l1d.reqIn
+Switch_system.ruby.network.int_links78.src_node OutPortBuffer system.ruby.network.int_links78.src_node.port_buffers08 Link system.cpu15.l2.reqIn
+Switch_PerfectSwitch-15 Inport_3: Link system.ruby.network.int_links78.buffers0
+Switch_system.ruby.network.int_links78.src_node OutPortBuffer system.ruby.network.int_links78.src_node.port_buffers12 Link system.ruby.network.int_links78.buffers0
