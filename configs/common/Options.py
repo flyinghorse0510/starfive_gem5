@@ -158,6 +158,15 @@ def addNoISAOptions(parser):
     parser.add_argument("--l1i_assoc", type=int, default=2)
     parser.add_argument("--l2_assoc", type=int, default=8)
     parser.add_argument("--l3_assoc", type=int, default=16)
+    parser.add_argument("--l1repl", default="LRURP", 
+                         choices=ObjectList.rp_list.get_names(),
+                         help="type of l1 replacement")
+    parser.add_argument("--l2repl", default="LRURP", 
+                         choices=ObjectList.rp_list.get_names(),
+                         help="type of l2 replacement")
+    parser.add_argument("--l3repl", default="LRURP", 
+                         choices=ObjectList.rp_list.get_names(),
+                         help="type of l3 replacement")
     parser.add_argument("--cacheline_size", type=int, default=64)
 
     # Enable Ruby
@@ -184,15 +193,6 @@ def addNoISAOptions(parser):
         "sets max_insts_all_threads for cpus 0, 1, 3, 5 and 7 "
         "Direct parameters of the root object are not accessible, "
         "only parameters of its children.")
-    parser.add_argument("--l1repl", default="LRURP", 
-                         choices=ObjectList.rp_list.get_names(),
-                         help="type of l1 replacement")
-    parser.add_argument("--l2repl", default="LRURP", 
-                         choices=ObjectList.rp_list.get_names(),
-                         help="type of l2 replacement")
-    parser.add_argument("--l3repl", default="LRURP", 
-                         choices=ObjectList.rp_list.get_names(),
-                         help="type of l3 replacement")
 
 
 
