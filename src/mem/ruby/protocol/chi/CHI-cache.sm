@@ -212,11 +212,11 @@ machine(MachineType:Cache, "Cache coherency protocol") :
 
   /**
    * Enabled checked allocation of TBEs.
-   * This is useful, to model realistic
+   * This is useful, to model
    * scenerios, when there are only a 
    * few entries in the retry buffer
    */
-  bool enable_checked_allocate := "True";
+  bool enable_checked_allocate := "False";
   
   int number_of_retry_entries := 16;
 

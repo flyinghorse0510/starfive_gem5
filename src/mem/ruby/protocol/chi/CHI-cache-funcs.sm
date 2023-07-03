@@ -1517,6 +1517,7 @@ bool _checkResourceAvailable(RequestType request_type, Addr addr) {
   } else if (request_type == RequestType:SfReplTBEAvailable) {
     return storSFReplTBEs.areNSlotsAvailable(1);
   } else if (request_type == RequestType:RetryBufferEntryAvailable) {
+    assert(enable_checked_allocate);
     if (storTBEs.areNSlotsAvailable2(addr, 1)) {
       return true; // A retry buffer entry is not required in this case
     } else {

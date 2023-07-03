@@ -332,7 +332,7 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.unify_repl_TBEs = unify_repl_tbes
         self.transitions_per_cycle = options.num_trans_per_cycle_llc
         self.slots_bocked_by_set = options.slots_bocked_by_set
-        self.enable_checked_allocate = True
+        self.enable_checked_allocate = False
 
 class CHI_MNController(MiscNode_Controller):
     '''
