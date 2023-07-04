@@ -104,6 +104,7 @@ parser.add_argument('--chi-buffer-depth',type=int,default=16,help=f'CHI buffer d
 parser.add_argument('--chi-buffer-max-deq-rate',type=int,default=1,help=f'CHI buffer max deq rate. Zero implies infinite deq rate')
 parser.add_argument('--snf_allow_retry',type=ast.literal_eval,default=True,help=f'Should SNF send retries')
 parser.add_argument('--slots_bocked_by_set',type=ast.literal_eval,default=False,help=f'Is MSHR Blocked on slots')
+parser.add_argument(f'--accepted_buffer_max_deq_rate',type=int,default=0,help=f'Accepted buffer max deq rate. Zero implies infinite deq rate')
 
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]

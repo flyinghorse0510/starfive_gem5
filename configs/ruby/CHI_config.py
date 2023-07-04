@@ -172,14 +172,8 @@ class TriggerMessageBuffer(MessageBuffer):
     randomization = 'disabled'
     allow_zero_latency = True
 
-class FiniteDeqRateTriggerMessageBuffer(TriggerMessageBuffer):
-    max_dequeue_rate = 1
-
 class OrderedTriggerMessageBuffer(TriggerMessageBuffer):
     ordered = True
-
-class OrderedFiniteDeqRateTriggerMessageBuffer(OrderedTriggerMessageBuffer):
-    max_dequeue_rate = 1
 
 class CHI_IdealSnoopFilter(RubySnoopFilter):
     allow_infinite_entries=True
@@ -340,7 +334,7 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.slots_bocked_by_set = options.slots_bocked_by_set
         self.enable_checked_allocate = False
         # For Retry scheme 2. Setting this to finite deq rate
-        self.reqRdy = FiniteDeqRateTriggerMessageBuffer()
+        self.reqRdy = TriggerMessageBuffer(max_dequeue_rate = options.accepted_buffer_max_deq_rate)
 
 class CHI_MNController(MiscNode_Controller):
     '''
