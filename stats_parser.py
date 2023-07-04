@@ -51,7 +51,8 @@ def variableFileParser(args, variableFilePath):
         'DCT':ast.literal_eval,
         'DMT':ast.literal_eval,
         'HNF_TBE':int,
-        'OUTPUT_DIR': str
+        'OUTPUT_DIR': str,
+        'ACCEPTED_BUFFER_MAX_DEQ_RATE': int,
         # 'SNF_TBE':int,
         # 'SEQ_TBE':int,
         # 'TRANS':int,
@@ -62,7 +63,7 @@ def variableFileParser(args, variableFilePath):
         # 'l1d_size':str,
         # 'l1i_size':str,
         # 'l2_size':str,
-        # 'l3_size':str,
+        'l3_size':str,
         # 'LLC_REPL':str
     }
 
@@ -157,8 +158,10 @@ def getReadWriteStats(options):
         'num_cpus': [options.NUMCPUS],
         'num_llc': [options.NUM_LLC],
         'hnf_TBE': [options.HNF_TBE],
-        'hnfMissRate': hnfMissRate,
-        'bw': bw
+        'l3_size': [options.l3_size],
+        'hnfMissRate': [hnfMissRate],
+        'AcceptedBufferDeqRate': [options.ACCEPTED_BUFFER_MAX_DEQ_RATE],
+        'bw': [bw]
     }, index = None)
 
 def main():
