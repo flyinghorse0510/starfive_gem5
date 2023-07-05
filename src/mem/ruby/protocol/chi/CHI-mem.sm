@@ -75,8 +75,6 @@ machine(MachineType:Memory, "Memory controller interface") :
   // 
   bool snf_allow_retry;
 
-  int number_of_retry_entries := 2;
-
   int number_of_mshrs_reserved_for_normal_requests := 1;
 
 {
@@ -215,7 +213,6 @@ machine(MachineType:Memory, "Memory controller interface") :
     Addr addr;
     Event event;
     MachineID retryDest;
-    int retryBufSlot;
 
     bool functionalRead(Packet *pkt) { return false; }
     bool functionalRead(Packet *pkt, WriteMask &mask) { return false; }
@@ -226,13 +223,12 @@ machine(MachineType:Memory, "Memory controller interface") :
   structure(RetryQueueEntry) {
     Addr addr,           desc="Line address";
     MachineID retryDest, desc="Retry destination";
-    int slot,            desc="Slots occupied in the retry buffer entry";
   }
 
   structure(TriggerQueue, external ="yes") {
     void pop();
     bool empty();
-    void emplace(Addr,MachineID,int);
+    void emplace(Addr,MachineID);
     RetryQueueEntry next();
   }
 
@@ -240,7 +236,6 @@ machine(MachineType:Memory, "Memory controller interface") :
   // Handling retry
   ////////////////////////////////////////////////////////////////////////////
   TriggerQueue retryQueue, template="<Memory_RetryQueueEntry>";
-  TBEStorage storRetryBuffer, constructor="this, TBEType_to_string(TBEType_RetryEntry), m_number_of_retry_entries";
 
 
   ////////////////////////////////////////////////////////////////////////////
@@ -461,36 +456,6 @@ machine(MachineType:Memory, "Memory controller interface") :
   }
 
   ////////////////////////////////////////////////////////////////////////////
-  // Resource limitations
-  ////////////////////////////////////////////////////////////////////////////
-  enumeration(RequestType, desc="Block transitions if request cannot be allocated") {
-    RetryBufferEntryAvailable, desc="Retry buffer entries are available";
-  }
-
-  bool _checkResourceAvailable(RequestType request_type, Addr addr) {
-    if (request_type == RequestType:RetryBufferEntryAvailable) {
-      if (storTBEs.areNSlotsAvailable(1)) {
-        return true;
-      } else {
-        bool retryEntryAvail := storRetryBuffer.areNSlotsAvailable(1);
-        if (retryEntryAvail == false) {
-          DPRINTF(RubyResourceStalls,"No Retry buffer entries\n");
-        }
-        return retryEntryAvail;
-      }
-    }  else {
-      error("Invalid RequestType type in checkResourceAvailable");
-      return true;
-    }
-  }
-  
-  bool checkResourceAvailable(RequestType request_type, Addr addr) {
-    return _checkResourceAvailable(request_type, addr);
-  }
-
-  void recordRequestType(RequestType request_type, Addr addr) {}
-
-  ////////////////////////////////////////////////////////////////////////////
   // Actions
   ////////////////////////////////////////////////////////////////////////////
 
@@ -508,18 +473,15 @@ machine(MachineType:Memory, "Memory controller interface") :
       }
 
     } else {
-      assert(storRetryBuffer.areNSlotsAvailable(1));
       peek(reqInPort, CHIRequestMsg) {
         assert(in_msg.allowRetry);
         enqueue(triggerOutPort, TriggerMsg, 0) {
-          int retryBufSlot := storRetryBuffer.addEntryToNewSlot();
           
           out_msg.addr := in_msg.addr;
           out_msg.event := Event:Trigger_SendRetry;
           out_msg.retryDest := in_msg.requestor;
-          out_msg.retryBufSlot := retryBufSlot;
 
-          retryQueue.emplace(in_msg.addr,in_msg.requestor,retryBufSlot);
+          retryQueue.emplace(in_msg.addr,in_msg.requestor);
         }
       }
     }
@@ -604,9 +566,7 @@ machine(MachineType:Memory, "Memory controller interface") :
           out_msg.addr := e.addr;
           out_msg.retryDest := e.retryDest;
           out_msg.event := Event:Trigger_SendPCrdGrant;
-          out_msg.retryBufSlot := e.slot;
         }
-        storRetryBuffer.removeEntryFromSlot(e.slot);
         retryQueue.pop();
       }
     }
@@ -883,7 +843,7 @@ machine(MachineType:Memory, "Memory controller interface") :
   }
 
   transition({READING_MEM,WAITING_NET_DATA,SENDING_NET_DATA,READY},
-              CheckAllocTBE) {RetryBufferEntryAvailable} {
+              CheckAllocTBE) {
     checkAllocateTBE;
   }
 
