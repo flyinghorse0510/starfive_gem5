@@ -71,44 +71,6 @@ action(AllocateTBE_Request, desc="") {
   }
 }
 
-action(AllocateTBE_Request_Checked, desc="") {
-  // If this block is entered, then check if there
-  // are enough retry buffer slots
-  assert(enable_checked_allocate);
-  bool can_allocate := storTBEs.areNSlotsAvailable2(address, 1);
-  if (can_allocate) {
-    // reserve a slot for this request
-    storTBEs.addReserveSlot(address);
-
-    // Move request to rdy queue
-    peek(reqInPort, CHIRequestMsg) {
-      enqueue(reqRdyOutPort, CHIRequestMsg, allocation_latency) {
-        assert(in_msg.addr == address);
-        assert(in_msg.is_local_pf == false);
-        out_msg := in_msg;
-      }
-    }
-
-  } else {
-    assert(storRetryBuffer.areNSlotsAvailable(1));
-    // we don't have resources to track this request; enqueue a retry
-    peek(reqInPort, CHIRequestMsg) {
-      assert(in_msg.allowRetry);
-      enqueue(retryTriggerOutPort, RetryTriggerMsg, 0) {
-        int retryBufSlot := storRetryBuffer.addEntryToNewSlot2(in_msg.addr);
-
-        out_msg.addr := in_msg.addr;
-        out_msg.usesTxnId := false;
-        out_msg.event := Event:SendRetryAck;
-        out_msg.retryDest := in_msg.requestor;
-        out_msg.retryBufSlot := retryBufSlot;
-
-        retryQueue.emplace(in_msg.addr,false,in_msg.requestor,retryBufSlot);
-      }
-    }
-  }
-}
-
 action(AllocateTBE_Request_WithCredit, desc="") {
   // TBE slot already reserved
   // Move request to rdy queue

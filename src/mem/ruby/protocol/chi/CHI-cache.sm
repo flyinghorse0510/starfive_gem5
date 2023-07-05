@@ -216,10 +216,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
    * scenerios, when there are only a 
    * few entries in the retry buffer
    */
-  bool enable_checked_allocate := "False";
   
-  int number_of_retry_entries := 16;
-
   int number_of_mshrs_reserved_for_normal_requests := 1;
 {
 
@@ -831,7 +828,6 @@ machine(MachineType:Cache, "Cache coherency protocol") :
 
   // Destinations that will be sent PCrdGrant when a TBE becomes available
   TriggerQueue retryQueue, template="<Cache_RetryQueueEntry>";
-  TBEStorage storRetryBuffer, constructor="this, TBEType_to_string(TBEType_RetryEntry), m_number_of_retry_entries";
 
   // Pending RetryAck/PCrdGrant/DoRetry
   structure(RetryTriggerMsg, interface="Message") {

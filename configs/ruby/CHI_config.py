@@ -241,7 +241,6 @@ class CHI_L1Controller(CHI_Cache_Controller):
         self.number_of_DVM_snoop_TBEs = 4
         self.unify_repl_TBEs = False
         self.slots_bocked_by_set = False
-        self.enable_checked_allocate = False
 
 class CHI_L2Controller(CHI_Cache_Controller):                 
     '''
@@ -278,7 +277,6 @@ class CHI_L2Controller(CHI_Cache_Controller):
         self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
         self.unify_repl_TBEs = False
         self.slots_bocked_by_set = False
-        self.enable_checked_allocate = False
 
 class CHI_HNFController(CHI_Cache_Controller):
     '''
@@ -332,7 +330,6 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.unify_repl_TBEs = unify_repl_tbes
         self.transitions_per_cycle = options.num_trans_per_cycle_llc
         self.slots_bocked_by_set = options.slots_bocked_by_set
-        self.enable_checked_allocate = False
         # For Retry scheme 2. Setting this to finite deq rate
         self.reqRdy = TriggerMessageBuffer(max_dequeue_rate = options.accepted_buffer_max_deq_rate)
 
