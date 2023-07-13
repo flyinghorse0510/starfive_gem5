@@ -203,7 +203,7 @@ MessageBuffer::areNSlotsAvailable(unsigned int n, Tick current_time)
                 n, current_size + current_stall_size,
                 m_prio_heap.size(), m_max_size);
 
-        DPRINTF(TxnTrace, "MessageBufferContents: %s\n",getMsgBufferContents());
+        // DPRINTF(TxnTrace, "MessageBufferContents: %s\n",getMsgBufferContents());
         m_not_avail_count++;
         return false;
     }
@@ -668,6 +668,9 @@ MessageBuffer::print(std::ostream& out) const
 }
 
 std::string MessageBuffer::getMsgBufferContents() const {
+    /**
+     * Print the Head of the message
+     */
     std::vector<MsgPtr> copy(m_prio_heap);
     std::sort_heap(copy.begin(), copy.end(), std::greater<MsgPtr>());
     std::stringstream ss;

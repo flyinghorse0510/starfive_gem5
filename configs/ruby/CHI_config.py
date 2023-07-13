@@ -205,6 +205,7 @@ class CHI_Cache_Controller(Cache_Controller):
         # This should be set to true in the data cache controller to enable
         # timeouts on unique lines when a store conditional fails
         self.sc_lock_enabled = False
+        self.buffered_req_impl = False
 
 class CHI_L1Controller(CHI_Cache_Controller):
     '''
@@ -332,7 +333,8 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.slots_bocked_by_set = options.slots_bocked_by_set
         # For Retry scheme 2. Setting this to finite deq rate
         self.reqRdy = TriggerMessageBuffer(max_dequeue_rate = options.accepted_buffer_max_deq_rate)
-
+        self.buffered_req_impl = True
+        
 class CHI_MNController(MiscNode_Controller):
     '''
     Default parameters for a Misc Node

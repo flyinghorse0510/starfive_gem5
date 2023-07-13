@@ -64,8 +64,7 @@ action(AllocateTBE_Request, desc="") {
         out_msg.usesTxnId := false;
         out_msg.event := Event:SendRetryAck;
         out_msg.retryDest := in_msg.requestor;
-        out_msg.retryBufSlot := -1;
-        retryQueue.emplace(in_msg.addr,false,in_msg.requestor,-1);
+        retryQueue.emplace(in_msg.addr,false,in_msg.requestor);
       }
     }
   }
@@ -80,6 +79,52 @@ action(AllocateTBE_Request_WithCredit, desc="") {
       assert(in_msg.addr == address);
       out_msg := in_msg;
     }
+  }
+}
+
+action(Allocate_ReqRdyBufferEntry, desc="") {
+  assert(buffered_req_impl);
+  bool can_allocate := storReqRdyBuffer.areNSlotsAvailable(1);
+  if (can_allocate) {
+    // Move request to rdy queue
+    peek(reqInPort, CHIRequestMsg) {
+      enqueue(reqRdyOutPort, CHIRequestMsg, allocation_latency) {
+        assert(in_msg.addr == address);
+        assert(in_msg.is_local_pf == false);
+        out_msg := in_msg;
+        out_msg.buffSlot := storReqRdyBuffer.addEntryToNewSlot();
+      }
+    }
+  } else {
+    // we don't have resources to track this request; enqueue a retry
+    peek(reqInPort, CHIRequestMsg) {
+      assert(in_msg.allowRetry);
+      enqueue(retryTriggerOutPort, RetryTriggerMsg, 0) {
+        out_msg.addr := in_msg.addr;
+        out_msg.usesTxnId := false;
+        out_msg.event := Event:SendRetryAck;
+        out_msg.retryDest := in_msg.requestor;
+        retryQueue.emplace(in_msg.addr,false,in_msg.requestor);
+      }
+    }
+  }
+}
+
+action(AllocateTBE_BufferedEntry, desc="") {
+  assert(buffered_req_impl);
+  /* Reserve a slot in the TBE */
+  if (storTBEs.areNSlotsAvailable2(address, 1)) {
+    storTBEs.addReserveSlot(address);
+  } else {
+    /**
+     * An address is effectively stalled, due to (mutually exclusive) factors
+     * 1. TBE/MSHR unavailability
+     * 2. Ongoing txns for the address
+     * --------------------------------------
+     * In this case, the address is stalled due to un-availability of TBE/MSHRs
+     */
+    waitingReqDueToMSHRUnavailabilityQ.emplace_entry2(address);
+    stall_and_wait(reqRdyPort, address);
   }
 }
 
@@ -447,6 +492,17 @@ action(StallRequest_OnSnoopFilterRepl_Pend, desc="") {
   // Directory(set,way) is busy servicing other SFRepl requests. Create a Stall for this request
   stall_and_wait(reqRdyPort, address);
   snoopFilterPendQ.emplace_entry(address);
+}
+
+action(StallRequest_BufferedReqImpl, desc="") {
+  // Effectively the same as StallRequest, but used during
+  // decouple allocation of the TBE and reqRdyBuffer entry
+  assert(buffered_req_impl);
+  assert(is_valid(tbe));
+  assert(tbe.addr == address);
+  // tracks pending
+  tbe.wakeup_pending_req := true;
+  stall_and_wait(reqRdyPort, address);
 }
 
 action(StallSnoop, desc="") {
@@ -3059,14 +3115,17 @@ action(CheckCacheFill, desc="") {
 action(Finalize_DeallocateRequest, desc="") {
   assert(is_valid(tbe));
   assert(tbe.actions.empty());
-  wakeupPendingReqs(tbe);
+  bool addr_wakeup := wakeupPendingReqs(tbe);
   wakeupPendingSnps(tbe);
   wakeupPendingTgrs(tbe);
   wakeupPendingSFRepl(tbe);
   if (tbe.is_req_tbe) {
     deallocateReqTBE(tbe);
-    processRetryQueue(address);
-
+    if (buffered_req_impl) {
+      allocateTBEToPendAddrs(address, addr_wakeup);
+    } else {
+      processRetryQueue(address);
+    }
   } else if (tbe.is_snp_tbe) {
     deallocateSnpTBE(tbe);
   } else if (tbe.is_sfrepl_tbe) {
@@ -3074,7 +3133,11 @@ action(Finalize_DeallocateRequest, desc="") {
   } else {
     deallocateReplacementTBE(address, tbe);
     if (unify_repl_TBEs) {
-      processRetryQueue(address);
+      if (buffered_req_impl) {
+        allocateTBEToPendAddrs(address, addr_wakeup);
+      } else {
+        processRetryQueue(address);
+      }
     }
   }
   unset_tbe();

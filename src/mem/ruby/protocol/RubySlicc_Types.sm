@@ -277,5 +277,5 @@ enumeration(TBEType, desc="...") {
   Snp,        desc="Snp Request TBE";
   Dvm,        desc="DVM Request TBE";
   DvmSnp,     desc="DVM Snp request TBE";
-  RetryEntry, desc="Requests that have been sent a retry-ack";
+  ReqRdy,     desc="Intermediate buffer entries";
 }

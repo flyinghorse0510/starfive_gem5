@@ -720,6 +720,7 @@ void processRetryQueue(Addr addr) {
   // send credit if requestor waiting for it and we have resources
   // assert(unify_repl_TBEs || has_avail);
   // the slot might still be used by a replacement if unify_repl_TBEs is set
+  assert(buffered_req_impl == false);
   if (retryQueue.empty() == false) {
     RetryQueueEntry e := retryQueue.next();
     bool has_avail := storTBEs.areNSlotsAvailable2(e.addr, number_of_mshrs_reserved_for_normal_requests + 1);
@@ -730,7 +731,6 @@ void processRetryQueue(Addr addr) {
         out_msg.usesTxnId := e.usesTxnId;
         out_msg.retryDest := e.retryDest;
         out_msg.event := Event:SendPCrdGrant;
-        out_msg.retryBufSlot := e.slot;
       }
       retryQueue.pop();
     }

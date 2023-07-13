@@ -43,7 +43,7 @@ if [ "$RUN" != "" ]; then
     l1i_size="4KiB"
     l2_size="8KiB"
     # l3_size="4KiB"
-    L3_SIZE_CONFIG=(1024) # Sizes in KiB ("16KiB" "32KiB" "64KiB" "238KiB")
+    L3_SIZE_CONFIG=(4) # Sizes in KiB ("16KiB" "32KiB" "64KiB" "238KiB")
     # L3_SIZE_CONFIG=(8) # Sizes in KiB ("16KiB" "32KiB" "64KiB" "238KiB")
     l1d_assoc=1
     l1i_assoc=1
@@ -66,14 +66,14 @@ if [ "$RUN" != "" ]; then
     MultiCoreAddrMode=True
     NETWORK="simple"
     # DEBUGFLAGS=RubyResourceStalls,RubyTxnTrace,TxnTrace,RubyCHIDebugStr5,SimpleNetworkDebug
-    # DEBUGFLAGS=RubyResourceStalls,RubyTxnTrace,TxnTrace,RubyCHIDebugStr5
-    DEBUGFLAGS=SeqMemLatTest
+    DEBUGFLAGS=RubyResourceStalls,RubyGenerated,TxnTrace,RubyCHIDebugStr5
+    # DEBUGFLAGS=SeqMemLatTest
     OUTPUT_PREFIX="MSHR_RetryImpl2"
     XOR_ADDR_BITS=4
     RANDOMIZE_ACC=False
     BLOCK_STRIDE_BITS=0
-    SNOOP_FILTER_ASSOC=4
-    SNOOP_FILTER_SIZE=256
+    SNOOP_FILTER_ASSOC=2
+    SNOOP_FILTER_SIZE=8
     IDEAL_SNOOP_FILTER=True
     PART_TBE=False
     HNF_TBE=32
@@ -89,23 +89,23 @@ if [ "$RUN" != "" ]; then
     # CONFIG_BENCHNAME=("bw_test_sf" "memcpy_test")
     CONFIG_BENCHNAME=("bw_test_sf")
     CONFIG_SLOTS_BLOCKED_BY_SET=(False)
-    ACCEPTED_BUFFER_MAX_DEQ_RATE_CONFIG_SET=(0 1)
+    ACCEPTED_BUFFER_MAX_DEQ_RATE_CONFIG_SET=(1)
 
     for l3_size in ${L3_SIZE_CONFIG[@]}; do
         for NUMCPUS in ${CONFIG_NUMCPUS[@]}; do
             for BENCHMARK in ${CONFIG_BENCHNAME[@]}; do
                for SLOTS_BLOCKED_BY_SET in ${CONFIG_SLOTS_BLOCKED_BY_SET[@]}; do
                     if [ $BENCHMARK == "bw_test_sf" ]; then
-                        CONFIG_READ_WRITE_RATIO=('1-0' '0-1')
-                        # CONFIG_READ_WRITE_RATIO=('0-1')
+                        # CONFIG_READ_WRITE_RATIO=('1-0' '0-1')
+                        CONFIG_READ_WRITE_RATIO=('1-0')
                     elif [ $BENCHMARK == "memcpy_test" ]; then
                         CONFIG_READ_WRITE_RATIO=('0-1')
                     fi
                     for READ_WRITE_RATIO in ${CONFIG_READ_WRITE_RATIO[@]}; do
                         for ACCEPTED_BUFFER_MAX_DEQ_RATE in ${ACCEPTED_BUFFER_MAX_DEQ_RATE_CONFIG_SET[@]}; do
-			                WKSET=$((${NUM_LLC}*${l3_size}*1024*2))
+			                WKSET=$((${NUM_LLC}*${l3_size}*1024*4))
                             L3_SIZE_KB="${l3_size}KiB"
-                            OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L3${L3_SIZE_KB}_ReadWrite${READ_WRITE_RATIO}_MSHRSlotsBlockedBySet_${SLOTS_BLOCKED_BY_SET}_AcceptedBufferDeqRate${ACCEPTED_BUFFER_MAX_DEQ_RATE}_Bench_${BENCHMARK}"
+                            OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L3${L3_SIZE_KB}_ReadWrite${READ_WRITE_RATIO}_MSHRSlotsBlockedBySet_${SLOTS_BLOCKED_BY_SET}_Bench_${BENCHMARK}"
                             OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
                             echo "GateTest Started: ${OUTPUT_BASE}"
                             mkdir -p ${OUTPUT_DIR}

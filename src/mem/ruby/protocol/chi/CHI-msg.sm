@@ -113,6 +113,8 @@ structure(CHIRequestMsg, desc="", interface="Message") {
 
   bool stallForSnoopFilterAlloc, default="false",desc="Stall for Snoopfilter repl";
 
+  int buffSlot,          desc="Buffer slot allocated, whenever the request is accepted";
+
   // zhiang: add txSeqNum here
   uint64_t txSeqNum,        default="0", desc="Sequence number for txn trace";
   RequestPtr reqPtr,        default="nullptr", desc="Pointer to original request";
