@@ -92,7 +92,7 @@ action(Allocate_ReqRdyBufferEntry, desc="") {
         assert(in_msg.addr == address);
         assert(in_msg.is_local_pf == false);
         out_msg := in_msg;
-        out_msg.buffSlot := storReqRdyBuffer.addEntryToNewSlot();
+        out_msg.buffSlot := storReqRdyBuffer.addEntryToNewSlot2(in_msg.addr);
       }
     }
   } else {
@@ -110,10 +110,25 @@ action(Allocate_ReqRdyBufferEntry, desc="") {
   }
 }
 
+action(Allocate_ReqRdyBufferEntry_WithCredit, desc="") {
+  assert(buffered_req_impl);
+  assert(storReqRdyBuffer.areNSlotsAvailable(1));
+  peek(reqInPort, CHIRequestMsg) {
+    assert(in_msg.allowRetry == false);
+    assert(in_msg.addr == address);
+    storReqRdyBuffer.removeReserveSlot(address);
+    enqueue(reqRdyOutPort, CHIRequestMsg, allocation_latency) {
+      out_msg := in_msg;
+      out_msg.buffSlot := storReqRdyBuffer.addEntryToNewSlot2(in_msg.addr);
+    }
+  }
+}
+
 action(AllocateTBE_BufferedEntry, desc="") {
   assert(buffered_req_impl);
   /* Reserve a slot in the TBE */
   if (storTBEs.areNSlotsAvailable2(address, 1)) {
+    DPRINTF(RubyCHIDebugStr5, "addr: %#x, allocating TBE\n",address);
     storTBEs.addReserveSlot(address);
   } else {
     /**
@@ -123,6 +138,7 @@ action(AllocateTBE_BufferedEntry, desc="") {
      * --------------------------------------
      * In this case, the address is stalled due to un-availability of TBE/MSHRs
      */
+    DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEs unavailable\n",address);
     waitingReqDueToMSHRUnavailabilityQ.emplace_entry2(address);
     stall_and_wait(reqRdyPort, address);
   }
@@ -2814,6 +2830,8 @@ action(Send_RetryAck, desc="") {
       out_msg.type := CHIResponseType:RetryAck;
       out_msg.responder := machineID;
       out_msg.Destination.add(in_msg.retryDest);
+
+      DPRINTF(RubyCHIDebugStr5,"addr: %#x, dest: %s, sender: %d, RetryAck\n", in_msg.addr, in_msg.retryDest, machineID);
     }
   }
 }
@@ -2826,6 +2844,9 @@ action(Send_PCrdGrant, desc="") {
       out_msg.type := CHIResponseType:PCrdGrant;
       out_msg.responder := machineID;
       out_msg.Destination.add(in_msg.retryDest);
+
+      DPRINTF(RubyCHIDebugStr5,"addr: %#x, dest: %s, sender: %d, PCrdGrant\n", in_msg.addr, in_msg.retryDest, machineID);
+
     }
   }
 }
@@ -3177,6 +3198,26 @@ action(Finalize_DeallocateDvmSnoop, desc="") {
 }
 
 action(Pop_ReqRdyQueue, desc="") {
+  if (buffered_req_impl) {
+    peek(reqInPort, CHIRequestMsg) {
+      assert(in_msg.addr == address);
+      storReqRdyBuffer.removeEntryFromSlot2(address,in_msg.buffSlot);
+    }
+    if (retryQueue.empty() == false) {
+      RetryQueueEntry e := retryQueue.next();
+      bool has_avail := storReqRdyBuffer.areNSlotsAvailable2(e.addr, 1);
+      if (has_avail) {
+        storReqRdyBuffer.addReserveSlot(e.addr);
+        enqueue(retryTriggerOutPort, RetryTriggerMsg, 0) {
+          out_msg.addr := e.addr;
+          out_msg.usesTxnId := e.usesTxnId;
+          out_msg.retryDest := e.retryDest;
+          out_msg.event := Event:SendPCrdGrant;
+        }
+        retryQueue.pop();
+      }
+    }
+  }
   reqRdyPort.dequeue(clockEdge());
 }
 

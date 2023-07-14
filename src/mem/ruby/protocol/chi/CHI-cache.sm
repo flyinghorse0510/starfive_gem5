@@ -299,16 +299,17 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   enumeration(Event) {
     // Events triggered by incoming requests. Allocate TBE and move
     // request or snoop to the ready queue
-    AllocReqRdyBufferEntry,   desc="Allocates an intermediate buffer entry for a request, before TBE allocation";
-    AllocateTBEBufferedEntry, desc="Allocates a TBE for a request waiting in the intermediate buffer";
-    AllocRequest,             desc="Allocates a TBE for a request. Triggers a retry if table is full";
-    AllocRequestWithCredit,   desc="Allocates a TBE for a request. Always succeeds.";
-    AllocSeqRequest,          desc="Allocates a TBE for a sequencer request. Stalls requests if table is full";
-    AllocSeqDvmRequest,       desc="Allocates a TBE for a sequencer DVM request. Stalls requests if table is full";
-    AllocPfRequest,           desc="Allocates a TBE for a prefetch request. Stalls requests if table is full";
-    AllocSnoop,               desc="Allocates a TBE for a snoop. Stalls snoop if table is full";
-    AllocDvmSnoop,            desc="Allocates a TBE for a DVM snoop. Stalls snoop if table is full";
-    AllocRequestChecked,      desc="Allocates a TBE for a request. Stalls if enough resources not available";
+    AllocReqRdyBufferEntry,           desc="Allocates an intermediate buffer entry for a request, before TBE allocation";
+    AllocReqRdyBufferEntryWithCredit, desc="Allocates an intermediate buffer for a request, before TBE allocation. with credit";
+    AllocateTBEBufferedEntry,         desc="Allocates a TBE for a request waiting in the intermediate buffer";
+    AllocRequest,                     desc="Allocates a TBE for a request. Triggers a retry if table is full";
+    AllocRequestWithCredit,           desc="Allocates a TBE for a request. Always succeeds.";
+    AllocSeqRequest,                  desc="Allocates a TBE for a sequencer request. Stalls requests if table is full";
+    AllocSeqDvmRequest,               desc="Allocates a TBE for a sequencer DVM request. Stalls requests if table is full";
+    AllocPfRequest,                   desc="Allocates a TBE for a prefetch request. Stalls requests if table is full";
+    AllocSnoop,                       desc="Allocates a TBE for a snoop. Stalls snoop if table is full";
+    AllocDvmSnoop,                    desc="Allocates a TBE for a DVM snoop. Stalls snoop if table is full";
+    AllocRequestChecked,              desc="Allocates a TBE for a request. Stalls if enough resources not available";
 
     // Events triggered by sequencer requests or snoops in the rdy queue
     // See CHIRequestType in CHi-msg.sm for descriptions

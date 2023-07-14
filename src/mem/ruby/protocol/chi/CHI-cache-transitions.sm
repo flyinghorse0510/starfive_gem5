@@ -46,10 +46,25 @@ transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_R
   Pop_ReqInQueue;
 }
 
+transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,SD_RSD,RUSC
+            BUSY_INTR,BUSY_BLKD}, AllocRequestWithCredit) {
+  AllocateTBE_Request_WithCredit;
+  Pop_ReqInQueue;
+}
+
+//--------------------------------------------------------------------------------------
+// Decoupled allocation of reqRdyBuffer entry and TBE
+
 // Allocate resources and move to the ready queue
 transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,SD_RSD,RUSC
             BUSY_INTR,BUSY_BLKD}, AllocReqRdyBufferEntry) {
   Allocate_ReqRdyBufferEntry;
+  Pop_ReqInQueue;
+}
+
+transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,SD_RSD,RUSC
+            BUSY_INTR,BUSY_BLKD}, AllocReqRdyBufferEntryWithCredit) {
+  Allocate_ReqRdyBufferEntry_WithCredit;
   Pop_ReqInQueue;
 }
 
@@ -60,11 +75,8 @@ transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_R
 
 transition({BUSY_INTR,BUSY_BLKD}, AllocateTBEBufferedEntry) {
   /**
-   * What if TBE is not yet allocated, 
+   * What if TBE is not yet allocated, but still transient
    * for e.g. undergoing snoop filter replacement?
-   * Ans: Snoopfilter repl cannot happen, as under this
-   * condition, a SnoopFilter entry would have been already
-   * allocated for this address if required.
    * ----------------------------------------------------------
    * An address is effectively stalled, due to (mutually exclusive) factors
    * 1. TBE/MSHR unavailability
@@ -75,12 +87,7 @@ transition({BUSY_INTR,BUSY_BLKD}, AllocateTBEBufferedEntry) {
   StallRequest_BufferedReqImpl;
 }
 
-
-transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,SD_RSD,RUSC
-            BUSY_INTR,BUSY_BLKD}, AllocRequestWithCredit) {
-  AllocateTBE_Request_WithCredit;
-  Pop_ReqInQueue;
-}
+//--------------------------------------------------------------------------------------
 
 transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,SD_RSD,RUSC
             BUSY_INTR,BUSY_BLKD}, SendRetryAck) {

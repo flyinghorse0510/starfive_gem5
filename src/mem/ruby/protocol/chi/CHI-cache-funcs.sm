@@ -1496,11 +1496,9 @@ bool _checkResourceAvailable(RequestType request_type, Addr addr) {
     if (throttle_req_on_retry) {
       MachineID dest := mapAddressToDownstreamMachine(addr);
       bool canSend := destsWaitingRetry.isElement(dest) == false;
-      if (canSend == false) {
-        if (is_HN) {
-          DPRINTF(RubyResourceStalls,"Downstream: %s busy\n",dest);
-        }
-      }
+      // if (canSend == false) {
+      //   DPRINTF(RubyResourceStalls,"Downstream: %s busy\n",dest);
+      // }
       return canSend;
     } else {
       return true;

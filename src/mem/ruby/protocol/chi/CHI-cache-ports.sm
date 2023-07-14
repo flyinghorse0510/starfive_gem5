@@ -439,8 +439,13 @@ in_port(reqInPort, CHIRequestMsg, reqIn, rank=2,
       // but they aren't implemented yet.
       assert(!in_msg.usesTxnId);
       if (buffered_req_impl) {
-        trigger(Event:AllocReqRdyBufferEntry, in_msg.addr,
-                getCacheEntry(in_msg.addr), getCurrentActiveTBE(in_msg.addr));
+        if (in_msg.allowRetry) {
+          trigger(Event:AllocReqRdyBufferEntry, in_msg.addr,
+                  getCacheEntry(in_msg.addr), getCurrentActiveTBE(in_msg.addr));
+        } else {
+          trigger(Event:AllocReqRdyBufferEntryWithCredit, in_msg.addr,
+                  getCacheEntry(in_msg.addr), getCurrentActiveTBE(in_msg.addr));
+        }
       } else {
         if (in_msg.allowRetry) {
           trigger(Event:AllocRequest, in_msg.addr,
@@ -575,10 +580,12 @@ void allocateTBEToPendAddrs(Addr dealloc_addr, bool addr_wakeup) {
    * because it was transient. No need
    * to wake it up again.
    */
+  DPRINTF(RubyCHIDebugStr5,"addr: %#x deallocation\n", dealloc_addr);
   if (waitingReqDueToMSHRUnavailabilityQ.empty() == false) {
     WaitingReqDueToMSHRUnavailabilityEntry e := waitingReqDueToMSHRUnavailabilityQ.front3();
     bool has_avail := storTBEs.areNSlotsAvailable2(e.addr, 1);
     Addr wakeupAddr := e.addr;
+    DPRINTF(RubyCHIDebugStr5,"addr: %#x, wakeupAddr: %#x\n", dealloc_addr, wakeupAddr);
     if (has_avail) {
       if (!((dealloc_addr == wakeupAddr) && addr_wakeup)) {
         wakeup_port(reqRdyPort, wakeupAddr);
