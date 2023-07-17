@@ -56,36 +56,49 @@ transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_R
 // Decoupled allocation of reqRdyBuffer entry and TBE
 
 // Allocate resources and move to the ready queue
-transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,SD_RSD,RUSC
-            BUSY_INTR,BUSY_BLKD}, AllocReqRdyBufferEntry) {
+transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,
+            UD_RSD,SD_RSD,RUSC}, AllocReqRdyBufferEntry) {
   Allocate_ReqRdyBufferEntry;
+  AllocateTBE_BufferedEntry;
   Pop_ReqInQueue;
 }
 
-transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,SD_RSD,RUSC
-            BUSY_INTR,BUSY_BLKD}, AllocReqRdyBufferEntryWithCredit) {
+transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,
+            SD_RSD,RUSC}, AllocReqRdyBufferEntryWithCredit) {
   Allocate_ReqRdyBufferEntry_WithCredit;
+  AllocateTBE_BufferedEntry;
+  Pop_ReqInQueue;
+}
+
+transition({BUSY_INTR,BUSY_BLKD}, AllocReqRdyBufferEntry) {
+  Allocate_ReqRdyBufferEntry;
+  StallRequest_BufferedReqImpl;
+  Pop_ReqInQueue;
+}
+
+transition({BUSY_INTR,BUSY_BLKD}, AllocReqRdyBufferEntryWithCredit) {
+  Allocate_ReqRdyBufferEntry_WithCredit;
+  StallRequest_BufferedReqImpl;
   Pop_ReqInQueue;
 }
 
 // Allocate resources and move to the ready queue
-transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,SD_RSD,RUSC}, AllocateTBEBufferedEntry) {
-  AllocateTBE_BufferedEntry;
-}
+// transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,SD_RSD,RUSC}, AllocateTBEBufferedEntry) {
+// }
 
-transition({BUSY_INTR,BUSY_BLKD}, AllocateTBEBufferedEntry) {
-  /**
-   * What if TBE is not yet allocated, but still transient
-   * for e.g. undergoing snoop filter replacement?
-   * ----------------------------------------------------------
-   * An address is effectively stalled, due to (mutually exclusive) factors
-   * 1. TBE/MSHR unavailability
-   * 2. Ongoing txns for the address
-   * ----------------------------------------------------------
-   * In this case, the address is stalled due it being in transient state
-   */
-  StallRequest_BufferedReqImpl;
-}
+// transition({BUSY_INTR,BUSY_BLKD}, AllocateTBEBufferedEntry) {
+//   /**
+//    * What if TBE is not yet allocated, but still transient
+//    * for e.g. undergoing snoop filter replacement?
+//    * ----------------------------------------------------------
+//    * An address is effectively stalled, due to (mutually exclusive) factors
+//    * 1. TBE/MSHR unavailability
+//    * 2. Ongoing txns for the address
+//    * ----------------------------------------------------------
+//    * In this case, the address is stalled due it being in transient state
+//    */
+//   StallRequest_BufferedReqImpl;
+// }
 
 //--------------------------------------------------------------------------------------
 

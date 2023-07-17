@@ -128,7 +128,7 @@ action(AllocateTBE_BufferedEntry, desc="") {
   assert(buffered_req_impl);
   /* Reserve a slot in the TBE */
   if (storTBEs.areNSlotsAvailable2(address, 1)) {
-    DPRINTF(RubyCHIDebugStr5, "addr: %#x, allocating TBE\n",address);
+    // DPRINTF(RubyCHIDebugStr5, "addr: %#x, allocating TBE\n",address);
     storTBEs.addReserveSlot(address);
   } else {
     /**
@@ -2831,7 +2831,7 @@ action(Send_RetryAck, desc="") {
       out_msg.responder := machineID;
       out_msg.Destination.add(in_msg.retryDest);
 
-      DPRINTF(RubyCHIDebugStr5,"addr: %#x, dest: %s, sender: %d, RetryAck\n", in_msg.addr, in_msg.retryDest, machineID);
+      // DPRINTF(RubyCHIDebugStr5,"addr: %#x, dest: %s, sender: %d, RetryAck\n", in_msg.addr, in_msg.retryDest, machineID);
     }
   }
 }
@@ -2845,7 +2845,7 @@ action(Send_PCrdGrant, desc="") {
       out_msg.responder := machineID;
       out_msg.Destination.add(in_msg.retryDest);
 
-      DPRINTF(RubyCHIDebugStr5,"addr: %#x, dest: %s, sender: %d, PCrdGrant\n", in_msg.addr, in_msg.retryDest, machineID);
+      // DPRINTF(RubyCHIDebugStr5,"addr: %#x, dest: %s, sender: %d, PCrdGrant\n", in_msg.addr, in_msg.retryDest, machineID);
 
     }
   }
@@ -3199,7 +3199,7 @@ action(Finalize_DeallocateDvmSnoop, desc="") {
 
 action(Pop_ReqRdyQueue, desc="") {
   if (buffered_req_impl) {
-    peek(reqInPort, CHIRequestMsg) {
+    peek(reqRdyPort, CHIRequestMsg) {
       assert(in_msg.addr == address);
       storReqRdyBuffer.removeEntryFromSlot2(address,in_msg.buffSlot);
     }

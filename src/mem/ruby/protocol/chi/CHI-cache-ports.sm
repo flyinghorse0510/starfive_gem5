@@ -356,15 +356,6 @@ in_port(reqRdyPort, CHIRequestMsg, reqRdy, rank=3,
         TBE tbe := getCurrentActiveTBE(in_msg.addr);
         DirEntry dir_entry := getDirEntry(in_msg.addr);
 
-        /**
-         * [05-07-2023 Arka]: MSHR/TBE allocation is de-coupled from the
-         * reqRdy buffer entry allocation. Under these circumstances trigger
-         * an event to actually perform the TBE/MSHR allocation. 
-         */
-        if (buffered_req_impl) {
-          trigger(Event:AllocateTBEBufferedEntry, in_msg.addr, cache_entry, tbe);
-        }
-
         // Wait for SnoopFilter replacement to complete
         bool stallForSnoopFilterAlloc := stallForSnoopFilterFill(in_msg.addr, in_msg);
         if (stallForSnoopFilterAlloc) {
