@@ -74,11 +74,11 @@ class TriggerQueue
     // NOTE: SLICC won't allow to reuse front() or different
     // values of the template parameter, thus we use an additional
     // def. to workaround that
-    const T& next() const { return queue.front().val; }
+    const T& front_retry() const { return queue.front().val; }
 
-    const T& front2() const { return queue.front().val; }
+    const T& front_sfrepl() const { return queue.front().val; }
 
-    const T& front3() const { return queue.front().val; }
+    const T& front_decoupledAllocEntry() const { return queue.front().val; }
 
     // Returns the end of the queue
     const T& back() const { return queue.back().val; }
@@ -98,7 +98,7 @@ class TriggerQueue
     // emplace an event at the end of the queue
     template<typename... Ts>
     void
-    emplace(Ts&&... args)
+    emplace_retry(Ts&&... args)
     {
         queue.push_back({T(std::forward<Ts>(args)...),false});
     }
@@ -106,14 +106,14 @@ class TriggerQueue
     // emplace an event at the end of the queue
     template<typename... Ts>
     void
-    emplace_entry(Ts&&... args)
+    emplace_sfrepl(Ts&&... args)
     {
         queue.push_back({T(std::forward<Ts>(args)...),false});
     }
     
     template<typename... Ts>
     void
-    emplace_entry2(Ts&&... args)
+    emplace_decoupledAllocEntry(Ts&&... args)
     {
         queue.push_back({T(std::forward<Ts>(args)...),false});
     }

@@ -53,52 +53,36 @@ transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_R
 }
 
 //--------------------------------------------------------------------------------------
-// Decoupled allocation of reqRdyBuffer entry and TBE
+// Decoupled allocation of 
+// 1. reqRdyBuffer entry: Temporarily hold the request before allocatiing an TBE/MSHR and snoopfilter
+// 2. SnoopFilter entry: Snoopfilter entry allocation, required for storing the upstream sharin status
+// 3. TBE/MSHR: Required for holding transient info, pertaining to this transactions
 
-// Allocate resources and move to the ready queue
+// Allocate reqRdyBuffer entry
 transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,
-            UD_RSD,SD_RSD,RUSC}, AllocReqRdyBufferEntry) {
+            UD_RSD,SD_RSD,RUSC,BUSY_INTR,BUSY_BLKD}, AllocReqRdyBufferEntry) {
   Allocate_ReqRdyBufferEntry;
-  AllocateTBE_BufferedEntry;
   Pop_ReqInQueue;
 }
 
 transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,
-            SD_RSD,RUSC}, AllocReqRdyBufferEntryWithCredit) {
+            SD_RSD,RUSC,BUSY_INTR,BUSY_BLKD}, AllocReqRdyBufferEntryWithCredit) {
   Allocate_ReqRdyBufferEntry_WithCredit;
+  Pop_ReqInQueue;
+}
+
+// Allocate TBE
+transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,
+            UD_RSD,SD_RSD,RUSC}, AllocateTBEBufferedEntry) {
   AllocateTBE_BufferedEntry;
-  Pop_ReqInQueue;
+  Pop_allocInQueue;
 }
 
-transition({BUSY_INTR,BUSY_BLKD}, AllocReqRdyBufferEntry) {
-  Allocate_ReqRdyBufferEntry;
-  StallRequest_BufferedReqImpl;
-  Pop_ReqInQueue;
+// Delay TBE allocation
+transition({BUSY_INTR,BUSY_BLKD}, AllocateTBEBufferedEntry) {
+  StallRequest_BeforeTBEAlloc;
+  Pop_allocInQueue;
 }
-
-transition({BUSY_INTR,BUSY_BLKD}, AllocReqRdyBufferEntryWithCredit) {
-  Allocate_ReqRdyBufferEntry_WithCredit;
-  StallRequest_BufferedReqImpl;
-  Pop_ReqInQueue;
-}
-
-// Allocate resources and move to the ready queue
-// transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,UD_RSD,SD_RSD,RUSC}, AllocateTBEBufferedEntry) {
-// }
-
-// transition({BUSY_INTR,BUSY_BLKD}, AllocateTBEBufferedEntry) {
-//   /**
-//    * What if TBE is not yet allocated, but still transient
-//    * for e.g. undergoing snoop filter replacement?
-//    * ----------------------------------------------------------
-//    * An address is effectively stalled, due to (mutually exclusive) factors
-//    * 1. TBE/MSHR unavailability
-//    * 2. Ongoing txns for the address
-//    * ----------------------------------------------------------
-//    * In this case, the address is stalled due it being in transient state
-//    */
-//   StallRequest_BufferedReqImpl;
-// }
 
 //--------------------------------------------------------------------------------------
 

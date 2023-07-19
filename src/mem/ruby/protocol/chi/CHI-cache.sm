@@ -190,6 +190,9 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // Internal queue for accepted requests
   MessageBuffer * reqRdy;
 
+  // Internal queue for resource allocation requests after accepting a request
+  MessageBuffer * allocRdy;
+
   // Internal queue for accepted snoops
   MessageBuffer * snpRdy;
 
@@ -222,11 +225,11 @@ machine(MachineType:Cache, "Cache coherency protocol") :
    * both retry-able (normal) requests and retried requests (this can 
    * cause deadlocks). The reqRdy buffer can be of arbitrary
    * size and its length is decoupled from the MSHR size.
-   * If False, then the MSHR allocation is done the
+   * If False, then the MSHR allocation is
    * alongside reqRdy allocation, so its size must be as large as the
    * MSHR size.
    */
-  bool buffered_req_impl := "False";
+  bool decoupled_req_alloc := "False";
 
   int number_of_reqRdyBuffers := 1;
 {
@@ -299,17 +302,21 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   enumeration(Event) {
     // Events triggered by incoming requests. Allocate TBE and move
     // request or snoop to the ready queue
+    AllocRequest,            desc="Allocates a TBE for a request. Triggers a retry if table is full";
+    AllocRequestWithCredit,  desc="Allocates a TBE for a request. Always succeeds.";
+    AllocSeqRequest,         desc="Allocates a TBE for a sequencer request. Stalls requests if table is full";
+    AllocSeqDvmRequest,      desc="Allocates a TBE for a sequencer DVM request. Stalls requests if table is full";
+    AllocPfRequest,          desc="Allocates a TBE for a prefetch request. Stalls requests if table is full";
+    AllocSnoop,              desc="Allocates a TBE for a snoop. Stalls snoop if table is full";
+    AllocDvmSnoop,           desc="Allocates a TBE for a DVM snoop. Stalls snoop if table is full";
+    AllocRequestChecked,     desc="Allocates a TBE for a request. Stalls if enough resources not available";
+
+    // Events triggered by incoming requests whenever decoupled_req_alloc is set
+    // Allocation of request ready buffer entry, TBE/MSHR and Snoopfilter entries
+    // are decoupled
     AllocReqRdyBufferEntry,           desc="Allocates an intermediate buffer entry for a request, before TBE allocation";
     AllocReqRdyBufferEntryWithCredit, desc="Allocates an intermediate buffer for a request, before TBE allocation. with credit";
     AllocateTBEBufferedEntry,         desc="Allocates a TBE for a request waiting in the intermediate buffer";
-    AllocRequest,                     desc="Allocates a TBE for a request. Triggers a retry if table is full";
-    AllocRequestWithCredit,           desc="Allocates a TBE for a request. Always succeeds.";
-    AllocSeqRequest,                  desc="Allocates a TBE for a sequencer request. Stalls requests if table is full";
-    AllocSeqDvmRequest,               desc="Allocates a TBE for a sequencer DVM request. Stalls requests if table is full";
-    AllocPfRequest,                   desc="Allocates a TBE for a prefetch request. Stalls requests if table is full";
-    AllocSnoop,                       desc="Allocates a TBE for a snoop. Stalls snoop if table is full";
-    AllocDvmSnoop,                    desc="Allocates a TBE for a DVM snoop. Stalls snoop if table is full";
-    AllocRequestChecked,              desc="Allocates a TBE for a request. Stalls if enough resources not available";
 
     // Events triggered by sequencer requests or snoops in the rdy queue
     // See CHIRequestType in CHi-msg.sm for descriptions
@@ -610,9 +617,10 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     Addr replAddr,       desc="Address that is attempting to replace an entry in SnoopFilter";
   }
 
-  // Decoupled MSHR and reqRdy impl. Only applicable whenever buffered_req_impl is set
-  structure(WaitingReqDueToMSHRUnavailabilityEntry) {
-    Addr addr,   desc="An accepted request, that was not allocated an TBE, because one was not available";
+  // Decoupled MSHR and reqRdy impl. Only applicable whenever decoupled_req_alloc is set
+  structure(DecoupledAllocEntry) {
+    Addr addr,              desc="An accepted request, that is not allocated any other resource";
+    Event pendAllocEvent,   desc="Pending allocation event";
   }
 
   // Queue for event triggers. Used to specify a list of actions that need
@@ -629,15 +637,14 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     void pushFront(Event);
     void pushFrontNB(Event);
     void pop();
-    // For the retry queue
-    void emplace(Addr,bool,MachineID);
-    RetryQueueEntry next(); //SLICC won't allow to reuse front()
-    // For SnoopFilter operations
-    void emplace_entry(Addr); //SLICC won't allow to reuse emplace()
-    SnoopFilterReplPendEntry front2(); //SLICC won't allow to reuse front()
-    // For Decouple MSHR/TBE and reqRdy buffer entry allocation
-    void emplace_entry2(Addr);
-    WaitingReqDueToMSHRUnavailabilityEntry front3(); //SLICC won't allow to reuse front()
+
+    // SLICC does not allow re-using the functions with different template arguments
+    void emplace_retry(Addr,bool,MachineID);
+    void emplace_sfrepl(Addr);
+    void emplace_decoupledAllocEntry(Addr,Event);
+    RetryQueueEntry front_retry();
+    SnoopFilterReplPendEntry front_sfrepl();
+    DecoupledAllocEntry front_decoupledAllocEntry();
   }
 
   // TBE fields
@@ -848,8 +855,22 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // Destinations that will be sent PCrdGrant when a TBE becomes available
   TriggerQueue retryQueue, template="<Cache_RetryQueueEntry>";
 
+  /**
+   * The following structures are only used 
+   * when decoupled_req_alloc is set
+   */
+  // Decoupled MSHR and reqRdy impl. Only applicable whenever decoupled_req_alloc is set
+  structure(DecoupledAllocMsg, interface="Message") {
+    Addr addr;
+    Event pendAllocEvent;
+
+    bool functionalRead(Packet *pkt) { return false; }
+    bool functionalRead(Packet *pkt, WriteMask &mask) { return false; }
+    bool functionalWrite(Packet *pkt) { return false; }
+  }
+
   TBEStorage storReqRdyBuffer, constructor="this, TBEType_to_string(TBEType_ReqRdy), m_number_of_reqRdyBuffers";
-  TriggerQueue waitingReqDueToMSHRUnavailabilityQ, template="<Cache_WaitingReqDueToMSHRUnavailabilityEntry>";
+  TriggerQueue decoupleEntryQ, template="<Cache_DecoupledAllocEntry>";
 
   // Pending RetryAck/PCrdGrant/DoRetry
   structure(RetryTriggerMsg, interface="Message") {
