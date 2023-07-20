@@ -47,7 +47,6 @@ out_port(replTriggerOutPort, TriggerMsg, replTriggerQueue);
 out_port(reqRdyOutPort, CHIRequestMsg, reqRdy);
 out_port(snpRdyOutPort, CHIRequestMsg, snpRdy);
 out_port(sfReplOutPort, SFReplMessage, sfReplTriggerQueue);
-out_port(allocOutPort, DecoupledAllocMsg, allocRdy);
 
 // Include helper functions here. Some of them require the outports to be
 // already defined
@@ -336,19 +335,6 @@ void enqSnoopFilterFill(Addr address) {
   }
 }
 
-in_port(allocInPort, DecoupledAllocMsg, allocRdy, rank=13) {
-  if (allocInPort.isReady(clockEdge())) {
-    printResources();
-    peek(allocInPort, DecoupledAllocMsg) {
-      Addr addr := in_msg.addr;
-      CacheEntry cache_entry := getCacheEntry(addr);
-      TBE tbe := getCurrentActiveTBE(addr);
-      DPRINTF(RubyCHIDebugStr5,"Firing allocInPort = %s\n",in_msg);
-      trigger(in_msg.pendAllocEvent, addr, cache_entry, tbe);
-    }
-  }
-}
-
 // Requests with an allocated TBE
 in_port(reqRdyPort, CHIRequestMsg, reqRdy, rank=3,
         rsc_stall_handler=reqRdyPort_rsc_stall_handler) {
@@ -370,7 +356,7 @@ in_port(reqRdyPort, CHIRequestMsg, reqRdy, rank=3,
         TBE tbe := getCurrentActiveTBE(in_msg.addr);
         DirEntry dir_entry := getDirEntry(in_msg.addr);
 
-        // Wait for SnoopFilter replacement to complete
+        // Wait for SnoopFilter replacement to complete (if necessary)
         bool stallForSnoopFilterAlloc := stallForSnoopFilterFill(in_msg.addr, in_msg);
         if (stallForSnoopFilterAlloc) {
           bool allWaysBusy := directory.allWaysBusy(in_msg.addr);
@@ -379,6 +365,18 @@ in_port(reqRdyPort, CHIRequestMsg, reqRdy, rank=3,
           } else {
             enqSnoopFilterFill(in_msg.addr);
             trigger(Event:WaitForSnoopFilterRepl, in_msg.addr, cache_entry, tbe);
+          }
+        }
+
+        // Wait for TBE/MSHR allocation
+        if (decoupled_req_alloc) {
+          bool _stallForTBEAlloc := stallForTBEAlloc(tbe, in_msg.addr);
+          if (_stallForTBEAlloc) {
+            trigger(Event:WaitForTBEAlloc, in_msg.addr, cache_entry, tbe);
+          } else {
+            assert(storTBEs.areNSlotsAvailable2(in_msg.addr, 1));
+            /* Reserve a slot in the TBE */
+            storTBEs.addReserveSlot(in_msg.addr);
           }
         }
 
@@ -582,13 +580,9 @@ void allocateTBEToPendAddrs(Addr dealloc_addr) {
     DecoupledAllocEntry e := decoupleEntryQ.front_decoupledAllocEntry();
     bool has_avail := storTBEs.areNSlotsAvailable2(e.addr, 1);
     Addr wakeupAddr := e.addr;
-    Event evt := e.pendAllocEvent;
     DPRINTF(RubyCHIDebugStr5,"addr: %#x, wakeupAddr: %#x\n", dealloc_addr, wakeupAddr);
     if (has_avail) {
-      enqueue(allocOutPort, DecoupledAllocMsg, allocation_latency) {
-        out_msg.addr := wakeupAddr;
-        out_msg.pendAllocEvent := evt;
-      }
+      wakeup_port(reqRdyPort, wakeupAddr);
       decoupleEntryQ.pop();
     }
   }

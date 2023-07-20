@@ -190,9 +190,6 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // Internal queue for accepted requests
   MessageBuffer * reqRdy;
 
-  // Internal queue for resource allocation requests after accepting a request
-  MessageBuffer * allocRdy;
-
   // Internal queue for accepted snoops
   MessageBuffer * snpRdy;
 
@@ -316,7 +313,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     // are decoupled
     AllocReqRdyBufferEntry,           desc="Allocates an intermediate buffer entry for a request, before TBE allocation";
     AllocReqRdyBufferEntryWithCredit, desc="Allocates an intermediate buffer for a request, before TBE allocation. with credit";
-    AllocateTBEBufferedEntry,         desc="Allocates a TBE for a request waiting in the intermediate buffer";
+    WaitForTBEAlloc,                  desc="Allocates a TBE for a request waiting in the intermediate buffer";
 
     // Events triggered by sequencer requests or snoops in the rdy queue
     // See CHIRequestType in CHi-msg.sm for descriptions
@@ -620,7 +617,6 @@ machine(MachineType:Cache, "Cache coherency protocol") :
   // Decoupled MSHR and reqRdy impl. Only applicable whenever decoupled_req_alloc is set
   structure(DecoupledAllocEntry) {
     Addr addr,              desc="An accepted request, that is not allocated any other resource";
-    Event pendAllocEvent,   desc="Pending allocation event";
   }
 
   // Queue for event triggers. Used to specify a list of actions that need
@@ -641,7 +637,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     // SLICC does not allow re-using the functions with different template arguments
     void emplace_retry(Addr,bool,MachineID);
     void emplace_sfrepl(Addr);
-    void emplace_decoupledAllocEntry(Addr,Event);
+    void emplace_decoupledAllocEntry(Addr);
     RetryQueueEntry front_retry();
     SnoopFilterReplPendEntry front_sfrepl();
     DecoupledAllocEntry front_decoupledAllocEntry();

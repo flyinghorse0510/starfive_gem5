@@ -196,8 +196,7 @@ class CHI_Cache_Controller(Cache_Controller):
             replTriggerQueue = OrderedTriggerMessageBuffer(),
             sfReplTriggerQueue = OrderedTriggerMessageBuffer(),
             reqRdy = TriggerMessageBuffer(),
-            snpRdy = TriggerMessageBuffer(),
-            allocRdy = OrderedTriggerMessageBuffer())
+            snpRdy = TriggerMessageBuffer())
         # Set somewhat large number since we really a lot on internal
         # triggers. To limit the controller performance, tweak other
         # params such as: input port buffer size, cache banks, and output

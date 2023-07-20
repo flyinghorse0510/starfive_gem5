@@ -400,6 +400,14 @@ void initializeTBE(TBE tbe, Addr addr, int storSlot) {
   tbe.is_stale := false;
 }
 
+bool stallForTBEAlloc(TBE tbe, Addr addr) {
+  if (is_valid(tbe)) {
+    return true;
+  } else {
+    return (storTBEs.areNSlotsAvailable2(addr, 1) == false);
+  }
+}
+
 TBE allocateRequestTBE(Addr addr, CHIRequestMsg in_msg), return_by_pointer="yes" {
   // We must have reserved resources for this allocation
   storTBEs.removeReserveSlot(addr);

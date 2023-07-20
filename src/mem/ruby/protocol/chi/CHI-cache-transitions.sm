@@ -71,17 +71,13 @@ transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_R
   Pop_ReqInQueue;
 }
 
-// Allocate TBE
 transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,
-            UD_RSD,SD_RSD,RUSC}, AllocateTBEBufferedEntry) {
-  AllocateTBE_BufferedEntry;
-  Pop_allocInQueue;
+            UD_RSD,SD_RSD,RUSC}, WaitForTBEAlloc) {
+  Wait_ForTBEAlloc;
 }
 
-// Delay TBE allocation
-transition({BUSY_INTR,BUSY_BLKD}, AllocateTBEBufferedEntry) {
-  StallRequest_BeforeTBEAlloc;
-  Pop_allocInQueue;
+transition({BUSY_INTR,BUSY_BLKD}, WaitForTBEAlloc) {
+  StallRequest;
 }
 
 //--------------------------------------------------------------------------------------
