@@ -53,6 +53,7 @@ def variableFileParser(args, variableFilePath):
         'HNF_TBE':int,
         'OUTPUT_DIR': str,
         'ACCEPTED_BUFFER_MAX_DEQ_RATE': int,
+        'IDEAL_SNOOP_FILTER': ast.literal_eval,
         # 'SNF_TBE':int,
         # 'SEQ_TBE':int,
         # 'TRANS':int,
@@ -161,6 +162,7 @@ def getReadWriteStats(options):
         'l3_size': [options.l3_size],
         'hnfMissRate': [hnfMissRate],
         'AcceptedBufferDeqRate': [options.ACCEPTED_BUFFER_MAX_DEQ_RATE],
+        'IDEAL_SNOOP_FILTER': [options.IDEAL_SNOOP_FILTER],
         'bw': [bw]
     }, index = None)
 

@@ -18,7 +18,7 @@ WORKSPACE="$(pwd)/output"
 GEM5_DIR=$(pwd)
 ISA="RISCV"
 CCPROT="CHI"
-BUILDTYPE="gem5.debug"
+BUILDTYPE="gem5.opt"
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MSHRSetBlocking"
 PY3=/home/arka.maity/anaconda3/bin/python3
 
@@ -66,15 +66,16 @@ if [ "$RUN" != "" ]; then
     MultiCoreAddrMode=True
     NETWORK="simple"
     # DEBUGFLAGS=RubyResourceStalls,RubyTxnTrace,TxnTrace,RubyCHIDebugStr5,SimpleNetworkDebug
-    # DEBUGFLAGS=RubyResourceStalls,RubyGenerated,TxnTrace,RubyCHIDebugStr5
-    DEBUGFLAGS=SeqMemLatTest,RubyCHIDebugStr5,RubyGenerated
+    DEBUGFLAGS=RubyCHIDebugStr5,RubyGenerated,RubyResourceStalls
+    # DEBUGFLAGS=SeqMemLatTest
     OUTPUT_PREFIX="MSHR_RetryImpl2"
     XOR_ADDR_BITS=4
     RANDOMIZE_ACC=False
     BLOCK_STRIDE_BITS=0
     SNOOP_FILTER_ASSOC=2
     SNOOP_FILTER_SIZE=8
-    IDEAL_SNOOP_FILTER=True
+    # IDEAL_SNOOP_FILTER=False
+    CONFIG_IDEAL_SNOOP_FILTER=(False)
     PART_TBE=False
     HNF_TBE=32
     CHI_DATA_WIDTH=64
@@ -83,21 +84,23 @@ if [ "$RUN" != "" ]; then
     NUM_DDR_Side=2
     BUFFER_SIZE=4
     SNF_TBE=32
+    # --abs-max-tick=61500
     
     PART_RATIO='1-1'
     RNF_TBE=32
-    # CONFIG_BENCHNAME=("bw_test_sf" "memcpy_test")
     CONFIG_BENCHNAME=("bw_test_sf")
+    # CONFIG_BENCHNAME=("bw_test_sf")
     CONFIG_SLOTS_BLOCKED_BY_SET=(False)
     ACCEPTED_BUFFER_MAX_DEQ_RATE_CONFIG_SET=(1)
 
     for l3_size in ${L3_SIZE_CONFIG[@]}; do
         for NUMCPUS in ${CONFIG_NUMCPUS[@]}; do
             for BENCHMARK in ${CONFIG_BENCHNAME[@]}; do
-               for SLOTS_BLOCKED_BY_SET in ${CONFIG_SLOTS_BLOCKED_BY_SET[@]}; do
+                for IDEAL_SNOOP_FILTER in ${CONFIG_IDEAL_SNOOP_FILTER[@]}; do
+                for SLOTS_BLOCKED_BY_SET in ${CONFIG_SLOTS_BLOCKED_BY_SET[@]}; do
                     if [ $BENCHMARK == "bw_test_sf" ]; then
-                        # CONFIG_READ_WRITE_RATIO=('1-0' '0-1')
-                        CONFIG_READ_WRITE_RATIO=('1-0')
+                        CONFIG_READ_WRITE_RATIO=('1-0' '0-1')
+                        # CONFIG_READ_WRITE_RATIO=('1-0')
                     elif [ $BENCHMARK == "memcpy_test" ]; then
                         CONFIG_READ_WRITE_RATIO=('0-1')
                     fi
@@ -105,7 +108,7 @@ if [ "$RUN" != "" ]; then
                         for ACCEPTED_BUFFER_MAX_DEQ_RATE in ${ACCEPTED_BUFFER_MAX_DEQ_RATE_CONFIG_SET[@]}; do
 			                WKSET=$((${NUM_LLC}*${l3_size}*1024*4))
                             L3_SIZE_KB="${l3_size}KiB"
-                            OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L3${L3_SIZE_KB}_ReadWrite${READ_WRITE_RATIO}_MSHRSlotsBlockedBySet_${SLOTS_BLOCKED_BY_SET}_Bench_${BENCHMARK}"
+                            OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L3${L3_SIZE_KB}_ReadWrite${READ_WRITE_RATIO}_MSHRSlotsBlockedBySet_${SLOTS_BLOCKED_BY_SET}_Bench_${BENCHMARK}_IdealSF${IDEAL_SNOOP_FILTER}"
                             OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
                             echo "GateTest Started: ${OUTPUT_BASE}"
                             mkdir -p ${OUTPUT_DIR}
@@ -171,8 +174,14 @@ if [ "$RUN" != "" ]; then
                                 --chi-buffer-max-deq-rate=1 \
                                 --accepted_buffer_max_deq_rate=${ACCEPTED_BUFFER_MAX_DEQ_RATE} \
                                 --num-producers=1 > ${OUTPUT_DIR}/cmd.log 2>&1 &
+                                # grep -E "system.ruby.hnf[0-9]+.cntrl" ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
+                                # grep -E "system.cpu[0-9]+.l2" ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.rnf.trace
+                                # grep -E "system.ruby.hnf01.cntrl" ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf01.trace
+                                # 
+                                # grep -E "addr: 0x8740" ${OUTPUT_DIR}/debug.trace > debug.0x8740.trace
                         done
                     done
+                done
                 done
             done
         done
