@@ -1460,6 +1460,7 @@ action(Send_SnpCleanInvalid, desc="") {
     prepareRequest(tbe, CHIRequestType:SnpCleanInvalid, out_msg);
     out_msg.Destination.addNetDest(tbe.dir_sharers);
     out_msg.retToSrc := false;
+    DPRINTF(RubyCHIDebugStr5,"SnpCleanInvalid to %s\n",tbe.dir_sharers);
   }
   setExpectedForInvSnoop(tbe, false);
 }
@@ -2807,7 +2808,7 @@ action(Send_RetryAck, desc="") {
       out_msg.responder := machineID;
       out_msg.Destination.add(in_msg.retryDest);
 
-      // DPRINTF(RubyCHIDebugStr5,"addr: %#x, dest: %s, sender: %d, RetryAck\n", in_msg.addr, in_msg.retryDest, machineID);
+      DPRINTF(RubyCHIDebugStr5,"addr: %#x, RetryAck, dest: %s\n", in_msg.addr, in_msg.retryDest);
     }
   }
 }
@@ -2821,7 +2822,7 @@ action(Send_PCrdGrant, desc="") {
       out_msg.responder := machineID;
       out_msg.Destination.add(in_msg.retryDest);
 
-      // DPRINTF(RubyCHIDebugStr5,"addr: %#x, dest: %s, sender: %d, PCrdGrant\n", in_msg.addr, in_msg.retryDest, machineID);
+      DPRINTF(RubyCHIDebugStr5,"addr: %#x, PCrdGrant, dest: %s\n", in_msg.addr, in_msg.retryDest);
 
     }
   }

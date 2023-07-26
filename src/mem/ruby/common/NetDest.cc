@@ -29,6 +29,7 @@
 #include "mem/ruby/common/NetDest.hh"
 
 #include <algorithm>
+#include <iterator>
 
 namespace gem5
 {
@@ -123,6 +124,31 @@ NetDest::getAllDest()
     }
     return dest;
 }
+
+std::string NetDest::getAllDestStr() const {
+    std::vector<std::string> dest;
+    dest.clear();
+    for (int i = 0; i < m_bits.size(); i++) {
+        for (int j = 0; j < m_bits[i].getSize(); j++) {
+            if (m_bits[i].isElement(j)) {
+                // int id = MachineType_to_string((MachineType)i) + j;
+                std::stringstream id_str;
+                id_str << MachineType_to_string((MachineType)i) << "_" << j;
+                dest.push_back(id_str.str());
+            }
+        }
+    }
+    std::stringstream ss;
+    std::copy(dest.begin(), dest.end(), std::ostream_iterator<std::string>(ss, ","));
+    return ss.str();
+}
+
+// std::string NetDest::denseDst() {
+//     std::vector<NodeID> nodes = dst.getAllDest();
+//     std::stringstream ss;
+//     std::copy(nodes.begin(), nodes.end(), std::ostream_iterator<int>(ss, ","));
+//     return ss.str();
+// }
 
 int
 NetDest::count() const

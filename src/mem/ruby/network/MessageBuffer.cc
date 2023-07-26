@@ -232,12 +232,8 @@ random_time()
     return time;
 }
 
-std::string denseDst(NetDest& dst)
-{
-    std::vector<NodeID> nodes = dst.getAllDest();
-    std::stringstream ss;
-    std::copy(nodes.begin(), nodes.end(), std::ostream_iterator<int>(ss, ","));
-    return ss.str();
+std::string denseDst(const NetDest &n) {
+    return n.getAllDestStr();
 }
 
 void

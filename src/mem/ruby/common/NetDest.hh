@@ -98,6 +98,8 @@ class NetDest
 
     void print(std::ostream& out) const;
 
+    std::string getAllDestStr() const;
+
   private:
     // returns a value >= MachineType_base_level("this machine")
     // and < MachineType_base_level("next highest machine")
@@ -117,7 +119,8 @@ class NetDest
 inline std::ostream&
 operator<<(std::ostream& out, const NetDest& obj)
 {
-    obj.print(out);
+    // obj.print(out);
+    out << obj.getAllDestStr();
     out << std::flush;
     return out;
 }
