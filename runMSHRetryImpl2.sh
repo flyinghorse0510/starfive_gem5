@@ -52,7 +52,7 @@ if [ "$RUN" != "" ]; then
     NUM_LLC=16
     # NUMCPUS=16
     # CONFIG_NUMCPUS=(1 4 8 16)
-    CONFIG_NUMCPUS=(1)
+    CONFIG_NUMCPUS=(16)
     LoadFactor=10
     LINK_BW=16
     LINKWIDTH=320
@@ -84,8 +84,6 @@ if [ "$RUN" != "" ]; then
     NUM_DDR_Side=2
     BUFFER_SIZE=4
     SNF_TBE=32
-    # --abs-max-tick=61500
-    
     PART_RATIO='1-1'
     RNF_TBE=32
     CONFIG_BENCHNAME=("bw_test_sf")
@@ -99,14 +97,14 @@ if [ "$RUN" != "" ]; then
                 for IDEAL_SNOOP_FILTER in ${CONFIG_IDEAL_SNOOP_FILTER[@]}; do
                 for SLOTS_BLOCKED_BY_SET in ${CONFIG_SLOTS_BLOCKED_BY_SET[@]}; do
                     if [ $BENCHMARK == "bw_test_sf" ]; then
-                        CONFIG_READ_WRITE_RATIO=('1-0' '0-1')
-                        # CONFIG_READ_WRITE_RATIO=('1-0')
+                        # CONFIG_READ_WRITE_RATIO=('1-0' '0-1')
+                        CONFIG_READ_WRITE_RATIO=('1-0')
                     elif [ $BENCHMARK == "memcpy_test" ]; then
                         CONFIG_READ_WRITE_RATIO=('0-1')
                     fi
                     for READ_WRITE_RATIO in ${CONFIG_READ_WRITE_RATIO[@]}; do
                         for ACCEPTED_BUFFER_MAX_DEQ_RATE in ${ACCEPTED_BUFFER_MAX_DEQ_RATE_CONFIG_SET[@]}; do
-			                WKSET=$((${NUM_LLC}*${l3_size}*1024*4))
+			                WKSET=262144 #$((${NUM_LLC}*${l3_size}*1024*4))
                             L3_SIZE_KB="${l3_size}KiB"
                             OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L3${L3_SIZE_KB}_ReadWrite${READ_WRITE_RATIO}_MSHRSlotsBlockedBySet_${SLOTS_BLOCKED_BY_SET}_Bench_${BENCHMARK}_IdealSF${IDEAL_SNOOP_FILTER}"
                             OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
@@ -119,6 +117,7 @@ if [ "$RUN" != "" ]; then
                                 -d $OUTPUT_DIR \
                                 ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
                                 --chi-data-width=${CHI_DATA_WIDTH} \
+                                --abs-max-tick=4200000 \
                                 --num-dirs=${NUM_MEM} \
                                 --DDR-loc-num=${NUM_DDR_XP} \
                                 --DDR-side-num=${NUM_DDR_Side} \
@@ -174,11 +173,15 @@ if [ "$RUN" != "" ]; then
                                 --chi-buffer-max-deq-rate=1 \
                                 --accepted_buffer_max_deq_rate=${ACCEPTED_BUFFER_MAX_DEQ_RATE} \
                                 --num-producers=1 > ${OUTPUT_DIR}/cmd.log 2>&1 &
-                                # grep -E "system.ruby.hnf[0-9]+.cntrl" ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
-                                # grep -E "system.cpu[0-9]+.l2" ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.rnf.trace
-                                # grep -E "system.ruby.hnf01.cntrl" ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf01.trace
-                                # 
-                                # grep -E "addr: 0x8740" ${OUTPUT_DIR}/debug.trace > debug.0x8740.trace
+                                
+                                #  
+                                # grep -E "system.ruby.hnf03.cntrl" debug.trace > debug.hnf03.trace &
+                                # grep -E "system.cpu03.l2" debug.trace > debug.rnf03.l2.trace &
+                                # grep -E "system.cpu03.l1d" debug.trace > debug.rnf03.l1d.trace &
+                                # wait
+
+                                # tail -1000 debug.trace > debug.T1000.trace &
+                                # tail -1000 debug.rnf03.trace > debug.rnf03.T1000.trace &
                         done
                     done
                 done
