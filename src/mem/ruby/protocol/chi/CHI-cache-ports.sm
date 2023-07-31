@@ -357,7 +357,7 @@ in_port(reqRdyPort, CHIRequestMsg, reqRdy, rank=3,
         DirEntry dir_entry := getDirEntry(in_msg.addr);
 
         // Wait for SnoopFilter replacement to complete (if necessary)
-        bool stallForSnoopFilterAlloc := stallForSnoopFilterFill(in_msg.addr, in_msg);
+        bool stallForSnoopFilterAlloc := stallForSnoopFilterFill(in_msg);
         if (stallForSnoopFilterAlloc) {
           bool allWaysBusy := directory.allWaysBusy(in_msg.addr);
           if (allWaysBusy) {
