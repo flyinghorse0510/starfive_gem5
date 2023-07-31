@@ -1376,6 +1376,10 @@ ${ident}_Controller::wakeup()
 // ${ident}: ${{self.short}}
 
 #include <cassert>
+#include <algorithm>
+#include <iterator>
+#include <sstream>
+#include <string>
 
 #include "base/logging.hh"
 #include "base/trace.hh"
@@ -1448,6 +1452,15 @@ TransitionResult result =
         code('''
 
 if (result == TransitionResult_Valid) {
+    if (m_tbe_ptr != nullptr) {
+        // For printing all the actions in TriggerQueue
+        const std::vector<${ident}_Event> &actions = (m_tbe_ptr->m_actions).getElements();
+        std::vector<std::string> actionsStr;
+        std::transform(actions.begin(),actions.end(),std::back_inserter(actionsStr),[](${ident}_Event e){ return ${ident}_Event_to_string(e); });
+        std::stringstream nxtEventListStr;
+        std::copy(actionsStr.begin(), actionsStr.end(), std::ostream_iterator<std::string>(nxtEventListStr, ","));
+        DPRINTF(RubyGenerated, "addr: %#x, nextEventList: %s\\n",addr,nxtEventListStr.str());
+    }
     DPRINTF(RubyGenerated, "addr: %#x, next_state: %s\\n",
             addr, ${ident}_State_to_string(next_state));
     countTransition(state, event);
@@ -1476,7 +1489,15 @@ if (result == TransitionResult_Valid) {
 
         code('''
 } else if (result == TransitionResult_ResourceStall) {
-    DPRINTF(RubyResourceStalls, "addr: %#x, Resource Stall (is:%s,e:%s,fs:%s)\\n",addr,${ident}_State_to_string(state),${ident}_Event_to_string(event),${ident}_State_to_string(next_state));
+    if (m_tbe_ptr != nullptr) {
+        // For printing all the actions in TriggerQueue
+        const std::vector<${ident}_Event> &actions = (m_tbe_ptr->m_actions).getElements();
+        std::vector<std::string> actionsStr;
+        std::transform(actions.begin(),actions.end(),std::back_inserter(actionsStr),[](${ident}_Event e){ return ${ident}_Event_to_string(e); });
+        std::stringstream nxtEventListStr;
+        std::copy(actionsStr.begin(), actionsStr.end(), std::ostream_iterator<std::string>(nxtEventListStr, ","));
+        DPRINTF(RubyResourceStalls, "addr: %#x, nextEventList: %s\\n",addr,nxtEventListStr.str());
+    }
     DPRINTFR(ProtocolTrace, "%15s %3s %10s%20s %6s>%-6s %#x %s\\n",
              curTick(), m_version, "${ident}",
              ${ident}_Event_to_string(event),

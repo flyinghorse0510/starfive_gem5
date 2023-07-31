@@ -470,6 +470,17 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     SnpInvPipe,    desc="Latency for SnpUnique and SnpCleanInv requests";
     SnpOncePipe,   desc="Latency for SnpOnce requests";
 
+    /**
+     * Sometime Send* transitions that push 
+     * request to the REQ channel can be blocked
+     * due to resource unavailability downstream
+     * (for example due to reception of RetryAck).
+     * This can prevent the controller from accepting
+     * Snoops. This can be resolved by adding a 
+     * dummy transition to BUSY_INTR.
+     */
+    ChangeToNB,           desc="Change the transient state to BUSY_BLKD --> BUSY_INTR";
+
     // Send a read request downstream.
     SendReadShared,       desc="Send a ReadShared or ReadNotSharedDirty is allow_SD is false";
     SendReadOnce,         desc="Send a ReadOnce";

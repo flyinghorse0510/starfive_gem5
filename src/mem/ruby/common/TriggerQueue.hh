@@ -40,6 +40,9 @@
 
 #include <deque>
 #include <iostream>
+#include <vector>
+#include <algorithm>
+#include <iterator>
 
 namespace gem5
 {
@@ -67,6 +70,14 @@ class TriggerQueue
     std::deque<ValType> queue;
 
   public:
+    std::vector<T> to_vector;
+
+    const std::vector<T>& getElements() {
+      to_vector.clear();
+      std::transform(queue.begin(), queue.end(), std::back_inserter(to_vector), [](const ValType &v){ return v.val; });
+      return to_vector;
+    } 
+
     // Returns the head of the queue
     const T& front() const { return queue.front().val; }
 

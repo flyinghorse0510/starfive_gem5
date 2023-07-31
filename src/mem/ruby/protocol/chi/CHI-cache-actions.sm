@@ -847,6 +847,7 @@ action(Initiate_StoreMiss, desc="") {
     tbe.actions.push(Event:CheckCacheFill);
     tbe.actions.push(Event:TagArrayWrite);
   } else {
+    tbe.actions.push(Event:ChangeToNB);
     tbe.actions.push(Event:SendWriteUnique);
     tbe.actions.push(Event:SendWUDataCB);
     tbe.dataToBeInvalid := true;
@@ -941,6 +942,7 @@ action(Initiate_WriteUnique_PartialWrite, desc="") {
 
 action(Initiate_WriteUnique_Forward, desc="") {
   tbe.actions.push(Event:WriteFEPipe);
+  tbe.actions.push(Event:ChangeToNB);
   tbe.actions.push(Event:SendWriteUnique);
   tbe.actions.push(Event:SendCompDBIDResp_WU);
   tbe.actions.push(Event:WriteBEPipe);
@@ -990,6 +992,7 @@ action(Finish_CopyBack_Stale, desc="") {
   // the Initiate_Evict
   if ((is_HN == false) && (tbe.dir_sharers.count() == 0) &&
       tbe.dir_sharers.isElement(tbe.requestor) && (tbe.dataValid == false)) {
+    tbe.actions.push(Event:ChangeToNB);
     tbe.actions.push(Event:SendEvict);
   }
 }
@@ -1004,11 +1007,13 @@ action(Initiate_Evict, desc="") {
       // we ack the evict
       tbe.actions.push(Event:SendSnpOnce);
       tbe.actions.push(Event:SendCompIResp);
+      tbe.actions.push(Event:ChangeToNB);
       tbe.actions.push(Event:SendWriteBackOrWriteEvict);
       tbe.actions.push(Event:WriteBEPipe);
       tbe.actions.push(Event:SendWBData);
     } else {
       tbe.actions.push(Event:SendCompIResp);
+      tbe.actions.push(Event:ChangeToNB);
       tbe.actions.push(Event:SendEvict);
     }
   } else {
@@ -1035,11 +1040,13 @@ action(Initiate_MaintainCoherence, desc="") {
     } else {
       if (tbe.dir_sharers.isEmpty() && (tbe.dataDirty || tbe.dataUnique)) {
         assert(!has_non_ex_owner);
+        tbe.actions.push(Event:ChangeToNB);
         tbe.actions.push(Event:SendWriteBackOrWriteEvict);
         tbe.actions.push(Event:WriteBEPipe);
         tbe.actions.push(Event:SendWBData);
       } else if (tbe.dataDirty && !has_non_ex_owner) {
         assert(!tbe.dir_sharers.isEmpty());
+        tbe.actions.push(Event:ChangeToNB);
         tbe.actions.push(Event:SendWriteClean);
         tbe.actions.push(Event:WriteBEPipe);
         tbe.actions.push(Event:SendWBData);
@@ -1146,11 +1153,10 @@ action(Initiate_SnpOnce, desc="") {
   }
 }
 
-
-
 action(Initiate_Replacement_Evict_BackInvalidte, desc="") {
   assert(is_HN == false);
   tbe.actions.push(Event:SendSnpCleanInvalid);
+  tbe.actions.push(Event:ChangeToNB);
   tbe.actions.push(Event:SendEvict);
   tbe.dataToBeInvalid := true;
   tbe.actions.pushNB(Event:TagArrayWrite);
@@ -1159,6 +1165,7 @@ action(Initiate_Replacement_Evict_BackInvalidte, desc="") {
 action(Initiate_Replacement_Evict, desc="") {
   assert(is_HN == false);
   assert(tbe.dir_sharers.isEmpty());
+  tbe.actions.push(Event:ChangeToNB);
   tbe.actions.push(Event:SendEvict);
   tbe.dataToBeInvalid := true;
   tbe.actions.pushNB(Event:TagArrayWrite);
@@ -1178,6 +1185,7 @@ action(Initiate_Replacement_WB_BackInvalidate, desc="") {
       tbe.actions.push(Event:SendWriteNoSnp);
     }
   } else {
+    tbe.actions.push(Event:ChangeToNB);
     tbe.actions.push(Event:SendWriteBackOrWriteEvict);
   }
   tbe.actions.pushNB(Event:DataArrayRead);
@@ -1195,9 +1203,11 @@ action(Initiate_Replacement_WB, desc="") {
     tbe.actions.push(Event:SendWriteNoSnp);
   } else if (tbe.dir_sharers.isEmpty()) {
     assert(tbe.dataDirty || tbe.dataUnique);
+    tbe.actions.push(Event:ChangeToNB);
     tbe.actions.push(Event:SendWriteBackOrWriteEvict);
   } else {
     assert(tbe.dataDirty);
+    tbe.actions.push(Event:ChangeToNB);
     tbe.actions.push(Event:SendWriteClean);
   }
   tbe.actions.pushNB(Event:DataArrayRead);

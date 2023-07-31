@@ -206,6 +206,7 @@ class CHI_Cache_Controller(Cache_Controller):
         # timeouts on unique lines when a store conditional fails
         self.sc_lock_enabled = False
         self.decoupled_req_alloc = False
+        self.unify_repl_TBEs = True
 
 class CHI_L1Controller(CHI_Cache_Controller):
     '''
@@ -240,7 +241,6 @@ class CHI_L1Controller(CHI_Cache_Controller):
         self.number_of_snoop_TBEs = 4
         self.number_of_DVM_TBEs = 16
         self.number_of_DVM_snoop_TBEs = 4
-        self.unify_repl_TBEs = False
         self.slots_bocked_by_set = False
 
 class CHI_L2Controller(CHI_Cache_Controller):                 
@@ -276,7 +276,6 @@ class CHI_L2Controller(CHI_Cache_Controller):
         self.number_of_snoop_TBEs = 16
         self.number_of_DVM_TBEs = 1 # should not receive any dvm
         self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
-        self.unify_repl_TBEs = False
         self.slots_bocked_by_set = False
 
 class CHI_HNFController(CHI_Cache_Controller):
@@ -405,7 +404,6 @@ class CHI_DMAController(CHI_Cache_Controller):
         self.number_of_snoop_TBEs = 1 # should not receive any snoop
         self.number_of_DVM_TBEs = 1 # should not receive any dvm
         self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
-        self.unify_repl_TBEs = False
 
 class CPUSequencerWrapper:
     '''

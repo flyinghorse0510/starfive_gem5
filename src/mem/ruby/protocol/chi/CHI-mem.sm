@@ -164,6 +164,19 @@ machine(MachineType:Memory, "Memory controller interface") :
   // Cache block size
   int blockSize, default="RubySystem::getBlockSizeBytes()";
 
+  // Tracks a pending credit request from a retry
+  structure(RetryQueueEntry) {
+    Addr addr,           desc="Line address";
+    MachineID retryDest, desc="Retry destination";
+  }
+
+  structure(TriggerQueue, external ="yes") {
+    void pop();
+    bool empty();
+    void emplace_retry(Addr,MachineID);
+    RetryQueueEntry front_retry();
+  }
+
   // TBE fields
   structure(TBE, desc="...") {
     int storSlot,   desc="Slot in the storage tracker occupied by this entry";
@@ -181,6 +194,10 @@ machine(MachineType:Memory, "Memory controller interface") :
     // zhiang: add txSeqNum to TBE, we assign txSeqNum with 0
     uint64_t txSeqNum, default="0", desc="Store txSeqNum from CHIRequestMsg to CHIDataMsg and CHIResponseMsg";
     RequestPtr reqPtr, default="nullptr", desc="Pointer to original request";
+
+    // Not used here. Added to appease the SLICC compiler, during intrusive debugging
+    TriggerQueue actions,     template="<Memory_Event>", desc="List of actions";
+    Event pendAction,         desc="Current pending action";
   }
 
   structure(TBETable, external ="yes") {
@@ -217,19 +234,6 @@ machine(MachineType:Memory, "Memory controller interface") :
     bool functionalRead(Packet *pkt) { return false; }
     bool functionalRead(Packet *pkt, WriteMask &mask) { return false; }
     bool functionalWrite(Packet *pkt) { return false; }
-  }
-
-  // Tracks a pending credit request from a retry
-  structure(RetryQueueEntry) {
-    Addr addr,           desc="Line address";
-    MachineID retryDest, desc="Retry destination";
-  }
-
-  structure(TriggerQueue, external ="yes") {
-    void pop();
-    bool empty();
-    void emplace_retry(Addr,MachineID);
-    RetryQueueEntry front_retry();
   }
 
   ////////////////////////////////////////////////////////////////////////////
