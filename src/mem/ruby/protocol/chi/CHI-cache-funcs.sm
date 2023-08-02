@@ -630,6 +630,16 @@ void setupPendingPartialSend(TBE tbe) {
   scheduleSendData(tbe, 0);
 }
 
+// Set the request type, before you can push out a request through the
+// the REQ channel. This is important because the requestor can throttle
+// Send_[REQ] actions, due to reception of a RetryAck message. Then
+// this requestor might get blocked and may not even accept SNP requests
+// which creates an unacceptable dependency b/w the REQ and SNP channels
+// risking deadlocks.
+// void setPendReqType(TBE tbe, CHIRequestType type) {
+//   tbe.pendReqType := type;
+// }
+
 // common code for downstream requests
 void prepareRequest(TBE tbe, CHIRequestType type, CHIRequestMsg & out_msg) {
   out_msg.addr := tbe.addr;
@@ -841,16 +851,19 @@ void printTBEState(TBE tbe) {
 
 void printTBEStateStr5(TBE tbe) {
   if (is_valid(tbe)) {
-    DPRINTF(RubyCHIDebugStr5, "TBEState addr=%#x,txSeqNum=%#018x,reqTyp=%s\n",tbe.addr,tbe.txSeqNum,tbe.reqType); 
-    DPRINTF(RubyCHIDebugStr5, "TBEState dataBlkValid.isFull=%d valid=%d unique=%d\n",tbe.dataBlkValid.isFull(),tbe.dataValid,tbe.dataUnique);
-    DPRINTF(RubyCHIDebugStr5, "TBEState dirty=%d mu_dirty=%d\n",tbe.dataDirty,tbe.dataMaybeDirtyUpstream);
-    DPRINTF(RubyCHIDebugStr5, "TBEState dir ownerExists=%d ownerExcl=%d,sharers=%d\n",tbe.dir_ownerExists,tbe.dir_ownerIsExcl,tbe.dir_sharers.count());
-    DPRINTF(RubyCHIDebugStr5, "TBEState tobe_I=%d tobe_SC=%d\n",tbe.dataToBeInvalid,tbe.dataToBeSharedClean);
-    DPRINTF(RubyCHIDebugStr5, "TBEState doCacheFill=%d,pendAction=%s,finalState=%s\n",tbe.doCacheFill,tbe.pendAction,tbe.finalState);
-    DPRINTF(RubyCHIDebugStr5, "TBEState expected_req_resp.hasExpected=%d\n",tbe.expected_req_resp.hasExpected());
-    DPRINTF(RubyCHIDebugStr5, "TBEState expected_snp_resp.hasExpected=%d\n",tbe.expected_snp_resp.hasExpected());
-    DPRINTF(RubyCHIDebugStr5, "TBEState expected_req_resp.hasReceivedData=%d\n",tbe.expected_req_resp.hasReceivedData());
-    DPRINTF(RubyCHIDebugStr5, "TBEState expected_snp_resp.hasReceivedData=%d\n",tbe.expected_snp_resp.hasReceivedData());
+    DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState txSeqNum=%#018x,reqTyp=%s\n",tbe.addr,tbe.txSeqNum,tbe.reqType); 
+    DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState dataBlkValid.isFull=%d valid=%d unique=%d\n",tbe.addr,tbe.dataBlkValid.isFull(),tbe.dataValid,tbe.dataUnique);
+    DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState dirty=%d mu_dirty=%d\n",tbe.addr,tbe.dataDirty,tbe.dataMaybeDirtyUpstream);
+    DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState dir ownerExists=%d ownerExcl=%d,sharers=%d\n",tbe.addr,tbe.dir_ownerExists,tbe.dir_ownerIsExcl,tbe.dir_sharers.count());
+    DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState tobe_I=%d tobe_SC=%d\n",tbe.addr,tbe.dataToBeInvalid,tbe.dataToBeSharedClean);
+    DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState doCacheFill=%d,pendAction=%s,finalState=%s\n",tbe.addr,tbe.doCacheFill,tbe.pendAction,tbe.finalState);
+    DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState expected_req_resp.hasExpected=%d\n",tbe.addr,tbe.expected_req_resp.hasExpected());
+    DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState expected_snp_resp.hasExpected=%d\n",tbe.addr,tbe.expected_snp_resp.hasExpected());
+    DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState expected_req_resp.hasReceivedData=%d\n",tbe.addr,tbe.expected_req_resp.hasReceivedData());
+    DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState expected_snp_resp.hasReceivedData=%d\n",tbe.addr,tbe.expected_snp_resp.hasReceivedData());
+    DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState is_req_hazard=%d, is_repl_hazard=%d\n",tbe.addr,tbe.is_req_hazard,tbe.is_repl_hazard);
+    DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState is_stale=%d\n",tbe.addr,tbe.is_stale);
+    DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState pendReqType=%s\n",tbe.addr,tbe.pendReqType);
   } else {
     DPRINTF(RubyCHIDebugStr5,"TBEState invalid\n");
   }

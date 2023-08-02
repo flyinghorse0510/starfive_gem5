@@ -833,7 +833,8 @@ transition({BUSY_BLKD,BUSY_INTR}, ActionStalledOnHazard) {
 
 transition({BUSY_BLKD, BUSY_INTR}, ChangeToNB, BUSY_INTR) {
   Pop_TriggerQueue;
-  ProcessNextState;
+  Change_ToNB;
+  ProcessNextState_ClearPending;
 }
 
 transition({BUSY_BLKD, BUSY_INTR}, SendWriteBackOrWriteEvict, BUSY_INTR) {DestinationAvailable} {

@@ -465,7 +465,8 @@ bool reqInPort_rsc_stall_handler() {
 
 
 // Incoming new sequencer requests
-in_port(seqInPort, RubyRequest, mandatoryQueue, rank=1) {
+in_port(seqInPort, RubyRequest, mandatoryQueue, rank=1,
+        rsc_stall_handler=seqPort_rsc_stall_handler) {
   if (seqInPort.isReady(clockEdge())) {
     printResources();
     peek(seqInPort, RubyRequest) {
@@ -497,6 +498,10 @@ in_port(seqInPort, RubyRequest, mandatoryQueue, rank=1) {
       }
     }
   }
+}
+bool seqPort_rsc_stall_handler() {
+  seqInPort.recycle(clockEdge(), cyclesToTicks(stall_recycle_lat));
+  return false;
 }
 
 
@@ -551,8 +556,6 @@ void processNextState(Addr address, TBE tbe, CacheEntry cache_entry) {
       out_msg.from_hazard := tbe.is_req_hazard || tbe.is_repl_hazard;
     }
   }
-
-  printTBEState(tbe);
 
   // we might be going to BUSY_INTERRUPTABLE so wakeup pending snoops
   // if any

@@ -755,11 +755,13 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     // NOTE: requestor always added to dir_sharers if updateDirOnCompAck is set
 
     // Set for incoming snoop requests
-    bool snpNeedsData,  desc="Set if snoop requires data as response";
-    State fwdedState,   desc="State of CompData sent due to a forwarding snoop";
-    bool is_req_hazard, desc="Snoop hazard with an outstanding request";
-    bool is_repl_hazard, desc="Snoop hazard with an outstanding writeback request";
-    bool is_stale,      desc="Request is now stale because of a snoop hazard";
+    bool snpNeedsData,         desc="Set if snoop requires data as response";
+    State fwdedState,          desc="State of CompData sent due to a forwarding snoop";
+    bool is_req_hazard,        desc="Snoop hazard with an outstanding request";
+    bool is_repl_hazard,       desc="Snoop hazard with an outstanding writeback request";
+    bool is_stale,             desc="Request is now stale because of a snoop hazard";
+    bool cancelReq,            desc="Cancel the original request from proceeding, if Data is not in appropriate state";
+    Event downstreamHazardReq, desc="Downstream potentially hazard request, that is blocked on retry";
 
     // Tracks requests sent downstream
     CHIRequestType pendReqType, desc="Sent request type";
