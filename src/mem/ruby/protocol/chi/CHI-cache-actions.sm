@@ -431,7 +431,6 @@ action(RestoreFromHazard, desc="") {
   hazard_tbe.wakeup_pending_req := tbe.wakeup_pending_req;
   hazard_tbe.wakeup_pending_snp := tbe.wakeup_pending_snp;
   hazard_tbe.wakeup_pending_tgr := tbe.wakeup_pending_tgr;
-  hazard_tbe.pendReqType := tbe.pendReqType;
 
   deallocateSnpTBE(tbe);
   set_tbe(hazard_tbe);
@@ -450,9 +449,23 @@ action(RestoreFromHazard, desc="") {
     tbe.is_stale := tbe.dataValid == false;
   }
 
+  bool wakeUpTgrs := true;
+  if (tbe.pendReqType == CHIRequestType:null) {
+    // A downstream request could not be sent. Due to (say destinations awaiting)
+    // Clear all the actions, and move to the finalizing transactions
+    wakeupPendingTgrs(tbe);
+    triggerInPort.dequeue(clockEdge());
+    clearPendingAction(tbe);
+    tbe.actions.clear();
+    processNextState(address, tbe, cache_entry);
+    wakeUpTgrs := false;
+  }
+
   // a pending action from the original request may have been stalled during
   // the hazard and needs to wakeup up now
-  wakeupPendingTgrs(tbe);
+  if (wakeUpTgrs) {
+    wakeupPendingTgrs(tbe);
+  }
   printTBEStateStr5(tbe);
 }
 
@@ -2267,6 +2280,7 @@ action(Send_Retry, desc="") {
   assert(tbe.rcvdRetryAck);
   enqueue(reqOutPort, CHIRequestMsg, request_latency) {
     prepareRequestRetry(tbe, out_msg);
+    DPRINTF(RubyCHIDebugStr5,"addr: %#x, out_msg=%s\n",tbe.addr,out_msg);
   }
 }
 
@@ -3274,6 +3288,11 @@ action(ProcessNextState_ClearPending, desc="") {
   clearPendingAction(tbe);
   processNextState(address, tbe, cache_entry);
 }
+
+// action(Squash_Actions, desc="") {
+//   assert(is_valid(tbe));
+//   tbe.actions.clear();
+// }
 
 action(Change_ToNB, desc="") {
   printTBEStateStr5(tbe);

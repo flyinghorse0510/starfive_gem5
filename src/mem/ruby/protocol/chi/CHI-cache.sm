@@ -480,6 +480,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
      * dummy transition to BUSY_INTR.
      */
     ChangeToNB,           desc="Change the transient state to BUSY_BLKD --> BUSY_INTR";
+    // SquashActions,    desc="Delete all actions and reset pendAction in the TBE";
 
     // Send a read request downstream.
     SendReadShared,       desc="Send a ReadShared or ReadNotSharedDirty is allow_SD is false";
@@ -644,6 +645,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     void pushFront(Event);
     void pushFrontNB(Event);
     void pop();
+    void clear();
 
     // SLICC does not allow re-using the functions with different template arguments
     void emplace_retry(Addr,bool,MachineID);
@@ -760,11 +762,10 @@ machine(MachineType:Cache, "Cache coherency protocol") :
     bool is_req_hazard,        desc="Snoop hazard with an outstanding request";
     bool is_repl_hazard,       desc="Snoop hazard with an outstanding writeback request";
     bool is_stale,             desc="Request is now stale because of a snoop hazard";
-    bool cancelReq,            desc="Cancel the original request from proceeding, if Data is not in appropriate state";
-    Event downstreamHazardReq, desc="Downstream potentially hazard request, that is blocked on retry";
 
     // Tracks requests sent downstream
-    CHIRequestType pendReqType, desc="Sent request type";
+    CHIRequestType pendReqType, desc="Downstream Sent request type";
+    CHIRequestType pendSnpType, desc="Upstream Sent snp request type";
     bool pendReqAllowRetry,     desc="Sent request can be retried";
     bool rcvdRetryAck,          desc="Received a RetryAck";
     bool rcvdRetryCredit,       desc="Received a PCrdGrant";

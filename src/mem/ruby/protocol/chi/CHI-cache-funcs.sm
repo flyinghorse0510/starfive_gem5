@@ -630,18 +630,27 @@ void setupPendingPartialSend(TBE tbe) {
   scheduleSendData(tbe, 0);
 }
 
-// Set the request type, before you can push out a request through the
-// the REQ channel. This is important because the requestor can throttle
-// Send_[REQ] actions, due to reception of a RetryAck message. Then
-// this requestor might get blocked and may not even accept SNP requests
-// which creates an unacceptable dependency b/w the REQ and SNP channels
-// risking deadlocks.
-// void setPendReqType(TBE tbe, CHIRequestType type) {
-//   tbe.pendReqType := type;
-// }
+bool isSnpReqType(CHIRequestType type) {
+  if ((type == CHIRequestType:SnpSharedFwd) ||
+      (type == CHIRequestType:SnpNotSharedDirtyFwd) ||
+      (type == CHIRequestType:SnpUniqueFwd) ||
+      (type == CHIRequestType:SnpOnceFwd) ||
+      (type == CHIRequestType:SnpOnce) ||
+      (type == CHIRequestType:SnpShared) ||
+      (type == CHIRequestType:SnpUnique) ||
+      (type == CHIRequestType:SnpCleanInvalid) ||
+      (type == CHIRequestType:SnpDvmOpSync_P1) ||
+      (type == CHIRequestType:SnpDvmOpSync_P2) ||
+      (type == CHIRequestType:SnpDvmOpNonSync_P1) ||
+      (type == CHIRequestType:SnpDvmOpNonSync_P2)) {
+    return true;
+  } else {
+    return false;
+  }
+}
 
 // common code for downstream requests
-void prepareRequest(TBE tbe, CHIRequestType type, CHIRequestMsg & out_msg) {
+void prepareRequest(TBE tbe, CHIRequestType type, CHIRequestMsg &out_msg) {
   out_msg.addr := tbe.addr;
   out_msg.accAddr := tbe.addr;
   out_msg.accSize := blockSize;
@@ -652,7 +661,14 @@ void prepareRequest(TBE tbe, CHIRequestType type, CHIRequestMsg & out_msg) {
   tbe.pendReqAllowRetry := false;
   tbe.rcvdRetryAck := false;
   tbe.rcvdRetryCredit := false;
-  tbe.pendReqType := type;
+  bool is_snp_type := isSnpReqType(type);
+  if (is_snp_type) {
+    tbe.pendSnpType := type;
+    tbe.pendReqType := CHIRequestType:null;
+  } else {
+    tbe.pendReqType := type;
+    tbe.pendSnpType := CHIRequestType:null;
+  }
   out_msg.isSeqReqValid := tbe.isSeqReqValid;
   out_msg.seqReq := tbe.seqReq;
   out_msg.is_local_pf := false;
@@ -684,6 +700,8 @@ void prepareRequestRetry(TBE tbe, CHIRequestMsg & out_msg) {
   out_msg.accAddr := tbe.pendReqAccAddr;
   out_msg.accSize := tbe.pendReqAccSize;
   out_msg.type := tbe.pendReqType;
+  bool is_snp_type := isSnpReqType(out_msg.type);
+  assert(is_snp_type == false);
   out_msg.Destination := tbe.pendReqDest;
   out_msg.dataToFwdRequestor := tbe.pendReqD2OrigReq;
   out_msg.retToSrc := tbe.pendReqRetToSrc;

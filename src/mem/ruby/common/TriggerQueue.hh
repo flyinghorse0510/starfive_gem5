@@ -103,6 +103,9 @@ class TriggerQueue
     // Is the queue empty ?
     bool empty() const { return queue.empty(); }
 
+    // Clear the contents of the queue
+    void clear() { queue.clear(); }
+
     // put an event at the end of the queue
     void push(const T &elem) { queue.push_back({elem,false}); }
 

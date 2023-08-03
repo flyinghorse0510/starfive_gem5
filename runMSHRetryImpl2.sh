@@ -37,7 +37,7 @@ if [ "$BUILD" != "" ]; then
     scons build/${ISA}_${CCPROT}/${BUILDTYPE} --default=RISCV PROTOCOL=${CCPROT} -j`nproc`
 fi
 
-
+# --abs-max-tick=4200000
 if [ "$RUN" != "" ]; then
     l1d_size="4KiB"
     l1i_size="4KiB"
@@ -67,7 +67,7 @@ if [ "$RUN" != "" ]; then
     NETWORK="simple"
     # DEBUGFLAGS=RubyResourceStalls,RubyTxnTrace,TxnTrace,RubyCHIDebugStr5,SimpleNetworkDebug
     DEBUGFLAGS=RubyCHIDebugStr5,RubyGenerated,RubyResourceStalls
-    # DEBUGFLAGS=SeqMemLatTest
+    # DEBUGFLAGS=SeqMemLatTest1
     OUTPUT_PREFIX="MSHR_RetryImpl2"
     XOR_ADDR_BITS=4
     RANDOMIZE_ACC=False
@@ -117,7 +117,6 @@ if [ "$RUN" != "" ]; then
                                 -d $OUTPUT_DIR \
                                 ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
                                 --chi-data-width=${CHI_DATA_WIDTH} \
-                                --abs-max-tick=4200000 \
                                 --num-dirs=${NUM_MEM} \
                                 --DDR-loc-num=${NUM_DDR_XP} \
                                 --DDR-side-num=${NUM_DDR_Side} \
@@ -173,15 +172,15 @@ if [ "$RUN" != "" ]; then
                                 --chi-buffer-max-deq-rate=1 \
                                 --accepted_buffer_max_deq_rate=${ACCEPTED_BUFFER_MAX_DEQ_RATE} \
                                 --num-producers=1 > ${OUTPUT_DIR}/cmd.log 2>&1 &
-                                
-                                #  
-                                # grep -E "system.ruby.hnf03.cntrl" debug.trace > debug.hnf03.trace &
-                                # grep -E "system.cpu03.l2" debug.trace > debug.rnf03.l2.trace &
-                                # grep -E "system.cpu03.l1d" debug.trace > debug.rnf03.l1d.trace &
-                                # wait
-
-                                # tail -1000 debug.trace > debug.T1000.trace &
-                                # tail -1000 debug.rnf03.trace > debug.rnf03.T1000.trace &
+                              
+                                grep -E "system.cpu10.l2" debug.trace > debug.rnf10.l2.trace &
+                                grep -E "system.cpu10.l1d" debug.trace > debug.rnf10.l1d.trace &
+                                grep -E "system.ruby.hnf00.cntrl" debug.trace > debug.hnf00.trace &
+                                wait
+                                grep -E "addr: 0x2a80" debug.rnf10.l1d.trace > debug.rnf10.l1d.0x2a80.trace &
+                                grep -E "addr: 0x2a80" debug.rnf10.l2.trace > debug.rnf10.l2.0x2a80.trace &
+                                grep -E "addr: 0x2a80" debug.hnf00.trace > debug.hnf00.0x2a80.trace &
+                                wait
                         done
                     done
                 done

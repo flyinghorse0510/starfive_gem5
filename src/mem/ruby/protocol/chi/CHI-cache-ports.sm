@@ -244,6 +244,9 @@ in_port(triggerInPort, TriggerMsg, triggerQueue, rank=5,
         trigger(tbe.pendAction, in_msg.addr, nullCacheEntry(), tbe);
       } else {
         TBE tbe := getCurrentActiveTBE(in_msg.addr);
+        if (is_valid(tbe) == false) {
+          DPRINTF(RubyCHIDebugStr5,"in_msg=%s\n",in_msg);
+        }
         assert(is_valid(tbe));
         if (in_msg.from_hazard != (tbe.is_req_hazard || tbe.is_repl_hazard)) {
           // possible when handling a snoop hazard and an action from the
