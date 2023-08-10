@@ -1454,13 +1454,13 @@ TransitionResult result =
 if (result == TransitionResult_Valid) {
     if (m_tbe_ptr != nullptr) {
         // For printing all the actions in TriggerQueue
-        const std::vector<${ident}_Event> &actions = (m_tbe_ptr->m_actions).getElements();
-        std::vector<std::string> actionsStr;
-        actionsStr.push_back(${ident}_Event_to_string(m_tbe_ptr->m_pendAction));
-        std::transform(actions.begin(),actions.end(),std::back_inserter(actionsStr),[](${ident}_Event e){ return ${ident}_Event_to_string(e); });
-        std::stringstream nxtEventListStr;
-        std::copy(actionsStr.begin(), actionsStr.end(), std::ostream_iterator<std::string>(nxtEventListStr, ","));
-        DPRINTF(RubyGenerated, "addr: %#x, nextEventList: %s\\n",addr,nxtEventListStr.str());
+        // const std::vector<${ident}_Event> &actions = (m_tbe_ptr->m_actions).getElements();
+        // std::vector<std::string> actionsStr;
+        // actionsStr.push_back(${ident}_Event_to_string(m_tbe_ptr->m_pendAction));
+        // std::transform(actions.begin(),actions.end(),std::back_inserter(actionsStr),[](${ident}_Event e){ return ${ident}_Event_to_string(e); });
+        // std::stringstream nxtEventListStr;
+        // std::copy(actionsStr.begin(), actionsStr.end(), std::ostream_iterator<std::string>(nxtEventListStr, ","));
+        // DPRINTF(RubyGenerated, "addr: %#x, nextEventList: %s\\n",addr,nxtEventListStr.str());
     }
     DPRINTF(RubyGenerated, "addr: %#x, next_state: %s\\n",
             addr, ${ident}_State_to_string(next_state));

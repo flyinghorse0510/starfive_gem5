@@ -558,7 +558,7 @@ void processNextState(Addr address, TBE tbe, CacheEntry cache_entry) {
       // TODO - put usesTxnId on the TBE?
       out_msg.usesTxnId := tbe.is_dvm_tbe || tbe.is_dvm_snp_tbe;
       out_msg.from_hazard := tbe.is_req_hazard || tbe.is_repl_hazard;
-      DPRINTF(RubyCHIDebugStr5,"Pushing tgrs for addr: %#x, Event: %s, snd_pendEv: %d\n",address,tbe.pendAction,tbe.snd_pendEv);
+      // DPRINTF(RubyCHIDebugStr5,"Pushing tgrs for addr: %#x, Event: %s, snd_pendEv: %d\n",address,tbe.pendAction,tbe.snd_pendEv);
     }
   }
 

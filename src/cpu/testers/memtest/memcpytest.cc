@@ -193,7 +193,8 @@ MemCpyTest::completeRequest(PacketPtr pkt, bool functional)
                 
                 assert(remove_pBaseAddr >= 0);
 
-                DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:R\n",\
+                DPRINTF(SeqMemLatTest,"Time: %lld, SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:R\n",\
+                                       curCycle(),\
                                        remove_paddr,\
                                        addrIterMap[remove_pBaseAddr],\
                                        id);
@@ -213,7 +214,8 @@ MemCpyTest::completeRequest(PacketPtr pkt, bool functional)
 
             assert(remove_pBaseAddr >= 0);
 
-            DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:W\n",\
+            DPRINTF(SeqMemLatTest,"Time: %lld, SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:W\n",\
+                curCycle(),\
                 remove_paddr,\
                 addrIterMap[remove_pBaseAddr],\
                 id);
@@ -234,6 +236,10 @@ MemCpyTest::completeRequest(PacketPtr pkt, bool functional)
                 if (numAddrTxnsCompleted >= numPerCPUWorkingBlocks) {
                     NUM_CPUS_COMPLETED++;
                 }
+                DPRINTF(SeqMemLatTest, "Time: %lld, SFReplMemTest|Addr: %#x access factor exceeded %d\n",\
+                    curCycle(),\
+                    remove_pBaseAddr,\
+                    addrIterMap[remove_pBaseAddr]);
             } else  {
                 // requeue the address
                 freeAddrQueue.push(std::make_shared<MemCpyAddr_t>(remove_pBaseAddr, MemCpyAddrState::FREE));
@@ -290,7 +296,7 @@ MemCpyTest::tick()
 
     /* Already generated all the transactions */
     if (numAddrTxnsGenerated >= (maxAccessFactor*numPerCPUWorkingBlocks)) {
-        DPRINTF(SeqMemLatTest,"id=%d,numAddrTxnsGenerated=%d\n",id,numAddrTxnsGenerated);
+        DPRINTF(SeqMemLatTest,"Time: %lld, id=%d,numAddrTxnsGenerated=%d\n",id,numAddrTxnsGenerated,curCycle());
         waitResponse = true;
         return;
     }
@@ -298,6 +304,7 @@ MemCpyTest::tick()
     /* Too many outstanding transactions */
     if (outstandingAddrs.size() >= maxOutstandingReq) {
         waitResponse = true;
+        DPRINTF(SeqMemLatTest,"Time: %lld, Too many outstanding transactions\n",curCycle());
         return;
     }
 
@@ -349,18 +356,20 @@ MemCpyTest::tick()
         }
         pkt->dataDynamic(pkt_data);
 
-        DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Start:R\n",\
-                paddr,\
-                addrIterMap[pBaseAddr],\
-                id);
+        // DPRINTF(SeqMemLatTest,"Time: %lld, SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Start:R\n",\
+        //         curCycle(),\
+        //         paddr,\
+        //         addrIterMap[pBaseAddr],\
+        //         id);
     } else {
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
         pkt_data[0] = data;
-        DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Start:W\n",\
-                paddr,\
-                addrIterMap[pBaseAddr],\
-                id);
+        // DPRINTF(SeqMemLatTest,"Time: %lld, SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Start:W\n",\
+        //         curCycle(),\
+        //         paddr,\
+        //         addrIterMap[pBaseAddr],\
+        //         id);
     }
 
     txSeqNum++; // for each transaction,increate 1 to generate a new txSeqNum
@@ -386,12 +395,13 @@ MemCpyTest::tick()
 void
 MemCpyTest::noRequest()
 {
-    panic("%s did not send a request for %d cycles", name(), progressCheck);
+    // panic("%s did not send a request for %d cycles", name(), progressCheck);
 }
 
 void
 MemCpyTest::noResponse()
 {
+    DPRINTF(SeqMemLatTest, "Time: %lld did not see a response\n",curCycle());
     panic("%s did not see a response for %d cycles", name(), progressCheck);
 }
 

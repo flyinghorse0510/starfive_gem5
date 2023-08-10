@@ -880,6 +880,7 @@ void printTBEStateStr5(TBE tbe) {
     DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState expected_snp_resp.hasExpected=%d\n",tbe.addr,tbe.expected_snp_resp.hasExpected());
     DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState expected_req_resp.hasReceivedData=%d\n",tbe.addr,tbe.expected_req_resp.hasReceivedData());
     DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState expected_snp_resp.hasReceivedData=%d\n",tbe.addr,tbe.expected_snp_resp.hasReceivedData());
+    DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState is_req_tbe=%d, is_snp_tbe=%d, is_repl_tbe=%d\n",tbe.addr,tbe.is_req_tbe,tbe.is_snp_tbe,tbe.is_repl_tbe);
     DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState is_req_hazard=%d, is_repl_hazard=%d\n",tbe.addr,tbe.is_req_hazard,tbe.is_repl_hazard);
     DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState is_stale=%d\n",tbe.addr,tbe.is_stale);
     DPRINTF(RubyCHIDebugStr5, "addr: %#x, TBEState pendReqType=%s\n",tbe.addr,tbe.pendReqType);
@@ -1536,9 +1537,6 @@ bool _checkResourceAvailable(RequestType request_type, Addr addr) {
     if (throttle_req_on_retry) {
       MachineID dest := mapAddressToDownstreamMachine(addr);
       bool canSend := destsWaitingRetry.isElement(dest) == false;
-      if (canSend == false) {
-        DPRINTF(RubyResourceStalls,"Downstream: %s busy\n",dest);
-      }
       return canSend;
     } else {
       return true;
@@ -1558,7 +1556,7 @@ bool _checkResourceAvailable(RequestType request_type, Addr addr) {
 bool checkResourceAvailable(RequestType request_type, Addr addr) {
   bool avail := _checkResourceAvailable(request_type, addr);
   if (avail == false) {
-    DPRINTF(RubySlicc, "Resource %s not available for addr: %#x\n", request_type, addr);
+    DPRINTF(RubyResourceStalls, "Resource %s not available for addr: %#x\n", request_type, addr);
   }
   return avail;
 }

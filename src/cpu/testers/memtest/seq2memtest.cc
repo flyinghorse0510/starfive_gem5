@@ -208,11 +208,11 @@ Seq2MemTest::completeRequest(PacketPtr pkt, bool functional)
             if (pkt_data[0] != ref_data) {
                 panic("Read of %x returns %x, expected %x\n", remove_paddr,pkt_data[0], ref_data);
             } else {
-                // DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:R\n",\
-                //                        remove_paddr,\
-                //                        addrIterMap[remove_paddr],\
-                //                        id);
-                
+                /* DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:R\n",\
+                                        remove_paddr,\
+                                        addrIterMap[remove_paddr],\
+                                       id);
+                */
                 numReadsCompleted++;
                 stats.numReads++;
 
@@ -225,10 +225,11 @@ Seq2MemTest::completeRequest(PacketPtr pkt, bool functional)
             }
         } else {
             assert(pkt->isWrite());
-            // DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:W\n",\
-            //     remove_paddr,\
-            //     addrIterMap[remove_paddr],\
-            //     id);
+            /* DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:W\n",\
+                remove_paddr,\
+                addrIterMap[remove_paddr],\
+                id);
+            */
             // update the reference data
             referenceData[req->getPaddr()] = pkt_data[0];
             numWritesCompleted++;
@@ -290,12 +291,14 @@ Seq2MemTest::tick()
     /* Too many outstanding transactions */
     if (outstandingAddrs.size() >= maxOutstandingReq) {
         waitResponse = true;
+        DPRINTF(SeqMemLatTest,"Too many outstanding transactions\n");
         return;
     }
 
     /* Already generated all the transactions */
     if ((numReadsGenerated+numWritesGenerated) >= maxLoads) {
         waitResponse = true;
+        DPRINTF(SeqMemLatTest,"All Transactions generated\n");
         return;
     }
 
@@ -307,6 +310,7 @@ Seq2MemTest::tick()
     }
     if (outstandingAddrs.find(paddr) != outstandingAddrs.end()) {
         waitResponse = true;
+        DPRINTF(SeqMemLatTest,"Addr: %#x outstanding\n",paddr);
         return;
     }
     
@@ -332,19 +336,19 @@ Seq2MemTest::tick()
         }
         pkt->dataDynamic(pkt_data);
 
-        // DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Start:R\n",\
-        //         paddr,\
-        //         addrIterMap[paddr],\
-        //         id);
+        DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Start:R\n",\
+                paddr,\
+                addrIterMap[paddr],\
+                id);
         numReadsGenerated++;
     } else {
         pkt = new Packet(req, MemCmd::WriteReq);
         pkt->dataDynamic(pkt_data);
         pkt_data[0] = data;
-        // DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Start:W\n",\
-        //         paddr,\
-        //         addrIterMap[paddr],\
-        //         id);
+        DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Start:W\n",\
+                paddr,\
+                addrIterMap[paddr],\
+                id);
         numWritesGenerated++;
     }
 
@@ -359,10 +363,9 @@ Seq2MemTest::tick()
         // finally shift the timeout for sending of requests forwards
         // as we have successfully sent a packet
         reschedule(noRequestEvent, clockEdge(progressCheck), true);
-    } 
-    // else {
-    //     DPRINTF(SeqMemLatTest, "Waiting for retry\n");
-    // }
+    } else {
+        DPRINTF(SeqMemLatTest, "Waiting for retry\n");
+    }
 
     // Schedule noResponseEvent now if we are not expecting a response
     if (!noResponseEvent.scheduled() && (outstandingAddrs.size() != 0))
