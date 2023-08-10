@@ -1456,6 +1456,7 @@ if (result == TransitionResult_Valid) {
         // For printing all the actions in TriggerQueue
         const std::vector<${ident}_Event> &actions = (m_tbe_ptr->m_actions).getElements();
         std::vector<std::string> actionsStr;
+        actionsStr.push_back(${ident}_Event_to_string(m_tbe_ptr->m_pendAction));
         std::transform(actions.begin(),actions.end(),std::back_inserter(actionsStr),[](${ident}_Event e){ return ${ident}_Event_to_string(e); });
         std::stringstream nxtEventListStr;
         std::copy(actionsStr.begin(), actionsStr.end(), std::ostream_iterator<std::string>(nxtEventListStr, ","));

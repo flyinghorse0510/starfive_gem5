@@ -125,6 +125,9 @@ machine(MachineType:Memory, "Memory controller interface") :
     Trigger_ReceiveDone, desc="";
     Trigger_SendRetry, desc="";
     Trigger_SendPCrdGrant, desc="";
+
+    // Used as a default pendAction value to appease the SLICC switch case checks. Not used otherwise
+    Default_PendAction,  desc="Not used";
   }
 
 
@@ -197,7 +200,7 @@ machine(MachineType:Memory, "Memory controller interface") :
 
     // Not used here. Added to appease the SLICC compiler, during intrusive debugging
     TriggerQueue actions,     template="<Memory_Event>", desc="List of actions";
-    Event pendAction,         desc="Current pending action";
+    Event pendAction,         default="Memory_Event_Default_PendAction", desc="Current pending action";
   }
 
   structure(TBETable, external ="yes") {

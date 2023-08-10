@@ -480,7 +480,7 @@ machine(MachineType:Cache, "Cache coherency protocol") :
      * dummy transition to BUSY_INTR.
      */
     ChangeToNB,           desc="Change the transient state to BUSY_BLKD --> BUSY_INTR";
-    // SquashActions,    desc="Delete all actions and reset pendAction in the TBE";
+    PopTriggerQueue,      desc="Pop the trigger queue containing stray requests";
 
     // Send a read request downstream.
     SendReadShared,       desc="Send a ReadShared or ReadNotSharedDirty is allow_SD is false";

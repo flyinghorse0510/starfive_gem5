@@ -608,6 +608,7 @@ void scheduleSendData(TBE tbe, int when) {
     enqueue(triggerOutPort, TriggerMsg, intToCycles(when)) {
       out_msg.addr := tbe.addr;
       out_msg.from_hazard := tbe.is_req_hazard || tbe.is_repl_hazard;
+      DPRINTF(RubyCHIDebugStr5,"scheduleSendData: Pushing tgrs for addr: %#x, Event: %s, snd_pendEv: %d\n",tbe.addr,tbe.pendAction,tbe.snd_pendEv);
     }
   }
 }

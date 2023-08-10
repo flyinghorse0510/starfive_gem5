@@ -3248,6 +3248,12 @@ action(Pop_TriggerQueue, desc="") {
   triggerInPort.dequeue(clockEdge());
 }
 
+action(Pop_TriggerQueue_InvalidTBE, desc="") {
+  // Stray triggers, due to cancelled transactions
+  assert(is_invalid(tbe));
+  triggerInPort.dequeue(clockEdge());
+}
+
 action(Pop_ReplTriggerQueue, desc="") {
   replTriggerInPort.dequeue(clockEdge());
   // wakeup the transaction that triggered this eviction
