@@ -424,13 +424,6 @@ action(Initiate_Snoop_Hazard, desc="") {
 action(RestoreFromHazard, desc="") {
   TBE hazard_tbe := getHazardTBE(tbe);
 
-  // Print the snoop TBE and Hazard TBE
-  DPRINTF(RubyCHIDebugStr5,"addr: %#x------------SNP TBE---------------\n",tbe.addr);
-  printTBEStateStr5(tbe);
-  DPRINTF(RubyCHIDebugStr5,"addr: %#x------------Hazard TBE------------\n",hazard_tbe.addr);
-  printTBEStateStr5(hazard_tbe);
-  DPRINTF(RubyCHIDebugStr5,"addr: %#x----------------------------------\n",hazard_tbe.addr);
-
   // update
   setDataToBeStates(tbe);
 
@@ -444,42 +437,38 @@ action(RestoreFromHazard, desc="") {
 
   // if the pending request is a WB or Evict then it becomes a stale request
   // if data is no longer in the expected state
-  bool downStreamPendReqSent := false;
+  bool downstreamPendReqSent := false;
   if (tbe.pendReqType == CHIRequestType:WriteBackFull) {
     tbe.is_stale := (tbe.dataValid && tbe.dataDirty) == false;
-    downStreamPendReqSent := true;
+    downstreamPendReqSent := true;
   } else if (tbe.pendReqType == CHIRequestType:WriteCleanFull) {
     tbe.is_stale := (tbe.dataValid && tbe.dataDirty) == false;
-    downStreamPendReqSent := true;
+    downstreamPendReqSent := true;
   } else if (hazard_tbe.pendReqType == CHIRequestType:WriteEvictFull) {
     tbe.is_stale := (tbe.dataValid && tbe.dataUnique) == false;
-    downStreamPendReqSent := true;
+    downstreamPendReqSent := true;
   } else if (hazard_tbe.pendReqType == CHIRequestType:Evict) {
     tbe.is_stale := tbe.dataValid == false;
-    downStreamPendReqSent := true;
+    downstreamPendReqSent := true;
   } else if (hazard_tbe.pendReqType == CHIRequestType:CleanUnique) {
     tbe.is_stale := tbe.dataValid == false;
-    downStreamPendReqSent := true;
-  }
-
-  bool wakeUpTgrs := true;
-  if (downStreamPendReqSent == false) {
-    // A downstream request could not be sent. Due to (say destinations awaiting)
-    // Clear all the actions, and move to the finalizing transactions
-    wakeupPendingTgrs(tbe);
-    triggerInPort.dequeue(clockEdge());
-    clearPendingAction(tbe);
-    tbe.actions.clear();
-    processNextState(address, tbe, cache_entry);
-    wakeUpTgrs := false;
+    downstreamPendReqSent := true;
   }
 
   // a pending action from the original request may have been stalled during
   // the hazard and needs to wakeup up now
-  if (wakeUpTgrs) {
-    wakeupPendingTgrs(tbe);
+  wakeupPendingTgrs(tbe);
+
+  if (downstreamPendReqSent == false) {
+    // Skip to finalizing transactions because of Snp hazard
+    tbe.pendAction := Event:Final; // Enq the finalizing transaction
+    tbe.actions.clear();
+    Cycles finalizin_lat := intToCycles(0);
+    enqueue(triggerOutPort, TriggerMsg, finalizin_lat) {
+      out_msg.addr := tbe.addr;
+      out_msg.from_hazard := tbe.is_req_hazard || tbe.is_repl_hazard;
+    }
   }
-  printTBEStateStr5(tbe);
 }
 
 action(Initiate_Replacement, desc="") {
@@ -1500,7 +1489,6 @@ action(Send_SnpCleanInvalid, desc="") {
     prepareRequest(tbe, CHIRequestType:SnpCleanInvalid, out_msg);
     out_msg.Destination.addNetDest(tbe.dir_sharers);
     out_msg.retToSrc := false;
-    DPRINTF(RubyCHIDebugStr5,"SnpCleanInvalid to %s\n",tbe.dir_sharers);
   }
   setExpectedForInvSnoop(tbe, false);
 }
@@ -2243,7 +2231,6 @@ action(Receive_ReqResp, desc="") {
     if (tbe.expected_req_resp.receiveResp(in_msg.type) == false) {
       error("Received unexpected message");
     }
-    printTBEStateStr5(tbe);
     assert(in_msg.stale == tbe.is_stale);
   }
 }
@@ -2293,7 +2280,6 @@ action(Send_Retry, desc="") {
   assert(tbe.rcvdRetryAck);
   enqueue(reqOutPort, CHIRequestMsg, request_latency) {
     prepareRequestRetry(tbe, out_msg);
-    DPRINTF(RubyCHIDebugStr5,"addr: %#x, out_msg=%s\n",tbe.addr,out_msg);
   }
 }
 
@@ -2849,8 +2835,6 @@ action(Send_RetryAck, desc="") {
       out_msg.type := CHIResponseType:RetryAck;
       out_msg.responder := machineID;
       out_msg.Destination.add(in_msg.retryDest);
-
-      DPRINTF(RubyCHIDebugStr5,"addr: %#x, RetryAck, dest: %s\n", in_msg.addr, in_msg.retryDest);
     }
   }
 }
@@ -2863,9 +2847,6 @@ action(Send_PCrdGrant, desc="") {
       out_msg.type := CHIResponseType:PCrdGrant;
       out_msg.responder := machineID;
       out_msg.Destination.add(in_msg.retryDest);
-
-      DPRINTF(RubyCHIDebugStr5,"addr: %#x, PCrdGrant, dest: %s\n", in_msg.addr, in_msg.retryDest);
-
     }
   }
 }
@@ -3121,7 +3102,7 @@ action(CheckCacheFill, desc="") {
     // The `is_valid(victim_entry)` condition here is to avoid an unused
     // variable error when compiling to gem5.fast.
     if (is_invalid(victim_tbe) && is_valid(victim_entry)) {
-      DPRINTF(RubyCHIDebugStr5, "Eviction for %#x victim: %#x state=%s\n",
+      DPRINTF(RubySlicc, "Eviction for %#x victim: %#x state=%s\n",
                           address, victim_addr, victim_entry.state);
       enqueue(replTriggerOutPort, ReplacementMsg, 0) {
         out_msg.addr := victim_addr;
@@ -3132,7 +3113,7 @@ action(CheckCacheFill, desc="") {
         }
       }
     } else {
-      DPRINTF(RubyCHIDebugStr5, "Eviction for %#x victim (busy): %#x state=%s\n",
+      DPRINTF(RubySlicc, "Eviction for %#x victim (busy): %#x state=%s\n",
                           address, victim_addr, victim_tbe.state);
       // just wait until the transaction finishes to try again
       victim_tbe.wakeup_pending_tgr := true;
@@ -3223,7 +3204,6 @@ action(Pop_ReqRdyQueue, desc="") {
       assert(in_msg.addr == address);
       storReqRdyBuffer.removeEntryFromSlot2(address,in_msg.buffSlot);
     }
-    // DPRINTF(RubyCHIDebugStr5,"ReleasingReqRdy retryAvail=%d, reqRdyAvail=%d\n",retryQueue.empty(),storReqRdyBuffer.areNSlotsAvailable(1));
     if (retryQueue.empty() == false) {
       RetryQueueEntry e := retryQueue.front_retry();
       bool has_avail := storReqRdyBuffer.areNSlotsAvailable2(e.addr, 1);
@@ -3308,13 +3288,8 @@ action(ProcessNextState_ClearPending, desc="") {
   processNextState(address, tbe, cache_entry);
 }
 
-// action(Squash_Actions, desc="") {
-//   assert(is_valid(tbe));
-//   tbe.actions.clear();
-// }
-
 action(Change_ToNB, desc="") {
-  printTBEStateStr5(tbe);
+  assert(is_valid(tbe));
 }
 
 action(Callback_LoadHit, desc="") {

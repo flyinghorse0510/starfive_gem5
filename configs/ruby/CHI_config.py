@@ -206,6 +206,7 @@ class CHI_Cache_Controller(Cache_Controller):
         # timeouts on unique lines when a store conditional fails
         self.sc_lock_enabled = False
         self.decoupled_req_alloc = False
+        self.number_of_reqRdyBuffers = 16
         self.unify_repl_TBEs = True
 
 class CHI_L1Controller(CHI_Cache_Controller):
@@ -332,7 +333,8 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.slots_bocked_by_set = options.slots_bocked_by_set
         # For Retry scheme 2. Setting this to finite deq rate
         self.reqRdy = TriggerMessageBuffer(max_dequeue_rate = options.accepted_buffer_max_deq_rate)
-        self.decoupled_req_alloc = True
+        self.decoupled_req_alloc = options.decoupled_req_alloc
+        self.number_of_reqRdyBuffers = options.num_accepted_entries
         
 class CHI_MNController(MiscNode_Controller):
     '''

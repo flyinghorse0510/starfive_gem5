@@ -236,10 +236,10 @@ MemCpyTest::completeRequest(PacketPtr pkt, bool functional)
                 if (numAddrTxnsCompleted >= numPerCPUWorkingBlocks) {
                     NUM_CPUS_COMPLETED++;
                 }
-                DPRINTF(SeqMemLatTest, "Time: %lld, SFReplMemTest|Addr: %#x access factor exceeded %d\n",\
-                    curCycle(),\
-                    remove_pBaseAddr,\
-                    addrIterMap[remove_pBaseAddr]);
+                // DPRINTF(SeqMemLatTest, "Time: %lld, SFReplMemTest|Addr: %#x access factor exceeded %d\n",\
+                //     curCycle(),\
+                //     remove_pBaseAddr,\
+                //     addrIterMap[remove_pBaseAddr]);
             } else  {
                 // requeue the address
                 freeAddrQueue.push(std::make_shared<MemCpyAddr_t>(remove_pBaseAddr, MemCpyAddrState::FREE));

@@ -1003,12 +1003,6 @@ transition(BUSY_BLKD, RestoreFromHazard, BUSY_INTR) {
   RestoreFromHazard;
 }
 
-// transition({BUSY_BLKD,BUSY_INTR}, SquashActions) {
-//   Pop_TriggerQueue;
-//   Squash_Actions;
-//   ProcessNextState_ClearPending;
-// }
-
 transition(BUSY_BLKD, SendReadShared, BUSY_INTR) {DestinationAvailable} {
   Pop_TriggerQueue;
   Send_ReadShared;
@@ -1371,6 +1365,10 @@ transition({BUSY_BLKD,BUSY_INTR}, Final, *) {
 transition({I,SC,UC,SD,UD,RU,RSC,RSD,RUSD,SC_RSC,UC_RSC,SD_RSC,UD_RSC,UC_RU,UD_RU,
             UD_RSD,SD_RSD,RUSC}, PopTriggerQueue) {
   Pop_TriggerQueue_InvalidTBE;
+}
+
+transition({BUSY_BLKD, BUSY_INTR}, PopTriggerQueue) {
+  Pop_TriggerQueue;
 }
 
 ////////////////////////////////////////////////////////

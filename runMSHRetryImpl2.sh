@@ -66,9 +66,9 @@ if [ "$RUN" != "" ]; then
     MultiCoreAddrMode=True
     NETWORK="simple"
     # DEBUGFLAGS=RubyResourceStalls,RubyTxnTrace,TxnTrace,RubyCHIDebugStr5,SimpleNetworkDebug
-    DEBUGFLAGS=RubyCHIDebugStr5,RubyGenerated,RubyResourceStalls
-    # DEBUGFLAGS=SeqMemLatTest1
-    OUTPUT_PREFIX="MSHR_RetryImpl2"
+    # DEBUGFLAGS=RubyCHIDebugStr5,RubyGenerated,RubyResourceStalls,SeqMemLatTest
+    DEBUGFLAGS=SeqMemLatTest
+    OUTPUT_PREFIX="MSHRetryImpl2_1"
     XOR_ADDR_BITS=4
     RANDOMIZE_ACC=False
     BLOCK_STRIDE_BITS=0
@@ -86,8 +86,8 @@ if [ "$RUN" != "" ]; then
     SNF_TBE=32
     PART_RATIO='1-1'
     RNF_TBE=32
-    CONFIG_BENCHNAME=("bw_test_sf")
-    # CONFIG_BENCHNAME=("bw_test_sf")
+    # CONFIG_BENCHNAME=("memcpy_test")
+    CONFIG_BENCHNAME=("bw_test_sf" "memcpy_test")
     CONFIG_SLOTS_BLOCKED_BY_SET=(False)
     ACCEPTED_BUFFER_MAX_DEQ_RATE_CONFIG_SET=(1)
 
@@ -171,16 +171,9 @@ if [ "$RUN" != "" ]; then
                                 --chi-buffer-depth=16 \
                                 --chi-buffer-max-deq-rate=1 \
                                 --accepted_buffer_max_deq_rate=${ACCEPTED_BUFFER_MAX_DEQ_RATE} \
+                                --decoupled_req_alloc=True \
+                                --num_accepted_entries=16 \
                                 --num-producers=1 > ${OUTPUT_DIR}/cmd.log 2>&1 &
-                              
-                                grep -E "system.cpu10.l2" debug.trace > debug.rnf10.l2.trace &
-                                grep -E "system.cpu10.l1d" debug.trace > debug.rnf10.l1d.trace &
-                                grep -E "system.ruby.hnf00.cntrl" debug.trace > debug.hnf00.trace &
-                                wait
-                                grep -E "addr: 0x2a80" debug.rnf10.l1d.trace > debug.rnf10.l1d.0x2a80.trace &
-                                grep -E "addr: 0x2a80" debug.rnf10.l2.trace > debug.rnf10.l2.0x2a80.trace &
-                                grep -E "addr: 0x2a80" debug.hnf00.trace > debug.hnf00.0x2a80.trace &
-                                wait
                         done
                     done
                 done

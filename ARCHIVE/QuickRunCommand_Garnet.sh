@@ -67,7 +67,7 @@ NUM_CPU=4 #1 #4 #16
 workingset=(524288) #(4096)  #(524288) #(32768) #
 prefix="PDCP_20230201"
 #prefix="MultiThread"
-NETWORK="garnet" #"simple"
+NETWORK="simple"
 
 if [ "$BUILD" != "" ]; then
     echo "Start building"

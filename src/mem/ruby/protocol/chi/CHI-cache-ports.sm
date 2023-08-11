@@ -244,11 +244,15 @@ in_port(triggerInPort, TriggerMsg, triggerQueue, rank=5,
         trigger(tbe.pendAction, in_msg.addr, nullCacheEntry(), tbe);
       } else {
         TBE tbe := getCurrentActiveTBE(in_msg.addr);
-        if (is_valid(tbe) == false) {
-          // DPRINTF(RubyCHIDebugStr5,"in_msg=%s\n",in_msg);
+        if (is_invalid(tbe)) {
+          // Due to hazards the trigger queue can contain some stray transactions
+          // for the addresses that have been already deallocated
           trigger(Event:PopTriggerQueue, in_msg.addr, getCacheEntry(in_msg.addr), tbe);
         }
         assert(is_valid(tbe));
+        if (tbe.pendAction == Event:null) {
+          trigger(Event:PopTriggerQueue, in_msg.addr, getCacheEntry(in_msg.addr), tbe);
+        }
         if (in_msg.from_hazard != (tbe.is_req_hazard || tbe.is_repl_hazard)) {
           // possible when handling a snoop hazard and an action from the
           // the initial transaction got woken up. Stall the action until the
@@ -523,7 +527,8 @@ in_port(pfInPort, RubyRequest, prefetchQueue, rank=0) {
 
 void processNextState(Addr address, TBE tbe, CacheEntry cache_entry) {
   assert(is_valid(tbe));
-  DPRINTF(RubyCHIDebugStr5, "GoToNextState expected_req_resp=%d expected_snp_resp=%d snd_pendEv=%d snd_pendBytes=%d pendAction=%s\n",
+  DPRINTF(RubyCHIDebugStr5, "addr: %#x, GoToNextState expected_req_resp=%d expected_snp_resp=%d snd_pendEv=%d snd_pendBytes=%d pendAction=%s\n",
+                      address,
                       tbe.expected_req_resp.expected(),
                       tbe.expected_snp_resp.expected(),
                       tbe.snd_pendEv, tbe.snd_pendBytes.count(),tbe.pendAction);
@@ -552,13 +557,12 @@ void processNextState(Addr address, TBE tbe, CacheEntry cache_entry) {
       tbe.pendAction := tbe.actions.front();
       tbe.actions.pop();
     }
+    
     assert(tbe.pendAction != Event:null);
     enqueue(triggerOutPort, TriggerMsg, trigger_latency) {
       out_msg.addr := tbe.addr;
-      // TODO - put usesTxnId on the TBE?
       out_msg.usesTxnId := tbe.is_dvm_tbe || tbe.is_dvm_snp_tbe;
       out_msg.from_hazard := tbe.is_req_hazard || tbe.is_repl_hazard;
-      // DPRINTF(RubyCHIDebugStr5,"Pushing tgrs for addr: %#x, Event: %s, snd_pendEv: %d\n",address,tbe.pendAction,tbe.snd_pendEv);
     }
   }
 
