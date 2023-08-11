@@ -395,7 +395,7 @@ MemCpyTest::tick()
 void
 MemCpyTest::noRequest()
 {
-    // panic("%s did not send a request for %d cycles", name(), progressCheck);
+    panic("%s did not send a request for %d cycles", name(), progressCheck);
 }
 
 void

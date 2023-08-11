@@ -48,12 +48,13 @@ def variableFileParser(args, variableFilePath):
         'NUM_MEM':int,
         # 'NUM_DDR_Side':int,
         # 'NUM_DDR_XP':int,
-        'DCT':ast.literal_eval,
-        'DMT':ast.literal_eval,
+        'DCT': str,
+        'DMT': str,
         'HNF_TBE':int,
         'OUTPUT_DIR': str,
         'ACCEPTED_BUFFER_MAX_DEQ_RATE': int,
-        'IDEAL_SNOOP_FILTER': ast.literal_eval,
+        'IDEAL_SNOOP_FILTER': str,
+        'DECOUPLED_REQ_ALLOC': str,
         # 'SNF_TBE':int,
         # 'SEQ_TBE':int,
         # 'TRANS':int,
@@ -163,6 +164,7 @@ def getReadWriteStats(options):
         'hnfMissRate': [hnfMissRate],
         'AcceptedBufferDeqRate': [options.ACCEPTED_BUFFER_MAX_DEQ_RATE],
         'IDEAL_SNOOP_FILTER': [options.IDEAL_SNOOP_FILTER],
+        'DECOUPLED_REQ_ALLOC': [options.DECOUPLED_REQ_ALLOC],
         'bw': [bw]
     }, index = None)
 
