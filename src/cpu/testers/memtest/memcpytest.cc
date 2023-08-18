@@ -140,6 +140,7 @@ MemCpyTest::MemCpyTest(const Params &p)
     writeSyncDataBase = 0x8f1;
     numAddrTxnsGenerated = 0;
     numAddrTxnsCompleted = 0;
+    all_txns_complete = false;
 
     // Set the number of max outstanding transactions
     maxOutstandingReq = p.outstanding_req;
@@ -193,11 +194,11 @@ MemCpyTest::completeRequest(PacketPtr pkt, bool functional)
                 
                 assert(remove_pBaseAddr >= 0);
 
-                DPRINTF(SeqMemLatTest,"Time: %lld, SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:R\n",\
-                                       curCycle(),\
-                                       remove_paddr,\
-                                       addrIterMap[remove_pBaseAddr],\
-                                       id);
+                // DPRINTF(SeqMemLatTest,"Time: %lld, SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:R\n",\
+                //                        curCycle(),\
+                //                        remove_paddr,\
+                //                        addrIterMap[remove_pBaseAddr],\
+                //                        id);
                 
                 assert(transientAddrMap.count(remove_pBaseAddr) > 0);
 
@@ -214,11 +215,11 @@ MemCpyTest::completeRequest(PacketPtr pkt, bool functional)
 
             assert(remove_pBaseAddr >= 0);
 
-            DPRINTF(SeqMemLatTest,"Time: %lld, SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:W\n",\
-                curCycle(),\
-                remove_paddr,\
-                addrIterMap[remove_pBaseAddr],\
-                id);
+            // DPRINTF(SeqMemLatTest,"Time: %lld, SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:W\n",\
+            //     curCycle(),\
+            //     remove_paddr,\
+            //     addrIterMap[remove_pBaseAddr],\
+            //     id);
             
             // update the reference data
             referenceData[req->getPaddr()] = pkt_data[0];
@@ -235,6 +236,8 @@ MemCpyTest::completeRequest(PacketPtr pkt, bool functional)
                 numAddrTxnsCompleted++;
                 if (numAddrTxnsCompleted >= numPerCPUWorkingBlocks) {
                     NUM_CPUS_COMPLETED++;
+                    all_txns_complete = true;
+                    DPRINTF(SeqMemLatTest,"Completed All %d\n",id);
                 }
                 // DPRINTF(SeqMemLatTest, "Time: %lld, SFReplMemTest|Addr: %#x access factor exceeded %d\n",\
                 //     curCycle(),\
@@ -296,7 +299,7 @@ MemCpyTest::tick()
 
     /* Already generated all the transactions */
     if (numAddrTxnsGenerated >= (maxAccessFactor*numPerCPUWorkingBlocks)) {
-        DPRINTF(SeqMemLatTest,"Time: %lld, id=%d,numAddrTxnsGenerated=%d\n",id,numAddrTxnsGenerated,curCycle());
+        DPRINTF(SeqMemLatTest,"Time: %lld, id=%d Generated all transactions\n",id,curCycle());
         waitResponse = true;
         return;
     }
@@ -395,13 +398,14 @@ MemCpyTest::tick()
 void
 MemCpyTest::noRequest()
 {
-    panic("%s did not send a request for %d cycles", name(), progressCheck);
+    if (!all_txns_complete) {
+        panic("%s did not send a request for %d cycles", name(), progressCheck);
+    }
 }
 
 void
 MemCpyTest::noResponse()
 {
-    DPRINTF(SeqMemLatTest, "Time: %lld did not see a response\n",curCycle());
     panic("%s did not see a response for %d cycles", name(), progressCheck);
 }
 

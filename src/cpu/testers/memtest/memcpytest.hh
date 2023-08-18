@@ -231,6 +231,8 @@ class MemCpyTest : public ClockedObject
     uint64_t numAddrTxnsGenerated;
 
     uint64_t numAddrTxnsCompleted;
+
+    bool all_txns_complete;
     
     bool addrInterleavedOrTiled;
 
