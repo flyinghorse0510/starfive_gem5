@@ -41,14 +41,14 @@ if [ "$RUN" != "" ]; then
     l1d_size="4KiB"
     l1i_size="4KiB"
     l2_size="8KiB"
-    L3_SIZE_CONFIG=(4) # Sizes in KiB ("16KiB" "32KiB" "64KiB" "238KiB")
+    # L3_SIZE_CONFIG=(1024) # Sizes in KiB ("16KiB" "32KiB" "64KiB" "238KiB")
+    l3_size=1024
     l1d_assoc=1
     l1i_assoc=1
     l2_assoc=1
     l3_assoc=4
     NUM_LLC=16
-    # CONFIG_NUMCPUS=(1 4 8 16)
-    CONFIG_NUMCPUS=(16)
+    CONFIG_NUMCPUS=(1 4 8 16)
     LoadFactor=10
     LINK_BW=16
     LINKWIDTH=320
@@ -61,18 +61,14 @@ if [ "$RUN" != "" ]; then
     TRANS=4
     MultiCoreAddrMode=True
     NETWORK="simple"
-    # DEBUGFLAGS=RubyResourceStalls,RubyTxnTrace,TxnTrace,RubyCHIDebugStr5,SimpleNetworkDebug
-    # DEBUGFLAGS=RubyCHIDebugStr5,RubyGenerated,RubyResourceStalls,SeqMemLatTest
     DEBUGFLAGS=SeqMemLatTest
-    OUTPUT_PREFIX="MSHRetryImpl01"
+    OUTPUT_PREFIX="MSHRetryImpl05_ArchExploration"
     XOR_ADDR_BITS=4
     RANDOMIZE_ACC=False
     BLOCK_STRIDE_BITS=0
-    SNOOP_FILTER_ASSOC=2
-    SNOOP_FILTER_SIZE=8
-    CONFIG_IDEAL_SNOOP_FILTER=(True)
+    SNOOP_FILTER_ASSOC=8
+    SNOOP_FILTER_SIZE=256
     PART_TBE=False
-    HNF_TBE=32
     CHI_DATA_WIDTH=64
     NUM_MEM=4
     NUM_DDR_XP=4
@@ -83,21 +79,30 @@ if [ "$RUN" != "" ]; then
     RNF_TBE=32
     CONFIG_BENCHNAME=("bw_test_sf" "memcpy_test")
     CONFIG_SLOTS_BLOCKED_BY_SET=(False)
-    ACCEPTED_BUFFER_MAX_DEQ_RATE_CONFIG_SET=(1)
+    ACCEPTED_BUFFER_MAX_DEQ_RATE_CONFIG_SET=(0)
     SLOTS_BLOCKED_BY_SET=False
-    CONFIG_DECOUPLED_REQ_ALLOC=(False True)
+    CONFIG_DECOUPLED_REQ_ALLOC=(True False)
+    IDEAL_SNOOP_FILTER=True
     CONFIG_READ_WRITE_RATIO=('1-0')
+    CONFIG_HNF_TBE=(2 4 8 16 32)
+    # CONFIG_HNF_TBE=(32)
 
-    for l3_size in ${L3_SIZE_CONFIG[@]}; do
-        for NUMCPUS in ${CONFIG_NUMCPUS[@]}; do
-            for BENCHMARK in ${CONFIG_BENCHNAME[@]}; do
-                for IDEAL_SNOOP_FILTER in ${CONFIG_IDEAL_SNOOP_FILTER[@]}; do
-                    for DECOUPLED_REQ_ALLOC in ${CONFIG_DECOUPLED_REQ_ALLOC[@]}; do
+
+    for DECOUPLED_REQ_ALLOC in ${CONFIG_DECOUPLED_REQ_ALLOC[@]}; do
+        if [ "$DECOUPLED_REQ_ALLOC" == "True" ] ; then
+            CONFIG_NUM_ACCEPTED_ENTRIES=(2 4 8 16)
+        else
+            CONFIG_NUM_ACCEPTED_ENTRIES=(16)
+        fi
+        for NUM_ACCEPTED_ENTRIES in ${CONFIG_NUM_ACCEPTED_ENTRIES[@]}; do
+            for HNF_TBE in ${CONFIG_HNF_TBE[@]}; do
+                for NUMCPUS in ${CONFIG_NUMCPUS[@]}; do
+                    for BENCHMARK in ${CONFIG_BENCHNAME[@]}; do
                         for READ_WRITE_RATIO in ${CONFIG_READ_WRITE_RATIO[@]}; do
                             for ACCEPTED_BUFFER_MAX_DEQ_RATE in ${ACCEPTED_BUFFER_MAX_DEQ_RATE_CONFIG_SET[@]}; do
-			                    WKSET=$((${NUM_LLC}*${l3_size}*1024*4))
+			                    WKSET=$((${NUM_LLC}*${l3_size}*1024*2))
                                 L3_SIZE_KB="${l3_size}KiB"
-                                OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L3${L3_SIZE_KB}_ReadWrite${READ_WRITE_RATIO}_MSHRDecoupledReqAlloc${DECOUPLED_REQ_ALLOC}_Bench_${BENCHMARK}_IdealSF${IDEAL_SNOOP_FILTER}"
+                                OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_HNFTBE${HNF_TBE}_MSHRDecoupledReqAlloc${DECOUPLED_REQ_ALLOC}_NumAcceptedEntries${NUM_ACCEPTED_ENTRIES}_Bench_${BENCHMARK}"
                                 OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
                                 echo "GateTest Started: ${OUTPUT_BASE}"
                                 mkdir -p ${OUTPUT_DIR}
@@ -163,19 +168,19 @@ if [ "$RUN" != "" ]; then
                                     --chi-buffer-max-deq-rate=1 \
                                     --accepted_buffer_max_deq_rate=${ACCEPTED_BUFFER_MAX_DEQ_RATE} \
                                     --decoupled_req_alloc=${DECOUPLED_REQ_ALLOC} \
-                                    --num_accepted_entries=16 \
+                                    --num_accepted_entries=${NUM_ACCEPTED_ENTRIES} \
                                     --num-producers=1 > ${OUTPUT_DIR}/cmd.log 2>&1 &
                             done
                         done
                     done
                 done
             done
+            wait
+            echo "------------------------------------------------"
         done
     done
-    wait
-    echo "------------------------------------------------"
-
+    
     ${PY3} stats_parser.py --root-dir ${OUTPUT_ROOT}/${OUTPUT_PREFIX} \
-                           --output-file ${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv \
+                           --output-file ${OUTPUT_ROOT}/${OUTPUT_PREFIX}/stats.csv
 
 fi

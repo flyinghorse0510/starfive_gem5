@@ -52,7 +52,7 @@ def variableFileParser(args, variableFilePath):
         'DMT': str,
         'HNF_TBE':int,
         'OUTPUT_DIR': str,
-        'ACCEPTED_BUFFER_MAX_DEQ_RATE': int,
+        'NUM_ACCEPTED_ENTRIES': int,
         'IDEAL_SNOOP_FILTER': str,
         'DECOUPLED_REQ_ALLOC': str,
         # 'SNF_TBE':int,
@@ -159,12 +159,11 @@ def getReadWriteStats(options):
         'working_set': [options.WKSET],
         'num_cpus': [options.NUMCPUS],
         'num_llc': [options.NUM_LLC],
-        'hnf_TBE': [options.HNF_TBE],
         'l3_size': [options.l3_size],
-        'hnfMissRate': [hnfMissRate],
-        'AcceptedBufferDeqRate': [options.ACCEPTED_BUFFER_MAX_DEQ_RATE],
-        'IDEAL_SNOOP_FILTER': [options.IDEAL_SNOOP_FILTER],
+        'hnf_TBE': [options.HNF_TBE],
+        'NUM_ACCEPTED_ENTRIES': [options.NUM_ACCEPTED_ENTRIES],
         'DECOUPLED_REQ_ALLOC': [options.DECOUPLED_REQ_ALLOC],
+        'hnfMissRate': [hnfMissRate],
         'bw': [bw]
     }, index = None)
 
