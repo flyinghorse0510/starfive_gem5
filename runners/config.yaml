@@ -1,0 +1,6 @@
+# Build Options
+build:
+  ISA: ["RISCV"]
+  protocol: ["CHI"]
+
+# MemTest Options

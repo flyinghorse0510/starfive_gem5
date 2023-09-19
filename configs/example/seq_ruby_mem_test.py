@@ -32,9 +32,11 @@ from m5.util import addToPath
 import os, argparse, sys
 
 addToPath('../')
+addToPath("../mem_test")
 
 from common import Options
 from ruby import Ruby
+from mem_test import CustomSystem
 import ast
 
 # Get paths we might need.  It's expected this file is in m5/configs/example.
@@ -107,6 +109,9 @@ parser.add_argument('--slots_bocked_by_set',type=ast.literal_eval,default=False,
 parser.add_argument('--accepted_buffer_max_deq_rate',type=int,default=0,help=f'Accepted buffer max deq rate. Zero implies infinite deq rate')
 parser.add_argument('--decoupled_req_alloc',type=ast.literal_eval,default=False,help=f'Decouple req alloc and MSHR alloc')
 parser.add_argument('--num_accepted_entries',type=int,default=0,help=f'Used for decouple accepted req and MSHR allocation. Applicable only when decoupled_req_alloc=True')
+parser.add_argument('--simple_int_link_bw_factor',type=int,default=16,help=f'SimpleLink(int) bandwidth_factor')
+parser.add_argument('--simple_ext_link_bw_factor',type=int,default=16,help=f'SimpleLink(ext) bandwidth_factor')
+parser.add_argument('--simple_bandwidth_factor', type=int, default=16, help=f'SimpleLink bandwidth_factor')
 
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]
@@ -259,6 +264,7 @@ for (i, dma) in enumerate(dmas):
     dma_ports.append(dma.port)
 
 Ruby.create_system(args, False, system, dma_ports = dma_ports)
+CustomSystem.customize_system(args, system)
 
 # Create a top-level voltage domain and clock domain
 system.voltage_domain = VoltageDomain(voltage = args.sys_voltage)
