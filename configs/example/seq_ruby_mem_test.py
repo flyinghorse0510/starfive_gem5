@@ -112,6 +112,7 @@ parser.add_argument('--num_accepted_entries',type=int,default=0,help=f'Used for 
 parser.add_argument('--simple_int_link_bw_factor',type=int,default=16,help=f'SimpleLink(int) bandwidth_factor')
 parser.add_argument('--simple_ext_link_bw_factor',type=int,default=16,help=f'SimpleLink(ext) bandwidth_factor')
 parser.add_argument('--simple_bandwidth_factor', type=int, default=16, help=f'SimpleLink bandwidth_factor')
+parser.add_argument('--mem_test_file_path', type=str, default="./mem_test/data/mem_test_data.bin", help=f'MemTest data file path')
 
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]
@@ -149,6 +150,8 @@ elif args.mem_test_type=='true_prod_cons':
     MemTestClass=TrueProdConsMemTest
 elif args.mem_test_type=='memcpy_test':
     MemTestClass=MemCpyTest
+elif args.mem_test_type=='directed_test':
+    MemTestClass=DirectedMemTest
 else:
     raise ValueError(f'MemTest type undefined')
 
@@ -230,6 +233,7 @@ if num_cpus > 0 :
                      percent_reads = percent_read,
                      base_addr_1=args.base_addr_1,
                      base_addr_2=args.base_addr_2,
+                     mem_test_file_path=args.mem_test_file_path,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(args.num_cpus) ]
 
@@ -253,6 +257,7 @@ if num_dmas > 0:
                      block_stride_bits = args.block_stride_bits,
                      randomize_acc = args.randomize_acc,
                      percent_reads = percent_read,
+                     mem_test_file_path=args.mem_test_file_path,
                      suppress_func_errors = not args.suppress_func_errors) \
              for i in range(args.num_dmas) ]
     system.dma_devices = dmas

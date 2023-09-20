@@ -148,7 +148,7 @@ DirectedMemTest::DirectedMemTest(const Params &p)
     }
 
     for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
-        auto reqEntryAddr = reinterpret_cast<DirectedMemTestEntry*>(directedMemTestTableBasePtr+i);
+        auto reqEntryAddr = directedMemTestTableBasePtr+i;
 
         addrIterMap[getMemTestReqAddr(reqEntryAddr)] = 0;
     }
@@ -168,9 +168,6 @@ DirectedMemTest::DirectedMemTest(const Params &p)
     if (maxOutstandingReq >= numPerCPUWorkingBlocks) {
         maxOutstandingReq = numPerCPUWorkingBlocks;
     }
-
-    directedMemTestEntryPtr = getMemTestDataTable(id);
-    unsigned reqBlkSize = getMemTestReqBlkSize(directedMemTestEntryPtr);
     
     if (reqBlkSize != sizeof(writeSyncData_t)) {
         DPRINTF(DirectedMemTest, "Inconsistent R/W Block Size: Emulator=>%u, MappedData=>%u", sizeof(writeSyncData_t), reqBlkSize);
@@ -333,29 +330,6 @@ DirectedMemTest::tick()
     req->setReqInstSeqNum(txSeqNum);
     assert(addrIterMap.count(paddr) > 0);
     addrIterMap[paddr]++;
-
-    // PacketPtr pkt = nullptr;
-    // writeSyncData_t *pkt_data = new writeSyncData_t[1];
-
-    // unsigned cmd = random_mt.random(0, 100);
-    // bool readOrWrite = (cmd < percentReads)?true:false;
-    // if (readOrWrite) {
-    //     pkt = new Packet(req, MemCmd::ReadReq);
-    //     auto ref = referenceData.find(req->getPaddr());
-    //     if (ref == referenceData.end()) {
-    //         referenceData[req->getPaddr()] = 0;
-    //     }
-    //     pkt->dataDynamic(pkt_data);
-
-    
-    //     numReadsGenerated++;
-    // } else {
-    //     pkt = new Packet(req, MemCmd::WriteReq);
-    //     pkt->dataDynamic(pkt_data);
-    //     pkt_data[0] = data;
-    
-    //     numWritesGenerated++;
-    // }
 
     txSeqNum++; // for each transaction,increate 1 to generate a new txSeqNum
 
@@ -541,6 +515,8 @@ DirectedMemTest::constructTestPacket(const DirectedMemTestEntry* entry, RequestP
             fatal("Unimplemented MemCmd: %d", static_cast<int>(reqCmd));
         break;
     }
+
+    return pkt;
 }
 
 } // namespace gem5
