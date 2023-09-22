@@ -1,0 +1,3 @@
+[submodule "starfive_mem_trace"]
+	path = starfive_mem_trace
+	url = git@github.com:flyinghorse0510/starfive_mem_trace.git
