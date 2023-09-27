@@ -305,7 +305,7 @@ k2 = int(splitText[1])
 percent_read = int((k1 / (k1 + k2)) * 100)
 
 MemTestClass = None
-memTesterParams = None
+memTesterParams = {}
 num_cpus = args.num_cpus
 cpuProdListMap = dict([(c, []) for c in range(num_cpus)])
 cpuConsListMap = dict([(c, []) for c in range(num_cpus)])
@@ -394,97 +394,74 @@ if num_cpus > block_size:
     sys.exit(1)
 
 # Construct testers' parameters
+# CPU parameters list
+memTesterParams["cpu"] = [
+    {
+        "max_loads": args.maxloads,
+        "working_set": args.size_ws,
+        "interval": args.inj_interval,
+        "num_peers": num_cpus + num_dmas,
+        "addr_intrlvd_or_tiled": args.addr_intrlvd_or_tiled,
+        "id_producers": cpuProdListMap[i],
+        "id_consumers": cpuConsListMap[i],
+        "outstanding_req": args.outstanding_req,
+        "id_starter": args.id_starter,
+        "num_peer_producers": num_peer_producers,
+        "block_stride_bits": args.block_stride_bits,
+        "randomize_acc": args.randomize_acc,
+        "percent_reads": percent_read,
+        "base_addr_1": args.base_addr_1,
+        "base_addr_2": args.base_addr_2,
+        "mem_test_file_path": args.mem_test_file_path,
+        "suppress_func_errors": args.suppress_func_errors,
+    }
+    for i in range(num_cpus)
+]
+# DMA parameters list
+memTesterParams["dma"] = [
+    {
+        "max_loads": args.maxloads,
+        "progress_interval": args.progress,
+        "interval": args.inj_interval,
+        "working_set": args.size_ws,
+        "num_peers": num_cpus + num_dmas,
+        "id_producers": cpuProdListMap[i],
+        "id_consumers": cpuConsListMap[i],
+        "outstanding_req": args.outstanding_req,
+        "id_starter": args.id_starter,
+        "num_peer_producers": num_peer_producers,
+        "addr_intrlvd_or_tiled": args.addr_intrlvd_or_tiled,
+        "block_stride_bits": args.block_stride_bits,
+        "randomize_acc": args.randomize_acc,
+        "percent_reads": percent_read,
+        "mem_test_file_path": args.mem_test_file_path,
+        "suppress_func_errors": not args.suppress_func_errors,
+    }
+    for i in range(num_dmas)
+]
+
+# Parameters tune
+invalidParamsList = []
 
 if args.mem_test_type == "directed_test":
-    # CPU parameters list
-    memTesterParams["cpu"] = [
-        {
-            "max_loads": args.maxloads,
-            "working_set": args.size_ws,
-            "interval": args.inj_interval,
-            "num_peers": num_cpus + num_dmas,
-            "addr_intrlvd_or_tiled": args.addr_intrlvd_or_tiled,
-            "id_producers": cpuProdListMap[i],
-            "id_consumers": cpuConsListMap[i],
-            "outstanding_req": args.outstanding_req,
-            "id_starter": args.id_starter,
-            "num_peer_producers": num_peer_producers,
-            "block_stride_bits": args.block_stride_bits,
-            "randomize_acc": args.randomize_acc,
-            "percent_reads": percent_read,
-            "base_addr_1": args.base_addr_1,
-            "base_addr_2": args.base_addr_2,
-            "mem_test_file_path": args.mem_test_file_path,
-            "suppress_func_errors": args.suppress_func_errors,
-        }
-        for i in range(num_cpus)
-    ]
-    # DMA parameters list
-    memTesterParams["dma"] = [
-        {
-            "max_loads": args.maxloads,
-            "progress_interval": args.progress,
-            "interval": args.inj_interval,
-            "working_set": args.size_ws,
-            "num_peers": num_cpus + num_dmas,
-            "id_producers": cpuProdListMap[i],
-            "id_consumers": cpuConsListMap[i],
-            "outstanding_req": args.outstanding_req,
-            "id_starter": args.id_starter,
-            "num_peer_producers": num_peer_producers,
-            "addr_intrlvd_or_tiled": args.addr_intrlvd_or_tiled,
-            "block_stride_bits": args.block_stride_bits,
-            "randomize_acc": args.randomize_acc,
-            "percent_reads": percent_read,
-            "mem_test_file_path": args.mem_test_file_path,
-            "suppress_func_errors": not args.suppress_func_errors,
-        }
-        for i in range(num_dmas)
-    ]
+    # nothing to tune
+    pass
+elif args.mem_test_type == "falsesharing_test":
+    invalidParamsList.append("mem_test_file_path")
+    invalidParamsList.append("num_peers")
+    invalidParamsList.append("base_addr_2")
 else:
-    # CPU parameters list
-    memTesterParams["cpu"] = [
-        {
-            "max_loads": args.maxloads,
-            "working_set": args.size_ws,
-            "interval": args.inj_interval,
-            "num_peers": num_cpus + num_dmas,
-            "addr_intrlvd_or_tiled": args.addr_intrlvd_or_tiled,
-            "id_producers": cpuProdListMap[i],
-            "id_consumers": cpuConsListMap[i],
-            "outstanding_req": args.outstanding_req,
-            "id_starter": args.id_starter,
-            "num_peer_producers": num_peer_producers,
-            "block_stride_bits": args.block_stride_bits,
-            "randomize_acc": args.randomize_acc,
-            "percent_reads": percent_read,
-            "base_addr_1": args.base_addr_1,
-            "base_addr_2": args.base_addr_2,
-            "suppress_func_errors": args.suppress_func_errors,
-        }
-        for i in range(num_cpus)
-    ]
-    # DMA parameters list
-    memTesterParams["dma"] = [
-        {
-            "max_loads": args.maxloads,
-            "progress_interval": args.progress,
-            "interval": args.inj_interval,
-            "working_set": args.size_ws,
-            "num_peers": num_cpus + num_dmas,
-            "id_producers": cpuProdListMap[i],
-            "id_consumers": cpuConsListMap[i],
-            "outstanding_req": args.outstanding_req,
-            "id_starter": args.id_starter,
-            "num_peer_producers": num_peer_producers,
-            "addr_intrlvd_or_tiled": args.addr_intrlvd_or_tiled,
-            "block_stride_bits": args.block_stride_bits,
-            "randomize_acc": args.randomize_acc,
-            "percent_reads": percent_read,
-            "suppress_func_errors": not args.suppress_func_errors,
-        }
-        for i in range(num_dmas)
-    ]
+    invalidParamsList.append("mem_test_file_path")
+
+cpuInvalidParamsList = invalidParamsList
+dmaInvalidParamsList = invalidParamsList
+# Remove invalid parameters for specific testers
+for i in range(num_cpus):
+    for j in range(len(invalidParamsList)):
+        memTesterParams["cpu"][i].pop(cpuInvalidParamsList[j])
+for i in range(num_dmas):
+    for j in range(len(invalidParamsList)):
+        memTesterParams["dma"][i].pop(dmaInvalidParamsList[j])
 
 
 # Construct cpu testers
