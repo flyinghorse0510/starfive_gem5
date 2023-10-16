@@ -107,6 +107,7 @@ parser.add_argument('--slots_bocked_by_set',type=ast.literal_eval,default=False,
 parser.add_argument('--accepted_buffer_max_deq_rate',type=int,default=0,help=f'Accepted buffer max deq rate. Zero implies infinite deq rate')
 parser.add_argument('--decoupled_req_alloc',type=ast.literal_eval,default=False,help=f'Decouple req alloc and MSHR alloc')
 parser.add_argument('--num_accepted_entries',type=int,default=0,help=f'Used for decouple accepted req and MSHR allocation. Applicable only when decoupled_req_alloc=True')
+# parser.add_argument('--simple-link-bw-factor',type=int,default=16,help=f'Link BW factor')
 
 def getCPUList(cpuListStr):
     return [int(c) for c in cpuListStr.split(';')]

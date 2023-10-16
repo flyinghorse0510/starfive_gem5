@@ -33,7 +33,7 @@ WORKSPACE="$(pwd)/output"
 GEM5_DIR=$(pwd)
 ISA="RISCV"
 CCPROT="CHI"
-BUILDTYPE="gem5.opt"
+BUILDTYPE="gem5.debug"
 OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MSHRAllocTest"
 PY3=/home/arka.maity/anaconda3/bin/python3
 
@@ -72,12 +72,12 @@ if [ "$GATETEST" != "" ]; then
     MultiCoreAddrMode=True
     NETWORK="simple"
     IDEAL_SNOOP_FILTER=False
-    DEBUGFLAGS=SeqMemLatTest,TxnTrace,RubyGenerated
+    DEBUGFLAGS=SeqMemLatTest
     OUTPUT_PREFIX="CHITxnTest_${NETWORK}"
 
-    WKSETLIST=(65536) #(4096 8192 10240 12288 16384 65536)
-    NUM_CPU_SET=(1 4 16)
-    SNOOP_FILTER_SIZE_CONFIG_SET=(128) #(64 128)
+    WKSETLIST=(65536)
+    NUM_CPU_SET=(1)
+    SNOOP_FILTER_SIZE_CONFIG_SET=(128)
     SNOOP_FILTER_ASSOC_CONFIG_SET=4
     XOR_ADDR_BITS_SET=(4)
     BLOCK_STRIDE_CONFIG_SET=(0)
@@ -95,7 +95,7 @@ if [ "$GATETEST" != "" ]; then
                                 echo "GateTest Started: ${OUTPUT_BASE}"
                                 mkdir -p ${OUTPUT_DIR}
                                 set > ${OUTPUT_DIR}/Variables.txt
-                                $GEM5_DIR/build/${ISA}_${CCPROT}/${BUILDTYPE} \
+                                gdb --args $GEM5_DIR/build/${ISA}_${CCPROT}/${BUILDTYPE} \
                                   --debug-flags=$DEBUGFLAGS --debug-file=debug.trace \
                                   -d $OUTPUT_DIR \
                                   ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
@@ -112,7 +112,8 @@ if [ "$GATETEST" != "" ]; then
                                   --l2_assoc=${l2_assoc} \
                                   --l3_assoc=${l3_assoc} \
                                   --network=${NETWORK} \
-                                  --simple-link-bw-factor=${LINK_BW} \
+                                  --simple-int-link-bw-factor=${LINK_BW} \
+                                  --simple-ext-link-bw-factor=${LINK_BW} \
                                   --link-width-bits=${LINKWIDTH} \
                                   --vcs-per-vnet=${VC_PER_VNET} \
                                   --link-latency=${LINK_LAT} \
@@ -143,7 +144,8 @@ if [ "$GATETEST" != "" ]; then
                                   --xor-addr-bits=${XOR_ADDR_BITS} \
                                   --block-stride-bits=${BLOCK_STRIDE_BITS} \
                                   --randomize-acc=${RANDOMIZE_ACC} \
-                                  --num-producers=1 > ${OUTPUT_DIR}/cmd.log 2>&1 &
+                                  --num-producers=1 
+                                #   > ${OUTPUT_DIR}/cmd.log 2>&1 &
                             done
                         done
                     done
@@ -151,27 +153,5 @@ if [ "$GATETEST" != "" ]; then
             done
         done
     done
-    wait
-
-    for NUMCPUS in ${NUM_CPU_SET[@]}; do
-        for WKSET in ${WKSETLIST[@]}; do
-            for SNOOP_FILTER_SIZE in ${SNOOP_FILTER_SIZE_CONFIG_SET[@]}; do
-                for SNOOP_FILTER_ASSOC in ${SNOOP_FILTER_ASSOC_CONFIG_SET[@]}; do
-                    for BLOCK_STRIDE_BITS in ${BLOCK_STRIDE_CONFIG_SET[@]}; do
-                        for XOR_ADDR_BITS in ${XOR_ADDR_BITS_SET[@]}; do
-                            for RANDOMIZE_ACC in ${RANDOMIZE_ACC_CONFIG_SET[@]}; do
-                                OUTPUT_BASE="WS${WKSET}_Core${NUMCPUS}_L1${l1d_size}_L2${l2_size}_L3${l3_size}"
-                                OUTPUT_DIR="${OUTPUT_ROOT}/${OUTPUT_PREFIX}/${OUTPUT_BASE}"
-                                echo "GateTest Parsing: ${OUTPUT_BASE}"
-                                grep 'hnf' ${OUTPUT_DIR}/debug.trace > ${OUTPUT_DIR}/debug.hnf.trace
-                                ${PY3} reOrderSliccTrace.py \
-                                    --input="${OUTPUT_DIR}/debug.hnf.trace" \
-                                    --output="${OUTPUT_DIR}/debug.hnf.trace.csv"
-                            done
-                        done
-                    done
-                done
-            done
-        done
-    done
+    # wait
 fi

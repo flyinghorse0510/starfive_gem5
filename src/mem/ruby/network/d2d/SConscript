@@ -1,0 +1,12 @@
+# -*- mode:python -*-
+
+# Copyright (c) 2023 Starfive Private Ltd
+# All rights reserved.
+#
+
+Import('*')
+
+if env['CONF']['PROTOCOL'] == 'None':
+    Return()
+
+Source('D2DNode.cc')

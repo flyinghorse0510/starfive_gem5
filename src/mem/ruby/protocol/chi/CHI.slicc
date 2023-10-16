@@ -4,4 +4,5 @@ include "RubySlicc_interfaces.slicc";
 include "CHI-msg.sm";
 include "CHI-cache.sm";
 include "CHI-mem.sm";
+include "CHI-D2D.sm";
 include "CHI-dvm-misc-node.sm";
