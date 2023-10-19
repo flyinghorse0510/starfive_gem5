@@ -64,8 +64,6 @@ namespace gem5
 
 static unsigned int NUM_CPUS_COMPLETED = 0;
 static unsigned int TESTER_ALLOCATOR = 0;
-static unsigned int TESTER_PRODUCER_IDX; // Pass Index of the writer. Only written by sole producer
-static const DirectedMemTestEntry* MEM_TEST_TABLE_BASE = nullptr;
 
 static inline int get_rand_between(int min, int max) {
   if (min == max) {
@@ -114,7 +112,6 @@ DirectedMemTest::DirectedMemTest(const Params &p)
       requestorId(p.system->getRequestorId(this)),
       blockSize(p.system->cacheLineSize()),
       blockAddrMask(blockSize - 1),
-      workingSet(p.working_set),
       progressInterval(p.progress_interval),
       progressCheck(p.progress_check),
       nextProgressMessage(p.progress_interval),
@@ -124,27 +121,22 @@ DirectedMemTest::DirectedMemTest(const Params &p)
       num_peers(p.num_peers),
       baseAddr(p.base_addr_1),
       addrInterleavedOrTiled(p.addr_intrlvd_or_tiled),
-      percentReads(p.percent_reads),
-      blockStrideBits(p.block_stride_bits),
       randomizeAcc(p.randomize_acc),
       txSeqNum((static_cast<uint64_t>(p.system->getRequestorId(this))) << 48),
       suppressFuncErrors(p.suppress_func_errors), stats(this),
       directedMemTestEntryPtr(nullptr),
       directedMemTestTableBasePtr(nullptr),
-      memTestFilePath(p.mem_test_file_path)
+      memTestFileDir(p.mem_test_file_dir)
 {
     id = TESTER_ALLOCATOR++;
-    fatal_if(id >= blockSize, "Too many testers, only %d allowed\n",
-             blockSize - 1);
-
-    fatal_if(workingSet%(num_peers*blockSize)!=0,"per CPU working set not block aligned, workingSet=%d,num_peers=%d,blockSize=%d\n",workingSet,num_peers,blockSize);
-    numPerCPUWorkingBlocks = (workingSet/(num_peers*blockSize));
 
     directedMemTestEntryPtr = getMemTestDataTable(id);
     unsigned reqBlkSize = getMemTestReqBlkSize(directedMemTestEntryPtr);
+    maxLoads = maxLoads * numPerCPUWorkingBlocks;
+    DPRINTF(DirectedMemTest, "Tester Id: %u ==> maxLoads: %lu, numPerCPUWorkingBlocks: %lu, blockSize: %u\n", id, maxLoads, numPerCPUWorkingBlocks, blockSize);
     
     if (reqBlkSize != sizeof(writeSyncData_t)) {
-        DPRINTF(DirectedMemTest, "Inconsistent R/W Block Size: Emulator=>%u, MappedData=>%u", sizeof(writeSyncData_t), reqBlkSize);
+        DPRINTF(DirectedMemTest, "Inconsistent R/W Block Size: Emulator => %u, MappedData => %u\n", sizeof(writeSyncData_t), reqBlkSize);
     }
 
     for (unsigned i=0; i < numPerCPUWorkingBlocks; i++) {
@@ -152,8 +144,6 @@ DirectedMemTest::DirectedMemTest(const Params &p)
 
         addrIterMap[getMemTestReqAddr(reqEntryAddr)] = 0;
     }
-
-    maxLoads = maxLoads * numPerCPUWorkingBlocks;
 
     // set up counters
     numReadsGenerated = 0;
@@ -167,10 +157,6 @@ DirectedMemTest::DirectedMemTest(const Params &p)
     maxOutstandingReq = p.outstanding_req;
     if (maxOutstandingReq >= numPerCPUWorkingBlocks) {
         maxOutstandingReq = numPerCPUWorkingBlocks;
-    }
-    
-    if (reqBlkSize != sizeof(writeSyncData_t)) {
-        DPRINTF(DirectedMemTest, "Inconsistent R/W Block Size: Emulator=>%u, MappedData=>%u", sizeof(writeSyncData_t), reqBlkSize);
     }
 
     // kick things into action
@@ -243,7 +229,7 @@ DirectedMemTest::completeRequest(PacketPtr pkt, bool functional)
             stats.numWrites++;
         }
         if ((numReadsCompleted+numWritesCompleted) >= maxLoads) {
-            DPRINTF(SeqMemLatTest,"Completed All %d\n",id);
+            DPRINTF(DirectedMemTest,"Completed All %d\n",id);
             all_txns_complete = true;
             NUM_CPUS_COMPLETED++;
         }
@@ -319,9 +305,7 @@ DirectedMemTest::tick()
         DPRINTF(SeqMemLatTest,"Addr: %#x outstanding\n",paddr);
         return;
     }
-    
-    // writeSyncData_t data = (TESTER_PRODUCER_IDX << 8) + (writeSyncDataBase++);
-    
+        
     outstandingAddrs.insert(paddr);
 
     RequestPtr req = std::make_shared<Request>(paddr, sizeof(writeSyncData_t), flags, requestorId);
@@ -399,12 +383,13 @@ DirectedMemTest::recvRetry()
 const DirectedMemTestEntry* 
 DirectedMemTest::getMemTestDataTable(unsigned int id)
 {
-    if (MEM_TEST_TABLE_BASE == nullptr) {
-        MEM_TEST_TABLE_BASE = mmapMemTestTable(memTestFilePath);
-        // Memory map failed! 
-        fatal_if(MEM_TEST_TABLE_BASE == nullptr, "Failed to map memory!");
-    }
-    directedMemTestTableBasePtr = MEM_TEST_TABLE_BASE + numPerCPUWorkingBlocks * id;
+    // Construct data file path
+    std::string memTestFilePath = memTestFileDir + "/vCPU_" + std::to_string(id) + ".bin";
+    // Map file into memory
+    directedMemTestTableBasePtr = mmapMemTestTable(memTestFilePath);
+    // Memory map failed!
+    fatal_if(directedMemTestTableBasePtr == nullptr, "Failed to map memory!");
+
     return directedMemTestTableBasePtr;
 }
 
@@ -426,6 +411,10 @@ DirectedMemTest::mmapMemTestTable(std::string& path)
 
     // Close file
     close(fd);
+
+    // Set numPerCPUWorkingBlocks
+    fatal_if(fileInfo.st_size % sizeof(DirectedMemTestEntry) != 0, "Directed binary data file mis-alignment!\n%s ==> File Size: %lu, Entry Size: %lu", path.c_str(), fileInfo.st_size, sizeof(DirectedMemTestEntry));
+    numPerCPUWorkingBlocks = fileInfo.st_size / sizeof(DirectedMemTestEntry);
     
     return reinterpret_cast<const DirectedMemTestEntry*>(mappedAddr);
 }

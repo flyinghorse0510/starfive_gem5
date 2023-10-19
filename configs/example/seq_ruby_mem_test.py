@@ -200,7 +200,7 @@ parser.add_argument(
     help="Block address strides, 2^(--block-stride-bits)",
 )
 parser.add_argument(
-    "--randomize-acc",
+    "--randomize_acc",
     default=False,
     type=ast.literal_eval,
     help=f"Randomize access patters",
@@ -279,7 +279,7 @@ parser.add_argument(
     help=f"SimpleLink bandwidth_factor",
 )
 parser.add_argument(
-    "--mem_test_file_path",
+    "--mem_test_file_dir",
     type=str,
     default="./mem_test/data/mem_test_data.bin",
     help=f"MemTest data file path",
@@ -412,7 +412,7 @@ memTesterParams["cpu"] = [
         "percent_reads": percent_read,
         "base_addr_1": args.base_addr_1,
         "base_addr_2": args.base_addr_2,
-        "mem_test_file_path": args.mem_test_file_path,
+        "mem_test_file_dir": args.mem_test_file_dir,
         "suppress_func_errors": args.suppress_func_errors,
     }
     for i in range(num_cpus)
@@ -434,7 +434,7 @@ memTesterParams["dma"] = [
         "block_stride_bits": args.block_stride_bits,
         "randomize_acc": args.randomize_acc,
         "percent_reads": percent_read,
-        "mem_test_file_path": args.mem_test_file_path,
+        "mem_test_file_dir": args.mem_test_file_dir,
         "suppress_func_errors": not args.suppress_func_errors,
     }
     for i in range(num_dmas)
@@ -445,13 +445,15 @@ invalidParamsList = []
 
 if args.mem_test_type == "directed_test":
     # nothing to tune
+    invalidParamsList.append("working_set")
+    invalidParamsList.append("percent_reads")
     pass
 elif args.mem_test_type == "falsesharing_test":
-    invalidParamsList.append("mem_test_file_path")
+    invalidParamsList.append("mem_test_file_dir")
     invalidParamsList.append("num_peers")
     invalidParamsList.append("base_addr_2")
 else:
-    invalidParamsList.append("mem_test_file_path")
+    invalidParamsList.append("mem_test_file_dir")
 
 cpuInvalidParamsList = invalidParamsList
 dmaInvalidParamsList = invalidParamsList

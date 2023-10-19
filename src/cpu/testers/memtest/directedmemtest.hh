@@ -52,25 +52,36 @@
 #include "sim/stats.hh"
 #include "cpu/testers/memtest/common.hh"
 
+#ifdef DIRECTED_MEM_TIMING
+#define MEM_TEST_ENTRY_MAX_REQ_BLK_SIZE (14)
+#else
 #define MEM_TEST_ENTRY_MAX_REQ_BLK_SIZE (6)
+#endif
+
 namespace gem5
 {
 
 typedef uint16_t writeSyncData_t;
 
 
-// # 128-Bits Alignment
+// # 256-Bits Alignment
 // #
 // # Low <===================== 128 bits (Little Endian) =====================> High
 // # |<-------- 64 bits -------->|<- 8 bits ->|<- 8 bits ->|<------ 48 bits ------>|
 // #         Address(paddr)        Memcmd(42)    BlockSize   ExtraData(6 x uint8_t)
 // #            uint64_t            uint8_t       uint8_t          uint8_t[6]
+// # |<------------- 64 bits ------------->|<------------- 64 bits ------------->|
+// # 		 ExtraData(8 x uint8_t)					  Global Timestamp
+// # 			   uint8_t[8]							  uint64_t
 // # vvvvvvvvvvvvvvvvvvvvvvv
 struct DirectedMemTestEntry {
     uint64_t paddr;
 	uint8_t memCmd;
 	uint8_t blkSize;
 	uint8_t data[MEM_TEST_ENTRY_MAX_REQ_BLK_SIZE];
+	#ifdef DIRECTED_MEM_TIMING
+	uint64_t timeCount;
+	#endif
 };
 // # ^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -152,10 +163,6 @@ class DirectedMemTest : public ClockedObject
 
 		unsigned int id;
 
-		const uint64_t workingSet; // Working Set in bytes
-
-		uint64_t workingSetSize; // Number of unique cache lines in thw Working set
-
 		writeSyncData_t writeSyncDataBase;
 
 		std::unordered_set<Addr> outstandingAddrs;
@@ -166,8 +173,6 @@ class DirectedMemTest : public ClockedObject
 		const unsigned blockSize;
 
 		const Addr blockAddrMask;
-
-		const unsigned percentReads;
 
 		/**
 		 * Get the block aligned address.
@@ -246,7 +251,7 @@ class DirectedMemTest : public ClockedObject
 		const DirectedMemTestEntry* directedMemTestEntryPtr;
 		const DirectedMemTestEntry* directedMemTestTableBasePtr;
 
-		std::string memTestFilePath;
+		std::string memTestFileDir;
 
 		const DirectedMemTestEntry* getMemTestDataTable(unsigned int id);
 

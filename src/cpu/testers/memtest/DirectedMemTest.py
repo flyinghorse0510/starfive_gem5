@@ -55,9 +55,7 @@ class DirectedMemTest(ClockedObject):
     
     mod_stream_triad = Param.Bool(False, "Generate Stream TRIAD like Mem requestes. 2 independent loads, 1 dependent stores")
     
-    working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
     max_loads = Param.Counter(1, "Number of loads to execute before exiting")
-    percent_reads = Param.Percent(100, "Percentage reads")
     addr_intrlvd_or_tiled = Param.Bool(False,"If true the address partitioning across CPUs is interleaved [0,N,2N;1,N+1,2N+1;...]. Otherwise Tiled [0:N-1,N:2N-1]")
 
     num_peers = Param.Counter(1, "Total number of CPUs")
@@ -79,7 +77,7 @@ class DirectedMemTest(ClockedObject):
 
     port = RequestPort("Port to the memory system")
     system = Param.System(Parent.any, "System this tester is part of")
-    mem_test_file_path = Param.String("./mem_test/data/mem_test_data.bin", "MemTest data file path")
+    mem_test_file_dir = Param.String("./mem_test/data/", "MemTest data file path")
 
     # Add the ability to supress error responses on functional
     # accesses as Ruby needs this
