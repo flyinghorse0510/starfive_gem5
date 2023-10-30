@@ -278,4 +278,5 @@ enumeration(TBEType, desc="...") {
   Dvm,        desc="DVM Request TBE";
   DvmSnp,     desc="DVM Snp request TBE";
   ReqRdy,     desc="Intermediate buffer entries";
+  D2DRemap,   desc="D2D Remap entries";
 }

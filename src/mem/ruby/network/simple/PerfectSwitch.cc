@@ -76,6 +76,9 @@ PerfectSwitch::init(SimpleNetwork *network_ptr)
 {
     m_network_ptr = network_ptr;
 
+    std::cout << "Init called:"
+              << name() << "\n";
+
     for (int i = 0;i < m_virtual_networks;++i) {
         m_pending_message_count.push_back(0);
     }
@@ -87,10 +90,6 @@ PerfectSwitch::addInPort(const std::vector<MessageBuffer*>& in)
     NodeID port = m_in.size();
     m_in.push_back(in);
     
-    // std::cout << "Switch_" << name() << " "
-    //           << "Inport_" << port << ": "
-    //           << "Link " << in[0]->name() << "\n";
-
     for (int i = 0; i < in.size(); ++i) {
         if (in[i] != nullptr) {
             in[i]->setConsumer(this);

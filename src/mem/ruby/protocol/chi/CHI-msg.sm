@@ -121,6 +121,13 @@ structure(CHIRequestMsg, desc="", interface="Message") {
 
   MessageSizeType MessageSize, default="MessageSizeType_Control";
 
+  // For D2D communication.
+  // Only applicable/useful for cross-die
+  // communication. Ignore otherwise
+  Addr d2d_txn_id,       default="0", desc="Assigned by upstream HNF. In RTL must use the txn_id of CHI request msg";
+  Addr tx_d2d_txn_id,    default="0", desc="Txn_id allocated by the src d2d node. More specifically by the txreq remap table";
+  Addr rx_d2d_txn_id,    default="0", desc="Txn_id allocated by the dst d2d node. More specifically by the rxreq remap table";
+
   // No data for functional access
   bool functionalRead(Packet *pkt) { return false; }
   bool functionalRead(Packet *pkt, WriteMask &mask) { return false; }

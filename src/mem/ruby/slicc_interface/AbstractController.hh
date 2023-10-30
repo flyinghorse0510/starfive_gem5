@@ -269,6 +269,15 @@ class AbstractController : public ClockedObject, public Consumer
     }
 
     /**
+     * This is a more generic txnId, and
+     * should mimic the txn_id attribute
+     * by the CHI messages.
+     */
+    Addr getD2DTxnId(int tbeStorSlot) const {
+      return ((getVersion() << 8) + tbeStorSlot);
+    }
+
+    /**
      * Profiles an event that ends a transaction.
      * This function also supports "unaddressed" transactions,
      * those not associated with an address in memory but

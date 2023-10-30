@@ -767,3 +767,64 @@ class CHI_RNI_IO(CHI_RNI_Base):
     def __init__(self, options, ruby_system, parent):
         super(CHI_RNI_IO, self).__init__(options, ruby_system, parent)
         ruby_system._io_port = self._sequencer
+
+class CHI_D2DNodeController(D2DNode_Controller):
+
+    class D2DBridgeBuffer(MessageBuffer):
+        ordered = True
+        randomization = False
+    
+    def __init__(self, options,\
+                       ruby_system,\
+                       addr_ranges):
+        super(CHI_D2DNodeController, self).__init__(
+            version = Versions.getVersion(D2DNode_Controller),
+            ruby_system = ruby_system,
+            addr_ranges = addr_ranges)
+        d2dbridge_buff_depth    = 2
+        d2dbridge_buff_deq_rate = 1
+        self.reqRdy        = MessageBuffer()
+        self.bridge_reqIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+        self.bridge_snpIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+        self.bridge_rspIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+        self.bridge_datIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+        self.bridge_reqOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+        self.bridge_snpOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+        self.bridge_rspOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+        self.bridge_datOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+
+class CHI_D2DNode(CHI_Node):
+
+    _addr_ranges = {}
+    
+    @classmethod
+    def createAddrRanges(cls, options, sys_mem_ranges, cache_line_size, d2ds):
+        block_size_bits = int(math.log(cache_line_size, 2))
+        d2d_bits = int(math.log(len(d2ds),2))
+        numa_bit = block_size_bits + d2d_bits - 1
+        for i, d2d in enumerate(d2ds):
+            ranges = []
+            for r in sys_mem_ranges:
+                addr_range = AddrRange(r.start, size = r.size(),
+                                        intlvHighBit = numa_bit,
+                                        intlvBits = d2d_bits,
+                                        intlvMatch = i)
+                ranges.append(addr_range)
+            cls._addr_ranges[d2d] = (ranges, numa_bit)
+
+    @classmethod
+    def getAddrRanges(cls,d2d_idx):
+        assert(len(cls._addr_ranges) != 0)
+        return cls._addr_ranges[d2d_idx]
+
+    def __init__(self,options,d2d_idx,ruby_system):
+        super(CHI_D2DNode, self).__init__(ruby_system)
+        
+        addr_ranges = self.getAddrRanges(d2d_idx)
+        self._cntrl = CHI_D2DNodeController(options,ruby_system,addr_ranges)
+    
+    def getAllControllers(self):
+        return [self._cntrl]
+
+    def getNetworkSideControllers(self):
+        return [self._cntrl]

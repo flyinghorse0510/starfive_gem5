@@ -34,7 +34,7 @@ GEM5_DIR=$(pwd)
 ISA="RISCV"
 CCPROT="CHI"
 BUILDTYPE="gem5.debug"
-OUTPUT_ROOT="${WORKSPACE}/GEM5_PDCP/MSHRAllocTest"
+OUTPUT_ROOT="${WORKSPACE}"
 PY3=/home/arka.maity/anaconda3/bin/python3
 
 if [ "$BUILD" != "" ]; then
@@ -73,7 +73,7 @@ if [ "$GATETEST" != "" ]; then
     NETWORK="simple"
     IDEAL_SNOOP_FILTER=False
     DEBUGFLAGS=SeqMemLatTest
-    OUTPUT_PREFIX="CHITxnTest_${NETWORK}"
+    OUTPUT_PREFIX="D2DTest_${NETWORK}"
 
     WKSETLIST=(65536)
     NUM_CPU_SET=(1)
