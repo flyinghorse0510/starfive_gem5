@@ -58,8 +58,8 @@ def read_config_file(file):
 def create_system(options, full_system, system, dma_ports, bootmem,
                   ruby_system, cpus):
 
-    if buildEnv['PROTOCOL'] != 'CHI':
-        m5.panic("This script requires the CHI build")
+    if buildEnv['PROTOCOL'] != 'CHID2D':
+        m5.panic("This script requires the CHID2D build")
 
     if options.num_dirs < 1:
         m5.fatal('--num-dirs must be at least 1')
@@ -78,7 +78,7 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     if options.chi_config:
         chi_defs = read_config_file(options.chi_config)
     elif options.topology == 'CustomMesh':
-        m5.fatal('--noc-config must be provided if topology is CustomMesh')
+        m5.fatal('--chi-config must be provided if topology is CustomMesh')
     else:
         # Use the defaults from CHI_config
         from . import CHI_config as chi_defs
@@ -88,10 +88,12 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     params.data_width = options.chi_data_width
     
     # Node types
-    CHI_RNF = chi_defs.CHI_RNF
-    CHI_HNF = chi_defs.CHI_HNF
-    CHI_MN = chi_defs.CHI_MN
-    CHI_D2DNode = chi_defs.CHI_D2DNode
+    CHI_RNF         = chi_defs.CHI_RNF
+    CHI_HNF         = chi_defs.CHI_HNF
+    CHI_MN          = chi_defs.CHI_MN
+    CHI_D2DNode     = chi_defs.CHI_D2DNode
+    CHI_HA          = chi_defs.CHI_HA
+    CHI_SNF_MainMem = chi_defs.CHI_SNF_MainMem
 
     # Declare caches and controller types used by the protocol
     # Notice tag and data accesses are not concurrent, so the a cache hit
@@ -194,6 +196,15 @@ def create_system(options, full_system, system, dma_ports, bootmem,
         all_cntrls.extend(hnf.getAllControllers())
         hnf_dests.extend(hnf.getAllControllers())
     
+    ruby_system.snf = [ CHI_SNF_MainMem(options, ruby_system, None, None)
+                        for i in range(options.num_dirs) ]
+    for snf in ruby_system.snf:
+        network_nodes.append(snf)
+        network_cntrls.extend(snf.getNetworkSideControllers())
+        assert(snf.getAllControllers() == snf.getNetworkSideControllers())
+        mem_cntrls.extend(snf.getAllControllers())
+        all_cntrls.extend(snf.getAllControllers())
+        mem_dests.extend(snf.getAllControllers())
     
     # Instantiate the d2d nodes
     num_d2dlist = 2
@@ -206,6 +217,18 @@ def create_system(options, full_system, system, dma_ports, bootmem,
         network_cntrls.extend(d2d.getNetworkSideControllers())
         all_cntrls.extend(d2d.getAllControllers())
         d2d_dests.extend(d2d.getAllControllers())
+    
+    # Intantiate the HA nodes
+    num_halist = 1
+    ha_list = [i for i in range(num_halist)]
+    ha_dests = []
+    CHI_HA.createAddrRanges(options,sysranges,system.cache_line_size.value,ha_list)
+    ruby_system.ha_nodes = [CHI_HA(options, i, ruby_system, HNFRealSnoopFilter, None) for i in range(num_halist)]
+    for ha in ruby_system.ha_nodes:
+        network_nodes.append(ha)
+        ha_dests.extend(ha.getAllControllers())
+        all_cntrls.extend(ha.getAllControllers())
+        network_cntrls.extend(ha.getNetworkSideControllers())
 
     # Assign downstream destinations
     for rnf in ruby_system.rnf:
@@ -225,10 +248,8 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     # Network configurations
     # virtual networks: 0=request, 1=snoop, 2=response, 3=data
     ruby_system.network.number_of_virtual_networks = 4
-
     ruby_system.network.control_msg_size = params.cntrl_msg_size
     ruby_system.network.data_msg_size = params.data_width
-    # ruby_system.network.buffer_size = params.router_buffer_size
 
     # Incorporate the params into options so it's propagated to
     # makeTopology and create_topology the parent scripts

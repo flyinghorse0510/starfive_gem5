@@ -58,5 +58,5 @@ Source('RubyPrefetcher.cc')
 Source('TimerTable.cc')
 Source('BankedArray.cc')
 Source('TBEStorage.cc')
-if env['PROTOCOL'] == 'CHI':
+if (env['PROTOCOL'] == 'CHI') or (env['PROTOCOL'] == 'CHID2D'):
     Source('MN_TBETable.cc')

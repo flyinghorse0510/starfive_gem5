@@ -1,41 +1,5 @@
-# Copyright (c) 2012, 2017-2018, 2021 ARM Limited
+# Copyright (c) 2023 Starfive Pvt Limited
 # All rights reserved.
-#
-# The license below extends only to copyright in the software and shall
-# not be construed as granting a license to any other intellectual
-# property including but not limited to intellectual property relating
-# to a hardware implementation of the functionality of the software
-# licensed hereunder.  You may use the software subject to the license
-# terms below provided that you ensure that this notice is replicated
-# unmodified and in its entirety in all distributions of the software,
-# modified or unmodified, in source code or in binary form.
-#
-# Copyright (c) 2006-2007 The Regents of The University of Michigan
-# Copyright (c) 2009 Advanced Micro Devices, Inc.
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are
-# met: redistributions of source code must retain the above copyright
-# notice, this list of conditions and the following disclaimer;
-# redistributions in binary form must reproduce the above copyright
-# notice, this list of conditions and the following disclaimer in the
-# documentation and/or other materials provided with the distribution;
-# neither the name of the copyright holders nor the names of its
-# contributors may be used to endorse or promote products derived from
-# this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import math
 import m5
@@ -51,6 +15,7 @@ from common import FileSystemConfig
 
 from topologies import *
 from network import Network
+import pprint as pp
 
 def define_options(parser):
     # By default, ruby uses the simple timing cpu
@@ -135,7 +100,6 @@ def setup_memory_controllers(system, ruby, dir_cntrls, options):
         dir_ranges = []
         for r in system.mem_ranges:
             mem_type = ObjectList.mem_list.get(options.mem_type)
-            print ("mem type:", mem_type)
 
             dram_intf = MemConfig.create_mem_intf(mem_type, r, index,
                 int(math.log(options.num_dirs, 2)),
@@ -155,7 +119,6 @@ def setup_memory_controllers(system, ruby, dir_cntrls, options):
                 mem_ctrl.port = crossbar.mem_side_ports
             else:
                 mem_ctrl.port = dir_cntrl.memory_out_port
-                #mem_ctrl.dram.tREFI = "1000s"
 
             opt_addr_mapping = getattr(options, "addr_mapping", None)
             opt_disable_ref = getattr(options, "disable_ref", None)
@@ -175,12 +138,10 @@ def setup_memory_controllers(system, ruby, dir_cntrls, options):
         index += 1
         dir_cntrl.addr_ranges = dir_ranges
 
-    print(f'Assign mem_ctrls, {mem_ctrls}')
     system.mem_ctrls = mem_ctrls
 
     if len(crossbars) > 0:
         ruby.crossbars = crossbars
-
 
 def create_topology(controllers, options):
     """ Called from create_system in configs/ruby/<protocol>.py
@@ -201,15 +162,19 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
     # Generate pseudo filesystem
     FileSystemConfig.config_filesystem(system, options)
 
+    # Assign the CPUs
+    if cpus is None:
+        cpus = system.cpu
+
     # Create the network object
     (network, IntLinkClass, ExtLinkClass, RouterClass, InterfaceClass) = \
         Network.create_network(options, ruby)
     ruby.network = network
 
-    if cpus is None:
-        cpus = system.cpu
-
     protocol = buildEnv['PROTOCOL']
+    if protocol != 'CHID2D':
+        m5.panic("This script requires the CHID2D build")
+
     exec("from . import %s" % protocol)
     try:
         (cpu_sequencers, dir_cntrls, topology) = \
@@ -262,28 +227,6 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
         ruby.access_backing_store = True
         ruby.phys_mem = SimpleMemory(range=system.mem_ranges[0],
                                      in_addr_map=False)
-
-def create_directories(options, bootmem, ruby_system, system):
-    dir_cntrl_nodes = []
-    for i in range(options.num_dirs):
-        dir_cntrl = Directory_Controller()
-        dir_cntrl.version = i
-        dir_cntrl.directory = RubyDirectoryMemory()
-        dir_cntrl.ruby_system = ruby_system
-
-        exec("ruby_system.dir_cntrl%d = dir_cntrl" % i)
-        dir_cntrl_nodes.append(dir_cntrl)
-
-    if bootmem is not None:
-        rom_dir_cntrl = Directory_Controller()
-        rom_dir_cntrl.directory = RubyDirectoryMemory()
-        rom_dir_cntrl.ruby_system = ruby_system
-        rom_dir_cntrl.version = i + 1
-        rom_dir_cntrl.memory = bootmem.port
-        rom_dir_cntrl.addr_ranges = bootmem.range
-        return (dir_cntrl_nodes, rom_dir_cntrl)
-
-    return (dir_cntrl_nodes, None)
 
 def send_evicts(options):
     # currently, 2 scenarios warrant forwarding evictions to the CPU:

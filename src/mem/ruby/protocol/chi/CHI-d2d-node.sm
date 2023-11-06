@@ -48,6 +48,8 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     // Number of REMAP entries
     int num_txremap_entries := 8;
     int num_rxremap_entries := 8;
+
+    int data_channel_size;
     
 {
     // Cache block size

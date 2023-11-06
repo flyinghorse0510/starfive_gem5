@@ -41,7 +41,7 @@ from m5.params import *
 from m5.objects import *
 
 from m5.defines import buildEnv
-if buildEnv['PROTOCOL'] == 'CHI':
+if (buildEnv['PROTOCOL'] == 'CHI') or (buildEnv['PROTOCOL'] == 'CHID2D'):
     import ruby.CHI_config as CHI
 
 NUM_VNET=4
@@ -332,7 +332,7 @@ class CustomMesh(SimpleTopology):
     #--------------------------------------------------------------------------
 
     def makeTopology(self, options, network, IntLink, ExtLink, Router):
-        assert(buildEnv['PROTOCOL'] == 'CHI')
+        assert((buildEnv['PROTOCOL'] == 'CHI') or (buildEnv['PROTOCOL'] == 'CHID2D'))
 
         num_rows = options.num_rows
         num_cols = options.num_cols
@@ -362,6 +362,8 @@ class CustomMesh(SimpleTopology):
         io_mem_nodes = []
         rni_dma_nodes = []
         rni_io_nodes = []
+        d2d_nodes = []
+        ha_nodes = []
 
         # Notice below that all the type must be the same for all nodes with
         # the same base type.
@@ -372,6 +374,8 @@ class CustomMesh(SimpleTopology):
         io_mem_params = None
         rni_dma_params = None
         rni_io_params = None
+        d2d_params = None
+        ha_params = None
 
         def check_same(val, curr):
             assert(curr == None or curr == val)
@@ -399,6 +403,12 @@ class CustomMesh(SimpleTopology):
             elif isinstance(n, CHI.CHI_RNI_IO):
                 rni_io_nodes.append(n)
                 rni_io_params = check_same(type(n).NoC_Params, rni_io_params)
+            elif isinstance(n, CHI.CHI_D2DNode):
+                d2d_nodes.append(n)
+                d2d_params = check_same(type(n).NoC_Params, d2d_params)
+            elif isinstance(n, CHI.CHI_HA):
+                ha_nodes.append(n)
+                ha_params = check_same(type(n).NoC_Params, ha_params)
             else:
                 fatal('topologies.CustomMesh: {} not supported'
                             .format(n.__class__.__name__))
@@ -426,6 +436,12 @@ class CustomMesh(SimpleTopology):
 
         # Place CHI_SNF_MainMem on the mesh
         self.distributeNodes(mem_params, mem_nodes)
+
+        # Place CHI_HA on the mesh
+        self.distributeNodes(ha_params, ha_nodes)
+
+        # Place CHI_D2D on the mesh
+        self.distributeNodes(d2d_params, d2d_nodes)
 
         # Place all IO mem nodes on the mesh
         self.distributeNodes(io_mem_params, io_mem_nodes)

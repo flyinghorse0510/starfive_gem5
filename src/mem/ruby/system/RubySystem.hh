@@ -145,7 +145,6 @@ class RubySystem : public ClockedObject
     memory::SimpleMemory *m_phys_mem;
     const bool m_access_backing_store;
 
-    //std::vector<Network *> m_networks;
     std::vector<std::unique_ptr<Network>> m_networks;
     std::vector<AbstractController *> m_abs_cntrl_vec;
     Cycles m_start_cycle;

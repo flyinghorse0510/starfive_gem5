@@ -34,7 +34,7 @@ import os, argparse, sys
 addToPath('../')
 
 from common import Options
-from ruby import Ruby
+from ruby import RubyD2D
 import ast
 
 # Get paths we might need.  It's expected this file is in m5/configs/example.
@@ -107,6 +107,7 @@ parser.add_argument('--slots_bocked_by_set',type=ast.literal_eval,default=False,
 parser.add_argument('--accepted_buffer_max_deq_rate',type=int,default=0,help=f'Accepted buffer max deq rate. Zero implies infinite deq rate')
 parser.add_argument('--decoupled_req_alloc',type=ast.literal_eval,default=False,help=f'Decouple req alloc and MSHR alloc')
 parser.add_argument('--num_accepted_entries',type=int,default=0,help=f'Used for decouple accepted req and MSHR allocation. Applicable only when decoupled_req_alloc=True')
+parser.add_argument('--num-dies',type=int,default=0,help=f'Number of dies. Each die is modelled as a separate Ruby network')
 # parser.add_argument('--simple-link-bw-factor',type=int,default=16,help=f'Link BW factor')
 
 def getCPUList(cpuListStr):
@@ -115,7 +116,7 @@ def getCPUList(cpuListStr):
 #
 # Add the ruby specific and protocol specific options
 #
-Ruby.define_options(parser)
+RubyD2D.define_options(parser)
 
 args = parser.parse_args()
 
@@ -259,13 +260,13 @@ dma_ports = []
 for (i, dma) in enumerate(dmas):
     dma_ports.append(dma.port)
 
-Ruby.create_system(args, False, system, dma_ports = dma_ports)
+RubyD2D.create_system(args, False, system, dma_ports = dma_ports)
 
 # Create a top-level voltage domain and clock domain
 system.voltage_domain = VoltageDomain(voltage = args.sys_voltage)
 system.clk_domain = SrcClockDomain(clock = args.sys_clock,
                                    voltage_domain = system.voltage_domain)
-# Create a seperate clock domain for Ruby
+# Create a seperate clock domain for RubyD2D
 system.ruby.clk_domain = SrcClockDomain(clock = args.ruby_clock,
                                         voltage_domain = system.voltage_domain)
 

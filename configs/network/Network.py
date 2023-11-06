@@ -203,10 +203,8 @@ def init_network(options, network, InterfaceClass):
             extLink.int_cred_bridge = int_cred_bridges
 
     if options.network == "simple":
-        print("simple network is being used")
         network.buffer_size=options.buffer_size
         if options.simple_physical_channels:
-            print("simple_physical_channels are being used")
             network.physical_vnets_channels = \
                 [1] * int(network.number_of_virtual_networks)
         network.setup_buffers()

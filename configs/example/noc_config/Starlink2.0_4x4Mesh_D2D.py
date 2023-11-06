@@ -34,9 +34,13 @@ class CHI_D2DNode(CHI_config.CHI_D2DNode):
     class NoC_Params(CHI_config.CHI_D2DNode.NoC_Params):
         router_list = [7,14]
 
+class CHI_HA(CHI_config.CHI_HA):
+    class NoC_Params(CHI_config.CHI_HA.NoC_Params):
+        router_list = [3]
+
 class CHI_SNF_MainMem(CHI_config.CHI_SNF_MainMem):
     class NoC_Params(CHI_config.CHI_SNF_MainMem.NoC_Params):
-        router_list = [12,14]
+        router_list = [3]
 
 class CHI_SNF_BootMem(CHI_config.CHI_SNF_BootMem):
     class NoC_Params(CHI_config.CHI_SNF_BootMem.NoC_Params):

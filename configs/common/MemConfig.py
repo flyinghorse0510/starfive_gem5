@@ -62,8 +62,6 @@ def create_mem_intf(intf, r, i, intlv_bits, intlv_size,
     # mapping and row-buffer size
     interface = intf()
 
-    print ("create mem intf", interface)
-
     # Only do this for DRAMs
     if issubclass(intf, m5.objects.DRAMInterface):
         # If the channel bits are appearing after the column
@@ -78,7 +76,6 @@ def create_mem_intf(intf, r, i, intlv_bits, intlv_size,
                 interface.devices_per_rank.value
 
             intlv_low_bit = int(math.log(rowbuffer_size, 2))
-        print ("belong to DRAMInterface")
 
     # Also adjust interleaving bits for NVM attached as memory
     # Will have separate range defined with unique interleaving

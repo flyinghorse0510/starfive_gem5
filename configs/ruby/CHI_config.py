@@ -297,7 +297,7 @@ class CHI_HNFController(CHI_Cache_Controller):
         self.use_prefetcher = False
         self.addr_ranges = addr_ranges
         self.allow_SD = options.allow_SD
-        self.is_HN = True
+        self.is_HN = True # This must accept snoops from HA
         self.enable_DMT = options.enable_DMT #False #True #args.enable_DMT #False
         self.enable_DCT = options.enable_DCT
         self.send_evictions = False
@@ -768,21 +768,30 @@ class CHI_RNI_IO(CHI_RNI_Base):
         super(CHI_RNI_IO, self).__init__(options, ruby_system, parent)
         ruby_system._io_port = self._sequencer
 
+
+
+##################################################################################
+######                      For cross die modelling                         ######
+##################################################################################
+
 class CHI_D2DNodeController(D2DNode_Controller):
 
-    class D2DBridgeBuffer(MessageBuffer):
-        ordered = True
-        randomization = False
+
     
-    def __init__(self, options,\
-                       ruby_system,\
+    def __init__(self, ruby_system,\
                        addr_ranges):
         super(CHI_D2DNodeController, self).__init__(
-            version = Versions.getVersion(D2DNode_Controller),
-            ruby_system = ruby_system,
-            addr_ranges = addr_ranges)
+            version = Versions.getVersion(Cache_Controller),
+            ruby_system = ruby_system
+        )
+        class D2DBridgeBuffer(MessageBuffer):
+            ordered = True
+            randomization = 'ruby_system'
+
         d2dbridge_buff_depth    = 2
         d2dbridge_buff_deq_rate = 1
+        
+        self.addr_ranges   = addr_ranges
         self.reqRdy        = MessageBuffer()
         self.bridge_reqIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
         self.bridge_snpIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
@@ -820,8 +829,125 @@ class CHI_D2DNode(CHI_Node):
     def __init__(self,options,d2d_idx,ruby_system):
         super(CHI_D2DNode, self).__init__(ruby_system)
         
-        addr_ranges = self.getAddrRanges(d2d_idx)
-        self._cntrl = CHI_D2DNodeController(options,ruby_system,addr_ranges)
+        addr_ranges, intlvHighBit = self.getAddrRanges(d2d_idx)
+        self._cntrl = CHI_D2DNodeController(ruby_system,addr_ranges)
+
+        self.connectController(options,self._cntrl)
+    
+    def getAllControllers(self):
+        return [self._cntrl]
+
+    def getNetworkSideControllers(self):
+        return [self._cntrl]
+
+class CHI_HAController(CHI_Cache_Controller):
+    """
+        For cross die coherence, the HNF 
+    """
+    def __init__(self, options, \
+                    ruby_system, \
+                    real_snoopfilter, \
+                    addr_ranges):
+        super(CHI_HAController, self).__init__(options, ruby_system)
+        self.sequencer = NULL
+        self.cache = NULL
+        self.directory = real_snoopfilter
+        self.use_prefetcher = False
+        self.addr_ranges = addr_ranges
+        self.allow_SD = options.allow_SD
+        self.is_HN = True
+        self.enable_DMT = options.enable_DMT #False #True #args.enable_DMT #False
+        self.enable_DCT = options.enable_DCT
+        self.send_evictions = False
+        # MOESI / Mostly inclusive for shared / Exclusive for unique
+        self.alloc_on_seq_acc = False
+        self.alloc_on_seq_line_write = False
+        self.alloc_on_readshared = True
+        self.alloc_on_readunique = False
+        self.alloc_on_readonce = True
+        self.alloc_on_writeback = True
+        self.dealloc_on_unique = True
+        self.dealloc_on_shared = False
+        self.dealloc_backinv_unique = False
+        self.dealloc_backinv_shared = False
+        # Some reasonable default TBE params
+        self.number_of_TBEs = 8
+        self.number_of_repl_TBEs = 2
+        self.number_of_snoop_TBEs = 1 # should not receive any snoop
+        self.number_of_DVM_TBEs = 1 # should not receive any dvm
+        self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
+        self.unify_repl_TBEs = True
+        self.transitions_per_cycle = options.num_trans_per_cycle_llc
+        self.slots_bocked_by_set = False
+        # For Retry scheme 2. Setting this to finite deq rate
+        self.reqRdy = TriggerMessageBuffer(max_dequeue_rate = options.accepted_buffer_max_deq_rate)
+        self.decoupled_req_alloc = False
+        self.number_of_reqRdyBuffers = 8
+
+class CHI_HA(CHI_Node):
+    """
+        Required for maintaining 
+        cross die coherence. Also
+        inherits from the common
+        Cache controller.
+    """
+    class NoC_Params(CHI_Node.NoC_Params):
+        '''HNFs may also define the 'pairing' parameter to allow pairing'''
+        pairing = None
+
+    _addr_ranges = {}
+
+    @classmethod
+    def createAddrRanges(cls, options, sys_mem_ranges, cache_line_size, has):
+        import pprint as pp
+        # Create the HNFs interleaved addr ranges
+        block_size_bits = int(math.log(cache_line_size, 2))
+        llc_bits = int(math.log(len(has), 2))
+        numa_bit = block_size_bits + llc_bits - 1
+        for i, ha in enumerate(has):
+            ranges = []
+            for r in sys_mem_ranges:
+                addr_range = AddrRange(r.start, size = r.size(),
+                                        intlvHighBit = numa_bit,
+                                        intlvBits = llc_bits,
+                                        intlvMatch = i)
+                # Check the StarFive MAS
+                if (options.xor_addr_bits > 1):
+                    masks=[0 for _ in range(llc_bits)]
+                    for j in range(llc_bits) :
+                        masks[j] = 0
+                        total_xor_addr_bits = options.xor_addr_bits
+                        for k in range(block_size_bits,48,llc_bits):
+                            if total_xor_addr_bits <= 0:
+                                break
+                            masks[j] |= (1 << (j+k))
+                            total_xor_addr_bits -= 1
+                    addr_range.setIntlvMatch(i)
+                    addr_range.setIntlvBits(llc_bits)
+                    addr_range.setMasks(masks)
+                ranges.append(addr_range)
+            cls._addr_ranges[ha] = (ranges, numa_bit)
+            
+    @classmethod
+    def getAddrRanges(cls, ha_idx):
+        assert(len(cls._addr_ranges) != 0)
+        return cls._addr_ranges[ha_idx]
+    
+    def __init__(self, options, ha_idx, ruby_system, snoopfilter_type, parent):
+        """
+
+        """
+        super(CHI_HA, self).__init__(ruby_system)
+        addr_ranges,intlvHighBit = self.getAddrRanges(ha_idx)
+        real_snoopfilter = snoopfilter_type()
+        self._cntrl = CHI_HAController(options, ruby_system, real_snoopfilter, addr_ranges)
+
+        if parent == None:
+            self.cntrl = self._cntrl
+        else:
+            parent.cntrl = self._cntrl
+        
+        self.connectController(options, self._cntrl)
     
     def getAllControllers(self):
         return [self._cntrl]

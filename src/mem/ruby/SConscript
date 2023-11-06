@@ -114,7 +114,7 @@ MakeInclude('structures/PersistentTable.hh')
 MakeInclude('structures/RubyPrefetcher.hh')
 MakeInclude('structures/TBEStorage.hh')
 MakeInclude('structures/SnoopFilter.hh')
-if env['PROTOCOL'] == 'CHI':
+if (env['PROTOCOL'] == 'CHI') or (env['PROTOCOL'] == 'CHID2D'):
     MakeInclude('structures/MN_TBEStorage.hh')
     MakeInclude('structures/MN_TBETable.hh')
 MakeInclude('structures/TBETable.hh')

@@ -32,7 +32,7 @@ done
 WORKSPACE="$(pwd)/output"
 GEM5_DIR=$(pwd)
 ISA="RISCV"
-CCPROT="CHI"
+CCPROT="CHID2D"
 BUILDTYPE="gem5.debug"
 OUTPUT_ROOT="${WORKSPACE}"
 PY3=/home/arka.maity/anaconda3/bin/python3
@@ -98,7 +98,7 @@ if [ "$GATETEST" != "" ]; then
                                 gdb --args $GEM5_DIR/build/${ISA}_${CCPROT}/${BUILDTYPE} \
                                   --debug-flags=$DEBUGFLAGS --debug-file=debug.trace \
                                   -d $OUTPUT_DIR \
-                                  ${GEM5_DIR}/configs/example/seq_ruby_mem_test.py \
+                                  ${GEM5_DIR}/configs/example/d2d_ruby_mem_test.py \
                                   --num-dirs=${NUM_MEM} \
                                   --DDR-loc-num=${NUM_DDR_XP} \
                                   --DDR-side-num=${NUM_DDR_Side} \
@@ -120,7 +120,7 @@ if [ "$GATETEST" != "" ]; then
                                   --router-latency=${ROUTER_LAT} \
                                   --topology=CustomMesh \
                                   --simple-physical-channels \
-                                  --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh.py \
+                                  --chi-config=${GEM5_DIR}/configs/example/noc_config/Starlink2.0_4x4Mesh_D2D.py \
                                   --ruby \
                                   --maxloads=${LoadFactor} \
                                   --mem-size="16GB" \
@@ -144,7 +144,8 @@ if [ "$GATETEST" != "" ]; then
                                   --xor-addr-bits=${XOR_ADDR_BITS} \
                                   --block-stride-bits=${BLOCK_STRIDE_BITS} \
                                   --randomize-acc=${RANDOMIZE_ACC} \
-                                  --num-producers=1 
+                                  --num-producers=1 \
+                                  --num-dies=2
                                 #   > ${OUTPUT_DIR}/cmd.log 2>&1 &
                             done
                         done
