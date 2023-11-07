@@ -775,11 +775,11 @@ class CHI_RNI_IO(CHI_RNI_Base):
 ##################################################################################
 
 class CHI_D2DNodeController(D2DNode_Controller):
-
-
-    
-    def __init__(self, ruby_system,\
-                       addr_ranges):
+    def __init__(self, options, \
+                       ruby_system, \
+                       addr_ranges, \
+                       src_die_id, \
+                       dst_die_id):
         super(CHI_D2DNodeController, self).__init__(
             version = Versions.getVersion(D2DNode_Controller),
             ruby_system = ruby_system
@@ -790,6 +790,9 @@ class CHI_D2DNodeController(D2DNode_Controller):
 
         d2dbridge_buff_depth    = 2
         d2dbridge_buff_deq_rate = 1
+
+        self.src_die_id    = src_die_id
+        self.dst_die_id    = dst_die_id
         
         self.addr_ranges   = addr_ranges
         self.reqRdy        = MessageBuffer()
@@ -807,11 +810,11 @@ class CHI_D2DNode(CHI_Node):
     _addr_ranges = {}
     
     @classmethod
-    def createAddrRanges(cls, options, sys_mem_ranges, cache_line_size, d2ds):
+    def createAddrRanges(cls, options, sys_mem_ranges, cache_line_size, die_list):
         block_size_bits = int(math.log(cache_line_size, 2))
-        d2d_bits = int(math.log(len(d2ds),2))
+        d2d_bits = int(math.log(len(die_list),2))
         numa_bit = block_size_bits + d2d_bits - 1
-        for i, d2d in enumerate(d2ds):
+        for i, die_id in enumerate(die_list):
             ranges = []
             for r in sys_mem_ranges:
                 addr_range = AddrRange(r.start, size = r.size(),
@@ -819,20 +822,22 @@ class CHI_D2DNode(CHI_Node):
                                         intlvBits = d2d_bits,
                                         intlvMatch = i)
                 ranges.append(addr_range)
-            cls._addr_ranges[d2d] = (ranges, numa_bit)
+            cls._addr_ranges[die_id] = (ranges, numa_bit)
 
     @classmethod
-    def getAddrRanges(cls,d2d_idx):
+    def getAddrRanges(cls,die_id):
         assert(len(cls._addr_ranges) != 0)
-        return cls._addr_ranges[d2d_idx]
+        return cls._addr_ranges[die_id]
 
-    def __init__(self,options,d2d_idx,ruby_system):
+    def __init__(self, options, ruby_system, srd_die_id, dst_die_id):
         super(CHI_D2DNode, self).__init__(ruby_system)
-        
-        addr_ranges, intlvHighBit = self.getAddrRanges(d2d_idx)
-        self._cntrl = CHI_D2DNodeController(ruby_system,addr_ranges)
-
-        self.connectController(options,self._cntrl)
+        addr_ranges, intlvHighBit = self.getAddrRanges(dst_die_id)
+        self._cntrl = CHI_D2DNodeController(options, \
+                                            ruby_system, \
+                                            addr_ranges, \
+                                            srd_die_id, \
+                                            dst_die_id)
+        self.connectController(options, self._cntrl)
     
     def getAllControllers(self):
         return [self._cntrl]

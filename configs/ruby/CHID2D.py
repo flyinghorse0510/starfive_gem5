@@ -206,18 +206,6 @@ def create_system(options, full_system, system, dma_ports, bootmem,
         all_cntrls.extend(snf.getAllControllers())
         mem_dests.extend(snf.getAllControllers())
     
-    # Instantiate the d2d nodes
-    num_d2dlist = 2
-    d2dnode_list = [i for i in range(num_d2dlist)]
-    d2d_dests = []
-    CHI_D2DNode.createAddrRanges(options,sysranges,system.cache_line_size.value,d2dnode_list)
-    ruby_system.d2dnodes = [ CHI_D2DNode(options,idx,ruby_system) for idx in range(num_d2dlist)]
-    for d2d in ruby_system.d2dnodes:
-        network_nodes.append(d2d)
-        network_cntrls.extend(d2d.getNetworkSideControllers())
-        all_cntrls.extend(d2d.getAllControllers())
-        d2d_dests.extend(d2d.getAllControllers())
-    
     # Intantiate the HA nodes
     num_halist = 1
     ha_list = [i for i in range(num_halist)]
@@ -230,7 +218,19 @@ def create_system(options, full_system, system, dma_ports, bootmem,
         all_cntrls.extend(ha.getAllControllers())
         network_cntrls.extend(ha.getNetworkSideControllers())
 
-    # Assign downstream destinations
+    # Instantiate the d2d nodes
+    num_dies = 4
+    die_list = [i for i in range(num_dies)]
+    CHI_D2DNode.createAddrRanges(options,sysranges,system.cache_line_size.value,die_list)
+    ruby_system.d2dnodes = [ CHI_D2DNode(options,ruby_system,0,dst_die_id) for dst_die_id in die_list if (dst_die_id != 0)]
+    d2d_dests = []
+    for d2d in ruby_system.d2dnodes:
+        network_nodes.append(d2d)
+        network_cntrls.extend(d2d.getNetworkSideControllers())
+        all_cntrls.extend(d2d.getAllControllers())
+        d2d_dests.extend(d2d.getAllControllers())
+
+    # Assign downstream destinations (RNF/RNI --> HNF)
     for rnf in ruby_system.rnf:
         rnf.setDownstream(hnf_dests)
     if len(dma_ports) > 0:
@@ -238,6 +238,8 @@ def create_system(options, full_system, system, dma_ports, bootmem,
             rni.setDownstream(hnf_dests)
     if full_system:
         ruby_system.io_rni.setDownstream(hnf_dests)
+    
+    # Assign downstream destinations (HNF --> SNF)
     for hnf in ruby_system.hnf:
         hnf.setDownstream(mem_dests)
 

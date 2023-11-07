@@ -50,6 +50,10 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     int num_rxremap_entries := 8;
 
     int data_channel_size;
+
+    // Src and Dst die Ids
+    int src_die_id := 0;
+    int dst_die_id := 1;
     
 {
     // Cache block size

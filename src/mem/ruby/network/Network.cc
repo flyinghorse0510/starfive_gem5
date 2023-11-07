@@ -76,8 +76,6 @@ Network::Network(const Params &p)
     for (auto &it : params().ext_links) {
         AbstractController *cntrl = it->params().ext_node;
         localNodeVersions[cntrl->getType()].push_back(cntrl->getVersion());
-        
-        inform("cntr: %s, MachineId: %s, ExitLink: %s\n",cntrl->name(),MachineIDToString(cntrl->getMachineID()).c_str(), it->name());
         params().ruby_system->registerMachineID(cntrl->getMachineID(), this);
     }
 
