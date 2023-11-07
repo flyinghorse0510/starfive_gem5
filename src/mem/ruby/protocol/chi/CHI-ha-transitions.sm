@@ -1,0 +1,135 @@
+////////////////////////////////////////////////////////////////////////////
+// Transitions
+////////////////////////////////////////////////////////////////////////////
+transition({I,RU,RSC,RSD,RUSC,RUSD,
+             BUSY_INTR,BUSY_BLKD}, AllocRequest) {
+  AllocateTBE_Request;
+}
+ 
+transition({I,RU,RSC,RSD,RUSC,RUSD,
+            BUSY_INTR,BUSY_BLKD}, AllocRequestWithCredit) {
+  AllocateTBE_Request_WithCredit;
+}
+
+transition(I, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
+  Initiate_Request;
+  Allocate_DirEntry;
+  Initiate_ReadNoSnp;
+  Pop_ReqRdyQueue;
+  ProcessNextState;
+}
+
+transition({RSC,RUSC}, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
+  Initiate_Request;
+  Initiate_ReadShared_HitUpstream_NoOwner;
+  // Profile_Miss;
+  Pop_ReqRdyQueue;
+  ProcessNextState;
+}
+
+transition({RU,RSD,RUSD}, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
+  Initiate_Request;
+  Initiate_ReadShared_HitUpstream;
+  // Profile_Miss;
+  Pop_ReqRdyQueue;
+  ProcessNextState;
+}
+
+transition({BUSY_BLKD,BUSY_INTR}, {ReadShared, ReadNotSharedDirty, ReadUnique_PoC, WriteBackFull}) {
+  StallRequest;
+}
+
+transition(I, ReadUnique_PoC, BUSY_BLKD) {
+  Initiate_Request;
+  Allocate_DirEntry;
+  Initiate_ReadUnique_Miss;
+  Pop_ReqRdyQueue;
+  ProcessNextState;
+}
+
+transition(BUSY_BLKD, SendReadNoSnp, BUSY_INTR) {
+  Pop_TriggerQueue;
+  Send_ReadNoSnp;
+  ProcessNextState_ClearPending;
+}
+
+transition(BUSY_BLKD, SendCompDBIDResp) {
+  Pop_TriggerQueue;
+  Send_CompDBIDResp;
+  ProcessNextState_ClearPending;
+}
+
+transition(RU, WriteBackFull, BUSY_BLKD) {
+  Initiate_Request;
+  Initiate_CopyBack;
+  Pop_ReqRdyQueue;
+  ProcessNextState;
+}
+
+// waiting for data
+transition(BUSY_BLKD,
+           {CBWrData_SD_PD,CBWrData_UD_PD}) {
+  Receive_ReqDataResp;
+  UpdateDirState_FromReqDataResp;
+  UpdateDataState_FromReqDataResp;
+  Pop_DataInQueue;
+  ProcessNextState;
+}
+
+transition({BUSY_INTR, BUSY_BLKD}, WaitCompAck) {
+  Pop_TriggerQueue;
+  ExpectCompAck;
+  ProcessNextState_ClearPending;
+}
+
+// May get here from BUSY_INTR
+transition({BUSY_BLKD,BUSY_INTR}, SendCompData, BUSY_BLKD) {
+  Pop_TriggerQueue;
+  Send_CompData;
+  ProcessNextState_ClearPending;
+}
+
+// Evict from Upstream
+transition({RSC,RSD,RUSD,RUSC}, Evict, BUSY_BLKD) {
+  Initiate_Request;
+  Initiate_Evict;
+  Pop_ReqRdyQueue;
+  ProcessNextState;
+}
+
+transition(BUSY_BLKD, SendCompIResp) {
+  Pop_TriggerQueue;
+  Send_CompI;
+  ProcessNextState_ClearPending;
+}
+
+transition({BUSY_BLKD,BUSY_INTR}, {CompData_UC},
+            BUSY_BLKD) {
+  Receive_RespSepDataFromCompData;
+  Receive_ReqDataResp;
+  UpdateDataState_FromReqDataResp;
+  //Callback_Miss;
+  Profile_OutgoingEnd_DataResp;
+  Pop_DataInQueue;
+  ProcessNextState;
+}
+
+transition(BUSY_BLKD, TX_Data) {
+  Pop_TriggerQueue;
+  Send_Data;
+  ProcessNextState_ClearPending;
+}
+
+transition({BUSY_INTR,BUSY_BLKD}, CompAck) {
+  Receive_ReqResp;
+  UpdateDirState_FromReqResp;
+  Pop_RespInQueue;
+  ProcessNextState;
+}
+
+// Finalization transition
+transition({BUSY_BLKD,BUSY_INTR}, Final, *) {
+  Pop_TriggerQueue;
+  Finalize_UpdateDirectoryFromTBE;
+  Finalize_DeallocateRequest;
+}

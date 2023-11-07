@@ -76,9 +76,6 @@ PerfectSwitch::init(SimpleNetwork *network_ptr)
 {
     m_network_ptr = network_ptr;
 
-    std::cout << "Init called:"
-              << name() << "\n";
-
     for (int i = 0;i < m_virtual_networks;++i) {
         m_pending_message_count.push_back(0);
     }

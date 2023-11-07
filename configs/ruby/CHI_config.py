@@ -781,7 +781,7 @@ class CHI_D2DNodeController(D2DNode_Controller):
     def __init__(self, ruby_system,\
                        addr_ranges):
         super(CHI_D2DNodeController, self).__init__(
-            version = Versions.getVersion(Cache_Controller),
+            version = Versions.getVersion(D2DNode_Controller),
             ruby_system = ruby_system
         )
         class D2DBridgeBuffer(MessageBuffer):
@@ -840,49 +840,6 @@ class CHI_D2DNode(CHI_Node):
     def getNetworkSideControllers(self):
         return [self._cntrl]
 
-class CHI_HAController(CHI_Cache_Controller):
-    """
-        For cross die coherence, the HNF 
-    """
-    def __init__(self, options, \
-                    ruby_system, \
-                    real_snoopfilter, \
-                    addr_ranges):
-        super(CHI_HAController, self).__init__(options, ruby_system)
-        self.sequencer = NULL
-        self.cache = NULL
-        self.directory = real_snoopfilter
-        self.use_prefetcher = False
-        self.addr_ranges = addr_ranges
-        self.allow_SD = options.allow_SD
-        self.is_HN = True
-        self.enable_DMT = options.enable_DMT #False #True #args.enable_DMT #False
-        self.enable_DCT = options.enable_DCT
-        self.send_evictions = False
-        # MOESI / Mostly inclusive for shared / Exclusive for unique
-        self.alloc_on_seq_acc = False
-        self.alloc_on_seq_line_write = False
-        self.alloc_on_readshared = True
-        self.alloc_on_readunique = False
-        self.alloc_on_readonce = True
-        self.alloc_on_writeback = True
-        self.dealloc_on_unique = True
-        self.dealloc_on_shared = False
-        self.dealloc_backinv_unique = False
-        self.dealloc_backinv_shared = False
-        # Some reasonable default TBE params
-        self.number_of_TBEs = 8
-        self.number_of_repl_TBEs = 2
-        self.number_of_snoop_TBEs = 1 # should not receive any snoop
-        self.number_of_DVM_TBEs = 1 # should not receive any dvm
-        self.number_of_DVM_snoop_TBEs = 1 # should not receive any dvm
-        self.unify_repl_TBEs = True
-        self.transitions_per_cycle = options.num_trans_per_cycle_llc
-        self.slots_bocked_by_set = False
-        # For Retry scheme 2. Setting this to finite deq rate
-        self.reqRdy = TriggerMessageBuffer(max_dequeue_rate = options.accepted_buffer_max_deq_rate)
-        self.decoupled_req_alloc = False
-        self.number_of_reqRdyBuffers = 8
 
 class CHI_HA(CHI_Node):
     """
@@ -934,20 +891,23 @@ class CHI_HA(CHI_Node):
         return cls._addr_ranges[ha_idx]
     
     def __init__(self, options, ha_idx, ruby_system, snoopfilter_type, parent):
-        """
-
-        """
         super(CHI_HA, self).__init__(ruby_system)
         addr_ranges,intlvHighBit = self.getAddrRanges(ha_idx)
-        real_snoopfilter = snoopfilter_type()
-        self._cntrl = CHI_HAController(options, ruby_system, real_snoopfilter, addr_ranges)
-
-        if parent == None:
-            self.cntrl = self._cntrl
-        else:
-            parent.cntrl = self._cntrl
+        self._cntrl = HA_Controller(
+            version = Versions.getVersion(HA_Controller),
+            ruby_system = ruby_system,
+            addr_ranges = addr_ranges,
+            data_channel_size = 128,
+            triggerQueue = TriggerMessageBuffer(),
+            reqRdy = TriggerMessageBuffer())
         
         self.connectController(options, self._cntrl)
+
+        # print(f'{type(self.cntrl)} addr_range: {addr_ranges} ')
+        # print(f'{type(self.cntrl)} print HA')
+        # print(str(self.cntrl.addr_ranges[0]))
+        # import pprint
+        # pprint.pprint(vars(self.cntrl.addr_ranges))
     
     def getAllControllers(self):
         return [self._cntrl]

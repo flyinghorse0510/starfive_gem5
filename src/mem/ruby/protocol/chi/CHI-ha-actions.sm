@@ -1,0 +1,580 @@
+/*
+ * Copyright (c) 2023 Starfive
+ * All rights reserved
+ */
+
+////////////////////////////////////////////////////////////////////////////
+// CHI-ha actions definitions
+////////////////////////////////////////////////////////////////////////////
+
+action(Allocate_DirEntry, desc="") {
+  assert(directory.isTagPresent(address) == false);
+  directory.allocate(address);
+}
+
+action(Initiate_ReadNoSnp, desc="") {
+  tbe.actions.push(Event:SendReadNoSnp);
+  tbe.actions.push(Event:WaitCompAck);
+  tbe.actions.pushNB(Event:SendCompData);
+}
+
+action(Initiate_ReadUnique_Miss, desc="") {
+  assert(is_HN);
+  tbe.actions.push(Event:SendReadNoSnp);
+  tbe.actions.push(Event:WaitCompAck);
+  tbe.actions.pushNB(Event:SendCompData);
+}
+
+action(ProcessNextState, desc="") {
+  assert(is_valid(tbe));
+  processNextState(address, tbe);
+}
+
+action(ProcessNextState_ClearPending, desc="") {
+  assert(is_valid(tbe));
+  clearPendingAction(tbe); //ADD-FUNC: clearPendingAction
+  DPRINTF(RubySlicc, "Debug ProcessNextState_ClearPending tbe:%#x expected:%d \n", tbe, tbe.expected_req_resp.expected());
+  processNextState(address, tbe);
+}
+
+action(Pop_TriggerQueue, desc="") {
+  triggerInPort.dequeue(clockEdge());
+}
+
+action(AllocateTBE_Request, desc="") {
+  check_allocate(storTBEs);
+  
+  // reserve a slot for this request
+  storTBEs.incrementReserved();
+
+  // Move request to rdy queue
+  peek(reqInPort, CHIRequestMsg) {
+    enqueue(reqRdyOutPort, CHIRequestMsg, allocation_latency) {
+      assert(in_msg.addr == address);
+      assert(in_msg.is_local_pf == false);
+      out_msg := in_msg;
+    }
+  }
+
+  reqInPort.dequeue(clockEdge());
+}
+
+action(AllocateTBE_Request_WithCredit, desc="") {
+  // TBE slot already reserved
+  // Move request to rdy queue
+  peek(reqInPort, CHIRequestMsg) {
+    assert(in_msg.allowRetry == false);
+    enqueue(reqRdyOutPort, CHIRequestMsg, allocation_latency) {
+      assert(in_msg.addr == address);
+      out_msg := in_msg;
+    }
+  }
+  reqInPort.dequeue(clockEdge());
+}
+
+action(Initiate_Request, desc="") {
+  State initial := getState(tbe, address);
+  bool was_retried := false;
+  // bool keepWaiting := false;
+  // bool restart := false;
+  // if (is_invalid(tbe)) {
+    // DPRINTF(RubyCHIDebugStr5,"Allocating TBE for the request=%x\n",address);
+    peek(reqRdyPort, CHIRequestMsg) {
+      set_tbe(allocateRequestTBE(address, in_msg));
+      // only a msg that was already retried doesn't allow a retry
+      was_retried := in_msg.allowRetry == false;
+    }
+  // } else { // Enters this path, if the snoop filter eviction process has been started for this address
+  //   // DPRINTF(RubyCHIDebugStr5,"TBE already allocated during snoop filter eviction=%x\n",address);
+  //    keepWaiting := tbe.sf_eviction_started && (!tbe.sf_eviction_complete);
+  //    restart := tbe.sf_eviction_started && tbe.sf_eviction_complete;
+  // }
+
+  // if (keepWaiting) {
+  //   // tracks pending
+  //   tbe.wakeup_pending_req := true;
+  //   stall_and_wait(reqRdyPort, address);
+  //   DPRINTF(RubyCHIDebugStr5, "Stalled due to another SF eviction addr=%x\n",address);
+  // } else {
+    DirEntry dir_entry := getDirEntry(address);
+    copyDir(dir_entry, tbe, initial);
+    tbe.use_DMT := is_HN && enable_DMT;
+    tbe.use_DCT := enable_DCT;
+    bool alloc_entry := false; //needCacheEntry(tbe.reqType, cache_entry, dir_entry,tbe.is_local_pf);
+    bool dealloc_entry := false; //needDeallocCacheEntry(tbe.reqType);
+    assert((alloc_entry && dealloc_entry) == false);
+    //assert(false); //ZHIGUO 
+
+    // always drops any data when not caching it or when this transaction
+    // requires deallocation
+    tbe.dataToBeInvalid := false; //dealloc_entry || (is_invalid(cache_entry) && (alloc_entry == false));
+    tbe.doCacheFill := false; // alloc_entry || is_valid(cache_entry);
+
+    // model the initial tag array read
+    //tbe.actions.pushNB(Event:TagArrayRead); //no cache tag now
+  // }
+ 
+  // bool recordTransStart := (!restart);
+  // if (recordTransStart) {
+    
+  // }
+  incomingTransactionStart(address, curTransitionEvent(), initial, was_retried);
+}
+
+action(Send_ReadNoSnp, desc="") {
+  assert(is_HN);
+  assert(tbe.use_DMT == false);
+
+  clearExpectedReqResp(tbe);
+  tbe.expected_req_resp.addExpectedDataType(CHIDataType:CompData_UC);
+  // NOTE: the first CompData received counts as RespSepData
+  tbe.expected_req_resp.addExpectedRespType(CHIResponseType:RespSepData);
+  tbe.expected_req_resp.setExpectedCount(2);
+  tbe.dataBlkValid.clear();
+  outgoingTransactionStart(address, curTransitionEvent());
+
+  DPRINTF(RubySlicc, "Debug Send_ReadNoSnp %#x tbe: %#x expected_req_resp expected: %d \n", address, tbe, tbe.expected_req_resp.expected());
+
+  enqueue(reqOutPort, CHIRequestMsg, request_latency) {
+    prepareRequest(tbe, CHIRequestType:ReadNoSnp, out_msg);
+    out_msg.Destination.add(mapAddressToDownstreamMachine(tbe.addr));
+    DPRINTF(RubySlicc, "Send_ReadNoSnp, dest downstream Machine: %s \n", mapAddressToDownstreamMachine(tbe.addr));
+    out_msg.dataToFwdRequestor := false;
+    allowRequestRetry(tbe, out_msg);
+  }
+}
+
+action(ExpectCompAck, desc="") {
+  assert(is_valid(tbe));
+  //DPRINTF(RubySlicc, "Debug ExpectCompAck, tbe:%#x \n", tbe);
+
+  tbe.expected_req_resp.addExpectedRespType(CHIResponseType:CompAck);
+  tbe.expected_req_resp.addExpectedCount(1);
+
+  DPRINTF(RubySlicc, "Debug ExpectCompAck, tbe:%#x expected:%d \n", tbe, tbe.expected_req_resp.expected()); 
+}
+
+action(Receive_ReqDataResp, desc="") {
+  assert(is_valid(tbe));
+  assert(tbe.expected_req_resp.hasExpected());
+  peek(datInPort, CHIDataMsg) {
+    // Decrement pending
+    if (tbe.expected_req_resp.receiveData(in_msg.type) == false) {
+      error("Received unexpected message");
+    }
+    // Copy data to tbe only if we didn't have valid data or the received
+    // data is dirty
+    if ((tbe.dataBlkValid.isFull() == false) ||
+        (in_msg.type == CHIDataType:CompData_UD_PD) ||
+        (in_msg.type == CHIDataType:CompData_SD_PD) ||
+        (in_msg.type == CHIDataType:CBWrData_UD_PD) ||
+        (in_msg.type == CHIDataType:CBWrData_SD_PD) ||
+        (in_msg.type == CHIDataType:NCBWrData)) {
+      // clear mask if started to receive new data
+      if(tbe.dataBlkValid.isFull()){
+        tbe.dataBlkValid.clear();
+      }
+      tbe.dataBlk.copyPartial(in_msg.dataBlk, in_msg.bitMask);
+      assert(tbe.dataBlkValid.isOverlap(in_msg.bitMask) == false);
+      tbe.dataBlkValid.orMask(in_msg.bitMask);
+    }
+  }
+}
+
+action(Receive_RespSepDataFromCompData, desc="") {
+  assert(is_valid(tbe));
+  assert(tbe.expected_req_resp.hasExpected());
+  // check if a previous CompData msg already counted as a RespSepData
+  if (tbe.expected_req_resp.receivedRespType(CHIResponseType:RespSepData) == false) {
+    if (tbe.expected_req_resp.receiveResp(CHIResponseType:RespSepData) == false) {
+      error("Received unexpected message");
+    }
+    if (is_HN == false) {
+      // must now ack the responder
+      tbe.actions.pushFrontNB(Event:SendCompAck);
+    }
+  }
+}
+
+action(StallRequest, desc="") {
+  // was stalled because of an existing request
+  assert(is_valid(tbe));
+  assert(tbe.addr == address);
+  // tracks pending
+  tbe.wakeup_pending_req := true;
+  stall_and_wait(reqRdyPort, address);
+}
+
+action(Initiate_ReadShared_HitUpstream, desc="") {
+  tbe.actions.push(Event:SendSnpShared);
+  tbe.actions.push(Event:WaitCompAck);
+  tbe.actions.pushNB(Event:SendCompData);
+}
+
+action(Initiate_ReadShared_HitUpstream_NoOwner, desc="") {
+  tbe.actions.push(Event:SendSnpOnce);
+  tbe.actions.push(Event:WaitCompAck);
+  tbe.actions.pushNB(Event:SendCompData);
+}
+
+action(UpdateDataState_FromReqDataResp, desc="") {
+  assert(is_valid(tbe));
+  // only perform the update once we received all chunks
+  if (tbe.expected_req_resp.hasReceivedData()) {
+    assert(tbe.dataBlkValid.isFull());
+    peek(datInPort, CHIDataMsg) {
+
+      if ((in_msg.type == CHIDataType:CompData_UC) ||
+          (in_msg.type == CHIDataType:DataSepResp_UC)) {
+        assert(tbe.dataUnique == false);
+        assert((tbe.dataValid && tbe.dataDirty) == false);
+        tbe.dataDirty := false;
+        tbe.dataUnique := true;
+        tbe.dataValid := true;
+        assert(tbe.dataMaybeDirtyUpstream == false);
+
+      } else if (in_msg.type == CHIDataType:CompData_UD_PD) {
+        assert(tbe.dataUnique == false);
+        assert((tbe.dataValid && tbe.dataDirty) == false);
+        tbe.dataDirty := true;
+        tbe.dataUnique := true;
+        tbe.dataValid := true;
+        assert(tbe.dataMaybeDirtyUpstream == false);
+
+      } else if (in_msg.type == CHIDataType:CompData_SC) {
+        assert(tbe.dataUnique == false);
+        assert((tbe.dataValid && tbe.dataDirty) == false);
+        tbe.dataDirty := false;
+        tbe.dataUnique := false;
+        tbe.dataValid := true;
+        assert(tbe.dataMaybeDirtyUpstream == false);
+
+      } else if (in_msg.type == CHIDataType:CompData_SD_PD) {
+        assert(tbe.dataUnique == false);
+        assert((tbe.dataValid && tbe.dataDirty) == false);
+        tbe.dataDirty := true;
+        tbe.dataUnique := false;
+        tbe.dataValid := true;
+        assert(tbe.dataMaybeDirtyUpstream == false);
+
+      } else if (in_msg.type == CHIDataType:CompData_I) {
+        tbe.dataValid := true;
+        tbe.dataToBeInvalid := true;
+        assert(tbe.dataMaybeDirtyUpstream == false);
+
+      } else if (in_msg.type == CHIDataType:CBWrData_UC) {
+        assert(tbe.dataUnique);
+        tbe.dataMaybeDirtyUpstream := false;
+        tbe.dataValid := true;
+
+      } else if (in_msg.type == CHIDataType:CBWrData_SC) {
+        // stale WB, nothing to do ??
+
+      } else if (in_msg.type == CHIDataType:CBWrData_UD_PD) {
+        assert(tbe.dataUnique);
+        tbe.dataDirty := true;
+        tbe.dataValid := true;
+        if (tbe.reqType == CHIRequestType:WriteCleanFull) {
+          // upstream data can still be UC if this is a WriteCleanFull
+          assert(tbe.dir_ownerExists && tbe.dir_ownerIsExcl);
+          tbe.dataMaybeDirtyUpstream := true;
+        } else {
+          tbe.dataMaybeDirtyUpstream := false;
+        }
+
+      } else if (in_msg.type == CHIDataType:CBWrData_SD_PD) {
+        tbe.dataDirty := true;
+        tbe.dataValid := true;
+        tbe.dataMaybeDirtyUpstream := false;
+
+      } else if (in_msg.type == CHIDataType:CBWrData_I) {
+        // stale WB, nothing to do ??
+
+      } else {
+        error("Unsuported data type");
+      }
+    }
+  }
+  printTBEState(tbe);
+}
+
+action(UpdateDirState_FromReqResp, desc="") {
+  peek(rspInPort, CHIResponseMsg) {
+    if ((in_msg.type == CHIResponseType:CompAck) && tbe.updateDirOnCompAck) {
+      assert(tbe.requestor == in_msg.responder);
+
+      tbe.dir_sharers.add(in_msg.responder);
+
+      if (tbe.requestorToBeOwner) {
+        assert(tbe.dataMaybeDirtyUpstream);
+        assert(tbe.dir_ownerExists == false);
+        assert(tbe.requestorToBeExclusiveOwner == false);
+        tbe.dir_owner := in_msg.responder;
+        tbe.dir_ownerExists := true;
+        tbe.dir_ownerIsExcl := false;
+
+      } else if (tbe.requestorToBeExclusiveOwner) {
+        assert(tbe.dataMaybeDirtyUpstream);
+        assert(tbe.dir_ownerExists == false);
+        assert(tbe.dir_sharers.count() == 1);
+        tbe.dir_owner := in_msg.responder;
+        tbe.dir_ownerExists := true;
+        tbe.dir_ownerIsExcl := true;
+      }
+    }
+  }
+  printTBEState(tbe);
+}
+
+action(UpdateDirState_FromReqDataResp, desc="") {
+  assert(is_valid(tbe));
+  // only perform the update once we received all chunks
+  if (tbe.expected_req_resp.hasReceivedData()) {
+    assert(tbe.dataBlkValid.isFull());
+    peek(datInPort, CHIDataMsg) {
+
+      if (in_msg.type == CHIDataType:CBWrData_UC) {
+        assert(tbe.dir_ownerExists && tbe.dir_ownerIsExcl && (tbe.dir_owner == in_msg.responder));
+        assert(tbe.dir_sharers.isElement(in_msg.responder));
+        tbe.dir_ownerExists := false;
+        tbe.dir_ownerIsExcl := false;
+        tbe.dir_sharers.remove(in_msg.responder);
+
+      } else if (in_msg.type == CHIDataType:CBWrData_UD_PD) {
+        DPRINTF(RubyCHIDebugStr5, "Modifiying the TBE data state\n");
+        printTBEStateStr5(tbe);
+        assert(tbe.dir_ownerExists && tbe.dir_ownerIsExcl && (tbe.dir_owner == in_msg.responder));
+        assert(tbe.dir_sharers.isElement(in_msg.responder));
+        if (tbe.reqType != CHIRequestType:WriteCleanFull) {
+          tbe.dir_ownerExists := false;
+          tbe.dir_ownerIsExcl := false;
+          tbe.dir_sharers.remove(in_msg.responder);
+        }
+
+      } else if (in_msg.type == CHIDataType:CBWrData_SC) {
+        assert((tbe.dir_ownerExists == false) || (tbe.dir_owner != in_msg.responder));
+        // Do not remove the responder in case of stale WriteCleanFull
+        if (tbe.reqType != CHIRequestType:WriteCleanFull) {
+          tbe.dir_sharers.remove(in_msg.responder);
+        }
+
+      } else if (in_msg.type == CHIDataType:CBWrData_SD_PD) {
+        assert(tbe.dir_ownerExists && (tbe.dir_ownerIsExcl == false) && (tbe.dir_owner == in_msg.responder));
+        assert(tbe.dir_sharers.isElement(in_msg.responder));
+        tbe.dir_ownerExists := false;
+        tbe.dir_ownerIsExcl := false;
+        if (tbe.reqType != CHIRequestType:WriteCleanFull) {
+          tbe.dir_sharers.remove(in_msg.responder);
+        }
+
+      } else if (in_msg.type == CHIDataType:CBWrData_I) {
+        // nothing to do here; just check
+        assert((tbe.dir_ownerExists == false) || (tbe.dir_owner != in_msg.responder));
+        assert(tbe.dir_sharers.isElement(in_msg.responder) == false);
+
+      } else {
+        error("Unsuported data type");
+      }
+    }
+  }
+}
+
+action(Receive_ReqResp, desc="") {
+  assert(tbe.expected_req_resp.hasExpected());
+  peek(rspInPort, CHIResponseMsg) {
+    // Decrement pending
+    if (tbe.expected_req_resp.receiveResp(in_msg.type) == false) {
+      error("Received unexpected message");
+    }
+    assert(in_msg.stale == tbe.is_stale);
+  }
+}
+
+action(Initiate_Evict, desc="") {
+  tbe.actions.push(Event:SendCompIResp);
+}
+
+action(Send_CompI, desc="") {
+  assert(is_valid(tbe));
+
+  // Used to ack Evict request
+  assert(tbe.dir_sharers.isElement(tbe.requestor));
+  assert((tbe.dir_ownerExists == false) || (tbe.dir_owner != tbe.requestor));
+
+  tbe.dir_sharers.remove(tbe.requestor);
+
+  enqueue(rspOutPort, CHIResponseMsg, response_latency) {
+    out_msg.addr := address;
+    out_msg.type := CHIResponseType:Comp_I;
+    out_msg.responder := machineID;
+    out_msg.Destination.add(tbe.requestor);
+  }
+}
+
+action(Send_CompData, desc="") {
+  assert(is_valid(tbe));
+  assert(tbe.dataValid);
+
+  bool is_rd_once := tbe.reqType == CHIRequestType:ReadOnce;
+  bool is_rd_shared := (tbe.reqType == CHIRequestType:ReadShared) ||
+                       (tbe.reqType == CHIRequestType:ReadNotSharedDirty);
+  bool is_rd_nsd := tbe.reqType == CHIRequestType:ReadNotSharedDirty;
+  bool is_rd_unique := tbe.reqType == CHIRequestType:ReadUnique;
+
+  // if the config allows (or not caching the data) and line has no sharers
+  bool snd_unique_on_rs := (fwd_unique_on_readshared || tbe.dataToBeInvalid)
+                          && tbe.dataUnique && tbe.dir_sharers.isEmpty();
+  // if the request type allows and we won't be caching the data
+  bool snd_dirty_on_rs := is_rd_shared && !is_rd_nsd && tbe.dataToBeInvalid;
+
+  if (is_rd_once) {
+    tbe.snd_msgType := CHIDataType:CompData_I;
+  } else if (is_rd_unique || (is_rd_shared && snd_unique_on_rs)) {
+    assert(tbe.dataUnique);
+    if (tbe.dataDirty) {
+      tbe.snd_msgType := CHIDataType:CompData_UD_PD;
+    } else {
+      tbe.snd_msgType := CHIDataType:CompData_UC;
+    }
+  } else if (is_rd_shared) {
+    if (tbe.dataDirty && snd_dirty_on_rs) {
+      tbe.snd_msgType := CHIDataType:CompData_SD_PD;
+    } else {
+      // notice the MaintainCoherence will send WriteClean if the line
+      // is dirty and we won't be caching the data
+      tbe.snd_msgType := CHIDataType:CompData_SC;
+    }
+  } else {
+    error("Invalid request type");
+  }
+
+  tbe.dataMaybeDirtyUpstream := tbe.dataMaybeDirtyUpstream ||
+                            (tbe.snd_msgType == CHIDataType:CompData_UD_PD) ||
+                            (tbe.snd_msgType == CHIDataType:CompData_SD_PD) ||
+                            (tbe.snd_msgType == CHIDataType:CompData_UC);
+  tbe.requestorToBeExclusiveOwner := tbe.requestorToBeExclusiveOwner ||
+                            (tbe.snd_msgType == CHIDataType:CompData_UD_PD) ||
+                            (tbe.snd_msgType == CHIDataType:CompData_UC);
+  tbe.requestorToBeOwner := tbe.requestorToBeOwner ||
+                            (tbe.snd_msgType == CHIDataType:CompData_SD_PD);
+
+  tbe.snd_destination := tbe.requestor;
+  setupPendingSend(tbe);
+  printTBEState(tbe);
+}
+
+action(Send_Data, desc="") {
+  assert(tbe.snd_pendEv);
+  assert(tbe.snd_pendBytes.count() > 0);
+  tbe.snd_pendEv := false;
+  enqueue(datOutPort, CHIDataMsg, data_latency) {
+    out_msg.addr := tbe.addr;
+    out_msg.type := tbe.snd_msgType;
+
+    int offset := tbe.snd_pendBytes.firstBitSet(true);
+    assert(offset < blockSize);
+    int range := tbe.snd_pendBytes.firstBitSet(false, offset) - offset;
+    assert((range > 0) && (range <= blockSize));
+    if (range > data_channel_size) {
+      range := data_channel_size;
+    }
+    tbe.snd_pendBytes.setMask(offset, range, false);
+
+    out_msg.dataBlk := tbe.dataBlk;
+    out_msg.bitMask.setMask(offset, range);
+
+    out_msg.responder := machineID;
+
+    out_msg.Destination.add(tbe.snd_destination);
+  }
+
+  // send next chunk (if any) next cycle
+  scheduleSendData(tbe, 1);
+}
+
+action(Initiate_CopyBack, desc="") {
+  // expect to receive this data after Send_CompDBIDResp
+  // printTBEStateStr5(tbe);
+  if (tbe.reqType == CHIRequestType:WriteBackFull) {
+    tbe.expected_req_resp.addExpectedDataType(CHIDataType:CBWrData_UD_PD);
+    tbe.expected_req_resp.addExpectedDataType(CHIDataType:CBWrData_SD_PD);
+  }
+  tbe.expected_req_resp.setExpectedCount(1);
+  tbe.actions.pushNB(Event:SendCompDBIDResp);
+}
+
+action(Send_CompDBIDResp, desc="") {
+  assert(is_valid(tbe));
+  enqueue(rspOutPort, CHIResponseMsg, response_latency) {
+    out_msg.addr := address;
+    out_msg.type := CHIResponseType:CompDBIDResp;
+    out_msg.responder := machineID;
+    out_msg.Destination.add(tbe.requestor);
+  }
+}
+
+action(Finalize_UpdateDirectoryFromTBE, desc="") {
+  assert(is_valid(tbe));
+  State final := tbe.finalState;
+
+  if ((final == State:RSC) || (final == State:RSD) || (final == State:RUSC) || 
+      (final == State:RUSD) || (final == State:RU)) {
+    DirEntry dir_entry := getDirEntry(address);
+    assert(is_valid(dir_entry));
+    assert(tbe.dir_sharers.count() > 0);
+    dir_entry.ownerExists := tbe.dir_ownerExists;
+    dir_entry.ownerIsExcl := tbe.dir_ownerIsExcl;
+    dir_entry.owner := tbe.dir_owner;
+    dir_entry.sharers := tbe.dir_sharers;
+  } else {
+    assert((tbe.dir_ownerExists == false) && tbe.dir_sharers.isEmpty());
+    if(directory.isTagPresent(address)) {
+      directory.deallocate(address);
+    }
+  }
+}
+
+action(Finalize_DeallocateRequest, desc="") {
+  assert(is_valid(tbe));
+  assert(tbe.actions.empty());
+  wakeupPendingReqs(tbe);
+  //wakeupPendingSnps(tbe); //TBD
+  wakeupPendingTgrs(tbe);
+
+  if (tbe.is_req_tbe) {
+    deallocateReqTBE(tbe);
+    ///processRetryQueue(); //TBD retry
+
+  } else if (tbe.is_snp_tbe) {
+    deallocateSnpTBE(tbe);
+
+  } //else {  
+    //deallocateReplacementTBE(tbe);
+    //if (unify_repl_TBEs) {
+    //  processRetryQueue();
+    //}
+  //}
+  unset_tbe();
+
+  incomingTransactionEnd(address, curTransitionNextState());
+}
+
+action(Pop_ReqRdyQueue, desc="") {
+  reqRdyPort.dequeue(clockEdge());
+}
+
+action(Pop_RespInQueue, desc="") {
+  rspInPort.dequeue(clockEdge());
+}
+
+action(Pop_DataInQueue, desc="") {
+  datInPort.dequeue(clockEdge());
+}
+
+action(Profile_OutgoingEnd_DataResp, desc="") {
+  assert(is_valid(tbe));
+  // completes once all data is received
+  if (tbe.expected_req_resp.hasReceivedData()) {
+    outgoingTransactionEnd(address, tbe.rcvdRetryAck);
+  }
+}

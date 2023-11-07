@@ -273,6 +273,7 @@ enumeration(MachineType, desc="...", default="MachineType_NULL") {
     Cache,       desc="Generic coherent cache controller";
     Memory,      desc="Memory controller interface";
     MiscNode,    desc="CHI protocol Misc Node";
+    HA,          desc="Home agent to handle cross die coherence";
     D2DNode,     desc="D2DNode to transfer packets across dies";
     NULL,        desc="null mach type";
 }

@@ -55,7 +55,7 @@ if [ "$GATETEST" != "" ]; then
     NUM_LLC=1
     SEQ_TBE=32
     LoadFactor=10
-    NUM_MEM=4
+    NUM_MEM=1
     NUM_DDR_XP=2
     NUM_DDR_Side=1
     LINK_BW=16
@@ -95,7 +95,7 @@ if [ "$GATETEST" != "" ]; then
                                 echo "GateTest Started: ${OUTPUT_BASE}"
                                 mkdir -p ${OUTPUT_DIR}
                                 set > ${OUTPUT_DIR}/Variables.txt
-                                gdb --args $GEM5_DIR/build/${ISA}_${CCPROT}/${BUILDTYPE} \
+                                $GEM5_DIR/build/${ISA}_${CCPROT}/${BUILDTYPE} \
                                   --debug-flags=$DEBUGFLAGS --debug-file=debug.trace \
                                   -d $OUTPUT_DIR \
                                   ${GEM5_DIR}/configs/example/d2d_ruby_mem_test.py \
