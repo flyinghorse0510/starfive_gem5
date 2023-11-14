@@ -926,7 +926,7 @@ class SimObject(object, metaclass=MetaSimObject):
                 val = SimObjectVector(val)
                 self._values[key] = val
             if isSimObjectOrVector(val) and not val.has_parent():
-                warn("%s adopting orphan SimObject param '%s'", self, key)
+                warn("%s adopting orphan SimObject param '%s', val:'%s'", self, key, val.get_name())
                 self.add_child(key, val)
 
     def path(self):

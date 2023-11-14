@@ -36,8 +36,9 @@
 import m5
 from m5.objects import *
 from m5.defines import buildEnv
-from .Ruby import create_topology
+from .RubyD2D import create_topology
 from common import ObjectList
+import pprint as pp
 
 def define_options(parser):
     parser.add_argument("--chi-config", action="store", type=str,
@@ -55,8 +56,36 @@ def read_config_file(file):
     loader.exec_module(chi_configs)
     return chi_configs
 
-def create_system(options, full_system, system, dma_ports, bootmem,
-                  ruby_system, cpus):
+def create_system(options, 
+                  full_system, 
+                  system, 
+                  dma_ports, 
+                  bootmem,
+                  ruby_system, 
+                  src_die_id):
+    
+    """
+        Return the following dictionary
+        {
+            net_id: 
+            cpu_sequencers: []
+            mem_cntrls:     []
+            rnfs:      []
+            hnfs:      []
+            snfs:      []
+            mns:       []
+            d2dnodes:  []
+            dma_rni:   []
+            io_rni:    []
+            ha:        object
+        }
+    """
+
+    ret = dict()
+    ret['net_id'] = src_die_id
+    
+    # Assign the CPUs
+    cpus = system.cpu
 
     if buildEnv['PROTOCOL'] != 'CHID2D':
         m5.panic("This script requires the CHID2D build")
@@ -88,12 +117,21 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     params.data_width = options.chi_data_width
     
     # Node types
-    CHI_RNF         = chi_defs.CHI_RNF
-    CHI_HNF         = chi_defs.CHI_HNF
-    CHI_MN          = chi_defs.CHI_MN
-    CHI_D2DNode     = chi_defs.CHI_D2DNode
-    CHI_HA          = chi_defs.CHI_HA
-    CHI_SNF_MainMem = chi_defs.CHI_SNF_MainMem
+    CHI_RNF                = chi_defs.CHI_RNF
+    CHI_HNF                = chi_defs.CHI_HNF
+    CHI_MN                 = chi_defs.CHI_MN
+    CHI_D2DNode            = chi_defs.CHI_D2DNode
+    CHI_HA                 = chi_defs.CHI_HA
+    CHI_SNF_MainMem        = chi_defs.CHI_SNF_MainMem
+
+    # Distribution objects
+    CHI_DieCPUDistribution = chi_defs.DieCPUDistribution
+    CHI_DieHADistribution  = chi_defs.DieHADistribution
+    CHI_DieD2DDistribution = chi_defs.DieD2DDistribution
+
+    CHI_DieCPUDistribution.setup_die_map(options.num_dies)
+    CHI_DieHADistribution.setup_die_map(options.num_dies)
+    CHI_DieD2DDistribution.setup_die_map(options.num_dies)
 
     # Declare caches and controller types used by the protocol
     # Notice tag and data accesses are not concurrent, so the a cache hit
@@ -140,32 +178,44 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     assert(system.cache_line_size.value == options.cacheline_size)
 
     cpu_sequencers = []
-    mem_cntrls = []
-    mem_dests = []
-    network_nodes = []
-    network_cntrls = []
-    hnf_dests = []
-    all_cntrls = []
+    mem_cntrls     = []
+    mem_dests      = []
+    network_nodes  = []
+    hnf_dests      = []
+    all_cntrls     = []
+    rnfs           = [] 
+    hnfs           = [] 
+    snfs           = []
+    mns            = []
+    d2dnodes       = []
+    dma_rni        = []
+    io_rni         = None
 
     # Creates on RNF per cpu with priv l2 caches
     assert(len(cpus) == options.num_cpus)
-    ruby_system.rnf = [ CHI_RNF([cpu], ruby_system, L1ICache, L1DCache,
-                                options, system.cache_line_size.value)
-                        for cpu in cpus ]
-    for rnf in ruby_system.rnf:
+    rnfs = [ CHI_RNF(options, 
+                     src_die_id,
+                     [cpu], 
+                     ruby_system, 
+                     L1ICache, 
+                     L1DCache, 
+                     system.cache_line_size.value)
+                     for rnf_id, cpu in enumerate(cpus) if src_die_id == CHI_DieCPUDistribution.get_die_id(rnf_id)]
+    for rnf in rnfs:
         rnf.addPrivL2Cache(options,L2Cache)
         cpu_sequencers.extend(rnf.getSequencers())
         all_cntrls.extend(rnf.getAllControllers())
         network_nodes.append(rnf)
-        network_cntrls.extend(rnf.getNetworkSideControllers())
+    ret['cpu_sequencers'] = cpu_sequencers
+    ret['rnfs']           = rnfs
 
     # Creates one Misc Node
-    ruby_system.mn = [ CHI_MN(options, ruby_system, [cpu.l1d for cpu in cpus]) ]
-    for mn in ruby_system.mn:
-        all_cntrls.extend(mn.getAllControllers())
-        network_nodes.append(mn)
-        network_cntrls.extend(mn.getNetworkSideControllers())
-        assert(mn.getAllControllers() == mn.getNetworkSideControllers())
+    # mns = [ CHI_MN(options, src_die_id, ruby_system, [cpu.l1d for cpu in cpus]) ]
+    # for mn in mns:
+    #     all_cntrls.extend(mn.getAllControllers())
+    #     network_nodes.append(mn)
+    #     assert(mn.getAllControllers() == mn.getNetworkSideControllers())
+    ret['mns'] = mns
 
     # Look for other memories
     other_memories = []
@@ -177,71 +227,83 @@ def create_system(options, full_system, system, dma_ports, bootmem,
     if on_chip_mem_ports:
         other_memories.extend([p.simobj for p in on_chip_mem_ports])
 
-    # Create the LLCs cntrls
+    # Create the HNF cntrls
     sysranges = [] + system.mem_ranges
-
     for m in other_memories:
         sysranges.append(m.range)
-
     hnf_list = [i for i in range(options.num_l3caches)]
     CHI_HNF.createAddrRanges(options, sysranges, system.cache_line_size.value,
                              hnf_list)
-    ruby_system.hnf = [ CHI_HNF(options, i, ruby_system, HNFCache, HNFRealSnoopFilter, None)
+    hnfs = [ CHI_HNF(options, src_die_id, i, ruby_system, HNFCache, HNFRealSnoopFilter, None)
                         for i in range(options.num_l3caches) ]
-
-    for hnf in ruby_system.hnf:
+    for hnf in hnfs:
         network_nodes.append(hnf)
-        network_cntrls.extend(hnf.getNetworkSideControllers())
         assert(hnf.getAllControllers() == hnf.getNetworkSideControllers())
         all_cntrls.extend(hnf.getAllControllers())
         hnf_dests.extend(hnf.getAllControllers())
+    ret['hnfs'] = hnfs
     
-    ruby_system.snf = [ CHI_SNF_MainMem(options, ruby_system, None, None)
-                        for i in range(options.num_dirs) ]
-    for snf in ruby_system.snf:
+    # Create SNF
+    snfs = [ CHI_SNF_MainMem(options, src_die_id, ruby_system, None, None)
+                        for _ in range(options.num_dirs) ]
+    for snf in snfs:
         network_nodes.append(snf)
-        network_cntrls.extend(snf.getNetworkSideControllers())
         assert(snf.getAllControllers() == snf.getNetworkSideControllers())
         mem_cntrls.extend(snf.getAllControllers())
         all_cntrls.extend(snf.getAllControllers())
         mem_dests.extend(snf.getAllControllers())
-    
-    # Intantiate the HA nodes
-    num_halist = 1
-    ha_list = [i for i in range(num_halist)]
-    ha_dests = []
-    CHI_HA.createAddrRanges(options,sysranges,system.cache_line_size.value,ha_list)
-    ruby_system.ha_nodes = [CHI_HA(options, i, ruby_system, HNFRealSnoopFilter, None) for i in range(num_halist)]
-    for ha in ruby_system.ha_nodes:
-        network_nodes.append(ha)
-        ha_dests.extend(ha.getAllControllers())
-        all_cntrls.extend(ha.getAllControllers())
-        network_cntrls.extend(ha.getNetworkSideControllers())
+    ret['snfs']       = snfs
+    ret['mem_cntrls'] = mem_cntrls
 
+    # Create DMA and io
+    if len(dma_ports) > 0:
+        dma_rni = [ CHI_RNI_DMA(ruby_system, dma_port, None)
+                                for dma_port in dma_ports ]
+        for rni in dma_rni:
+            network_nodes.append(rni)
+            all_cntrls.extend(rni.getAllControllers())
+        ret['dma_rni'] = dma_rni
+
+    if full_system:
+        io_rni = CHI_RNI_IO(ruby_system, None)
+        network_nodes.append(io_rni)
+        all_cntrls.extend(io_rni.getAllControllers())
+        ret['io_rni'] = io_rni
+    
     # Instantiate the d2d nodes
-    num_dies = 4
+    num_dies = options.num_dies
     die_list = [i for i in range(num_dies)]
-    CHI_D2DNode.createAddrRanges(options,sysranges,system.cache_line_size.value,die_list)
-    ruby_system.d2dnodes = [ CHI_D2DNode(options,ruby_system,0,dst_die_id) for dst_die_id in die_list if (dst_die_id != 0)]
+    CHI_D2DNode.createAddrRanges(options, sysranges, system.cache_line_size.value, die_list)
+    d2dnodes = [ CHI_D2DNode(options,src_die_id,ruby_system,dst_die_id) for dst_die_id in die_list if (dst_die_id != src_die_id)]
     d2d_dests = []
-    for d2d in ruby_system.d2dnodes:
+    for d2d in d2dnodes:
         network_nodes.append(d2d)
-        network_cntrls.extend(d2d.getNetworkSideControllers())
         all_cntrls.extend(d2d.getAllControllers())
         d2d_dests.extend(d2d.getAllControllers())
+    ret['d2dnodes'] = d2dnodes
+
+    # Intantiate the HA node
+    ha_addr_ranges, _ = CHI_D2DNode.getAddrRanges(src_die_id)
+    ha = CHI_HA(options, src_die_id, ha_addr_ranges, ruby_system) 
+    ha_dests = []
+    network_nodes.append(ha)
+    ha_dests.extend(ha.getAllControllers())
+    all_cntrls.extend(ha.getAllControllers())
+    ret['ha'] = ha
 
     # Assign downstream destinations (RNF/RNI --> HNF)
-    for rnf in ruby_system.rnf:
+    for rnf in rnfs:
         rnf.setDownstream(hnf_dests)
     if len(dma_ports) > 0:
-        for rni in ruby_system.dma_rni:
+        for rni in dma_rni:
             rni.setDownstream(hnf_dests)
     if full_system:
-        ruby_system.io_rni.setDownstream(hnf_dests)
+        io_rni.setDownstream(hnf_dests)
     
     # Assign downstream destinations (HNF --> SNF)
-    for hnf in ruby_system.hnf:
-        hnf.setDownstream(mem_dests)
+    for hnf in hnfs:
+        hnf.setDownstream(ha_dests)
+        ha.setDownstream(mem_dests)
 
     # Setup data message size for all controllers
     for cntrl in all_cntrls:
@@ -249,9 +311,10 @@ def create_system(options, full_system, system, dma_ports, bootmem,
 
     # Network configurations
     # virtual networks: 0=request, 1=snoop, 2=response, 3=data
-    ruby_system.network.number_of_virtual_networks = 4
-    ruby_system.network.control_msg_size = params.cntrl_msg_size
-    ruby_system.network.data_msg_size = params.data_width
+    _network = ruby_system.networks[src_die_id]
+    _network.number_of_virtual_networks = 4
+    _network.control_msg_size           = params.cntrl_msg_size
+    _network.data_msg_size              = params.data_width
 
     # Incorporate the params into options so it's propagated to
     # makeTopology and create_topology the parent scripts
@@ -260,10 +323,12 @@ def create_system(options, full_system, system, dma_ports, bootmem,
             setattr(options, k, getattr(params, k))
 
     if options.topology == 'CustomMesh':
-        topology = create_topology(network_nodes, options)
-    elif options.topology in ['Crossbar', 'Pt2Pt']:
-        topology = create_topology(network_cntrls, options)
+        topology = create_topology(network_nodes, options, src_die_id)
+        ret['topology'] = topology
     else:
         m5.fatal("%s not supported!" % options.topology)
 
-    return (cpu_sequencers, mem_cntrls, topology)
+    
+    pp.pprint(ret)
+
+    return ret

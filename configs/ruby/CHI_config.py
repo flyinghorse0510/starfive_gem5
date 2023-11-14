@@ -81,13 +81,13 @@ class NoC_Params:
     (see configs/ruby/CHI.py)
     '''
     router_link_latency = 1
-    node_link_latency = 1
-    router_latency = 1
-    router_buffer_size = 4
-    cntrl_msg_size = 8
-    data_width = 64
-    cross_links = []
-    cross_link_latency = 0
+    node_link_latency   = 1
+    router_latency      = 1
+    router_buffer_size  = 4
+    cntrl_msg_size      = 8
+    data_width          = 64
+    cross_links         = []
+    cross_link_latency  = 0
 
 class CHI_Node(SubSystem):
     '''
@@ -99,22 +99,15 @@ class CHI_Node(SubSystem):
 
     class NoC_Params:
         '''
-        NoC config. parameters and bindings required for CustomMesh topology.
-
-        Maps 'num_nodes_per_router' CHI nodes to each router provided in
-        'router_list'. This assumes len(router_list)*num_nodes_per_router
-        equals the number of nodes
-        If 'num_nodes_per_router' is left undefined, we circulate around
-        'router_list' until all nodes are mapped.
-        See 'distributeNodes' in configs/topologies/CustomMesh.py
+            @die_router_list : 
+            See 'distributeNodes' in configs/topologies/CustomMesh.py
         '''
-        num_nodes_per_router = None
-        router_list = None
+        die_plcmnt_map      = None
 
-    def __init__(self, ruby_system):
+    def __init__(self, ruby_system, src_die_id):
         super(CHI_Node, self).__init__()
         self._ruby_system = ruby_system
-        self._network = ruby_system.network
+        self._network = ruby_system.networks[src_die_id]
 
     def getNetworkSideControllers(self):
         '''
@@ -449,17 +442,21 @@ class CHI_RNF(CHI_Node):
     significance unless the cpus are set as its children at the top level
     '''
 
-    def __init__(self, cpus, ruby_system,
-                 l1Icache_type, l1Dcache_type,
-                 options,
-                 cache_line_size,
-                 l1Iprefetcher_type=None, l1Dprefetcher_type=None):
-        super(CHI_RNF, self).__init__(ruby_system)
+    def __init__(self, options,
+                       src_die_id,
+                       cpus,
+                       ruby_system,
+                       l1Icache_type, 
+                       l1Dcache_type,
+                       cache_line_size,
+                       l1Iprefetcher_type=None,
+                       l1Dprefetcher_type=None):
+        super(CHI_RNF, self).__init__(ruby_system,src_die_id)
 
         self._block_size_bits = int(math.log(cache_line_size, 2))
 
         # All sequencers and controllers
-        self._seqs = []
+        self._seqs   = []
         self._cntrls = []
 
         # Last level controllers in this node, i.e., the ones that will send
@@ -469,7 +466,10 @@ class CHI_RNF(CHI_Node):
         self._cpus = cpus
 
         # First creates L1 caches and sequencers
-        for cpu in self._cpus:
+        for cpu_id_per_cluster,cpu in enumerate(self._cpus):
+            
+            print(f'Creating RNF for Die@{src_die_id}, CPU@{cpu_id_per_cluster}')
+
             cpu.inst_sequencer = RubySequencer(version = Versions.getSeqId(),
                                          ruby_system = ruby_system,
                                          max_outstanding_requests = options.sequencer_outstanding_requests)
@@ -600,8 +600,14 @@ class CHI_HNF(CHI_Node):
 
     # The CHI controller can be a child of this object or another if
     # 'parent' if specified
-    def __init__(self, options, hnf_idx, ruby_system, llcache_type, snoopfilter_type, parent):
-        super(CHI_HNF, self).__init__(ruby_system)
+    def __init__(self, options, 
+                       src_die_id, 
+                       hnf_idx, 
+                       ruby_system, 
+                       llcache_type, 
+                       snoopfilter_type, 
+                       parent):
+        super(CHI_HNF, self).__init__(ruby_system,src_die_id)
 
         addr_ranges,intlvHighBit = self.getAddrRanges(hnf_idx)
         # All ranges should have the same interleaving
@@ -630,14 +636,18 @@ class CHI_MN(CHI_Node):
     '''
 
     class NoC_Params(CHI_Node.NoC_Params):
-        '''HNFs may also define the 'pairing' parameter to allow pairing'''
+        '''MNs may also define the 'pairing' parameter to allow pairing'''
         pairing = None
 
 
     # The CHI controller can be a child of this object or another if
     # 'parent' if specified
-    def __init__(self, options, ruby_system, l1d_caches, early_nonsync_comp=False):
-        super(CHI_MN, self).__init__(ruby_system)
+    def __init__(self, options,
+                 src_die_id,
+                 ruby_system, 
+                 l1d_caches, 
+                 early_nonsync_comp=False):
+        super(CHI_MN, self).__init__(ruby_system,src_die_id)
 
         # MiscNode has internal address range starting at 0
         addr_range = AddrRange(0, size = "1kB")
@@ -665,8 +675,8 @@ class CHI_SNF_Base(CHI_Node):
 
     # The CHI controller can be a child of this object or another if
     # 'parent' if specified
-    def __init__(self, options, ruby_system, parent):
-        super(CHI_SNF_Base, self).__init__(ruby_system)
+    def __init__(self, options, src_die_id, ruby_system, parent):
+        super(CHI_SNF_Base, self).__init__(ruby_system, src_die_id)
 
         self._cntrl = Memory_Controller(
                           version = Versions.getVersion(Memory_Controller),
@@ -704,8 +714,8 @@ class CHI_SNF_BootMem(CHI_SNF_Base):
     Create the SNF for the boot memory
     '''
 
-    def __init__(self, options, ruby_system, parent, bootmem):
-        super(CHI_SNF_BootMem, self).__init__(options,ruby_system, parent)
+    def __init__(self, options, src_die_id, ruby_system, parent, bootmem):
+        super(CHI_SNF_BootMem, self).__init__(options,src_die_id, ruby_system, parent)
         self._cntrl.memory_out_port = bootmem.port
         self._cntrl.addr_ranges = self.getMemRange(bootmem)
 
@@ -714,8 +724,8 @@ class CHI_SNF_MainMem(CHI_SNF_Base):
     Create the SNF for a list main memory controllers
     '''
 
-    def __init__(self, options, ruby_system, parent, mem_ctrl = None):
-        super(CHI_SNF_MainMem, self).__init__(options,ruby_system, parent)
+    def __init__(self, options, src_die_id, ruby_system, parent, mem_ctrl = None):
+        super(CHI_SNF_MainMem, self).__init__(options,src_die_id, ruby_system, parent)
         if mem_ctrl:
             self._cntrl.memory_out_port = mem_ctrl.port
             self._cntrl.addr_ranges = self.getMemRange(mem_ctrl)
@@ -728,8 +738,8 @@ class CHI_RNI_Base(CHI_Node):
 
     # The CHI controller can be a child of this object or another if
     # 'parent' if specified
-    def __init__(self, options, ruby_system, parent):
-        super(CHI_RNI_Base, self).__init__(ruby_system)
+    def __init__(self, options, src_die_id, ruby_system, parent):
+        super(CHI_RNI_Base, self).__init__(ruby_system, src_die_id)
 
         self._sequencer = RubySequencer(version = Versions.getSeqId(),
                                          ruby_system = ruby_system,
@@ -751,21 +761,19 @@ class CHI_RNI_Base(CHI_Node):
 
 class CHI_RNI_DMA(CHI_RNI_Base):
     '''
-    DMA controller wiredup to a given dma port
+        DMA controller wiredup to a given dma port
     '''
-
-    def __init__(self, options, ruby_system, dma_port, parent):
-        super(CHI_RNI_DMA, self).__init__(options, ruby_system, parent)
+    def __init__(self, options, src_die_id, ruby_system, dma_port, parent):
+        super(CHI_RNI_DMA, self).__init__(options, ruby_system, src_die_id, parent)
         assert(dma_port != None)
         self._sequencer.in_ports = dma_port
 
 class CHI_RNI_IO(CHI_RNI_Base):
     '''
-    DMA controller wiredup to ruby_system IO port
+        DMA controller wiredup to ruby_system IO port
     '''
-
-    def __init__(self, options, ruby_system, parent):
-        super(CHI_RNI_IO, self).__init__(options, ruby_system, parent)
+    def __init__(self, options, src_die_id, ruby_system, parent):
+        super(CHI_RNI_IO, self).__init__(options, ruby_system, src_die_id, parent)
         ruby_system._io_port = self._sequencer
 
 
@@ -775,10 +783,10 @@ class CHI_RNI_IO(CHI_RNI_Base):
 ##################################################################################
 
 class CHI_D2DNodeController(D2DNode_Controller):
-    def __init__(self, options, \
-                       ruby_system, \
-                       addr_ranges, \
-                       src_die_id, \
+    def __init__(self, options,
+                       src_die_id,
+                       ruby_system,
+                       addr_ranges,
                        dst_die_id):
         super(CHI_D2DNodeController, self).__init__(
             version = Versions.getVersion(D2DNode_Controller),
@@ -829,13 +837,13 @@ class CHI_D2DNode(CHI_Node):
         assert(len(cls._addr_ranges) != 0)
         return cls._addr_ranges[die_id]
 
-    def __init__(self, options, ruby_system, srd_die_id, dst_die_id):
-        super(CHI_D2DNode, self).__init__(ruby_system)
+    def __init__(self, options, srd_die_id, ruby_system, dst_die_id):
+        super(CHI_D2DNode, self).__init__(ruby_system, srd_die_id)
         addr_ranges, intlvHighBit = self.getAddrRanges(dst_die_id)
-        self._cntrl = CHI_D2DNodeController(options, \
-                                            ruby_system, \
-                                            addr_ranges, \
-                                            srd_die_id, \
+        self._cntrl = CHI_D2DNodeController(options,
+                                            srd_die_id,
+                                            ruby_system,
+                                            addr_ranges,
                                             dst_die_id)
         self.connectController(options, self._cntrl)
     
@@ -844,7 +852,6 @@ class CHI_D2DNode(CHI_Node):
 
     def getNetworkSideControllers(self):
         return [self._cntrl]
-
 
 class CHI_HA(CHI_Node):
     """
@@ -859,45 +866,8 @@ class CHI_HA(CHI_Node):
 
     _addr_ranges = {}
 
-    @classmethod
-    def createAddrRanges(cls, options, sys_mem_ranges, cache_line_size, has):
-        import pprint as pp
-        # Create the HNFs interleaved addr ranges
-        block_size_bits = int(math.log(cache_line_size, 2))
-        llc_bits = int(math.log(len(has), 2))
-        numa_bit = block_size_bits + llc_bits - 1
-        for i, ha in enumerate(has):
-            ranges = []
-            for r in sys_mem_ranges:
-                addr_range = AddrRange(r.start, size = r.size(),
-                                        intlvHighBit = numa_bit,
-                                        intlvBits = llc_bits,
-                                        intlvMatch = i)
-                # Check the StarFive MAS
-                if (options.xor_addr_bits > 1):
-                    masks=[0 for _ in range(llc_bits)]
-                    for j in range(llc_bits) :
-                        masks[j] = 0
-                        total_xor_addr_bits = options.xor_addr_bits
-                        for k in range(block_size_bits,48,llc_bits):
-                            if total_xor_addr_bits <= 0:
-                                break
-                            masks[j] |= (1 << (j+k))
-                            total_xor_addr_bits -= 1
-                    addr_range.setIntlvMatch(i)
-                    addr_range.setIntlvBits(llc_bits)
-                    addr_range.setMasks(masks)
-                ranges.append(addr_range)
-            cls._addr_ranges[ha] = (ranges, numa_bit)
-            
-    @classmethod
-    def getAddrRanges(cls, ha_idx):
-        assert(len(cls._addr_ranges) != 0)
-        return cls._addr_ranges[ha_idx]
-    
-    def __init__(self, options, ha_idx, ruby_system, snoopfilter_type, parent):
-        super(CHI_HA, self).__init__(ruby_system)
-        addr_ranges,intlvHighBit = self.getAddrRanges(ha_idx)
+    def __init__(self, options, srd_die_id, addr_ranges, ruby_system):
+        super(CHI_HA, self).__init__(ruby_system, srd_die_id)
         self._cntrl = HA_Controller(
             version = Versions.getVersion(HA_Controller),
             ruby_system = ruby_system,

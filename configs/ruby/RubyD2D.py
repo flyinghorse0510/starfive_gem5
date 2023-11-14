@@ -143,15 +143,16 @@ def setup_memory_controllers(system, ruby, dir_cntrls, options):
     if len(crossbars) > 0:
         ruby.crossbars = crossbars
 
-def create_topology(controllers, options):
+def create_topology(controllers, options, net_idx):
     """ Called from create_system in configs/ruby/<protocol>.py
         Must return an object which is a subclass of BaseTopology
         found in configs/topologies/BaseTopology.py
         This is a wrapper for the legacy topologies.
     """
     exec("import topologies.%s as Topo" % options.topology)
-    topology = eval("Topo.%s(controllers)" % options.topology)
+    topology = eval("Topo.%s(controllers, net_idx)" % options.topology)
     return topology
+
 
 def create_system(options, full_system, system, piobus = None, dma_ports = [],
                   bootmem=None, cpus=None):
@@ -162,40 +163,52 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
     # Generate pseudo filesystem
     FileSystemConfig.config_filesystem(system, options)
 
-    # Assign the CPUs
-    if cpus is None:
-        cpus = system.cpu
+    # Create the networks object (1 network for each die)
+    networks       = []
+    dir_cntrls     = []
+    cpu_sequencers = []
+    for src_die_id in range(options.num_dies) :
+        
+        (network, IntLinkClass, ExtLinkClass, RouterClass, InterfaceClass) = \
+            Network.create_network(options, ruby)
+        networks.append(network)
+    ruby.networks = networks
+    
+    for src_die_id in range(options.num_dies) :
+        network = networks[src_die_id]
 
-    # Create the network object
-    (network, IntLinkClass, ExtLinkClass, RouterClass, InterfaceClass) = \
-        Network.create_network(options, ruby)
-    ruby.network = network
+        protocol = buildEnv['PROTOCOL']
+        if protocol != 'CHID2D':
+            m5.panic("This script requires the CHID2D build")
 
-    protocol = buildEnv['PROTOCOL']
-    if protocol != 'CHID2D':
-        m5.panic("This script requires the CHID2D build")
+        from . import CHID2D
+        
+        try:
+            # (cpu_sequencers_per_network, dir_cntrls_per_network, topology) = \
+            #      eval("%s.create_system(options, full_system, system, dma_ports,\
+            #                             bootmem, ruby, src_die_id)"
+            #           % protocol)
+            ret = \
+            CHID2D.create_system(options, full_system, system, dma_ports,\
+                                        bootmem, ruby, src_die_id)
+            dir_cntrls.extend(ret['mem_cntrls'])
+            cpu_sequencers.extend(ret['cpu_sequencers'])
+        except:
+            print("Error: could not create sytem for ruby protocol %s" % protocol)
+            raise
 
-    exec("from . import %s" % protocol)
-    try:
-        (cpu_sequencers, dir_cntrls, topology) = \
-             eval("%s.create_system(options, full_system, system, dma_ports,\
-                                    bootmem, ruby, cpus)"
-                  % protocol)
-    except:
-        print("Error: could not create sytem for ruby protocol %s" % protocol)
-        raise
+        # Create the network topology
+        topology = ret['topology']
+        topology.makeTopology(options, network, IntLinkClass, ExtLinkClass,
+                RouterClass)
 
-    # Create the network topology
-    topology.makeTopology(options, network, IntLinkClass, ExtLinkClass,
-            RouterClass)
+        # Register the topology elements with faux filesystem (SE mode only)
+        if not full_system:
+            topology.registerTopology(options)
 
-    # Register the topology elements with faux filesystem (SE mode only)
-    if not full_system:
-        topology.registerTopology(options)
+        # Initialize network based on topology
+        Network.init_network(options, network, InterfaceClass)
 
-
-    # Initialize network based on topology
-    Network.init_network(options, network, InterfaceClass)
 
     # Create a port proxy for connecting the system port. This is
     # independent of the protocol and kept in the protocol-agnostic
@@ -218,7 +231,7 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
         for cpu_seq in cpu_sequencers:
             cpu_seq.connectIOPorts(piobus)
 
-    ruby.number_of_virtual_networks = ruby.network.number_of_virtual_networks
+    ruby.number_of_virtual_networks = ruby.networks[0].number_of_virtual_networks
     ruby._cpu_ports = cpu_sequencers
     ruby.num_of_sequencers = len(cpu_sequencers)
 

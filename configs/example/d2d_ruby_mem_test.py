@@ -228,7 +228,7 @@ if num_cpus > 0 :
                      base_addr_1=args.base_addr_1,
                      base_addr_2=args.base_addr_2,
                      suppress_func_errors = args.suppress_func_errors) \
-             for i in range(args.num_cpus) ]
+             for i in range(num_cpus) ]
 
 system = System(cpu = cpus,
                 clk_domain = SrcClockDomain(clock = args.sys_clock),

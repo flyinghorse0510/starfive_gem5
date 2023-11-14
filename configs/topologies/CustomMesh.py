@@ -51,12 +51,13 @@ from topologies.BaseTopology import SimpleTopology
 class CustomMesh(SimpleTopology):
     description = 'CustomMesh'
 
-    def __init__(self, controllers):
+    def __init__(self, controllers, net_idx):
         self.nodes = controllers
         self.garnet_separate=False
         self.link_width_bytes = 32
         self.int_link_bw_factor = 20
         self.ext_link_bw_factor = 40
+        self._net_idx = net_idx
 
     #--------------------------------------------------------------------------
     # _makeMesh
@@ -257,75 +258,36 @@ class CustomMesh(SimpleTopology):
         if len(node_list) == 0:
             return
 
-        num_nodes_per_router = node_placement_config.num_nodes_per_router
-        router_idx_list = node_placement_config.router_list
+        router_idx_list = node_placement_config.die_plcmnt_map[self._net_idx]
 
-        if num_nodes_per_router:
-            # evenly distribute nodes to all listed routers
-            assert(len(router_idx_list)*num_nodes_per_router == len(node_list))
-
-            for idx, node in enumerate(node_list):
-                mesh_router_idx = router_idx_list[idx // num_nodes_per_router]
-                router = self._routers[mesh_router_idx]
-
-                # Create another router bridging RNF node controllers
-                # and the mesh router
-                # for non-RNF nodes, node router is mesh router
-                if isinstance(node, CHI.CHI_RNF):
-                    router = self._createRNFRouter(router)
-
-                # connect all ctrls in the node to node_router
-                ctrls = node.getNetworkSideControllers()
-                for c in ctrls:
-                    if self.garnet_separate:
-                        for vnet in range(NUM_VNET):
-                            self._ext_links.append(self._ExtLink(
-                                            link_id = self._link_count,
-                                            ext_node = c,
-                                            int_node = router,
-                                            latency = self._node_link_latency,
-                                            bandwidth_factor = self.ext_link_bw_factor,
-                                            supported_vnets=[vnet]))
-                            self._link_count += 1
-                    else:
-                        self._ext_links.append(self._ExtLink(
-                                        link_id = self._link_count,
-                                        ext_node = c,
-                                        int_node = router,
-                                        bandwidth_factor = self.ext_link_bw_factor,
-                                        latency = self._node_link_latency))
-                        self._link_count += 1
-        else:
-            # try to circulate all nodes to all routers, some routers may be
-            # connected to zero or more than one node.
-            idx = 0
-            for node in node_list:
-                ridx = router_idx_list[idx]
-                router = self._routers[ridx]
-
-                if isinstance(node, CHI.CHI_RNF):
-                    router = self._createRNFRouter(router)
-                ctrls = node.getNetworkSideControllers()
-                for c in ctrls:
-                    if self.garnet_separate:
-                        for vnet in range(NUM_VNET):
-                            self._ext_links.append(self._ExtLink( \
-                                                        link_id = self._link_count,
-                                                        ext_node = c,
-                                                        int_node = router,
-                                                    latency = self._node_link_latency,
-                                                    bandwidth_factor = self.ext_link_bw_factor,
-                                                    supported_vnets=[vnet]))
-                            self._link_count += 1
-                    else:
+        # try to circulate all nodes to all routers
+        idx = 0
+        for node in node_list:
+            ridx = router_idx_list[idx]
+            router = self._routers[ridx]
+            if isinstance(node, CHI.CHI_RNF):
+                router = self._createRNFRouter(router)
+            ctrls = node.getNetworkSideControllers()
+            for c in ctrls:
+                if self.garnet_separate:
+                    for vnet in range(NUM_VNET):
                         self._ext_links.append(self._ExtLink( \
                                                     link_id = self._link_count,
                                                     ext_node = c,
                                                     int_node = router,
-                                                    bandwidth_factor = self.ext_link_bw_factor,
-                                                latency = self._node_link_latency))
+                                                latency = self._node_link_latency,
+                                                bandwidth_factor = self.ext_link_bw_factor,
+                                                supported_vnets=[vnet]))
                         self._link_count += 1
-                idx = (idx + 1) % len(router_idx_list)
+                else:
+                    self._ext_links.append(self._ExtLink( \
+                                                link_id = self._link_count,
+                                                ext_node = c,
+                                                int_node = router,
+                                                bandwidth_factor = self.ext_link_bw_factor,
+                                            latency = self._node_link_latency))
+                    self._link_count += 1
+            idx = (idx + 1) % len(router_idx_list)
 
     #--------------------------------------------------------------------------
     # makeTopology

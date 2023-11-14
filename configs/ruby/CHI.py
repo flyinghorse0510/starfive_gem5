@@ -242,7 +242,6 @@ def create_system(options, full_system, system, dma_ports, bootmem,
 
 
     # Creates the controller for dma ports and io
-
     if len(dma_ports) > 0:
         ruby_system.dma_rni = [ CHI_RNI_DMA(ruby_system, dma_port, None)
                                 for dma_port in dma_ports ]
