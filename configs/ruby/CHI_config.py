@@ -468,8 +468,6 @@ class CHI_RNF(CHI_Node):
         # First creates L1 caches and sequencers
         for cpu_id_per_cluster,cpu in enumerate(self._cpus):
             
-            print(f'Creating RNF for Die@{src_die_id}, CPU@{cpu_id_per_cluster}')
-
             cpu.inst_sequencer = RubySequencer(version = Versions.getSeqId(),
                                          ruby_system = ruby_system,
                                          max_outstanding_requests = options.sequencer_outstanding_requests)
@@ -730,6 +728,9 @@ class CHI_SNF_MainMem(CHI_SNF_Base):
             self._cntrl.memory_out_port = mem_ctrl.port
             self._cntrl.addr_ranges = self.getMemRange(mem_ctrl)
         # else bind ports and range later
+    
+    def setAddrRange(self,addr_ranges):
+        self._cntrl.addr_ranges = addr_ranges
 
 class CHI_RNI_Base(CHI_Node):
     '''
@@ -878,12 +879,6 @@ class CHI_HA(CHI_Node):
         
         self.connectController(options, self._cntrl)
 
-        # print(f'{type(self.cntrl)} addr_range: {addr_ranges} ')
-        # print(f'{type(self.cntrl)} print HA')
-        # print(str(self.cntrl.addr_ranges[0]))
-        # import pprint
-        # pprint.pprint(vars(self.cntrl.addr_ranges))
-    
     def getAllControllers(self):
         return [self._cntrl]
 

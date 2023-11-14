@@ -64,7 +64,7 @@ def define_options(parser):
     eval("%s.define_options(parser)" % protocol)
     Network.define_options(parser)
 
-def setup_memory_controllers(system, ruby, dir_cntrls, options):
+def setup_memory_controllers(system, ruby, mem_cntrls, options):
     if (options.numa_high_bit):
         block_size_bits = options.numa_high_bit + 1 - \
                           int(math.log(options.num_dirs, 2))
@@ -90,7 +90,7 @@ def setup_memory_controllers(system, ruby, dir_cntrls, options):
     # attached to a directory controller.  A separate controller is created
     # for each address range as the abstract memory can handle only one
     # contiguous address range as of now.
-    for dir_cntrl in dir_cntrls:
+    for dir_cntrl in mem_cntrls:
         crossbar = None
         if len(system.mem_ranges) > 1:
             crossbar = IOXBar()
@@ -165,8 +165,16 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
 
     # Create the networks object (1 network for each die)
     networks       = []
-    dir_cntrls     = []
+    mem_cntrls     = []
     cpu_sequencers = []
+    rnfs           = []
+    hnfs           = []
+    snfs           = []
+    mns            = []
+    has            = []
+    d2dnodes       = []
+    dma_rni        = []
+    io_rni         = []
     for src_die_id in range(options.num_dies) :
         
         (network, IntLinkClass, ExtLinkClass, RouterClass, InterfaceClass) = \
@@ -184,14 +192,26 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
         from . import CHID2D
         
         try:
-            # (cpu_sequencers_per_network, dir_cntrls_per_network, topology) = \
+            # (cpu_sequencers_per_network, mem_cntrls_per_network, topology) = \
             #      eval("%s.create_system(options, full_system, system, dma_ports,\
             #                             bootmem, ruby, src_die_id)"
             #           % protocol)
             ret = \
             CHID2D.create_system(options, full_system, system, dma_ports,\
                                         bootmem, ruby, src_die_id)
-            dir_cntrls.extend(ret['mem_cntrls'])
+            rnfs.extend(ret['rnfs'])
+            hnfs.extend(ret['hnfs'])
+            snfs.extend(ret['snfs'])
+            if 'mns' in ret:
+                if len(ret['mns']) > 0:
+                    mns.extend(ret['mns'])
+            has.append(ret['ha'])
+            d2dnodes.extend(ret['d2dnodes'])
+            if 'dma_rni' in ret:
+                dma_rni.extend(ret['dma_rni'])
+            if 'io_rni' in ret:
+                io_rni.extend(ret['io_rni'])
+            mem_cntrls.extend(ret['mem_cntrls'])
             cpu_sequencers.extend(ret['cpu_sequencers'])
         except:
             print("Error: could not create sytem for ruby protocol %s" % protocol)
@@ -209,6 +229,19 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
         # Initialize network based on topology
         Network.init_network(options, network, InterfaceClass)
 
+    # Make all the CHI controllers as children of system.ruby
+    ruby.rnfs     = rnfs
+    ruby.hnfs     = hnfs
+    ruby.snfs     = snfs
+    if len(mns) > 0:
+        ruby.mns      = mns
+    ruby.has      = has
+    ruby.d2dnodes = d2dnodes
+    if len(dma_rni) > 0:
+        ruby.dma_rni  = dma_rni
+    if len(io_rni) > 0:
+        ruby.io_rni   = io_rni
+    # ruby.mem_cntrls = mem_cntrls
 
     # Create a port proxy for connecting the system port. This is
     # independent of the protocol and kept in the protocol-agnostic
@@ -224,7 +257,7 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
     # Connect the system port for loading of binaries etc
     system.system_port = system.sys_port_proxy.in_ports
 
-    setup_memory_controllers(system, ruby, dir_cntrls, options)
+    setup_memory_controllers(system, ruby, mem_cntrls, options)
 
     # Connect the cpu sequencers and the piobus
     if piobus != None:
