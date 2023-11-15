@@ -341,6 +341,7 @@ void enqSnoopFilterFill(Addr address) {
     out_msg.fromAddr := victim_addr;
     out_msg.toAddr := address;
   }
+  DPRINTF(RubySlicc, "SnoopFilter Conflict Miss: @%#x replaced with @%#x\n", victim_addr, address);
 }
 
 // Requests with an allocated TBE

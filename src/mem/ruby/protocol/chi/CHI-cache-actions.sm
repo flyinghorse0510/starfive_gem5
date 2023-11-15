@@ -312,6 +312,8 @@ action(Initiate_Request, desc="") {
   // CacheEntry+DirEntry --> TBE
   copyCacheAndDir(cache_entry, dir_entry, tbe, initial);
 
+  DPRINTF(LLSC, "Received cache coherence request @%#x\n", address);
+
   tbe.use_DMT := is_HN && enable_DMT;
   tbe.use_DCT := enable_DCT;
 
@@ -332,6 +334,8 @@ action(Initiate_Request, desc="") {
   bool avail_direntry := directory.cacheAvail(address);
   bool doSnoopFilterFill := is_HN && (!directory.allowInfiniteEntries()) && requiresDirEntry(tbe.reqType);
   assert(avail_direntry || (!doSnoopFilterFill));
+
+
   if (tbe.requiresDirEntryAlloc) {
     directory.allocate(address, new DirEntry);
     directory.profileAlloc();

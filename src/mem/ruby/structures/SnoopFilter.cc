@@ -240,7 +240,8 @@ Addr SnoopFilter::cacheProbe(Addr newAddress) const {
       }
     }
     assert(!replaceable_ways_map.empty());
-    auto random_it = std::next(std::begin(replaceable_ways_map), get_rand_between(0,replaceable_ways_map.size()-1));
+    // auto random_it = std::next(std::begin(replaceable_ways_map), get_rand_between(0,replaceable_ways_map.size()-1));
+    auto random_it = std::next(std::begin(replaceable_ways_map), 0);
     return makeLineAddress(random_it->second);
 }
 

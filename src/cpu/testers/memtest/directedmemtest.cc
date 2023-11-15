@@ -159,6 +159,8 @@ DirectedMemTest::DirectedMemTest(const Params &p)
         maxOutstandingReq = numPerCPUWorkingBlocks;
     }
 
+    DPRINTF(DirectedMemTest, "maxOutstandingReq = %lu\n", maxOutstandingReq);
+
     // kick things into action
     schedule(tickEvent, curTick());
     schedule(noRequestEvent, clockEdge(progressCheck));

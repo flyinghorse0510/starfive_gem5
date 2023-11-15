@@ -34,3 +34,4 @@ configs/dram/lowp_sweep.cfg
 benchmarks/microbench/*/bench.RISCV*
 /.vscode/
 __pycache__/
+mem_test/result/
