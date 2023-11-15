@@ -51,6 +51,7 @@ import m5
 from m5.objects import *
 
 from common import Options
+import pprint as pp
 
 class Versions:
     '''
@@ -128,6 +129,13 @@ class CHI_Node(SubSystem):
         '''
         for c in self.getNetworkSideControllers():
             c.downstream_destinations = cntrls
+    
+    def printDownstreamDest(self,pstr):
+        for c in self.getNetworkSideControllers():
+            for dest in c.downstream_destinations :
+                addr_range = dest.addr_ranges
+                addr_range_str = [a.__str__() for a in addr_range]
+                print(f'{pstr} dest:{dest.path()}, addr_range:{addr_range_str}')
 
     def connectController(self, options, cntrl):
         '''
@@ -560,8 +568,12 @@ class CHI_HNF(CHI_Node):
 
     _addr_ranges = {}
     @classmethod
-    def createAddrRanges(cls, options, sys_mem_ranges, cache_line_size, hnfs):
-        import pprint as pp
+    def createAddrRanges(cls, 
+                         options, 
+                         sys_mem_ranges, 
+                         cache_line_size,
+                         hnfs):
+        assert(len(hnfs) > 0)
         # Create the HNFs interleaved addr ranges
         block_size_bits = int(math.log(cache_line_size, 2))
         llc_bits = int(math.log(len(hnfs), 2))
@@ -819,7 +831,11 @@ class CHI_D2DNode(CHI_Node):
     _addr_ranges = {}
     
     @classmethod
-    def createAddrRanges(cls, options, sys_mem_ranges, cache_line_size, die_list):
+    def createAddrRanges(cls, 
+                         options, 
+                         sys_mem_ranges, 
+                         cache_line_size, 
+                         die_list):
         block_size_bits = int(math.log(cache_line_size, 2))
         d2d_bits = int(math.log(len(die_list),2))
         numa_bit = block_size_bits + d2d_bits - 1
@@ -838,9 +854,17 @@ class CHI_D2DNode(CHI_Node):
         assert(len(cls._addr_ranges) != 0)
         return cls._addr_ranges[die_id]
 
-    def __init__(self, options, srd_die_id, ruby_system, dst_die_id):
+    def __init__(self,
+                 options,
+                 srd_die_id,
+                 dst_die_id,
+                 ruby_system):
         super(CHI_D2DNode, self).__init__(ruby_system, srd_die_id)
+        self._srd_die_id = srd_die_id
+        self._dst_die_id = dst_die_id
         addr_ranges, intlvHighBit = self.getAddrRanges(dst_die_id)
+        addr_range_str = [a.__str__() for a in addr_ranges]
+        print(f'D2D@{self._srd_die_id}-->{self._dst_die_id} addr_range:{addr_range_str}')
         self._cntrl = CHI_D2DNodeController(options,
                                             srd_die_id,
                                             ruby_system,
@@ -867,8 +891,14 @@ class CHI_HA(CHI_Node):
 
     _addr_ranges = {}
 
-    def __init__(self, options, srd_die_id, addr_ranges, ruby_system):
+    def __init__(self, 
+                 options,
+                 srd_die_id,
+                 addr_ranges,
+                 ruby_system):
         super(CHI_HA, self).__init__(ruby_system, srd_die_id)
+        addr_range_str = [a.__str__() for a in addr_ranges]
+        print(f'HA@{srd_die_id} addr_range:{addr_range_str}')
         self._cntrl = HA_Controller(
             version = Versions.getVersion(HA_Controller),
             ruby_system = ruby_system,

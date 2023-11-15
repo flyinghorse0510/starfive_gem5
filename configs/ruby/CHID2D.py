@@ -234,16 +234,18 @@ def create_system(options,
     for m in other_memories:
         sysranges.append(m.range)
     
-    hnf_list = [i for i in range(options.num_l3caches)]
-    CHI_HNF.createAddrRanges(options, sysranges, system.cache_line_size.value,
+    hnf_list = [ hnf_id for hnf_id in range(options.num_l3caches) if src_die_id == CHI_DieHADistribution.get_die_id(hnf_id) ]
+    CHI_HNF.createAddrRanges(options, 
+                             sysranges, 
+                             system.cache_line_size.value,
                              hnf_list)
     hnfs = [ CHI_HNF(options, 
                      src_die_id, 
-                     hnf_id, 
+                     local_hnf_idx, 
                      ruby_system, 
                      HNFCache, 
                      HNFRealSnoopFilter, 
-                     None) for hnf_id in range(options.num_l3caches) if src_die_id == CHI_DieHADistribution.get_die_id(hnf_id) ]
+                     None) for local_hnf_idx, _ in enumerate(hnf_list) ]
     for hnf in hnfs:
         network_nodes.append(hnf)
         assert(hnf.getAllControllers() == hnf.getNetworkSideControllers())
@@ -254,11 +256,14 @@ def create_system(options,
     # Instantiate the d2d nodes
     num_dies = options.num_dies
     die_list = [i for i in range(num_dies)]
-    CHI_D2DNode.createAddrRanges(options, sysranges, system.cache_line_size.value, die_list)
+    CHI_D2DNode.createAddrRanges(options, 
+                                 sysranges, 
+                                 system.cache_line_size.value, 
+                                 die_list)
     d2dnodes = [ CHI_D2DNode(options,
                              src_die_id,
-                             ruby_system,
-                             dst_die_id) for dst_die_id in die_list if (dst_die_id != src_die_id) ]
+                             dst_die_id,
+                             ruby_system) for dst_die_id in die_list if (dst_die_id != src_die_id) ]
     d2d_dests = []
     for d2d in d2dnodes:
         network_nodes.append(d2d)
@@ -308,7 +313,6 @@ def create_system(options,
         all_cntrls.extend(io_rni.getAllControllers())
         ret['io_rni'] = io_rni
     
-
     # Assign downstream destinations (RNF/RNI --> HNF)
     for rnf in rnfs:
         rnf.setDownstream(hnf_dests)
@@ -318,10 +322,12 @@ def create_system(options,
     if full_system:
         io_rni.setDownstream(hnf_dests)
     
-    # Assign downstream destinations (HNF --> SNF)
-    for hnf in hnfs:
-        hnf.setDownstream(ha_dests)
-        ha.setDownstream(mem_dests)
+    # Assign downstream destinations (HNF --> {HA,D2D})
+    for hnf_idx, hnf in enumerate(hnfs):
+        hnf.setDownstream(ha_dests+d2d_dests)
+
+    # Assign downstream destinations (HA --> SNF)
+    ha.setDownstream(mem_dests)
 
     # Setup data message size for all controllers
     for cntrl in all_cntrls:
