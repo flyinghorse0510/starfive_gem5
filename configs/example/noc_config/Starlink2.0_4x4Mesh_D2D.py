@@ -42,6 +42,9 @@ class DieD2DDistribution(DieNodeDistribution):
 class DieSNFDistribution(DieNodeDistribution):
     pass
 
+class DieHNFDistribution(DieNodeDistribution):
+    pass
+
 class NoC_Params(CHI_config.NoC_Params):
     num_rows = 4
     num_cols = 4
@@ -62,6 +65,15 @@ class CHI_RNF(CHI_config.CHI_RNF):
 
 class CHI_HNF(CHI_config.CHI_HNF):
     class NoC_Params(CHI_config.CHI_HNF.NoC_Params):
+        die_plcmnt_map = dict({
+            0: list(range(16)),
+            1: list(range(16)),
+            2: list(range(16)),
+            3: list(range(16))
+        })
+
+class CHI_HNF_Snoopable(CHI_config.CHI_HNF_Snoopable):
+    class NoC_Params(CHI_config.CHI_HNF_Snoopable.NoC_Params):
         die_plcmnt_map = dict({
             0: list(range(16)),
             1: list(range(16)),

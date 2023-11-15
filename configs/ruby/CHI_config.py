@@ -602,7 +602,6 @@ class CHI_HNF(CHI_Node):
                 ranges.append(addr_range)
             cls._addr_ranges[hnf] = (ranges, numa_bit)
             
-
     @classmethod
     def getAddrRanges(cls, hnf_idx):
         assert(len(cls._addr_ranges) != 0)
@@ -836,9 +835,10 @@ class CHI_D2DNode(CHI_Node):
                          sys_mem_ranges, 
                          cache_line_size, 
                          die_list):
-        block_size_bits = int(math.log(cache_line_size, 2))
+        # block_size_bits = int(math.log(cache_line_size, 2))
+        phys_mem_addr_bit = int(math.log(AddrRange(options.mem_size).size(),2))
         d2d_bits = int(math.log(len(die_list),2))
-        numa_bit = block_size_bits + d2d_bits - 1
+        numa_bit = phys_mem_addr_bit #block_size_bits + d2d_bits - 1
         for i, die_id in enumerate(die_list):
             ranges = []
             for r in sys_mem_ranges:
@@ -898,7 +898,6 @@ class CHI_HA(CHI_Node):
                  ruby_system):
         super(CHI_HA, self).__init__(ruby_system, srd_die_id)
         addr_range_str = [a.__str__() for a in addr_ranges]
-        print(f'HA@{srd_die_id} addr_range:{addr_range_str}')
         self._cntrl = HA_Controller(
             version = Versions.getVersion(HA_Controller),
             ruby_system = ruby_system,
@@ -914,3 +913,44 @@ class CHI_HA(CHI_Node):
 
     def getNetworkSideControllers(self):
         return [self._cntrl]
+
+class CHI_HNFController_Snoopable(CHI_HNFController):
+    """
+        HNF Controller, that can accept
+        snoops from the downstream HA/D2DNodes
+    """
+    def __init__(self, options,
+                       ruby_system,
+                       cache,
+                       real_snoopfilter,
+                       prefetcher,
+                       addr_ranges):
+        super(CHI_HNFController_Snoopable, self).__init__(options,
+                                                          ruby_system,
+                                                          cache,
+                                                          real_snoopfilter,
+                                                          prefetcher,
+                                                          addr_ranges)
+        self.is_HN = False
+
+class CHI_HNF_Snoopable(CHI_HNF):
+
+    class NoC_Params(CHI_Node.NoC_Params):
+        '''HNFs may also define the 'pairing' parameter to allow pairing'''
+        pairing = None
+    
+    def __init__(self, options, 
+                       src_die_id, 
+                       hnf_idx, 
+                       ruby_system, 
+                       llcache_type, 
+                       snoopfilter_type, 
+                       parent):
+        super(CHI_HNF_Snoopable, self).__init__(options, 
+                       src_die_id, 
+                       hnf_idx, 
+                       ruby_system, 
+                       llcache_type, 
+                       snoopfilter_type, 
+                       parent)
+    

@@ -123,17 +123,20 @@ def create_system(options,
     CHI_D2DNode            = chi_defs.CHI_D2DNode
     CHI_HA                 = chi_defs.CHI_HA
     CHI_SNF_MainMem        = chi_defs.CHI_SNF_MainMem
+    CHI_HNF_Snoopable      = chi_defs.CHI_HNF_Snoopable
 
     # Distribution objects
     CHI_DieCPUDistribution = chi_defs.DieCPUDistribution
     CHI_DieHADistribution  = chi_defs.DieHADistribution
     CHI_DieD2DDistribution = chi_defs.DieD2DDistribution
     CHI_DieSNFDistribution = chi_defs.DieSNFDistribution
+    CHI_DieHNFDistribution = chi_defs.DieHNFDistribution
 
     CHI_DieCPUDistribution.setup_die_map(options.num_dies)
     CHI_DieHADistribution.setup_die_map(options.num_dies)
     CHI_DieD2DDistribution.setup_die_map(options.num_dies)
     CHI_DieSNFDistribution.setup_die_map(options.num_dies)
+    CHI_DieHNFDistribution.setup_die_map(options.num_dies)
 
     # Declare caches and controller types used by the protocol
     # Notice tag and data accesses are not concurrent, so the a cache hit
@@ -234,18 +237,18 @@ def create_system(options,
     for m in other_memories:
         sysranges.append(m.range)
     
-    hnf_list = [ hnf_id for hnf_id in range(options.num_l3caches) if src_die_id == CHI_DieHADistribution.get_die_id(hnf_id) ]
+    hnf_list = [ hnf_id for hnf_id in range(options.num_l3caches) if src_die_id == CHI_DieHNFDistribution.get_die_id(hnf_id) ]
     CHI_HNF.createAddrRanges(options, 
                              sysranges, 
                              system.cache_line_size.value,
                              hnf_list)
-    hnfs = [ CHI_HNF(options, 
+    hnfs = [ CHI_HNF_Snoopable(options, 
                      src_die_id, 
-                     local_hnf_idx, 
+                     hnf_idx, 
                      ruby_system, 
                      HNFCache, 
                      HNFRealSnoopFilter, 
-                     None) for local_hnf_idx, _ in enumerate(hnf_list) ]
+                     None) for local_hnf_idx, hnf_idx in enumerate(hnf_list) ]
     for hnf in hnfs:
         network_nodes.append(hnf)
         assert(hnf.getAllControllers() == hnf.getNetworkSideControllers())

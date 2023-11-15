@@ -823,7 +823,7 @@ class AddrRange(ParamValue):
         if len(self.masks) == 0:
             return '%s:%s' % (self.start, self.end)
         else:
-            return '%s:%s:%s:%s' % (self.start, self.end, self.intlvMatch,
+            return '%s:%s:%s|%s' % (self.start, self.end, self.intlvMatch,
                                     ':'.join(str(m) for m in self.masks))
 
     def printMasks2(self):
