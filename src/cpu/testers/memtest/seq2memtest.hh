@@ -200,6 +200,8 @@ class Seq2MemTest : public ClockedObject
 
     const bool randomizeAcc;
 
+    const bool no_gen;
+
     const bool atomic;
 
     const bool suppressFuncErrors;

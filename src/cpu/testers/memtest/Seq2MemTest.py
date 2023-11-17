@@ -53,10 +53,8 @@ class Seq2MemTest(ClockedObject):
     base_addr_1 = Param.Addr(0x0, "Start of the first testing region")
     base_addr_2 = Param.Addr(0x0, "Start of the second testing region. Optional here")
     
-    mod_stream_triad = Param.Bool(False, "Generate Stream TRIAD like Mem requestes. 2 independent loads, 1 dependent stores")
-    
     working_set = Param.Addr(1024, "Working set(bytes). Must be a multiple of cache line size")
-    max_loads = Param.Counter(1, "Number of loads to execute before exiting")
+    max_loads = Param.Counter(1, "Access factor per address. An address is accessed after all, other addresses in the working set have been exhausted")
     percent_reads = Param.Percent(100, "Percentage reads")
     addr_intrlvd_or_tiled = Param.Bool(False,"If true the address partitioning across CPUs is interleaved [0,N,2N;1,N+1,2N+1;...]. Otherwise Tiled [0:N-1,N:2N-1]")
 
@@ -69,6 +67,8 @@ class Seq2MemTest(ClockedObject):
     id_starter = Param.Int(0,'[Not Used Here] Start CPU id of Migratory pattern. [Unused] here')
     block_stride_bits = Param.Int(0,'Block address bits. stride=2^(block_stride_bits)')
     randomize_acc = Param.Bool(False,'[True] pseudo-randomize access patterns')
+
+    no_gen = Param.Bool(False, 'If true do not generate any request')
 
     # Determine how often to print progress messages and what timeout
     # to use for checking progress of both requests and responses

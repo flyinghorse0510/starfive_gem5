@@ -241,6 +241,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     in_port(reqInPort, CHIRequestMsg, reqIn, rank=1) {
         if (reqInPort.isReady(clockEdge())) {
             peek(reqInPort, CHIRequestMsg) {
+                DPRINTF(RubyCHIDebugStr5,"%s\n",in_msg);
                 trigger(Event:AllocTxReqEntry, in_msg.addr, getTxReqMapEntry(in_msg.d2d_txn_id));
             }
         }

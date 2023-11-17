@@ -114,6 +114,7 @@ Seq2MemTest::Seq2MemTest(const Params &p)
       atomic(p.system->isAtomicMode()),
       seqIdx(0),
       num_peers(p.num_peers),
+      no_gen(p.no_gen),
       baseAddr(p.base_addr_1),
       addrInterleavedOrTiled(p.addr_intrlvd_or_tiled),
       percentReads(p.percent_reads),
@@ -279,6 +280,11 @@ Seq2MemTest::tick()
     Request::Flags flags;
     Addr paddr = 0;
 
+    /* Do not generate any request */
+    if (no_gen) {
+        return;
+    }
+
     /* Simulation Exit if all transactions complete */
     if (NUM_CPUS_COMPLETED >= num_peers) {
         if ((numReadsGenerated+numWritesGenerated) > 0) {
@@ -375,7 +381,7 @@ Seq2MemTest::tick()
 void
 Seq2MemTest::noRequest()
 {
-    if (!all_txns_complete) {
+    if (!all_txns_complete && !no_gen) {
         panic("%s did not send a request for %d cycles", name(), progressCheck);
     }
 }

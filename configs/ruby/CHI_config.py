@@ -933,24 +933,85 @@ class CHI_HNFController_Snoopable(CHI_HNFController):
                                                           addr_ranges)
         self.is_HN = False
 
-class CHI_HNF_Snoopable(CHI_HNF):
+class CHI_HNF_Snoopable(CHI_Node):
 
     class NoC_Params(CHI_Node.NoC_Params):
         '''HNFs may also define the 'pairing' parameter to allow pairing'''
         pairing = None
     
-    def __init__(self, options, 
-                       src_die_id, 
-                       hnf_idx, 
-                       ruby_system, 
-                       llcache_type, 
-                       snoopfilter_type, 
+    _addr_ranges = {}
+    
+    @classmethod
+    def createAddrRanges(cls, 
+                         options, 
+                         sys_mem_ranges, 
+                         cache_line_size,
+                         hnfs):
+        assert(len(hnfs) > 0)
+        # Create the HNFs interleaved addr ranges
+        block_size_bits = int(math.log(cache_line_size, 2))
+        llc_bits = int(math.log(len(hnfs), 2))
+        numa_bit = block_size_bits + llc_bits - 1
+        for i, hnf in enumerate(hnfs):
+            ranges = []
+            for r in sys_mem_ranges:
+                addr_range = AddrRange(r.start, size = r.size(),
+                                        intlvHighBit = numa_bit,
+                                        intlvBits = llc_bits,
+                                        intlvMatch = i)
+                # Check the StarFive MAS
+                if (options.xor_addr_bits > 1):
+                    masks=[0 for _ in range(llc_bits)]
+                    for j in range(llc_bits) :
+                        masks[j] = 0
+                        total_xor_addr_bits = options.xor_addr_bits
+                        for k in range(block_size_bits,48,llc_bits):
+                            if total_xor_addr_bits <= 0:
+                                break
+                            masks[j] |= (1 << (j+k))
+                            total_xor_addr_bits -= 1
+                    addr_range.setIntlvMatch(i)
+                    addr_range.setIntlvBits(llc_bits)
+                    addr_range.setMasks(masks)
+                ranges.append(addr_range)
+            cls._addr_ranges[hnf] = (ranges, numa_bit)
+    
+    @classmethod
+    def getAddrRanges(cls, hnf_idx):
+        assert(len(cls._addr_ranges) != 0)
+        return cls._addr_ranges[hnf_idx]
+    
+    def __init__(self, options,
+                       src_die_id,
+                       hnf_idx,
+                       ruby_system,
+                       llcache_type,
+                       snoopfilter_type,
                        parent):
-        super(CHI_HNF_Snoopable, self).__init__(options, 
-                       src_die_id, 
-                       hnf_idx, 
-                       ruby_system, 
-                       llcache_type, 
-                       snoopfilter_type, 
-                       parent)
+        super(CHI_HNF_Snoopable, self).__init__(ruby_system,src_die_id)
+
+        addr_ranges,intlvHighBit = self.getAddrRanges(hnf_idx)
+        # All ranges should have the same interleaving
+        assert(len(addr_ranges) >= 1)
+        
+        ll_cache = llcache_type(start_index_bit = intlvHighBit + 1)
+        real_snoopfilter = snoopfilter_type()
+        self._cntrl = CHI_HNFController_Snoopable(options, ruby_system, ll_cache, real_snoopfilter, NULL, addr_ranges)
+
+        if parent == None:
+            self.cntrl = self._cntrl
+        else:
+            parent.cntrl = self._cntrl
+
+        self.connectController(options, self._cntrl)
+    
+    def setDownstream(self, cntrls):
+        self._cntrl.downstream_destinations = cntrls
+        
+    def getAllControllers(self):
+        return [self._cntrl]
+
+    def getNetworkSideControllers(self):
+        return [self._cntrl]
+        
     

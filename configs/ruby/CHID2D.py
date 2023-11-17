@@ -238,7 +238,7 @@ def create_system(options,
         sysranges.append(m.range)
     
     hnf_list = [ hnf_id for hnf_id in range(options.num_l3caches) if src_die_id == CHI_DieHNFDistribution.get_die_id(hnf_id) ]
-    CHI_HNF.createAddrRanges(options, 
+    CHI_HNF_Snoopable.createAddrRanges(options, 
                              sysranges, 
                              system.cache_line_size.value,
                              hnf_list)

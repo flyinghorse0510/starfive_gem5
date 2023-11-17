@@ -153,7 +153,6 @@ def create_topology(controllers, options, net_idx):
     topology = eval("Topo.%s(controllers, net_idx)" % options.topology)
     return topology
 
-
 def create_system(options, full_system, system, piobus = None, dma_ports = [],
                   bootmem=None, cpus=None):
 
@@ -163,7 +162,7 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
     # Generate pseudo filesystem
     FileSystemConfig.config_filesystem(system, options)
 
-    # Create the networks object (1 network for each die)
+    
     networks       = []
     mem_cntrls     = []
     cpu_sequencers = []
@@ -175,8 +174,9 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
     d2dnodes       = []
     dma_rni        = []
     io_rni         = []
+
+    # Create the networks object (1 network for each die)
     for src_die_id in range(options.num_dies) :
-        
         (network, IntLinkClass, ExtLinkClass, RouterClass, InterfaceClass) = \
             Network.create_network(options, ruby)
         networks.append(network)
@@ -197,8 +197,13 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
             #                             bootmem, ruby, src_die_id)"
             #           % protocol)
             ret = \
-            CHID2D.create_system(options, full_system, system, dma_ports,\
-                                        bootmem, ruby, src_die_id)
+            CHID2D.create_system(options, 
+                                 full_system,
+                                 system,
+                                 dma_ports,
+                                 bootmem,
+                                 ruby,
+                                 src_die_id)
             rnfs.extend(ret['rnfs'])
             hnfs.extend(ret['hnfs'])
             snfs.extend(ret['snfs'])

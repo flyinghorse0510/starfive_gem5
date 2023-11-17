@@ -350,6 +350,9 @@ class CustomMesh(SimpleTopology):
             elif isinstance(n, CHI.CHI_HNF):
                 hnf_nodes.append(n)
                 hnf_params = check_same(type(n).NoC_Params, hnf_params)
+            elif isinstance(n, CHI.CHI_HNF_Snoopable):
+                hnf_nodes.append(n)
+                hnf_params = check_same(type(n).NoC_Params, hnf_params)
             elif isinstance(n, CHI.CHI_MN):
                 mn_nodes.append(n)
                 mn_params = check_same(type(n).NoC_Params, mn_params)
