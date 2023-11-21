@@ -314,7 +314,7 @@ extern std::stringstream ${ident}_transitionComment;
 class $c_ident : public AbstractController
 {
   public:
-    typedef ${c_ident}Params Params;
+    PARAMS(${c_ident});    
     $c_ident(const Params &p);
     static int getNumControllers();
     void init();
