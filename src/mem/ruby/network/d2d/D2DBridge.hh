@@ -5,6 +5,7 @@
 #include "mem/ruby/common/Consumer.hh"
 #include "mem/ruby/common/TypeDefines.hh"
 #include "mem/ruby/network/d2d/D2DBridge.hh"
+#include "mem/ruby/protocol/D2DNode_Controller.hh"
 #include "params/D2DBridge.hh"
 
 namespace gem5
@@ -17,33 +18,51 @@ class NetDest;
 class MessageBuffer;
 class SimpleNetwork;
 
-class CHIPort {
-    private:
+class D2DBridgePort {
+
+    protected:
         uint32_t message_size;
-        uint32_t vnet_id;
+
         MessageBuffer* buffer;
 
     public:
+        D2DBridgePort(uint32_t message_size, MessageBuffer* buffer) 
+            : message_size(message_size) ,
+              buffer(buffer) {}
+
+        virtual void setConsumer(D2DBridge* bridge) = 0;
+};
+
+class CHIPort : public D2DBridgePort {
+    private:
+        int32_t m_vnet_id;
+
+    public:
+        CHIPort() : D2DBridgePort(0, nullptr) {
+            m_vnet_id = -1;
+        }
+
         CHIPort(uint32_t message_size, \
                 uint32_t vnet_id, \
                 MessageBuffer* buffer) 
-            : message_size(message_size),
-              vnet_id(vnet_id), 
-              buffer(buffer) {}
+            : D2DBridgePort(message_size, buffer) {
+                m_vnet_id = vnet_id;
+            }
+        
+        void setConsumer(D2DBridge* bridge) override;
 };
 
-class D2DPort {
-    private:
-        uint32_t message_size;
-        MessageBuffer* buffer;
+class D2DPort : public D2DBridgePort {
+    
     public:
-        D2DPort() 
-            : message_size(0),
-              buffer(nullptr) {}
+        D2DPort() : D2DBridgePort(0, nullptr) {}
+
         D2DPort(uint32_t message_size, \
                 MessageBuffer* buffer)
-            :  message_size(message_size),
-               buffer(buffer) {}
+            : D2DBridgePort(message_size, buffer) {}
+        
+        void setConsumer(D2DBridge* bridge) override;
+
 };
 
 class D2DBridge : public ClockedObject, public Consumer {
@@ -58,12 +77,15 @@ class D2DBridge : public ClockedObject, public Consumer {
         ~D2DBridge();
 
         void wakeup();
+        
         void print(std::ostream& out) const {};
     
     private:
         uint32_t m_src_die_id;
         
         uint32_t m_dst_die_id;
+
+        D2DNode_Controller* m_chid2d_cntrl;
 
        /**
         * Indexed by vnet.

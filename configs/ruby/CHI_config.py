@@ -863,15 +863,6 @@ class CHI_D2DNode(CHI_Node):
                                      src_die_id=self._srd_die_id,
                                      dst_die_id=self._dst_die_id)
         self._d2d_bridge.chi_d2d_cntrl = self._cntrl
-        self._d2d_bridge.reqIn.in_port = self._cntrl.bridge_reqOut.out_port
-        self._d2d_bridge.snpIn.in_port = self._cntrl.bridge_snpOut.out_port
-        self._d2d_bridge.rspIn.in_port = self._cntrl.bridge_rspOut.out_port
-        self._d2d_bridge.datIn.in_port = self._cntrl.bridge_datOut.out_port
-
-        self._d2d_bridge.reqOut.out_port = self._cntrl.bridge_reqIn.in_port
-        self._d2d_bridge.snpOut.out_port = self._cntrl.bridge_snpIn.in_port
-        self._d2d_bridge.rspOut.out_port = self._cntrl.bridge_rspIn.in_port
-        self._d2d_bridge.datOut.out_port = self._cntrl.bridge_datIn.in_port
 
     def __init__(self,
                  options,

@@ -194,10 +194,6 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
         from . import CHID2D
         
         try:
-            # (cpu_sequencers_per_network, mem_cntrls_per_network, topology) = \
-            #      eval("%s.create_system(options, full_system, system, dma_ports,\
-            #                             bootmem, ruby, src_die_id)"
-            #           % protocol)
             ret = \
             CHID2D.create_system(options, 
                                  full_system,
@@ -252,14 +248,7 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
     ruby.d2dbridges = list(d2dbridgemap.values())
 
     # Connect the D2DBridges to each other. 1-to-1 connection
-    # import itertools as it
-    # die_ids = [i for i in range(options.num_dies)]
-    # for src,dst in it.product(die_ids,die_ids):
-    #     if src != dst :
-    #         dbt=type(d2dbridgemap[(src,dst)])
-    #         print(f'dbt:{dbt}')
-    #         d2dbridgemap[(src,dst)].connectOtherDie(options,d2dbridgemap[(dst,src)])
-
+    Network.create_d2d_p2p(options,ruby,d2dbridgemap)
 
     # Create a port proxy for connecting the system port. This is
     # independent of the protocol and kept in the protocol-agnostic

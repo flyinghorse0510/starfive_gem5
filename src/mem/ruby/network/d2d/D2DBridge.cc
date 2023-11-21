@@ -29,37 +29,57 @@ namespace gem5
 namespace ruby
 {
 
+void CHIPort::setConsumer(D2DBridge* bridge) {
+    buffer->setConsumer(bridge);
+}
+
+void D2DPort::setConsumer(D2DBridge* bridge) {
+    buffer->setConsumer(bridge);
+}
+
 D2DBridge::D2DBridge(const Params &p)
     : ClockedObject(p), 
       Consumer(this),
       m_src_die_id(p.src_die_id),
-      m_dst_die_id(p.dst_die_id) {
-        const auto chi_d2d_cntrl_ptr = dynamic_cast<D2DNode_Controller *>(p.chi_d2d_cntrl);
-        const auto chid_d2d_cntr_params_ptr = reinterpret_cast<const D2DNode_ControllerParams &>(chi_d2d_cntrl_ptr->params());
+      m_dst_die_id(p.dst_die_id),
+      m_chid2d_cntrl(dynamic_cast<D2DNode_Controller *>(p.chi_d2d_cntrl)) {
         
         m_chi_in = {
-          CHIPort(87,0,chid_d2d_cntr_params_ptr.reqIn),
-          CHIPort(61,0,chid_d2d_cntr_params_ptr.snpIn),
-          CHIPort(30,0,chid_d2d_cntr_params_ptr.rspIn),
-          CHIPort(610,0,chid_d2d_cntr_params_ptr.reqIn),
+          CHIPort(87,0,m_chid2d_cntrl->params().bridge_reqOut),
+          CHIPort(61,0,m_chid2d_cntrl->params().bridge_snpOut),
+          CHIPort(30,0,m_chid2d_cntrl->params().bridge_rspOut),
+          CHIPort(610,0,m_chid2d_cntrl->params().bridge_datOut),
         };
 
         m_chi_out = {
-          CHIPort(87,0,chid_d2d_cntr_params_ptr.reqOut),
-          CHIPort(61,0,chid_d2d_cntr_params_ptr.snpOut),
-          CHIPort(30,0,chid_d2d_cntr_params_ptr.rspOut),
-          CHIPort(610,0,chid_d2d_cntr_params_ptr.reqOut),
+          CHIPort(87,0,m_chid2d_cntrl->params().bridge_reqIn),
+          CHIPort(61,0,m_chid2d_cntrl->params().bridge_snpIn),
+          CHIPort(30,0,m_chid2d_cntrl->params().bridge_rspIn),
+          CHIPort(610,0,m_chid2d_cntrl->params().bridge_datIn),
         };
 
+        m_d2d_in = D2DPort(512, p.d2d_incoming_link);
+
+        m_d2d_out = D2DPort(512, p.d2d_outgoing_link);
     }
 
-void D2DBridge::init() {}
+void D2DBridge::init() {
+  for (auto it = m_chi_in.begin(); it != m_chi_in.end(); it++) {
+    it->setConsumer(this);
+  }
+
+  m_d2d_in.setConsumer(this);
+}
 
 void D2DBridge::resetStats() {}
 
-void D2DBridge::regStats() {}
+void D2DBridge::regStats() {
+  ClockedObject::regStats();
+}
 
-void D2DBridge::wakeup() {}
+void D2DBridge::wakeup() {
+  panic_if("%s: wakeup not implemented\n",name());
+}
 
 D2DBridge::~D2DBridge() {}
 

@@ -13,26 +13,9 @@ class D2DBridge(ClockedObject):
 
     d2d_width = Param.Int("Die 2 die width")
 
-    # CHI side ports
-    reqOut = RequestPort("CHI Outgoing")
-    snpOut = RequestPort("CHI Outgoing")
-    rspOut = RequestPort("CHI Outgoing")
-    datOut = RequestPort("CHI Outgoing")
-    reqIn  = ResponsePort("CHI Incoming")
-    snpIn  = ResponsePort("CHI Incoming")
-    rspIn  = ResponsePort("CHI Incoming")
-    datIn  = ResponsePort("CHI Incoming")
+    # CHI node on the die side
+    chi_d2d_cntrl     = Param.RubyController("Attached CHI node on the NW side that will generate CHI packets")
 
-    # D2D side ports
-    d2dIn  = ResponsePort("D2D Outgoing")
-    d2dOut = RequestPort("D2D Incoming")
-
-    # Activating Buffers
-    chi_d2d_cntrl   = Param.RubyController("External node")
-
-    # def connectOtherDie(self,options,other):
-    #     other.d2dOut = MessageBuffer(buffer_size=2,
-    #                                  max_dequeue_rate=1,
-    #                                  ordered=True,
-    #                                  randomization='ruby_system')
-    #     self.d2dIn   = other.d2dOut
+    # D2D side message buffer
+    d2d_incoming_link = Param.MessageBuffer("")
+    d2d_outgoing_link = Param.MessageBuffer("")
