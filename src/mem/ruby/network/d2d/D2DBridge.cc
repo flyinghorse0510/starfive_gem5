@@ -20,6 +20,8 @@
 #include "mem/ruby/common/Consumer.hh"
 #include "mem/ruby/common/TypeDefines.hh"
 #include "mem/ruby/network/d2d/D2DBridge.hh"
+#include "mem/ruby/protocol/D2DNode_Controller.hh"
+#include "params/D2DNode_Controller.hh"
 
 namespace gem5
 {
@@ -27,30 +29,29 @@ namespace gem5
 namespace ruby
 {
 
-D2DBridge::D2DBridge(const Params &p) 
+D2DBridge::D2DBridge(const Params &p)
     : ClockedObject(p), 
       Consumer(this),
-      m_die_id(p.die_id)
-    {
+      m_src_die_id(p.src_die_id),
+      m_dst_die_id(p.dst_die_id) {
+        const auto chi_d2d_cntrl_ptr = dynamic_cast<D2DNode_Controller *>(p.chi_d2d_cntrl);
+        const auto chid_d2d_cntr_params_ptr = reinterpret_cast<const D2DNode_ControllerParams &>(chi_d2d_cntrl_ptr->params());
+        
         m_chi_in = {
-            CHIPort(87, 0, p.reqIn),
-            CHIPort(101, 1, p.snpIn),
-            CHIPort(67, 2, p.rspIn),
-            CHIPort(610, 3, p.datIn)
+          CHIPort(87,0,chid_d2d_cntr_params_ptr.reqIn),
+          CHIPort(61,0,chid_d2d_cntr_params_ptr.snpIn),
+          CHIPort(30,0,chid_d2d_cntr_params_ptr.rspIn),
+          CHIPort(610,0,chid_d2d_cntr_params_ptr.reqIn),
         };
 
         m_chi_out = {
-            CHIPort(87, 0, p.reqOut),
-            CHIPort(101, 1, p.snpOut),
-            CHIPort(67, 2, p.rspOut),
-            CHIPort(610, 3, p.datOut)
+          CHIPort(87,0,chid_d2d_cntr_params_ptr.reqOut),
+          CHIPort(61,0,chid_d2d_cntr_params_ptr.snpOut),
+          CHIPort(30,0,chid_d2d_cntr_params_ptr.rspOut),
+          CHIPort(610,0,chid_d2d_cntr_params_ptr.reqOut),
         };
 
-        // for (auto ) {
-
-        // } 
-
-}
+    }
 
 void D2DBridge::init() {}
 

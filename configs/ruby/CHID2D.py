@@ -70,15 +70,19 @@ def create_system(options,
             net_id: 
             cpu_sequencers: []
             mem_cntrls:     []
-            rnfs:      []
-            hnfs:      []
-            snfs:      []
-            mns:       []
-            d2dnodes:  []
-            dma_rni:   []
-            io_rni:    []
-            ha:        object
+            rnfs:           []
+            hnfs:           []
+            snfs:           []
+            mns:            []
+            d2dnodes:       []
+            d2dbridgemap:   dict()
+            dma_rni:        []
+            io_rni:         []
+            ha:             object
         }
+
+        The d2dbridgemap is dict of the
+        form (src,dst) --> D2DBridge node
     """
 
     ret = dict()
@@ -268,11 +272,15 @@ def create_system(options,
                              dst_die_id,
                              ruby_system) for dst_die_id in die_list if (dst_die_id != src_die_id) ]
     d2d_dests = []
+    d2d_bridge_map = dict()
     for d2d in d2dnodes:
         network_nodes.append(d2d)
         all_cntrls.extend(d2d.getAllControllers())
         d2d_dests.extend(d2d.getAllControllers())
+        d2d_bridge_map[d2d.getSrcDstPair()] = d2d.getD2DBridge()
+
     ret['d2dnodes'] = d2dnodes
+    ret['d2dbridgemap'] = d2d_bridge_map
 
     # Intantiate the HA node
     die_addr_ranges, _ = CHI_D2DNode.getAddrRanges(src_die_id)

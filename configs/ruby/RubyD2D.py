@@ -58,6 +58,8 @@ def define_options(parser):
     parser.add_argument(
         "--recycle-latency", type=int, default=10,
         help="Recycle latency for ruby controller input buffers")
+    
+    parser.add_argument("--d2d-width",type=int,default=256,help="Width of D2D bridge for D2D communication")
 
     protocol = buildEnv['PROTOCOL']
     exec("from . import %s" % protocol)
@@ -162,7 +164,6 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
     # Generate pseudo filesystem
     FileSystemConfig.config_filesystem(system, options)
 
-    
     networks       = []
     mem_cntrls     = []
     cpu_sequencers = []
@@ -174,6 +175,7 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
     d2dnodes       = []
     dma_rni        = []
     io_rni         = []
+    d2dbridgemap   = dict()
 
     # Create the networks object (1 network for each die)
     for src_die_id in range(options.num_dies) :
@@ -212,6 +214,7 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
                     mns.extend(ret['mns'])
             has.append(ret['ha'])
             d2dnodes.extend(ret['d2dnodes'])
+            d2dbridgemap.update(ret['d2dbridgemap'])
             if 'dma_rni' in ret:
                 dma_rni.extend(ret['dma_rni'])
             if 'io_rni' in ret:
@@ -246,7 +249,17 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
         ruby.dma_rni  = dma_rni
     if len(io_rni) > 0:
         ruby.io_rni   = io_rni
-    # ruby.mem_cntrls = mem_cntrls
+    ruby.d2dbridges = list(d2dbridgemap.values())
+
+    # Connect the D2DBridges to each other. 1-to-1 connection
+    # import itertools as it
+    # die_ids = [i for i in range(options.num_dies)]
+    # for src,dst in it.product(die_ids,die_ids):
+    #     if src != dst :
+    #         dbt=type(d2dbridgemap[(src,dst)])
+    #         print(f'dbt:{dbt}')
+    #         d2dbridgemap[(src,dst)].connectOtherDie(options,d2dbridgemap[(dst,src)])
+
 
     # Create a port proxy for connecting the system port. This is
     # independent of the protocol and kept in the protocol-agnostic

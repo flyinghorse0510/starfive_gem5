@@ -57,7 +57,14 @@ class TBETable
 {
   public:
     TBETable(int number_of_TBEs)
-        : m_number_of_TBEs(number_of_TBEs)
+        : m_number_of_TBEs(number_of_TBEs),
+          m_allow_noncachelinealigned_access(false)
+    {
+    }
+
+    TBETable(int number_of_TBEs, bool allow_noncachelinealigned_access)
+        : m_number_of_TBEs(number_of_TBEs),
+          m_allow_noncachelinealigned_access(allow_noncachelinealigned_access)
     {
     }
 
@@ -86,6 +93,8 @@ class TBETable
 
   private:
     int m_number_of_TBEs;
+
+    bool m_allow_noncachelinealigned_access;
 };
 
 template<class ENTRY>
@@ -101,9 +110,11 @@ template<class ENTRY>
 inline bool
 TBETable<ENTRY>::isPresent(Addr address) const
 {
-    assert(address == makeLineAddress(address));
+    if (!m_allow_noncachelinealigned_access) {
+      assert(address == makeLineAddress(address));
+    }
     assert(m_map.size() <= m_number_of_TBEs);
-    return !!m_map.count(address);
+    return (m_map.count(address) > 0);
 }
 
 template<class ENTRY>

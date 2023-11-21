@@ -17,6 +17,35 @@ class NetDest;
 class MessageBuffer;
 class SimpleNetwork;
 
+class CHIPort {
+    private:
+        uint32_t message_size;
+        uint32_t vnet_id;
+        MessageBuffer* buffer;
+
+    public:
+        CHIPort(uint32_t message_size, \
+                uint32_t vnet_id, \
+                MessageBuffer* buffer) 
+            : message_size(message_size),
+              vnet_id(vnet_id), 
+              buffer(buffer) {}
+};
+
+class D2DPort {
+    private:
+        uint32_t message_size;
+        MessageBuffer* buffer;
+    public:
+        D2DPort() 
+            : message_size(0),
+              buffer(nullptr) {}
+        D2DPort(uint32_t message_size, \
+                MessageBuffer* buffer)
+            :  message_size(message_size),
+               buffer(buffer) {}
+};
+
 class D2DBridge : public ClockedObject, public Consumer {
 
     public:
@@ -32,19 +61,9 @@ class D2DBridge : public ClockedObject, public Consumer {
         void print(std::ostream& out) const {};
     
     private:
-        uint32_t m_die_id;
-
-        struct CHIPort {
-            uint32_t message_size;
-            uint32_t vnet_id;
-            MessageBuffer* buffer;
-            CHIPort(uint32_t message_size, \
-                    uint32_t vnet_id, \
-                    MessageBuffer* buffer) 
-                : message_size(message_size),
-                  vnet_id(vnet_id), 
-                  buffer(buffer) {}
-        };
+        uint32_t m_src_die_id;
+        
+        uint32_t m_dst_die_id;
 
        /**
         * Indexed by vnet.
@@ -56,21 +75,12 @@ class D2DBridge : public ClockedObject, public Consumer {
         * 3: dat
         */
         std::vector<CHIPort> m_chi_in;
+        
         std::vector<CHIPort> m_chi_out;
 
-        struct D2DPort {
-            uint32_t message_size;
-            MessageBuffer* buffer;
-        };
-
-        // uint32_t m_chi_req_width;
-        // uint32_t m_chi_snp_width;
-        // uint32_t m_chi_rsp_width;
-        // uint32_t m_chi_dat_width;
-        // uint32_t m_d2d_width;
-
-        std::vector<D2DPort> m_d2d_in;
-        std::vector<D2DPort> m_d2d_out;
+        D2DPort m_d2d_in;
+        
+        D2DPort m_d2d_out;
 
         std::vector<int> m_pending_message_count;
 };

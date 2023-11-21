@@ -74,7 +74,7 @@ if [ "$GATETEST" != "" ]; then
     MultiCoreAddrMode=True
     NETWORK="simple"
     IDEAL_SNOOP_FILTER=False
-    DEBUGFLAGS=SeqMemLatTest
+    DEBUGFLAGS=SeqMemLatTest,RubyGenerated,RubyCHIDebugStr5
     OUTPUT_PREFIX="D2DTest_${NETWORK}"
 
     WKSETLIST=(1024)

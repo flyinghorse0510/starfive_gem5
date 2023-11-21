@@ -307,6 +307,7 @@ else:
 
 # instantiate configuration
 m5.instantiate()
+sys.exit(-1)
 
 # simulate until program terminates
 exit_event = m5.simulate(args.abs_max_tick)

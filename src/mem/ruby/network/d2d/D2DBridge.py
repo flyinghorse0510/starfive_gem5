@@ -7,19 +7,32 @@ class D2DBridge(ClockedObject):
     cxx_header = "mem/ruby/network/d2d/D2DBridge.hh"
     cxx_class = 'gem5::ruby::D2DBridge'
 
-    die_id    = Param.Int("Die Id")
+    # Die Ids
+    src_die_id = Param.Int("Source die Id")
+    dst_die_id = Param.Int("Dest die Id")
+
     d2d_width = Param.Int("Die 2 die width")
 
-    # Declare the message buffers
-    reqOut = Param.MessageBuffer("")
-    snpOut = Param.MessageBuffer("")
-    rspOut = Param.MessageBuffer("")
-    datOut = Param.MessageBuffer("")
-    reqIn  = Param.MessageBuffer("")
-    snpIn  = Param.MessageBuffer("")
-    rspIn  = Param.MessageBuffer("")
-    datIn  = Param.MessageBuffer("")
+    # CHI side ports
+    reqOut = RequestPort("CHI Outgoing")
+    snpOut = RequestPort("CHI Outgoing")
+    rspOut = RequestPort("CHI Outgoing")
+    datOut = RequestPort("CHI Outgoing")
+    reqIn  = ResponsePort("CHI Incoming")
+    snpIn  = ResponsePort("CHI Incoming")
+    rspIn  = ResponsePort("CHI Incoming")
+    datIn  = ResponsePort("CHI Incoming")
 
-    d2dIn  = VectorResponsePort("Input from the NW side")
-    d2dOut = VectorRequestPort("Output to the Bride side")
+    # D2D side ports
+    d2dIn  = ResponsePort("D2D Outgoing")
+    d2dOut = RequestPort("D2D Incoming")
 
+    # Activating Buffers
+    chi_d2d_cntrl   = Param.RubyController("External node")
+
+    # def connectOtherDie(self,options,other):
+    #     other.d2dOut = MessageBuffer(buffer_size=2,
+    #                                  max_dequeue_rate=1,
+    #                                  ordered=True,
+    #                                  randomization='ruby_system')
+    #     self.d2dIn   = other.d2dOut
