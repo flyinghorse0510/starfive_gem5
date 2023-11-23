@@ -850,14 +850,14 @@ class CHI_D2DNode(CHI_Node):
         d2dbridge_buff_deq_rate = 1
     
         assert(hasattr(self,'_cntrl'))
-        self._cntrl.bridge_reqIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
-        self._cntrl.bridge_snpIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
-        self._cntrl.bridge_rspIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
-        self._cntrl.bridge_datIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
-        self._cntrl.bridge_reqOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
-        self._cntrl.bridge_snpOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
-        self._cntrl.bridge_rspOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
-        self._cntrl.bridge_datOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+        self._cntrl.d2dnode_reqIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+        self._cntrl.d2dnode_snpIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+        self._cntrl.d2dnode_rspIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+        self._cntrl.d2dnode_datIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+        self._cntrl.d2dnode_reqOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+        self._cntrl.d2dnode_snpOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+        self._cntrl.d2dnode_rspOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+        self._cntrl.d2dnode_datOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
 
         self._d2d_bridge = D2DBridge(d2d_width=options.d2d_width,
                                      src_die_id=self._srd_die_id,
