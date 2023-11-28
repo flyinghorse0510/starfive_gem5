@@ -312,8 +312,9 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         peek(reqRdyInPort, CHIRequestMsg) {
             enqueue(bridge_reqOutPort, CHIRequestMsg, lat_req_nw_2_bridge) {
                 assert(is_valid(tbe));
-                DPRINTF(RubyD2DStr5,"out_msg=%s\n",in_msg);
                 out_msg := in_msg;
+                out_msg.Destination.remove(machineID);
+                DPRINTF(RubyD2DStr5,"out_msg=%s\n",out_msg);
             }
         }
         reqRdyInPort.dequeue(clockEdge());
