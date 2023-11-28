@@ -219,29 +219,36 @@ def init_network(options, network, InterfaceClass):
         network.enable_fault_model = True
         network.fault_model = FaultModel()
 
-def create_d2d_p2p(options,
-                   ruby_system,
-                   d2dbridgemap) :
+def create_d2d_p2p(options, d2dbridgemap) :
     """
         Create p2p links between d2dbridges
     """
     import itertools as it
     die_ids = [i for i in range(options.num_dies)]
     d2d_links = []
+    d2d_cr_links = []
     for src,dst in it.product(die_ids,die_ids):
         if src != dst :
-            d2d_link = MessageBuffer(buffer_size=0,
+            d2d_link    = MessageBuffer(buffer_size=0,
+                                     max_dequeue_rate=1,
+                                     ordered=True,
+                                     randomization='ruby_system')
+            d2d_cr_link = MessageBuffer(buffer_size=0,
                                      max_dequeue_rate=1,
                                      ordered=True,
                                      randomization='ruby_system')
             d2dbridgemap[(src,dst)].d2d_outgoing_link = d2d_link
             d2dbridgemap[(dst,src)].d2d_incoming_link = d2d_link
+            d2dbridgemap[(src,dst)].d2d_incoming_cr_link = d2d_cr_link
+            d2dbridgemap[(dst,src)].d2d_outgoing_cr_link = d2d_cr_link
             d2d_links.append(d2d_link)
-    ruby_system = d2d_links
+            d2d_cr_links.append(d2d_cr_link)
     doneMap = set([(i,i) for i in die_ids])
     for src,dst in it.product(die_ids,die_ids):
         if (src,dst) not in doneMap:
             d2dbridgemap[(src,dst)].d2d_outgoing_link.out_port = d2dbridgemap[(dst,src)].d2d_incoming_link.in_port
             d2dbridgemap[(dst,src)].d2d_outgoing_link.out_port = d2dbridgemap[(src,dst)].d2d_incoming_link.in_port
+            d2dbridgemap[(dst,src)].d2d_outgoing_cr_link.out_port = d2dbridgemap[(src,dst)].d2d_incoming_cr_link.in_port
+            d2dbridgemap[(src,dst)].d2d_outgoing_cr_link.out_port = d2dbridgemap[(dst,src)].d2d_incoming_cr_link.in_port
             doneMap.add((src,dst))
             doneMap.add((dst,src))

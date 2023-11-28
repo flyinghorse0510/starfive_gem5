@@ -83,33 +83,30 @@ namespace gem5
 				switch(vnet_id) {
 					case 0 : 
 					case 1 : /* REQ or SNP */ {
-						const CHIRequestMsg* in_msg_ptr =  dynamic_cast<const CHIRequestMsg *>(msg);
-						panic_if(in_msg_ptr == nullptr,"Cannot cast to CHIRequestMsg");
-						panic_if(isSnpReqType(in_msg_ptr) && vnet_id != 1, "Invalid vnet for snp CHIRequestMsg, %s\n",demangle(msg_type));
-						std::shared_ptr<CHIRequestMsg> out_msg = std::make_shared<CHIRequestMsg>(curTick);
-						*out_msg = (*in_msg_ptr);
-						DPRINTF(RubyD2DStr5,"In d2d msg = %s\n",*out_msg);
-						chi_msg_from_d2d[vnet_id].push_back(out_msg);
-						break;
-					}
+									  const CHIRequestMsg* in_msg_ptr =  dynamic_cast<const CHIRequestMsg *>(msg);
+									  panic_if(in_msg_ptr == nullptr,"Cannot cast to CHIRequestMsg");
+									  panic_if(isSnpReqType(in_msg_ptr) && vnet_id != 1, "Invalid vnet for snp CHIRequestMsg, %s\n",demangle(msg_type));
+									  std::shared_ptr<CHIRequestMsg> out_msg = std::make_shared<CHIRequestMsg>(curTick);
+									  *out_msg = (*in_msg_ptr);
+									  chi_msg_from_d2d[vnet_id].push_back(out_msg);
+									  break;
+								  }
 					case 2 : /* RSP */ {
-						const CHIResponseMsg* in_msg_ptr =  dynamic_cast<const CHIResponseMsg *>(msg);
-						panic_if(in_msg_ptr == nullptr,"Cannot cast to CHIResponseMsg, %s\n",demangle(msg_type));
-						std::shared_ptr<CHIResponseMsg> out_msg = std::make_shared<CHIResponseMsg>(curTick);
-						*out_msg = (*in_msg_ptr);
-						DPRINTF(RubyD2DStr5,"In d2d msg = %s\n",*out_msg);
-						chi_msg_from_d2d[vnet_id].push_back(out_msg);
-						break;
-					}
+								   const CHIResponseMsg* in_msg_ptr =  dynamic_cast<const CHIResponseMsg *>(msg);
+								   panic_if(in_msg_ptr == nullptr,"Cannot cast to CHIResponseMsg, %s\n",demangle(msg_type));
+								   std::shared_ptr<CHIResponseMsg> out_msg = std::make_shared<CHIResponseMsg>(curTick);
+								   *out_msg = (*in_msg_ptr);
+								   chi_msg_from_d2d[vnet_id].push_back(out_msg);
+								   break;
+							   }
 					case 3 : /* DAT */ {
-						const CHIDataMsg* in_msg_ptr =  dynamic_cast<const CHIDataMsg *>(msg);
-						panic_if(in_msg_ptr == nullptr,"Cannot cast to CHIDataMsg, %s\n",demangle(msg_type));
-						std::shared_ptr<CHIDataMsg> out_msg = std::make_shared<CHIDataMsg>(curTick);
-						*out_msg = (*in_msg_ptr);
-						DPRINTF(RubyD2DStr5,"In d2d msg = %s\n",*out_msg);
-						chi_msg_from_d2d[vnet_id].push_back(out_msg);
-						break;
-					}
+								   const CHIDataMsg* in_msg_ptr =  dynamic_cast<const CHIDataMsg *>(msg);
+								   panic_if(in_msg_ptr == nullptr,"Cannot cast to CHIDataMsg, %s\n",demangle(msg_type));
+								   std::shared_ptr<CHIDataMsg> out_msg = std::make_shared<CHIDataMsg>(curTick);
+								   *out_msg = (*in_msg_ptr);
+								   chi_msg_from_d2d[vnet_id].push_back(out_msg);
+								   break;
+							   }
 				}
 				push_heap(chi_msg_from_d2d[vnet_id].begin(), chi_msg_from_d2d[vnet_id].end(), std::greater<MsgPtr>());
 			}

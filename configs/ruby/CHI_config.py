@@ -130,15 +130,6 @@ class CHI_Node(SubSystem):
         for c in self.getNetworkSideControllers():
             c.downstream_destinations = cntrls
         
-    def setD2DFwdDestination(self, cntrl):
-        '''
-            d2dfwd_destination is used by D2D node 
-            controller to fwd incoming requests.
-            Other controllers should ignore this
-        '''
-        for c in self.getNetworkSideControllers():
-            c.d2dfwd_destination = cntrl
-    
     def printDownstreamDest(self,pstr):
         for c in self.getNetworkSideControllers():
             for dest in c.downstream_destinations :
@@ -867,6 +858,12 @@ class CHI_D2DNode(CHI_Node):
         self._cntrl.d2dnode_snpOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
         self._cntrl.d2dnode_rspOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
         self._cntrl.d2dnode_datOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
+
+        self._cntrl.d2dnode_crdOut = MessageBuffer(buffer_size=0,
+                                                   max_dequeue_rate=1,
+                                                   ordered=True,
+                                                   allow_zero_latency=True,
+                                                   randomization='ruby_system')
 
         self._d2d_bridge = D2DBridge(d2d_width=options.d2d_width,
                                      src_die_id=self._srd_die_id,

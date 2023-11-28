@@ -31,8 +31,6 @@ class D2DBridgePort {
             : message_size(message_size) ,
               buffer(buffer) {}
 
-        bool isReady(Tick cur_tick) { return buffer->isReady(cur_tick); } ;
-
         virtual void setConsumer(D2DBridge* bridge) = 0;
 };
 
@@ -171,6 +169,12 @@ class D2DBridge : public ClockedObject, public Consumer {
         
         D2DPort m_d2d_out;
 
+        MessageBuffer* m_d2d_cr_in;
+
+        MessageBuffer* m_nw_cr_in;  // Credit recvd from D2DNode CHI controller. Which is a part of the NW or die
+
+        MessageBuffer* m_d2d_cr_out;
+
         uint32_t m_pending_current_bw;   // How many bits can be sent in current tick
 
         const uint32_t m_max_d2d_bw;    // max d2d bw in bits
@@ -197,6 +201,20 @@ class D2DBridge : public ClockedObject, public Consumer {
 
         Tick m_time_last_time_d2d_in_rcvd; // Tick when last time recvd a d2d flit from th m_d2d_in
         
+        uint32_t m_num_credits; // Number of credits we have currently for transfer
+
+        const uint32_t m_max_num_credits;
+
+        Tick m_time_last_time_inc_credits; // Last time I recvd credits from peer d2d bridge
+
+        Tick m_time_last_time_dec_credits; // Last time I consumed (send a D2DFlit) credits
+
+        Tick m_time_last_time_rcvd_credits_from_nw; // Last time I recvd a credit from the NW side. TODO is this guard reqd
+
+        void incCredits(Tick curTick);
+
+        void decCredits(Tick curTick);
+
         void updateCredits(Tick cur_tick);
 
         bool noCHIChannelTransmissible(Tick curTick, uint32_t d2d_rem_bw) const;
@@ -211,15 +229,17 @@ class D2DBridge : public ClockedObject, public Consumer {
 
         void recvD2DMsg(Tick curTick);
 
-        bool sendCHIToNetwork(Tick curTick);
+        void sendCHIToNetwork(Tick curTick);
 
         void sendCHIOutTxBuffer(Tick curTick);
+
+        void sendCreditsOut(Tick curTick);
 
         void storeCHIOutTxBuffer(Tick curTick, const Message* msg, uint32_t vnet_id);
 
         void clearCHIOutTxBuffer(Tick curTick);
 
-        // void printIncomingCHIMsg() const;
+        bool hasCredits(Tick curTick) const;
 };
 
 }

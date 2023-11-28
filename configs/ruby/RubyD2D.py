@@ -248,7 +248,7 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
     ruby.d2dbridges = list(d2dbridgemap.values())
 
     # Connect the D2DBridges to each other. 1-to-1 connection
-    Network.create_d2d_p2p(options,ruby,d2dbridgemap)
+    Network.create_d2d_p2p(options,d2dbridgemap)
 
     # Create a port proxy for connecting the system port. This is
     # independent of the protocol and kept in the protocol-agnostic

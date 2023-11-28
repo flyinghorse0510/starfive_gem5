@@ -27,7 +27,10 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     MessageBuffer * d2dnode_rspOut;
     MessageBuffer * d2dnode_datOut;
 
-    // Accepted request, but awaiting D2D channel resource
+    // Send credits (for back pressure) for d2d node
+    MessageBuffer * d2dnode_crdOut;
+
+    // Accepted requests
     MessageBuffer * reqRdy;
 
     // Remap table allocation latency

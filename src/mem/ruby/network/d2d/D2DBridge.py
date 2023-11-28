@@ -18,9 +18,14 @@ class D2DBridge(ClockedObject):
     # CHI node on the die side
     chi_d2d_cntrl     = Param.D2DNode_Controller("Attached CHI node on the NW side that will generate CHI packets")
 
-    # D2D side message buffer
+    # D2D data transfer message buffer
     d2d_incoming_link = Param.MessageBuffer("")
     d2d_outgoing_link = Param.MessageBuffer("")
+
+    # D2D credit transfer message buffer
+    d2d_incoming_cr_link = Param.MessageBuffer("")
+    d2d_outgoing_cr_link = Param.MessageBuffer("")
+    d2d_max_credits = Param.Int(16, "Maximum D2D credits that can be sent out")
 
     # Weighted RR arbiter weights for each channels
     wrr_weights = VectorParam.Int([1,1,1,2],"Weighted RR arbiter weights [req,snp,rsp,dat]")

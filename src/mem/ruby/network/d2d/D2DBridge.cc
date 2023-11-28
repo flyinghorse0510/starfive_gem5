@@ -25,6 +25,7 @@
 #include "mem/ruby/common/TypeDefines.hh"
 #include "mem/ruby/network/d2d/D2DBridge.hh"
 #include "mem/ruby/network/d2d/D2DMsg.hh"
+#include "mem/ruby/network/d2d/D2DCrMsg.hh"
 #include "mem/ruby/protocol/D2DNode_Controller.hh"
 #include "params/D2DNode_Controller.hh"
 #include "debug/RubyD2DStr5.hh"
@@ -38,8 +39,6 @@ namespace gem5
 		void CHIPort::setConsumer(D2DBridge* bridge) {
 			buffer->setConsumer(bridge);
 		}
-
-
 
 		uint32_t CHIPort::getMinTransmissibleData(Tick curTick) const {
 			assert(curTick >= m_time_last_time_d2dbits_sent);
@@ -229,7 +228,14 @@ namespace gem5
 		m_prio({3,2,1,0}),
 		m_chid2d_cntrl(p.chi_d2d_cntrl),
 		m_chi_d2d_flits_in({}),
-		m_chi_d2d_flits_out({}) {
+		m_chi_d2d_flits_out({}),
+		m_num_credits(p.d2d_max_credits),
+		m_max_num_credits(p.d2d_max_credits),
+		m_time_last_time_inc_credits(0),
+		m_time_last_time_dec_credits(0),
+		m_d2d_cr_in(p.d2d_incoming_cr_link),
+		m_d2d_cr_out(p.d2d_outgoing_cr_link),
+		m_nw_cr_in(m_chid2d_cntrl->params().d2dnode_crdOut) {
 			m_chi_in = {
 				CHIPort(87,0,m_chid2d_cntrl->params().d2dnode_reqOut,m_wrr_weights[0]),
 				CHIPort(61,1,m_chid2d_cntrl->params().d2dnode_snpOut,m_wrr_weights[1]),
@@ -256,6 +262,7 @@ namespace gem5
 				it->setConsumer(this);
 			}
 			m_d2d_in.setConsumer(this);
+			m_d2d_cr_in->setConsumer(this);
 		}
 
 		void D2DBridge::resetStats() {}
@@ -264,10 +271,12 @@ namespace gem5
 			ClockedObject::regStats();
 		}
 
-		void D2DBridge::updateCredits(Tick cur_tick) {
-			if (cur_tick > m_time_pending_current_bw) {
-				m_time_pending_current_bw = cur_tick;
-				m_pending_current_bw = params().d2d_width;
+		void D2DBridge::updateCredits(Tick curTick) {
+			if (curTick > m_time_pending_current_bw) {
+				m_time_pending_current_bw = curTick;
+				if (hasCredits(curTick)) {
+					m_pending_current_bw = m_max_d2d_bw;
+				}
 			}
 		}
 
@@ -360,6 +369,8 @@ namespace gem5
 
 			sendCHIOutTxBuffer(clockEdge());
 
+			sendCreditsOut(clockEdge());
+
 			// Extract message from the incoming d2d links
 			recvD2DMsg(clockEdge());
 
@@ -374,7 +385,7 @@ namespace gem5
 			}
 		}
 
-		bool D2DBridge::sendCHIToNetwork(Tick curTick) {
+		void D2DBridge::sendCHIToNetwork(Tick curTick) {
 			bool schedule_next_wakeup = false;
 			for (int vnet_id = 0; vnet_id < MAX_VNETS; vnet_id++) {
 				if ( m_chi_d2d_flits_in[vnet_id].size() > 0 ) {
@@ -413,6 +424,7 @@ namespace gem5
 			if (m_chi_d2d_flits_out.size() > 0) {
 				panic_if(curTick != m_time_last_time_d2d_out_sent,"Tmp CHI flit buffer contains stale data from the previous cycles");
 				m_d2d_out.send(curTick, m_chi_d2d_flits_out, cyclesToTicks(Cycles(m_d2d_traversal_latency)));
+				decCredits(curTick);
 			}
 		}
 
@@ -461,13 +473,44 @@ namespace gem5
 			}
 		}
 
-		// void D2DBridge::printIncomingCHIMsg() const {
-		// 	for (int vnet_id = 0; vnet_id < MAX_VNETS; vnet_id++) {
-		// 		for (auto it = m_chi_d2d_flits_in[vnet_id].begin(); it != m_chi_d2d_flits_in[vnet_id].end(); it++) {
-		// 			const Message* msg = it->get();
-		// 		}
-		// 	}
-		// }
+		void D2DBridge::incCredits(Tick curTick) {
+			assert(m_time_last_time_inc_credits <= curTick);
+			if ((curTick > m_time_last_time_inc_credits) && m_d2d_cr_in->isReady(curTick)){
+				m_time_last_time_inc_credits = curTick;
+				const D2DCrMsg *msg = dynamic_cast<const D2DCrMsg*>(m_d2d_cr_in->peek());
+				panic_if(msg == nullptr,"Cannot cast to D2DCrMsg\n");
+				panic_if(m_max_num_credits <= m_num_credits,"Cannot increase beyond max credits");
+				m_num_credits++;
+				m_d2d_cr_in->dequeue(curTick,true);
+			}
+		}
+
+		void D2DBridge::decCredits(Tick curTick) {
+			assert(m_time_last_time_dec_credits <= curTick);
+			if (curTick > m_time_last_time_dec_credits) {
+				m_time_last_time_dec_credits = curTick;
+				panic_if(m_num_credits <= 0,"Dec credits called with insufficient credits");
+				m_num_credits--;
+			}
+		}
+
+		void D2DBridge::sendCreditsOut(Tick curTick) {
+			if (curTick > m_time_last_time_rcvd_credits_from_nw) {
+				m_time_last_time_rcvd_credits_from_nw = curTick;
+				if (m_nw_cr_in->isReady(curTick)) {
+					MsgPtr credOut = std::make_shared<D2DCrMsg>(curTick);
+					assert(m_d2d_cr_out->areNSlotsAvailable(1,curTick));
+					m_d2d_cr_out->enqueue(credOut,curTick,0);
+					m_nw_cr_in->dequeue(curTick,true);
+					incCredits(curTick);
+				}
+			}
+		}
+
+		bool D2DBridge::hasCredits(Tick curTick) const {
+			// [TODO]: Check if any Tick guards required
+			return (m_num_credits > 0);
+		}
 
 		D2DBridge::~D2DBridge() {}
 
