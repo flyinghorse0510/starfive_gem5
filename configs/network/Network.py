@@ -230,7 +230,7 @@ def create_d2d_p2p(options,
     d2d_links = []
     for src,dst in it.product(die_ids,die_ids):
         if src != dst :
-            d2d_link = MessageBuffer(buffer_size=2,
+            d2d_link = MessageBuffer(buffer_size=0,
                                      max_dequeue_rate=1,
                                      ordered=True,
                                      randomization='ruby_system')

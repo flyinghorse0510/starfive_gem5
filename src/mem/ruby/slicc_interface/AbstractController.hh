@@ -214,6 +214,8 @@ class AbstractController : public ClockedObject, public Consumer
      */
     MachineID mapAddressToDownstreamMachine(Addr addr,
                                     MachineType mtype = MachineType_NUM) const;
+    
+    MachineID getHANodeIdOnDie(Addr addr) const;
 
     /** List of downstream destinations (towards memory) */
     const NetDest& allDownstreamDest() const { return downstreamDestinations; }
@@ -426,7 +428,10 @@ class AbstractController : public ClockedObject, public Consumer
     AddrRangeMap<AddrMapEntry, 3> downstreamAddrMap;
 
     NetDest downstreamDestinations;
-    NetDest upstreamDestinations;
+    NetDest upstreamDestinations; // Not used in CHI. But other protocols use it
+    NetDest haDestinations; // HA dests for d2d nodes
+
+    AddrRangeMap<AddrMapEntry, 3> haAddrMap;
 
   public:
     struct ControllerStats : public statistics::Group

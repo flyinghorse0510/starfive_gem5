@@ -6,3 +6,5 @@ Tick curTick();
 void set_tbe(TBE b);
 void unset_tbe();
 Addr getD2DTxnId(int tbeStorSlot);
+MachineID mapAddressToDownstreamMachine(Addr addr);
+MachineID getHANodeIdOnDie(Addr addr);

@@ -44,6 +44,8 @@
 #include <iostream>
 #include <memory>
 #include <stack>
+#include <vector>
+#include <utility>
 
 #include "mem/packet.hh"
 #include "mem/ruby/common/NetDest.hh"
@@ -58,6 +60,8 @@ namespace ruby
 
 class Message;
 typedef std::shared_ptr<Message> MsgPtr;
+
+typedef std::vector<std::pair<uint32_t, MsgPtr>> MsgPtrVec;
 
 class Message
 {

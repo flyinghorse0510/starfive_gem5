@@ -115,6 +115,26 @@ AbstractController::init()
     for (auto abs_cntrl : params().upstream_destinations) {
         upstreamDestinations.add(abs_cntrl->getMachineID());
     }
+
+    // Initialize the haDestinations
+    haDestinations.resize();
+    for (auto abs_cntrl : params().ha_destinations) {
+        MachineID mid = abs_cntrl->getMachineID();
+        const AddrRangeList &ranges = abs_cntrl->getAddrRanges();
+        for (const auto &addr_range : ranges) {
+            auto it = haAddrMap.intersects(addr_range);
+            if (it == haAddrMap.end()) {
+                it = haAddrMap.insert(addr_range, AddrMapEntry());
+            }
+            AddrMapEntry &entry = it->second;
+            fatal_if(entry.count(mid.getType()) > 0,
+                     "%s: %s mapped to multiple machines of the same type\n",
+                     name(), addr_range.to_string());
+            entry[mid.getType()] = mid;
+        }
+        haDestinations.add(mid);
+    }
+    
 }
 
 void
@@ -447,6 +467,22 @@ const
     }
 }
 
+MachineID
+AbstractController::getHANodeIdOnDie(Addr addr)
+const
+{
+    const auto it = haAddrMap.contains(addr);
+    fatal_if(it == haAddrMap.end(),
+      "%s: couldn't find mapping for address in HA %x\n", name(), addr);
+    
+    const AddrMapEntry &entry = it->second;
+    assert(!entry.empty());
+
+    fatal_if(entry.size() > 1,
+      "%s: address %x mapped to multiple machine types.\n", name(), addr);
+    return entry.begin()->second;
+    
+}
 
 bool
 AbstractController::MemoryPort::recvTimingResp(PacketPtr pkt)

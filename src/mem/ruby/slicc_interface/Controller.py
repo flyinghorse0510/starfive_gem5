@@ -79,3 +79,5 @@ class RubyController(ClockedObject):
                     "Possible destinations for requests sent towards the CPU")
     downstream_destinations = VectorParam.RubyController([],
                     "Possible destinations for requests sent towards memory")
+    
+    ha_destinations = VectorParam.RubyController([],"The node that handles incoming d2d requests")

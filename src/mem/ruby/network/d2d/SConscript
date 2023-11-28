@@ -12,3 +12,4 @@ if env['CONF']['PROTOCOL'] == 'None':
 SimObject('D2DBridge.py', sim_objects=['D2DBridge'])
 
 Source('D2DBridge.cc')
+Source('D2DMsg.cc')

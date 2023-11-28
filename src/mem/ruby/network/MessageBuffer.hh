@@ -74,7 +74,8 @@ namespace ruby
 class MessageBuffer : public SimObject
 {
   public:
-    typedef MessageBufferParams Params;
+    // typedef MessageBufferParams Params;
+    PARAMS(MessageBuffer);
     MessageBuffer(const Params &p);
 
     void reanalyzeMessages(Addr addr, Tick current_time);

@@ -129,6 +129,15 @@ class CHI_Node(SubSystem):
         '''
         for c in self.getNetworkSideControllers():
             c.downstream_destinations = cntrls
+        
+    def setD2DFwdDestination(self, cntrl):
+        '''
+            d2dfwd_destination is used by D2D node 
+            controller to fwd incoming requests.
+            Other controllers should ignore this
+        '''
+        for c in self.getNetworkSideControllers():
+            c.d2dfwd_destination = cntrl
     
     def printDownstreamDest(self,pstr):
         for c in self.getNetworkSideControllers():
@@ -898,6 +907,10 @@ class CHI_D2DNode(CHI_Node):
 
     def getNetworkSideControllers(self):
         return [self._cntrl]
+    
+    def setHADestination(self, cntrls):
+        for c in self.getNetworkSideControllers():
+            c.ha_destinations = cntrls
 
 class CHI_HA(CHI_Node):
     """

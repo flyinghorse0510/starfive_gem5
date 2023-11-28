@@ -17,15 +17,15 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     MessageBuffer * datOut,   network="To", virtual_network="3", vnet_type="response";
 
     // CHI bridge side channels
-    MessageBuffer * bridge_reqIn;
-    MessageBuffer * bridge_snpIn;
-    MessageBuffer * bridge_rspIn;
-    MessageBuffer * bridge_datIn;
+    MessageBuffer * d2dnode_reqIn;
+    MessageBuffer * d2dnode_snpIn;
+    MessageBuffer * d2dnode_rspIn;
+    MessageBuffer * d2dnode_datIn;
 
-    MessageBuffer * bridge_reqOut;
-    MessageBuffer * bridge_snpOut;
-    MessageBuffer * bridge_rspOut;
-    MessageBuffer * bridge_datOut;
+    MessageBuffer * d2dnode_reqOut;
+    MessageBuffer * d2dnode_snpOut;
+    MessageBuffer * d2dnode_rspOut;
+    MessageBuffer * d2dnode_datOut;
 
     // Accepted request, but awaiting D2D channel resource
     MessageBuffer * reqRdy;
@@ -192,6 +192,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         RxReqMapTable.allocate(addr);
         TBE tbe           := RxReqMapTable[addr];
 
+        tbe.addr          := addr;
         tbe.o_src_id      := in_msg.requestor;
         tbe.o_fwd_src_id  := in_msg.fwdRequestor;
         tbe.o_d2d_txn_id  := in_msg.d2d_txn_id;
@@ -229,10 +230,10 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
 
     out_port(reqRdyOutPort, CHIRequestMsg, reqRdy);
 
-    out_port(bridge_reqOutPort, CHIRequestMsg,  bridge_reqOut);
-    out_port(bridge_snpOutPort, CHIRequestMsg,  bridge_snpOut);
-    out_port(bridge_rspOutPort, CHIResponseMsg, bridge_rspOut);
-    out_port(bridge_datOutPort, CHIDataMsg,     bridge_datOut);
+    out_port(bridge_reqOutPort, CHIRequestMsg,  d2dnode_reqOut);
+    out_port(bridge_snpOutPort, CHIRequestMsg,  d2dnode_snpOut);
+    out_port(bridge_rspOutPort, CHIResponseMsg, d2dnode_rspOut);
+    out_port(bridge_datOutPort, CHIDataMsg,     d2dnode_datOut);
 
     ////////////////////////////////////////////////////////////////////////////
     // Inbound Ports (from NW)
@@ -254,7 +255,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     }
 
     // Inbound Ports (from Bridge)
-    in_port(bwReqInPort, CHIRequestMsg, bridge_reqIn, rank=3) {
+    in_port(bwReqInPort, CHIRequestMsg, d2dnode_reqIn, rank=3) {
         if (bwReqInPort.isReady(clockEdge())) {
             peek(bwReqInPort, CHIRequestMsg) {
                 // TODO: Think carefully how are you going to access the RxRemap Table
@@ -295,9 +296,13 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         peek(bwReqInPort, CHIRequestMsg) {
             set_tbe(allocateRxRemapEntry(in_msg));
             enqueue(network_reqOutPort, CHIRequestMsg, lat_req_bridge_2_nw) {
+                DPRINTF(RubyD2DStr5,"in_msg=%s\n",in_msg);
                 out_msg               := in_msg;
                 out_msg.requestor     := machineID;
                 out_msg.fwdRequestor  := machineID;
+                out_msg.Destination.add(getHANodeIdOnDie(tbe.addr));
+                DPRINTF(RubyD2DStr5,"out_msg=%s\n",out_msg);
+
             }
         }
         bwReqInPort.dequeue(clockEdge());
@@ -307,6 +312,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         peek(reqRdyInPort, CHIRequestMsg) {
             enqueue(bridge_reqOutPort, CHIRequestMsg, lat_req_nw_2_bridge) {
                 assert(is_valid(tbe));
+                DPRINTF(RubyD2DStr5,"out_msg=%s\n",in_msg);
                 out_msg := in_msg;
             }
         }
@@ -327,6 +333,4 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     transition(busy, FwdReqMsg) {
         Fwd_ReqMsg_ToBridge;
     }
-
-
 }

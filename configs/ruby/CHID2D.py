@@ -340,6 +340,10 @@ def create_system(options,
     # Assign downstream destinations (HA --> SNF)
     ha.setDownstream(mem_dests)
 
+    # Fwd incoming requests from D2D --> HA, regardless of the address
+    for d2d in d2dnodes:
+        d2d.setHADestination(ha.getNetworkSideControllers())
+
     # Setup data message size for all controllers
     for cntrl in all_cntrls:
         cntrl.data_channel_size = params.data_width

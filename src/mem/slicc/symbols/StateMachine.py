@@ -113,6 +113,7 @@ class StateMachine(Symbol):
         self.debug_flags.add('RubySlicc')
         self.debug_flags.add('RubyTxnTrace')
         self.debug_flags.add('RubyCHIDebugStr5')
+        self.debug_flags.add('RubyD2DStr5')
 
     def __repr__(self):
         return "[StateMachine: %s]" % self.ident
