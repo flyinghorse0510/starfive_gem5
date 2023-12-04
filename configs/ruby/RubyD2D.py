@@ -167,10 +167,15 @@ def createDieAddrRanges(options, sys_mem_ranges, die_list):
                                     intlvHighBit = numa_bit,
                                     intlvBits = d2d_bits,
                                     intlvMatch = i)
-            ranges.append(addr_range)
+            # Hack to to allow addr_range intersection testing b/w HA nodes and Die addr ranges
+            addr_range1 = AddrRange(addr_range.getStartAddr(), end = addr_range.getEndAddr(),
+                                    intlvHighBit = numa_bit,
+                                    intlvBits = d2d_bits,
+                                    intlvMatch = i)
+            ranges.append(addr_range1)
         _addr_ranges[die_id] = ranges
         addr_range_str = [a.__str__() for a in ranges]
-        print(f'D2D@{die_id}, addr_range:{addr_range_str}')
+        print(f'Die@{die_id}, addr_range:{addr_range_str}')
     return _addr_ranges
 
 def create_system(options, full_system, system, piobus = None, dma_ports = [],

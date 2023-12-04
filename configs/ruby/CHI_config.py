@@ -605,11 +605,11 @@ class CHI_HNF(CHI_Node):
                                         intlvBits = llc_bits,
                                         intlvMatch = i)
                 # Check the StarFive MAS
-                if (options.xor_addr_bits > 1):
+                if (options.xor_addr_bits_hnf > 1):
                     masks=[0 for _ in range(llc_bits)]
                     for j in range(llc_bits) :
                         masks[j] = 0
-                        total_xor_addr_bits = options.xor_addr_bits
+                        total_xor_addr_bits = options.xor_addr_bits_hnf
                         for k in range(block_size_bits,48,llc_bits):
                             if total_xor_addr_bits <= 0:
                                 break
@@ -1004,11 +1004,11 @@ class CHI_HA(CHI_Node):
                                        intlvHighBit = numa_bit,
                                        intlvBits = intlvBits,
                                        intlvMatch = i)
-                if (options.xor_addr_bits_on_die > 1):
+                if (options.xor_addr_bits_ha > 1):
                     masks=[0 for _ in range(intlvBits)]
                     for j in range(intlvBits) :
                         masks[j] = 0
-                        total_xor_addr_bits = options.xor_addr_bits_on_die
+                        total_xor_addr_bits = options.xor_addr_bits_ha
                         for k in range(block_size_bits,r.getIntlvLoBit(),intlvBits):
                             if total_xor_addr_bits <= 0:
                                 break
@@ -1019,7 +1019,7 @@ class CHI_HA(CHI_Node):
                 ranges.append(addr_range)
             cls._addr_ranges[haId] = (ranges, numa_bit)
             addr_range_str = [a.__str__() for a in ranges]
-            print(f'HA@{(haId,src_die_id)}, addr_range:{addr_range_str}')
+            print(f'HA@{(src_die_id,haId)}, addr_range:{addr_range_str}')
 
     def getAddrRanges(self, haId):
         assert(len(self._addr_ranges) != 0)
@@ -1130,11 +1130,11 @@ class CHI_HNF_Snoopable(CHI_Node):
                                         intlvBits = llc_bits,
                                         intlvMatch = i)
                 # Check the StarFive MAS
-                if (options.xor_addr_bits > 1):
+                if (options.xor_addr_bits_hnf > 1):
                     masks=[0 for _ in range(llc_bits)]
                     for j in range(llc_bits) :
                         masks[j] = 0
-                        total_xor_addr_bits = options.xor_addr_bits
+                        total_xor_addr_bits = options.xor_addr_bits_hnf
                         for k in range(block_size_bits,48,llc_bits):
                             if total_xor_addr_bits <= 0:
                                 break
