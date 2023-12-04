@@ -125,7 +125,7 @@ RubySystem::registerMachineID(const MachineID& mach_id, Network* network)
     fatal_if(network_id < 0, "Could not add MachineID %s. Network not found",
              MachineIDToString(mach_id).c_str());
 
-    // inform("MachineID: %s, NetworkID: %d\n",MachineIDToString(mach_id).c_str(),network_id);
+    // inform("Connecting MachineID: %s, NetworkID: %d\n",MachineIDToString(mach_id).c_str(),network_id);
 
     machineToNetwork.insert(std::make_pair(mach_id, network_id));
 }
@@ -151,7 +151,7 @@ RubySystem::registerRequestorIDs()
 
         // inform("Name:%s, MachineID: %s\n",cntrl->name(),MachineIDToString(mach_id).c_str());
         // These are setup in Network constructor and should exist
-        fatal_if(!machineToNetwork.count(mach_id),
+        panic_if(!machineToNetwork.count(mach_id),
                  "No machineID %s. Does not belong to a Ruby network?",
                  MachineIDToString(mach_id).c_str());
 

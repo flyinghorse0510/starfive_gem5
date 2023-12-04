@@ -74,6 +74,21 @@ class Versions:
         cls._version[tp] = val + 1
         return val
 
+class HAToSNFBuffer(MessageBuffer) :
+    """
+        HA <--> SNF traffic follows CHI
+        protocol, but does not travel
+        via the main on-die Ruby CHI network.
+        This to prevent deadlocks when
+        HA <--> SNF traffic contends for the
+        same NoC resources as the dependent
+        HNF <--> HA traffic
+    """
+    buffer_size        = 0
+    allow_zero_latency = True
+    ordered            = True
+    max_dequeue_rate   = True
+    randomization      = 'ruby_system'
 
 class NoC_Params:
     '''
@@ -108,7 +123,11 @@ class CHI_Node(SubSystem):
     def __init__(self, ruby_system, src_die_id):
         super(CHI_Node, self).__init__()
         self._ruby_system = ruby_system
+        self._src_die_id = src_die_id
         self._network = ruby_system.networks[src_die_id]
+    
+    def getSrcDieId(self):
+        return self._src_die_id
 
     def getNetworkSideControllers(self):
         '''
@@ -604,7 +623,6 @@ class CHI_HNF(CHI_Node):
             
     @classmethod
     def getAddrRanges(cls, hnf_idx):
-        assert(len(cls._addr_ranges) != 0)
         return cls._addr_ranges[hnf_idx]
 
     # The CHI controller can be a child of this object or another if
@@ -684,7 +702,12 @@ class CHI_SNF_Base(CHI_Node):
 
     # The CHI controller can be a child of this object or another if
     # 'parent' if specified
-    def __init__(self, options, src_die_id, ruby_system, parent):
+    def __init__(self,
+                 options,
+                 src_die_id,
+                 ruby_system,
+                 addr_ranges,
+                 parent):
         super(CHI_SNF_Base, self).__init__(ruby_system, src_die_id)
 
         self._cntrl = Memory_Controller(
@@ -695,6 +718,7 @@ class CHI_SNF_Base(CHI_Node):
                           requestToMemory = MessageBuffer(ordered = True),
                           reqRdy = TriggerMessageBuffer(),
                           number_of_TBEs=options.num_SNF_TBE,
+                          addr_ranges = addr_ranges,
                           snf_allow_retry=options.snf_allow_retry)
 
         self.connectController(options,self._cntrl)
@@ -703,7 +727,7 @@ class CHI_SNF_Base(CHI_Node):
             parent.cntrl = self._cntrl
         else:
             self.cntrl = self._cntrl
-
+    
     def getAllControllers(self):
         return [self._cntrl]
 
@@ -733,15 +757,79 @@ class CHI_SNF_MainMem(CHI_SNF_Base):
     Create the SNF for a list main memory controllers
     '''
 
-    def __init__(self, options, src_die_id, ruby_system, parent, mem_ctrl = None):
-        super(CHI_SNF_MainMem, self).__init__(options,src_die_id, ruby_system, parent)
+    def __init__(self,
+                 options, 
+                 src_die_id,
+                 ruby_system,
+                 addr_ranges,
+                 parent,
+                 mem_ctrl = None):
+        super(CHI_SNF_MainMem, self).__init__(options,
+                                              src_die_id,
+                                              ruby_system,
+                                              addr_ranges,
+                                              parent)
         if mem_ctrl:
             self._cntrl.memory_out_port = mem_ctrl.port
             self._cntrl.addr_ranges = self.getMemRange(mem_ctrl)
         # else bind ports and range later
     
-    def setAddrRange(self,addr_ranges):
-        self._cntrl.addr_ranges = addr_ranges
+
+class CHI_SNF_xDie(CHI_Node):
+
+    def __init__(self,
+                options,
+                src_die_id,
+                ruby_system,
+                haId,
+                addr_ranges,
+                parent = None):
+        super(CHI_SNF_xDie, self).__init__(ruby_system, src_die_id)
+
+        self._cntrl = MemoryXDie_Controller(
+                        version = Versions.getVersion(MemoryXDie_Controller),
+                        ruby_system = ruby_system,
+                        triggerQueue = TriggerMessageBuffer(),
+                        responseFromMemory = MessageBuffer(),
+                        requestToMemory = MessageBuffer(ordered = True),
+                        reqRdy = TriggerMessageBuffer(),
+                        ha_reqIn  = HAToSNFBuffer(),
+                        ha_snpIn  = HAToSNFBuffer(),
+                        ha_rspIn  = HAToSNFBuffer(),
+                        ha_datIn  = HAToSNFBuffer(),
+                        ha_reqOut = HAToSNFBuffer(),
+                        ha_snpOut = HAToSNFBuffer(),
+                        ha_rspOut = HAToSNFBuffer(),
+                        ha_datOut = HAToSNFBuffer(),
+                        number_of_TBEs=options.num_SNF_TBE,
+                        addr_ranges = addr_ranges,
+                        snf_allow_retry=options.snf_allow_retry)
+        self._haId = haId
+        
+        self.connectController(options,self._cntrl)
+
+        if parent:
+            parent.cntrl = self._cntrl
+        else:
+            self.cntrl = self._cntrl
+    
+    def getHaId(self):
+        return self._haId
+    
+    def getAllControllers(self):
+        return [self._cntrl]
+
+    def getNetworkSideControllers(self):
+        return [self._cntrl]
+
+    def getMemRange(self, mem_ctrl):
+        # TODO need some kind of transparent API for
+        # MemCtrl+DRAM vs SimpleMemory
+        if hasattr(mem_ctrl, 'range'):
+            return mem_ctrl.range
+        else:
+            return mem_ctrl.dram.range
+
 
 class CHI_RNI_Base(CHI_Node):
     '''
@@ -804,41 +892,13 @@ class CHI_D2DNodeController(D2DNode_Controller):
             version = Versions.getVersion(D2DNode_Controller),
             ruby_system = ruby_system
         )
-       
+
         self.src_die_id    = src_die_id
         self.dst_die_id    = dst_die_id
-        
         self.addr_ranges   = addr_ranges
         self.reqRdy        = MessageBuffer()
         
 class CHI_D2DNode(CHI_Node):
-
-    _addr_ranges = {}
-    
-    @classmethod
-    def createAddrRanges(cls, 
-                         options, 
-                         sys_mem_ranges, 
-                         cache_line_size, 
-                         die_list):
-        # block_size_bits = int(math.log(cache_line_size, 2))
-        phys_mem_addr_bit = int(math.log(AddrRange(options.mem_size).size(),2))
-        d2d_bits = int(math.log(len(die_list),2))
-        numa_bit = phys_mem_addr_bit #block_size_bits + d2d_bits - 1
-        for i, die_id in enumerate(die_list):
-            ranges = []
-            for r in sys_mem_ranges:
-                addr_range = AddrRange(r.start, size = r.size(),
-                                        intlvHighBit = numa_bit,
-                                        intlvBits = d2d_bits,
-                                        intlvMatch = i)
-                ranges.append(addr_range)
-            cls._addr_ranges[die_id] = (ranges, numa_bit)
-
-    @classmethod
-    def getAddrRanges(cls,die_id):
-        assert(len(cls._addr_ranges) != 0)
-        return cls._addr_ranges[die_id]
 
     def connectD2DBridge(self, 
                          options):
@@ -874,19 +934,20 @@ class CHI_D2DNode(CHI_Node):
                  options,
                  srd_die_id,
                  dst_die_id,
+                 dieAddrRangeMap,
                  ruby_system):
         super(CHI_D2DNode, self).__init__(ruby_system, srd_die_id)
         self._srd_die_id = srd_die_id
         self._dst_die_id = dst_die_id
         self._d2d_bridge = None
-        addr_ranges, intlvHighBit = self.getAddrRanges(dst_die_id)
-        addr_range_str = [a.__str__() for a in addr_ranges]
-        print(f'D2D@{self._srd_die_id}-->{self._dst_die_id} addr_range:{addr_range_str}')
+        addr_ranges = dieAddrRangeMap[dst_die_id]
         self._cntrl = CHI_D2DNodeController(options,
                                             srd_die_id,
                                             ruby_system,
                                             addr_ranges,
                                             dst_die_id)
+        
+        self.cntrl = self._cntrl # Set this object as the parent
         
         self.connectController(options, self._cntrl)
 
@@ -922,22 +983,100 @@ class CHI_HA(CHI_Node):
 
     _addr_ranges = {}
 
+    @classmethod
+    def createHAAddrRanges(cls,
+                           options,
+                           die_addr_ranges,
+                           cache_line_size,
+                           src_die_id,
+                           hAs):
+        assert(len(hAs) > 0)
+        # Create the HNFs interleaved addr ranges
+        block_size_bits = int(math.log(cache_line_size, 2))
+        numHaBits       = int(math.log(len(hAs), 2))
+        intlvBits       = numHaBits
+        numa_bit        = block_size_bits + numHaBits - 1
+        for i, haId in enumerate(hAs):
+            ranges = []
+            for r in die_addr_ranges:
+                addr_range = AddrRange(r.getStartAddr(), 
+                                       end = r.getEndAddr(),
+                                       intlvHighBit = numa_bit,
+                                       intlvBits = intlvBits,
+                                       intlvMatch = i)
+                if (options.xor_addr_bits_on_die > 1):
+                    masks=[0 for _ in range(intlvBits)]
+                    for j in range(intlvBits) :
+                        masks[j] = 0
+                        total_xor_addr_bits = options.xor_addr_bits_on_die
+                        for k in range(block_size_bits,r.getIntlvLoBit(),intlvBits):
+                            if total_xor_addr_bits <= 0:
+                                break
+                            masks[j] |= (1 << (j+k))
+                            total_xor_addr_bits -= 1
+                    addr_range.setIntlvMatch(i)
+                    addr_range.setMasks(masks)
+                ranges.append(addr_range)
+            cls._addr_ranges[haId] = (ranges, numa_bit)
+            addr_range_str = [a.__str__() for a in ranges]
+            print(f'HA@{(haId,src_die_id)}, addr_range:{addr_range_str}')
+
+    def getAddrRanges(self, haId):
+        assert(len(self._addr_ranges) != 0)
+        addr_ranges,_ = self._addr_ranges[haId]
+        return addr_ranges
+
     def __init__(self, 
                  options,
                  srd_die_id,
-                 addr_ranges,
+                 haId,
                  ruby_system):
         super(CHI_HA, self).__init__(ruby_system, srd_die_id)
-        addr_range_str = [a.__str__() for a in addr_ranges]
+        addr_ranges = self.getAddrRanges(haId)
         self._cntrl = HA_Controller(
             version = Versions.getVersion(HA_Controller),
             ruby_system = ruby_system,
             addr_ranges = addr_ranges,
             data_channel_size = 128,
             triggerQueue = TriggerMessageBuffer(),
-            reqRdy = TriggerMessageBuffer())
-        
+            reqRdy = TriggerMessageBuffer(),
+            snf_reqIn  = HAToSNFBuffer(),
+            snf_snpIn  = HAToSNFBuffer(),
+            snf_rspIn  = HAToSNFBuffer(),
+            snf_datIn  = HAToSNFBuffer(),
+            snf_reqOut = HAToSNFBuffer(),
+            snf_snpOut = HAToSNFBuffer(),
+            snf_rspOut = HAToSNFBuffer(),
+            snf_datOut = HAToSNFBuffer()
+        )
+
+        """
+            [04 Dec 2023]: Connection with
+            the NoC. Not really required if all
+            the communication happens via
+            HA <--> SNF pathway. But removing
+            might require some other changes.
+        """
         self.connectController(options, self._cntrl)
+
+        # Set the SimObject parents
+        self.cntrl = self._cntrl
+    
+    def connectSNFController(self, snf):
+        self._cntrl.snf_reqOut.out_port = snf._cntrl.ha_reqIn.in_port
+        self._cntrl.snf_snpOut.out_port = snf._cntrl.ha_snpIn.in_port
+        self._cntrl.snf_rspOut.out_port = snf._cntrl.ha_rspIn.in_port
+        self._cntrl.snf_datOut.out_port = snf._cntrl.ha_datIn.in_port
+        self._cntrl.snf_reqOut.in_port = snf._cntrl.ha_reqIn.out_port
+        self._cntrl.snf_snpOut.in_port = snf._cntrl.ha_snpIn.out_port
+        self._cntrl.snf_rspOut.in_port = snf._cntrl.ha_rspIn.out_port
+        self._cntrl.snf_datOut.in_port = snf._cntrl.ha_datIn.out_port
+
+    def getSNF(self):
+        return self.snf
+    
+    def getMemControllers(self):
+        return [self._snf._cntrl]
 
     def getAllControllers(self):
         return [self._cntrl]

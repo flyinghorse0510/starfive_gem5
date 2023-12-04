@@ -321,6 +321,7 @@ class CustomMesh(SimpleTopology):
         hnf_nodes = []
         mn_nodes = []
         mem_nodes = []
+        mem_nodes_xDie = []
         io_mem_nodes = []
         rni_dma_nodes = []
         rni_io_nodes = []
@@ -338,6 +339,7 @@ class CustomMesh(SimpleTopology):
         rni_io_params = None
         d2d_params = None
         ha_params = None
+        mem_params_xDie = None
 
         def check_same(val, curr):
             assert(curr == None or curr == val)
@@ -359,6 +361,9 @@ class CustomMesh(SimpleTopology):
             elif isinstance(n, CHI.CHI_SNF_MainMem):
                 mem_nodes.append(n)
                 mem_params = check_same(type(n).NoC_Params, mem_params)
+            elif isinstance(n, CHI.CHI_SNF_xDie):
+                mem_nodes_xDie.append(n)
+                mem_params_xDie = check_same(type(n).NoC_Params, mem_params_xDie)
             elif isinstance(n, CHI.CHI_SNF_BootMem):
                 io_mem_nodes.append(n)
                 io_mem_params = check_same(type(n).NoC_Params, io_mem_params)
@@ -401,6 +406,9 @@ class CustomMesh(SimpleTopology):
 
         # Place CHI_SNF_MainMem on the mesh
         self.distributeNodes(mem_params, mem_nodes)
+
+        # Place CHI_SNF_xDie on the mesh
+        self.distributeNodes(mem_params_xDie, mem_nodes_xDie)
 
         # Place CHI_HA on the mesh
         self.distributeNodes(ha_params, ha_nodes)

@@ -94,6 +94,9 @@ AbstractController::init()
     downstreamDestinations.resize();
     for (auto abs_cntrl : params().downstream_destinations) {
         MachineID mid = abs_cntrl->getMachineID();
+        // inform("Setting downstream: %s --> %s\n",MachineIDToString(getMachineID()).c_str(),MachineIDToString(mid).c_str());
+        inform("Setting downstream: %s --> %s\n",name(),abs_cntrl->name());
+
         const AddrRangeList &ranges = abs_cntrl->getAddrRanges();
         for (const auto &addr_range : ranges) {
             auto i = downstreamAddrMap.intersects(addr_range);

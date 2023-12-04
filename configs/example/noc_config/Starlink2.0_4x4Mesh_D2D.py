@@ -27,13 +27,18 @@ class DieNodeDistribution(object):
     
     @classmethod
     def setup_die_map(cls, num_dies):
+        """
+            This method is used to
+            distribute each of the
+            CHI nodes on different dies.
+            For now, its a modulo
+            distribution. But more fancy
+            distributions can be added
+        """
         cls._num_dies = num_dies
         cls._on_die_map = dict([(k, k % cls._num_dies) for k in range(100)])
 
 class DieCPUDistribution(DieNodeDistribution):
-    pass
-
-class DieHADistribution(DieNodeDistribution):
     pass
 
 class DieD2DDistribution(DieNodeDistribution):
@@ -101,6 +106,15 @@ class CHI_HA(CHI_config.CHI_HA):
 
 class CHI_SNF_MainMem(CHI_config.CHI_SNF_MainMem):
     class NoC_Params(CHI_config.CHI_SNF_MainMem.NoC_Params):
+        die_plcmnt_map = dict({
+            0: [3],
+            1: [3],
+            2: [3],
+            3: [3]
+        })
+
+class CHI_SNF_xDie(CHI_config.CHI_SNF_xDie):
+    class NoC_Params(CHI_config.CHI_SNF_xDie.NoC_Params):
         die_plcmnt_map = dict({
             0: [3],
             1: [3],

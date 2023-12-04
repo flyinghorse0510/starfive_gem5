@@ -155,6 +155,24 @@ def create_topology(controllers, options, net_idx):
     topology = eval("Topo.%s(controllers, net_idx)" % options.topology)
     return topology
 
+def createDieAddrRanges(options, sys_mem_ranges, die_list):
+    _addr_ranges = {}
+    phys_mem_addr_bit = int(math.log(AddrRange(options.mem_size).size(),2))
+    d2d_bits = int(math.log(len(die_list),2))
+    numa_bit = phys_mem_addr_bit-1
+    for i, die_id in enumerate(die_list):
+        ranges = []
+        for r in sys_mem_ranges:
+            addr_range = AddrRange(r.start, size = r.size(),
+                                    intlvHighBit = numa_bit,
+                                    intlvBits = d2d_bits,
+                                    intlvMatch = i)
+            ranges.append(addr_range)
+        _addr_ranges[die_id] = ranges
+        addr_range_str = [a.__str__() for a in ranges]
+        print(f'D2D@{die_id}, addr_range:{addr_range_str}')
+    return _addr_ranges
+
 def create_system(options, full_system, system, piobus = None, dma_ports = [],
                   bootmem=None, cpus=None):
 
@@ -171,11 +189,34 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
     hnfs           = []
     snfs           = []
     mns            = []
-    has            = []
+    hAs            = []
     d2dnodes       = []
     dma_rni        = []
     io_rni         = []
     d2dbridgemap   = dict()
+
+    # Memory map
+    other_memories = []
+    if bootmem:
+        other_memories.append(bootmem)
+    if getattr(system, 'sram', None):
+        other_memories.append(getattr(system, 'sram', None))
+    on_chip_mem_ports = getattr(system, '_on_chip_mem_ports', None)
+    if on_chip_mem_ports:
+        other_memories.extend([p.simobj for p in on_chip_mem_ports])
+    
+    # System addr ranges
+    sysranges = [] + system.mem_ranges
+    for m in other_memories:
+        sysranges.append(m.range)
+    
+    # Die addr ranges
+    num_dies = options.num_dies
+    die_list = [i for i in range(num_dies)]
+    dieAddrRangeMap = createDieAddrRanges(options, 
+                        sysranges, 
+                        die_list)
+    
 
     # Create the networks object (1 network for each die)
     for src_die_id in range(options.num_dies) :
@@ -199,7 +240,8 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
                                  full_system,
                                  system,
                                  dma_ports,
-                                 bootmem,
+                                 dieAddrRangeMap,
+                                 sysranges,
                                  ruby,
                                  src_die_id)
             rnfs.extend(ret['rnfs'])
@@ -208,7 +250,7 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
             if 'mns' in ret:
                 if len(ret['mns']) > 0:
                     mns.extend(ret['mns'])
-            has.append(ret['ha'])
+            hAs.extend(ret['hAs'])
             d2dnodes.extend(ret['d2dnodes'])
             d2dbridgemap.update(ret['d2dbridgemap'])
             if 'dma_rni' in ret:
@@ -234,13 +276,18 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
         Network.init_network(options, network, InterfaceClass)
 
     # Make all the CHI controllers as children of system.ruby
-    ruby.rnfs     = rnfs
-    ruby.hnfs     = hnfs
-    ruby.snfs     = snfs
+    if len(rnfs) > 0 :
+        ruby.rnfs     = rnfs
+    if len(hnfs) > 0 :
+        ruby.hnfs     = hnfs
     if len(mns) > 0:
         ruby.mns      = mns
-    ruby.has      = has
-    ruby.d2dnodes = d2dnodes
+    if len(hAs) > 0:
+        ruby.hAs      = hAs
+    if len(d2dnodes) > 0:
+        ruby.d2dnodes = d2dnodes
+    if len(snfs) > 0:
+        ruby.snfs     = snfs
     if len(dma_rni) > 0:
         ruby.dma_rni  = dma_rni
     if len(io_rni) > 0:

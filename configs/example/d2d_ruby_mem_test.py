@@ -93,7 +93,8 @@ parser.add_argument('--max-outstanding-requests',default=1,type=int,help='Maximu
 parser.add_argument('--id-starter',default=0,type=int,help='Starter id of the migratory sharing patterns')
 parser.add_argument('--outstanding-req',default=100,type=int,help='Number of oustanding requests')
 parser.add_argument('--allow-infinite-SF-entries',default=True, type=ast.literal_eval, help="Allow infinite SnoopFilter entries.")
-parser.add_argument('--xor-addr-bits',default=1,type=int,help='Number of addr bits XORed to obtain the address masks')
+parser.add_argument('--xor-addr-bits',default=1,type=int,help='Number of addr bits XORed to obtain the address masks. For HNF')
+parser.add_argument('--xor-addr-bits-on-die',default=1,type=int,help='Number of addr bits XORed to obtain the address masks. For HA and SNF')
 parser.add_argument('--block-stride-bits',default=0,type=int,help='Block address strides, 2^(--block-stride-bits)')
 parser.add_argument('--randomize-acc',default=False,type=ast.literal_eval,help=f'Randomize access patters')
 parser.add_argument('--chi-data-width',default=16,type=int,help=f'CHI Controller data width (in bytes)')
@@ -307,6 +308,7 @@ else:
 
 # instantiate configuration
 m5.instantiate()
+sys.exit(-1)
 
 # simulate until program terminates
 exit_event = m5.simulate(args.abs_max_tick)

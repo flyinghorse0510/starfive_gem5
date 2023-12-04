@@ -77,6 +77,19 @@ def isSimObjectClass(*args, **kwargs):
     from . import SimObject
     return SimObject.isSimObjectClass(*args, **kwargs)
 
+def getOnePos(num):
+    """
+        The index of 
+        set bits in 
+        a binary string
+    """
+    bits = []
+    for i, c in enumerate(bin(num)[:1:-1], 1):
+        if c == '1':
+            bits.append(i-1)
+    bits.reverse()
+    return bits
+
 allParams = {}
 
 class MetaParamValue(type):
@@ -733,6 +746,8 @@ class Addr(CheckedInt):
             val = int(value)
         return "0x%x" % int(val)
 
+
+
 class AddrRange(ParamValue):
     cxx_type = 'AddrRange'
     addr_len = 64
@@ -741,6 +756,7 @@ class AddrRange(ParamValue):
         # Disable interleaving and hashing by default
         self.intlvBits = 0
         self.intlvMatch = 0
+        self.intlvHighBit = 0
         self.masks = []
 
         def handle_kwargs(self, kwargs):
@@ -769,6 +785,7 @@ class AddrRange(ParamValue):
                         raise TypeError("No interleave bits specified")
                     intlv_high_bit = int(kwargs.pop('intlvHighBit'))
                     xor_high_bit = 0
+                    self.intlvHighBit = intlv_high_bit
                     if 'xorHighBit' in kwargs:
                         xor_high_bit = int(kwargs.pop('xorHighBit'))
                     for i in range(0, self.intlvBits):
@@ -807,7 +824,17 @@ class AddrRange(ParamValue):
         return self.addr_len
     
     def setMasks(self,masks):
+        """
+            WARNING: when
+            `masks` is set 
+            can make the
+            computation of .size()
+            method illegal.
+        """
         self.masks = masks
+    
+    def getMasks(self):
+        return self.masks
     
     def setIntlvMatch(self,intlvMatch):
         self.intlvMatch = intlvMatch
@@ -815,16 +842,46 @@ class AddrRange(ParamValue):
     def setIntlvBits(self,intlvBits):
         self.intlvBits = intlvBits
     
+    def getIntlvBits(self):
+        return self.intlvBits
+    
+    def getIntlvHiBit(self):
+        return self.intlvHighBit
+    
+    def getIntlvLoBit(self):
+        return (self.intlvHighBit - self.intlvBits)
+    
+    def getStartAddr(self):
+        """
+            Warning: Not applicable
+            if mask bits are outside
+            (intlvHighBit, intlvHighBit-intlvBits]
+        """
+        return (self.intlvMatch << self.getIntlvLoBit())
+    
+    def getEndAddr(self):
+        """
+            Warning: Not applicable
+            if mask bits are outside
+            (intlvHighBit, intlvHighBit-intlvBits]
+        """
+        return ~(~(self.intlvMatch) << self.getIntlvLoBit())
+
+    def getIntlvMatch(self):
+        return self.intlvMatch
+    
     def __str__(self):
-        # return self.printMasks2()
         return self.printMasks1()
+    
+    def getOnPos1(self):
+        return [getOnePos(m) for m in self.masks]
 
     def printMasks1(self):
         if len(self.masks) == 0:
             return '%s:%s' % (self.start, self.end)
         else:
-            return '%s:%s:%s|%s' % (self.start, self.end, self.intlvMatch,
-                                    ':'.join(str(m) for m in self.masks))
+            return '%s:%s:%s|%s' % (hex(self.start), hex(self.end), self.intlvMatch,
+                                    ':'.join([str(m) for m in self.getOnPos1()]))
 
     def printMasks2(self):
         sel=['' for _ in range(len(self.masks))]
