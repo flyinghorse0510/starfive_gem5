@@ -71,11 +71,14 @@ AbstractController::AbstractController(const Params &p)
         // of this particular type.
         statistics::registerDumpCallback([this]() { collateStats(); });
     }
+    // inform("Ctor Machine:%s, addr_ranges:%s\n",name(),getAddrRangeStr());
 }
 
 void
 AbstractController::init()
 {
+    // inform("Machine:%s, addr_ranges:%s\n",name(),getAddrRangeStr());
+
     stats.delayHistogram.init(10);
     uint32_t size = Network::getNumberOfVirtualNetworks();
     for (uint32_t i = 0; i < size; i++) {
@@ -94,9 +97,6 @@ AbstractController::init()
     downstreamDestinations.resize();
     for (auto abs_cntrl : params().downstream_destinations) {
         MachineID mid = abs_cntrl->getMachineID();
-        // inform("Setting downstream: %s --> %s\n",MachineIDToString(getMachineID()).c_str(),MachineIDToString(mid).c_str());
-        // inform("Setting downstream: %s --> %s\n",name(),abs_cntrl->name());
-
         const AddrRangeList &ranges = abs_cntrl->getAddrRanges();
         for (const auto &addr_range : ranges) {
             auto i = downstreamAddrMap.intersects(addr_range);
@@ -110,6 +110,7 @@ AbstractController::init()
             entry[mid.getType()] = mid;
         }
         downstreamDestinations.add(mid);
+        // inform("Machine:%s, downstream:%s, addr_ranges: %s\n",name(),abs_cntrl->name(),abs_cntrl->getAddrRangeStr());
     }
     // Initialize the addr->upstream machine list.
     // We do not need to map address -> upstream machine,
@@ -123,7 +124,6 @@ AbstractController::init()
     haDestinations.resize();
     for (auto abs_cntrl : params().ha_destinations) {
         MachineID mid = abs_cntrl->getMachineID();
-        std::string addr_ranges_str;
         const AddrRangeList &ranges = abs_cntrl->getAddrRanges();
         for (const auto &addr_range : ranges) {
             auto it = haAddrMap.intersects(addr_range);
@@ -135,11 +135,18 @@ AbstractController::init()
                      "%s: %s mapped to multiple machines of the same type\n",
                      name(), addr_range.to_string());
             entry[mid.getType()] = mid;
-            addr_ranges_str += addr_range.to_string() + "|";
         }
         haDestinations.add(mid);
-        inform("Machine:%s, ha:%s, addr_ranges: %s\n",name(),abs_cntrl->name(),addr_ranges_str);
+        // inform("Machine:%s, ha:%s, addr_ranges: %s\n",name(),abs_cntrl->name(),abs_cntrl->getAddrRangeStr());
     }
+}
+
+std::string AbstractController::getAddrRangeStr() const {
+  std::string addr_ranges_str;
+  for (const auto &addr_range : addrRanges) {
+    addr_ranges_str += addr_range.to_string() + "|";
+  }
+  return addr_ranges_str;
 }
 
 void

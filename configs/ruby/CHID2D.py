@@ -124,7 +124,7 @@ def create_system(options,
     CHI_RNF                = chi_defs.CHI_RNF
     CHI_D2DNode            = chi_defs.CHI_D2DNode
     CHI_HA                 = chi_defs.CHI_HA
-    CHI_SNF_xDie           = chi_defs.CHI_SNF_xDie
+    CHI_SNF_MainMem        = chi_defs.CHI_SNF_MainMem
     CHI_HNF_Snoopable      = chi_defs.CHI_HNF_Snoopable
 
     # Distribution objects
@@ -132,11 +132,13 @@ def create_system(options,
     CHI_DieD2DDistribution = chi_defs.DieD2DDistribution
     CHI_DieSNFDistribution = chi_defs.DieSNFDistribution
     CHI_DieHNFDistribution = chi_defs.DieHNFDistribution
+    CHI_DieHADistribution  = chi_defs.DieHADistribution
 
     CHI_DieCPUDistribution.setup_die_map(options.num_dies)
     CHI_DieD2DDistribution.setup_die_map(options.num_dies)
     CHI_DieSNFDistribution.setup_die_map(options.num_dies)
     CHI_DieHNFDistribution.setup_die_map(options.num_dies)
+    CHI_DieHADistribution.setup_die_map(options.num_dies)
 
     # Declare caches and controller types used by the protocol
     # Notice tag and data accesses are not concurrent, so the a cache hit
@@ -257,7 +259,7 @@ def create_system(options,
     ret['d2dnodes']     = d2dnodes
     ret['d2dbridgemap'] = d2d_bridge_map
 
-    # Intantiate HA and SNF
+    # Intantiate HA
     """
         HAs and SNF are closely tied.
         In each die for every SNF, 
@@ -266,40 +268,39 @@ def create_system(options,
         do? Sound like its similar
         to what we are trying to achieve
     """
-    hAList = [haId for haId in range(options.num_dirs) if src_die_id == CHI_DieSNFDistribution.get_die_id(haId)]
+    hAList = [haId for haId in range(options.num_dirs) if src_die_id == CHI_DieHADistribution.get_die_id(haId)]
     die_addr_ranges = dieAddrRangeMap[src_die_id]
     CHI_HA.createHAAddrRanges(options,
                               die_addr_ranges,
                               system.cache_line_size.value,
                               src_die_id,
                               hAList)
-    haMap = dict([ (haId, CHI_HA(options,
-                   src_die_id,
-                   haId,
-                   ruby_system))
-            for haId in hAList ])
+    hAs = [CHI_HA(options,src_die_id,haId,ruby_system) for haId in hAList]
     ha_dests = []
-    hAs = []
-    snfs = []
-    for haId in hAList :
-        ha = haMap[haId]
+    hAaddrRangeMap = dict()
+    for ha in hAs:
         network_nodes.append(ha)
         assert(ha.getAllControllers() == ha.getNetworkSideControllers())
         ha_dests.extend(ha.getAllControllers())
         all_cntrls.extend(ha.getAllControllers())
-        hAs.append(ha)
-        
-        snf = CHI_SNF_xDie(options, 
-                          src_die_id,
-                          ruby_system,
-                          haId,
-                          ha.getHAAddrRanges())
+        hAaddrRangeMap[ha.getHAId()] = ha.getHAAddrRanges()
+    
+    # Intantiate SNF
+    snfs = [ CHI_SNF_MainMem(
+        options,
+        src_die_id,
+        ruby_system,
+        haId,
+        hAaddrRangeMap[haId],
+        None,
+        None) for haId in hAList ]
+    
+    for snf in snfs:
         assert(snf.getAllControllers() == snf.getNetworkSideControllers())
         network_nodes.append(snf)
         mem_cntrls.extend(snf.getAllControllers())
         all_cntrls.extend(snf.getAllControllers())
-        ha.connectSNFController(snf)
-        snfs.append(snf)
+
     ret['hAs']        = hAs
     ret['snfs']       = snfs
     ret['mem_cntrls'] = mem_cntrls
@@ -331,6 +332,10 @@ def create_system(options,
     # Assign downstream destinations (HNF --> {HA,D2D})
     for hnf in hnfs:
         hnf.setDownstream(ha_dests+d2d_dests)
+    
+    # Assign downstream destinations (HA --> SNF)
+    for ha in hAs:
+        ha.setDownstream(mem_cntrls)
 
     # Fwd incoming requests from (D2D --> HA)
     for d2d in d2dnodes:

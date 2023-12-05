@@ -50,6 +50,9 @@ class DieSNFDistribution(DieNodeDistribution):
 class DieHNFDistribution(DieNodeDistribution):
     pass
 
+class DieHADistribution(DieNodeDistribution):
+    pass
+
 class NoC_Params(CHI_config.NoC_Params):
     num_rows = 4
     num_cols = 4

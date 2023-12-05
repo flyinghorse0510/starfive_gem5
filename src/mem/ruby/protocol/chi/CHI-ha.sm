@@ -15,17 +15,6 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
     MessageBuffer * rspOut,   network="To", virtual_network="2", vnet_type="none";
     MessageBuffer * datOut,   network="To", virtual_network="3", vnet_type="response";
 
-    // CHI channels to the SNF side, does not flow the RubyNetwork
-    MessageBuffer * snf_reqIn;
-    MessageBuffer * snf_snpIn;
-    MessageBuffer * snf_rspIn;
-    MessageBuffer * snf_datIn;
-
-    MessageBuffer * snf_reqOut;
-    MessageBuffer * snf_snpOut;
-    MessageBuffer * snf_rspOut;
-    MessageBuffer * snf_datOut;
-
     // Internal queue for accepted requests
     MessageBuffer * reqRdy;
 

@@ -460,6 +460,8 @@ class AbstractController : public ClockedObject, public Consumer
         std::vector<statistics::Histogram *> delayVCHistogram;
     } stats;
 
+    std::string getAddrRangeStr() const;
+
 };
 
 } // namespace ruby

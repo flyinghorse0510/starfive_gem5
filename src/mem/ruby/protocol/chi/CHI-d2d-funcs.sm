@@ -8,3 +8,114 @@ void unset_tbe();
 Addr getD2DTxnId(int tbeStorSlot);
 MachineID mapAddressToDownstreamMachine(Addr addr);
 MachineID getHANodeIdOnDie(Addr addr);
+
+Event frm_nw_dataToEvent(CHIDataType type) {
+    if ((type == CHIDataType:CompData_I ) ||
+        (type == CHIDataType:CompData_UC) ||
+        (type == CHIDataType:CompData_SC) ||
+        (type == CHIDataType:CompData_UD_PD) ||
+        (type == CHIDataType:CompData_SD_PD) ||
+        (type == CHIDataType:DataSepResp_UC)) {
+        return Event:Frm_NW_ReadData;
+    }
+    else if ((type == CHIDataType:CBWrData_I) ||
+             (type == CHIDataType:CBWrData_UC)||
+             (type == CHIDataType:CBWrData_SC) ||
+             (type == CHIDataType:CBWrData_UD_PD) ||
+             (type == CHIDataType:CBWrData_SD_PD) ||
+            (type == CHIDataType:NCBWrData)) {
+        return Event:Frm_NW_WriteData;
+    }
+    else if ((type == CHIDataType:SnpRespData_I_PD) ||
+             (type == CHIDataType:SnpRespData_I) ||
+             (type == CHIDataType:SnpRespData_SC_PD) ||
+             (type == CHIDataType:SnpRespData_SC) ||
+             (type == CHIDataType:SnpRespData_SD) ||
+             (type == CHIDataType:SnpRespData_UC) ||
+             (type == CHIDataType:SnpRespData_UD) ||
+             (type == CHIDataType:SnpRespData_SC_Fwded_SC) ||
+             (type == CHIDataType:SnpRespData_SC_Fwded_SD_PD) ||
+             (type == CHIDataType:SnpRespData_SC_PD_Fwded_SC) ||
+             (type == CHIDataType:SnpRespData_I_Fwded_SD_PD) ||
+             (type == CHIDataType:SnpRespData_I_PD_Fwded_SC) ||
+             (type == CHIDataType:SnpRespData_I_Fwded_SC)) {
+        return Event:Frm_NW_SnpData;
+    }
+    else {
+        error("Invalid CHIDataType");
+    }
+}
+
+Event frm_nw_rspToEvent(CHIResponseType type) {
+    if ((type == CHIResponseType:Comp_I) ||
+        (type == CHIResponseType:Comp_UC) ||
+        (type == CHIResponseType:Comp_SC) ||
+        (type == CHIResponseType:Comp)) {
+        return Event:Frm_NW_Comp;
+    }
+    else if (type == CHIResponseType:CompDBIDResp) {
+        return Event:Frm_NW_CompDBIDResp;
+    }
+    else if (type == CHIResponseType:DBIDResp) {
+        return Event:Frm_NW_DBIDResp;
+    }
+    else if (type == CHIResponseType:CompAck) {
+        return Event:Frm_NW_CompAck;
+    }
+    else if ((type == CHIResponseType:SnpResp_I) ||
+             (type == CHIResponseType:SnpResp_I_Fwded_UC) ||
+             (type == CHIResponseType:SnpResp_I_Fwded_UD_PD) ||
+             (type == CHIResponseType:SnpResp_SC) ||
+             (type == CHIResponseType:SnpResp_SC_Fwded_SC) ||
+             (type == CHIResponseType:SnpResp_SC_Fwded_SD_PD) ||
+             (type == CHIResponseType:SnpResp_SD_Fwded_I) ||
+             (type == CHIResponseType:SnpResp_SC_Fwded_I) ||
+             (type == CHIResponseType:SnpResp_UD_Fwded_I) ||
+             (type == CHIResponseType:SnpResp_UC_Fwded_I)) {
+        // Check if you want to support Fwding snoops
+        return Event:Frm_NW_SnpResp;
+    }
+    else if (type == CHIResponseType:RetryAck) {
+        return Event:Frm_NW_RetryAck;
+    }
+    else if (type == CHIResponseType:PCrdGrant) {
+        return Event:Frm_NW_PCrdGrant;
+    }
+    else {
+        error("Invalid CHIResponseType");
+    }
+}
+
+Event frm_d2d_rspToEvent(CHIResponseType type) {
+    Event evt := frm_nw_rspToEvent(type);
+    if (evt == Event:Frm_NW_Comp) {
+        return Event:Frm_d2d_Comp;
+    } else if (evt == Event:Frm_NW_CompDBIDResp) {
+        return Event:Frm_NW_CompDBIDResp;
+    } else if (evt == Event:Frm_NW_DBIDResp) {
+        return Event:Frm_d2d_DBIDResp;
+    } else if (evt == Event:Frm_NW_CompAck) {
+        return Event:Frm_d2d_CompAck;
+    } else if (evt == Event:Frm_NW_SnpResp) {
+        return Event:Frm_d2d_SnpResp;
+    } else if (evt == Event:Frm_NW_RetryAck)  {
+        return Event:Frm_d2d_RetryAck;
+    } else if (evt == Event:Frm_NW_PCrdGrant) {
+        return Event:Frm_d2d_PCrdGrant;
+    }
+    else {
+        error("Invalid CHIResponseType");
+    }
+}
+
+Event frm_d2d_dataToEvent(CHIDataType type) {
+    // Shortcut to absorb the logic for Rd/Wr/Snp data types
+    Event evt := frm_nw_dataToEvent(type);
+    if (evt == Event:Frm_NW_ReadData) {
+        return Event:Frm_d2d_ReadData;
+    } else if (evt == Event:Frm_NW_WriteData) {
+        return Event:Frm_d2d_WriteData;
+    } else if (evt == Event:Frm_NW_SnpData) {
+        return Event:Frm_d2d_SnpData;
+    }
+}

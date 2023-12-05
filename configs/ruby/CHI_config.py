@@ -582,7 +582,6 @@ class CHI_HNF(CHI_Node):
     '''
 
     class NoC_Params(CHI_Node.NoC_Params):
-        '''HNFs may also define the 'pairing' parameter to allow pairing'''
         pairing = None
 
     _addr_ranges = {}
@@ -663,7 +662,6 @@ class CHI_MN(CHI_Node):
     '''
 
     class NoC_Params(CHI_Node.NoC_Params):
-        '''MNs may also define the 'pairing' parameter to allow pairing'''
         pairing = None
 
 
@@ -761,6 +759,7 @@ class CHI_SNF_MainMem(CHI_SNF_Base):
                  options, 
                  src_die_id,
                  ruby_system,
+                 haId,
                  addr_ranges,
                  parent,
                  mem_ctrl = None):
@@ -1066,16 +1065,6 @@ class CHI_HA(CHI_Node):
         # Set the SimObject parents
         self.cntrl = self._cntrl
     
-    def connectSNFController(self, snf):
-        self._cntrl.snf_reqOut.out_port = snf._cntrl.ha_reqIn.in_port
-        self._cntrl.snf_snpOut.out_port = snf._cntrl.ha_snpIn.in_port
-        self._cntrl.snf_rspOut.out_port = snf._cntrl.ha_rspIn.in_port
-        self._cntrl.snf_datOut.out_port = snf._cntrl.ha_datIn.in_port
-        self._cntrl.snf_reqOut.in_port = snf._cntrl.ha_reqIn.out_port
-        self._cntrl.snf_snpOut.in_port = snf._cntrl.ha_snpIn.out_port
-        self._cntrl.snf_rspOut.in_port = snf._cntrl.ha_rspIn.out_port
-        self._cntrl.snf_datOut.in_port = snf._cntrl.ha_datIn.out_port
-
     def getAllControllers(self):
         return [self._cntrl]
 
@@ -1104,7 +1093,6 @@ class CHI_HNFController_Snoopable(CHI_HNFController):
 class CHI_HNF_Snoopable(CHI_Node):
 
     class NoC_Params(CHI_Node.NoC_Params):
-        '''HNFs may also define the 'pairing' parameter to allow pairing'''
         pairing = None
     
     _addr_ranges = {}

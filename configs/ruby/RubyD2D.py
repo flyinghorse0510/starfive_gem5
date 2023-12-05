@@ -66,15 +66,17 @@ def define_options(parser):
     eval("%s.define_options(parser)" % protocol)
     Network.define_options(parser)
 
-def setup_memory_controllers(system, ruby, mem_cntrls, options):
-    if (options.numa_high_bit):
-        block_size_bits = options.numa_high_bit + 1 - \
-                          int(math.log(options.num_dirs, 2))
-        ruby.block_size_bytes = 2 ** (block_size_bits)
-    else:
-        ruby.block_size_bytes = options.cacheline_size
-
-    ruby.memory_size_bits = 48
+def setup_memory_controllers_d2d(system,
+                                 ruby,
+                                 mem_cntrls,
+                                 die_addr_ranges,
+                                 intlv_bits,
+                                 options):
+    """
+    Move outside
+    -------------
+    
+    """
 
     index = 0
     mem_ctrls = []
@@ -94,17 +96,17 @@ def setup_memory_controllers(system, ruby, mem_cntrls, options):
     # contiguous address range as of now.
     for dir_cntrl in mem_cntrls:
         crossbar = None
-        if len(system.mem_ranges) > 1:
+        if len(die_addr_ranges) > 1:
             crossbar = IOXBar()
             crossbars.append(crossbar)
             dir_cntrl.memory_out_port = crossbar.cpu_side_ports
 
         dir_ranges = []
-        for r in system.mem_ranges:
+        for r in die_addr_ranges:
             mem_type = ObjectList.mem_list.get(options.mem_type)
 
             dram_intf = MemConfig.create_mem_intf(mem_type, r, index,
-                int(math.log(options.num_dirs, 2)),
+                intlv_bits,
                 intlv_size, options.xor_low_bit)
             if issubclass(mem_type, DRAMInterface):
                 mem_ctrl = m5.objects.MemCtrl(dram = dram_intf)
@@ -139,11 +141,11 @@ def setup_memory_controllers(system, ruby, mem_cntrls, options):
 
         index += 1
         dir_cntrl.addr_ranges = dir_ranges
-
-    system.mem_ctrls = mem_ctrls
-
-    if len(crossbars) > 0:
-        ruby.crossbars = crossbars
+    
+    return {
+        'mem_ctrls': mem_ctrls,
+        'crossbars': crossbars
+    }
 
 def create_topology(controllers, options, net_idx):
     """ Called from create_system in configs/ruby/<protocol>.py
@@ -187,6 +189,11 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
     # Generate pseudo filesystem
     FileSystemConfig.config_filesystem(system, options)
 
+    """
+        These SimObjects need to
+        children of root SimObject
+        across all dies.
+    """
     networks       = []
     mem_cntrls     = []
     cpu_sequencers = []
@@ -199,6 +206,17 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
     dma_rni        = []
     io_rni         = []
     d2dbridgemap   = dict()
+    mem_ctrls      = []
+    crossbars      = []
+
+    # Block sizes and NUMA bits
+    if (options.numa_high_bit):
+        ruby.block_size_bits = options.numa_high_bit + 1 - \
+                          int(math.log(options.num_dirs, 2))
+        ruby.block_size_bytes = 2 ** (block_size_bits)
+    else:
+        ruby.block_size_bytes = options.cacheline_size
+    ruby.memory_size_bits = 48
 
     # Memory map
     other_memories = []
@@ -262,7 +280,6 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
                 dma_rni.extend(ret['dma_rni'])
             if 'io_rni' in ret:
                 io_rni.extend(ret['io_rni'])
-            mem_cntrls.extend(ret['mem_cntrls'])
             cpu_sequencers.extend(ret['cpu_sequencers'])
         except:
             print("Error: could not create sytem for ruby protocol %s" % protocol)
@@ -279,6 +296,21 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
 
         # Initialize network based on topology
         Network.init_network(options, network, InterfaceClass)
+
+        # Setup the memory controllers
+        die_addr_ranges = dieAddrRangeMap[src_die_id]
+        intlv_bits = int(math.log(len(ret['snfs']), 2))
+        retMemSetup = setup_memory_controllers_d2d(system, 
+                                                   ruby, 
+                                                   ret['mem_cntrls'],
+                                                   die_addr_ranges,
+                                                   intlv_bits,
+                                                   options)
+        
+        # Append the memory controllers and xbars
+        mem_ctrls.extend(retMemSetup['mem_ctrls'])
+        crossbars.extend(retMemSetup['crossbars'])
+
 
     # Make all the CHI controllers as children of system.ruby
     if len(rnfs) > 0 :
@@ -316,7 +348,11 @@ def create_system(options, full_system, system, piobus = None, dma_ports = [],
     # Connect the system port for loading of binaries etc
     system.system_port = system.sys_port_proxy.in_ports
 
-    setup_memory_controllers(system, ruby, mem_cntrls, options)
+    # Connect the memory controllers to system heirarchy
+    assert(len(mem_ctrls) > 0)
+    system.mem_ctrls = mem_ctrls
+    if len(crossbars) > 0:
+        ruby.crossbars = crossbars
 
     # Connect the cpu sequencers and the piobus
     if piobus != None:
