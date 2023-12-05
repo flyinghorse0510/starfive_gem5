@@ -56,7 +56,7 @@ if [ "$GATETEST" != "" ]; then
     LoadFactor=5
     NUM_DIE=2
     NUM_LLC=$(( 1*NUM_DIE ))
-    NUM_MEM=$(( 1*NUM_DIE ))
+    NUM_MEM=$(( 2*NUM_DIE ))
     NUM_CPU=$(( 1*NUM_DIE ))
     NUM_DDR_XP=2
     NUM_DDR_Side=1
@@ -74,9 +74,8 @@ if [ "$GATETEST" != "" ]; then
     MultiCoreAddrMode=True
     NETWORK="simple"
     IDEAL_SNOOP_FILTER=False
-    DEBUGFLAGS=SeqMemLatTest,RubyGenerated,RubyCHIDebugStr5
+    DEBUGFLAGS=SeqMemLatTest,RubyGenerated,RubyCHIDebugStr5,RubyD2DStr5
     OUTPUT_PREFIX="D2DTest_${NETWORK}"
-
     WKSETLIST=(1024)
     NUM_CPU_SET=(4)
     SNOOP_FILTER_SIZE_CONFIG_SET=(128)
@@ -142,11 +141,12 @@ if [ "$GATETEST" != "" ]; then
                               --num-snoopfilter-entries=${SNOOP_FILTER_SIZE} \
                               --num-snoopfilter-assoc=${SNOOP_FILTER_ASSOC} \
                               --allow-infinite-SF-entries=${IDEAL_SNOOP_FILTER} \
-                              --xor-addr-bits=${XOR_ADDR_BITS} \
+                              --xor-addr-bits-hnf=${XOR_ADDR_BITS} \
                               --block-stride-bits=${BLOCK_STRIDE_BITS} \
                               --randomize-acc=${RANDOMIZE_ACC} \
                               --num-producers=1 \
-                              --num-dies=${NUM_DIE}
+                              --num-dies=${NUM_DIE} \
+                              --outstanding-req=1
                             #   > ${OUTPUT_DIR}/cmd.log 2>&1 &
                         done
                     done

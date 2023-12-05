@@ -244,6 +244,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     in_port(reqInPort, CHIRequestMsg, reqIn, rank=1) {
         if (reqInPort.isReady(clockEdge())) {
             peek(reqInPort, CHIRequestMsg) {
+                DPRINTF(RubyCHIDebugStr5,"NW-->D2D incoming %s\n",in_msg);
                 trigger(Event:AllocTxReqEntry, in_msg.addr, getTxReqMapEntry(in_msg.addr));
             }
         }
@@ -262,6 +263,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         if (bwReqInPort.isReady(clockEdge())) {
             peek(bwReqInPort, CHIRequestMsg) {
                 // TODO: Think carefully how are you going to access the RxRemap Table
+                DPRINTF(RubyCHIDebugStr5,"D2D-->NW incoming %s\n",in_msg);
                 trigger(Event:AllocRxReqEntry, in_msg.addr, getRxReqMapEntry(in_msg.addr));
             }
         }
@@ -305,7 +307,6 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
                 out_msg.fwdRequestor  := machineID;
                 out_msg.Destination.add(getHANodeIdOnDie(tbe.addr));
                 DPRINTF(RubyD2DStr5,"out_msg=%s\n",out_msg);
-
             }
         }
         bwReqInPort.dequeue(clockEdge());

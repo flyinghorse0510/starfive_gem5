@@ -281,8 +281,8 @@ PerfectSwitch::operateMessageBuffer(int in_port, MessageBuffer *buffer, int vnet
 
             // Enqeue msg
             DPRINTF(RubyNetwork, "Enqueuing net msg from "
-                    "inport[%d][%d] to outport [%d][%d].\n",
-                    buffer->getIncomingLink(), vnet, outgoing, vnet);
+                    "inport[%d][%d] to outport [%d][%d] (%s).\n",
+                    buffer->getIncomingLink(), vnet, outgoing, vnet, out_port.buffers[vnet]->name());
 
 
             DPRINTF(SimpleNetworkDebug, "VNET_%d Incoming_%d Outgoing_%d Msg_%s Pending_%d\n",

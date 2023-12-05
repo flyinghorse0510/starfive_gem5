@@ -978,7 +978,6 @@ class CHI_HA(CHI_Node):
         Cache controller.
     """
     class NoC_Params(CHI_Node.NoC_Params):
-        '''HNFs may also define the 'pairing' parameter to allow pairing'''
         pairing = None
 
     _addr_ranges = {}
@@ -1021,18 +1020,23 @@ class CHI_HA(CHI_Node):
             addr_range_str = [a.__str__() for a in ranges]
             print(f'HA@{(src_die_id,haId)}, addr_range:{addr_range_str}')
 
-    def getAddrRanges(self, haId):
+    def getHAAddrRanges(self):
+        haId = self._haId
         assert(len(self._addr_ranges) != 0)
         addr_ranges,_ = self._addr_ranges[haId]
         return addr_ranges
 
+    def getHAId(self):
+        return self._haId
+    
     def __init__(self, 
                  options,
                  srd_die_id,
                  haId,
                  ruby_system):
         super(CHI_HA, self).__init__(ruby_system, srd_die_id)
-        addr_ranges = self.getAddrRanges(haId)
+        self._haId = haId
+        addr_ranges = self.getHAAddrRanges()
         self._cntrl = HA_Controller(
             version = Versions.getVersion(HA_Controller),
             ruby_system = ruby_system,
@@ -1071,12 +1075,6 @@ class CHI_HA(CHI_Node):
         self._cntrl.snf_snpOut.in_port = snf._cntrl.ha_snpIn.out_port
         self._cntrl.snf_rspOut.in_port = snf._cntrl.ha_rspIn.out_port
         self._cntrl.snf_datOut.in_port = snf._cntrl.ha_datIn.out_port
-
-    def getSNF(self):
-        return self.snf
-    
-    def getMemControllers(self):
-        return [self._snf._cntrl]
 
     def getAllControllers(self):
         return [self._cntrl]

@@ -44,6 +44,7 @@
 
 #include "base/random.hh"
 #include "mem/ruby/network/simple/Switch.hh"
+#include "debug/RubyD2DStr5.hh"
 
 namespace gem5
 {
@@ -109,9 +110,12 @@ WeightBased::findRoute(const Message &msg,
                        std::vector<RouteInfo> &out_links) const
 {
     NetDest msg_dsts = msg.getDestination();
+    // DPRINTF(RubyD2DStr5,"Incoming msg_dsts = %s\n",msg_dsts);
     assert(out_links.size() == 0);
     for (auto &link : m_links) {
         const NetDest &dst = link->m_routing_entry;
+        DPRINTF(RubyD2DStr5,"Checking link(%s) = %s\n",link->m_link_id,dst);
+
         if (msg_dsts.intersectionIsNotEmpty(dst)) {
             // Need to remember which destinations need this message in
             // another vector.  This Set is the intersection of the

@@ -139,7 +139,11 @@ class D2DBridge : public ClockedObject, public Consumer {
 
         void wakeup();
 
-        void print(std::ostream& out) const {};
+        void print(std::ostream& out) const {
+            out << "[D2DBridge("
+                << m_src_die_id << ","
+                << m_dst_die_id << ")]";
+        };
 
     private:
         static int MAX_VNETS;

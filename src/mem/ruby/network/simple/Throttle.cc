@@ -197,6 +197,7 @@ Throttle::operateVnet(int vnet, int channel, int &total_bw_remaining,
                     m_ruby_system->curCycle());
 
             // Move the message
+            DPRINTF(RubyNetwork, "Deq from: %s, Enq to: %s\n",in->name(),out->name());
             in->dequeue(current_time);
             out->enqueue(msg_ptr, current_time,
                          m_switch->cyclesToTicks(m_link_latency));

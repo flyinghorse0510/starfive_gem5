@@ -184,7 +184,6 @@ def create_system(options,
 
     cpu_sequencers = []
     mem_cntrls     = []
-    mem_dests      = []
     network_nodes  = []
     hnf_dests      = []
     all_cntrls     = []
@@ -255,10 +254,10 @@ def create_system(options,
         d2d_dests.extend(d2d.getAllControllers())
         d2d_bridge_map[d2d.getSrcDstPair()] = d2d.getD2DBridge()
 
-    ret['d2dnodes'] = d2dnodes
+    ret['d2dnodes']     = d2dnodes
     ret['d2dbridgemap'] = d2d_bridge_map
 
-    # Intantiate HA
+    # Intantiate HA and SNF
     """
         HAs and SNF are closely tied.
         In each die for every SNF, 
@@ -280,27 +279,28 @@ def create_system(options,
                    ruby_system))
             for haId in hAList ])
     ha_dests = []
-    for ha in haMap.values() :
+    hAs = []
+    snfs = []
+    for haId in hAList :
+        ha = haMap[haId]
         network_nodes.append(ha)
+        assert(ha.getAllControllers() == ha.getNetworkSideControllers())
         ha_dests.extend(ha.getAllControllers())
         all_cntrls.extend(ha.getAllControllers())
-    ret['hAs'] = list(haMap.values())
-    
-    # Intantiate SNF
-    snfs = [ CHI_SNF_xDie(options, 
+        hAs.append(ha)
+        
+        snf = CHI_SNF_xDie(options, 
                           src_die_id,
                           ruby_system,
                           haId,
-                          hA.getAddrRanges(haId))
-            for haId,hA in haMap.items() ]
-    for snf in snfs:
+                          ha.getHAAddrRanges())
         assert(snf.getAllControllers() == snf.getNetworkSideControllers())
         network_nodes.append(snf)
         mem_cntrls.extend(snf.getAllControllers())
         all_cntrls.extend(snf.getAllControllers())
-        assocHa = haMap.get(snf.getHaId(),None)
-        assert(assocHa is not None)
-        assocHa.connectSNFController(snf)
+        ha.connectSNFController(snf)
+        snfs.append(snf)
+    ret['hAs']        = hAs
     ret['snfs']       = snfs
     ret['mem_cntrls'] = mem_cntrls
 
@@ -332,12 +332,9 @@ def create_system(options,
     for hnf in hnfs:
         hnf.setDownstream(ha_dests+d2d_dests)
 
-    # Assign downstream destinations (HA --> SNF)
-    # ha.setDownstream(mem_dests)
-
     # Fwd incoming requests from (D2D --> HA)
     for d2d in d2dnodes:
-        d2d.setHADestination(ha.getNetworkSideControllers())
+        d2d.setHADestination(ha_dests)
 
     # Setup data message size for all controllers
     for cntrl in all_cntrls:

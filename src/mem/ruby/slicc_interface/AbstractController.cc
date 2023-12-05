@@ -95,7 +95,7 @@ AbstractController::init()
     for (auto abs_cntrl : params().downstream_destinations) {
         MachineID mid = abs_cntrl->getMachineID();
         // inform("Setting downstream: %s --> %s\n",MachineIDToString(getMachineID()).c_str(),MachineIDToString(mid).c_str());
-        inform("Setting downstream: %s --> %s\n",name(),abs_cntrl->name());
+        // inform("Setting downstream: %s --> %s\n",name(),abs_cntrl->name());
 
         const AddrRangeList &ranges = abs_cntrl->getAddrRanges();
         for (const auto &addr_range : ranges) {
@@ -123,6 +123,7 @@ AbstractController::init()
     haDestinations.resize();
     for (auto abs_cntrl : params().ha_destinations) {
         MachineID mid = abs_cntrl->getMachineID();
+        std::string addr_ranges_str;
         const AddrRangeList &ranges = abs_cntrl->getAddrRanges();
         for (const auto &addr_range : ranges) {
             auto it = haAddrMap.intersects(addr_range);
@@ -134,10 +135,11 @@ AbstractController::init()
                      "%s: %s mapped to multiple machines of the same type\n",
                      name(), addr_range.to_string());
             entry[mid.getType()] = mid;
+            addr_ranges_str += addr_range.to_string() + "|";
         }
         haDestinations.add(mid);
+        inform("Machine:%s, ha:%s, addr_ranges: %s\n",name(),abs_cntrl->name(),addr_ranges_str);
     }
-    
 }
 
 void
@@ -484,7 +486,6 @@ const
     fatal_if(entry.size() > 1,
       "%s: address %x mapped to multiple machine types.\n", name(), addr);
     return entry.begin()->second;
-    
 }
 
 bool
