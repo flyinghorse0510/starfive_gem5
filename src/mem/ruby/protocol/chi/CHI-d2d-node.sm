@@ -528,8 +528,15 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     }
 
     action(Fwd_CompRspToNW, desc="") {
-        DPRINTF(RubyCHIDebugStr5, "Action not impl\n");
-        assert(false);
+        assert(is_valid(tbe));
+        peek(bwRspInPort, CHIResponseMsg) {
+            enqueue(network_rspOutPort, CHIResponseMsg, lat_rsp_bridge_2_nw) {
+                out_msg := in_msg;
+                out_msg.responder := machineID;
+                out_msg.Destination.add(tbe.o_src_id);
+            }
+        }
+        bwRspInPort.dequeue(clockEdge());
     }
 
     action(Fwd_CompAckRspToNW, desc="") {
@@ -571,6 +578,16 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         triggerInPort.dequeue(clockEdge());
     }
 
+    action(Fwd_CompToBridge, desc="Fwd rsp to D2D Bridge") {
+        peek(rspInPort, CHIResponseMsg) {
+            enqueue(bridge_rspOutPort, CHIResponseMsg, lat_rsp_nw_2_bridge) {
+                out_msg := in_msg;
+                out_msg.Destination.remove(machineID);
+            }
+        }
+        rspInPort.dequeue(clockEdge());
+    }
+
     ////////////////////////////////////////////////////////////////////////////
     // Transitions
     ////////////////////////////////////////////////////////////////////////////
@@ -593,6 +610,10 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
 
     transition(busy, FwdReqMsg) {
         Fwd_ReqToBridge;
+    }
+
+    transition(busy, Frm_NW_Comp) {
+        Fwd_CompToBridge;
     }
 
     transition(busy, Frm_NW_CompAck) {
