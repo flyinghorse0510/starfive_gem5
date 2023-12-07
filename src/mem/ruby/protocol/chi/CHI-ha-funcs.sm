@@ -603,7 +603,7 @@ State makeFinalState(TBE tbe, DirEntry dir_entry) {
 State getNextState(Addr address) {
   TBE tbe := getCurrentActiveTBE(address);
   assert(is_valid(tbe));
-  bool isFinal := (!tbe.evicting_addr_valid && (tbe.pendAction == Event:Final)) || (tbe.evicting_addr_valid && (tbe.pendAction == Event:RestartOriginalReq));
+  bool isFinal := !tbe.evicting_addr_valid && (tbe.pendAction == Event:Final);
   assert(isFinal);
   tbe.finalState := makeFinalState(tbe, getDirEntry(address));
   assert(tbe.finalState != State:null);

@@ -22,7 +22,6 @@ transition(I, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
 transition({RSC,RUSC}, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadShared_HitUpstream_NoOwner;
-  // Profile_Miss;
   Pop_ReqRdyQueue;
   ProcessNextState;
 }
@@ -30,7 +29,6 @@ transition({RSC,RUSC}, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
 transition({RU,RSD,RUSD}, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
   Initiate_Request;
   Initiate_ReadShared_HitUpstream;
-  // Profile_Miss;
   Pop_ReqRdyQueue;
   ProcessNextState;
 }
@@ -108,7 +106,6 @@ transition({BUSY_BLKD,BUSY_INTR}, {CompData_UC},
   Receive_RespSepDataFromCompData;
   Receive_ReqDataResp;
   UpdateDataState_FromReqDataResp;
-  //Callback_Miss;
   Profile_OutgoingEnd_DataResp;
   Pop_DataInQueue;
   ProcessNextState;
@@ -132,4 +129,49 @@ transition({BUSY_BLKD,BUSY_INTR}, Final, *) {
   Pop_TriggerQueue;
   Finalize_UpdateDirectoryFromTBE;
   Finalize_DeallocateRequest;
+}
+
+// CleanUnique
+
+transition({I, RU, RSC, RSD, RUSD, RUSC}, CleanUnique, BUSY_BLKD) {
+  Initiate_Request;
+  Initiate_CleanUnique;
+  Pop_ReqRdyQueue;
+  ProcessNextState;
+}
+
+transition(BUSY_BLKD, FinishCleanUnique) {
+  Pop_TriggerQueue;
+  Finish_CleanUnique;
+  ProcessNextState_ClearPending;
+}
+
+transition(BUSY_BLKD, SendSnpCleanInvalidNoReq) {
+  Pop_TriggerQueue;
+  Send_SnpCleanInvalid_NoReq;
+  ProcessNextState_ClearPending;
+}
+
+transition(BUSY_BLKD, SendCompUCRespStale) {
+  Pop_TriggerQueue;
+  Send_CompUC_Stale;
+  ProcessNextState_ClearPending;
+}
+
+transition(BUSY_BLKD, SendCompUCResp) {
+  Pop_TriggerQueue;
+  Send_CompUC;
+  ProcessNextState_ClearPending;
+}
+
+transition(BUSY_BLKD, MaintainCoherence) {
+  Pop_TriggerQueue;
+  Initiate_MaintainCoherence;
+  ProcessNextState_ClearPending;
+}
+
+transition(BUSY_BLKD, SendWBData) {
+  Pop_TriggerQueue;
+  Send_WBData;
+  ProcessNextState_ClearPending;
 }

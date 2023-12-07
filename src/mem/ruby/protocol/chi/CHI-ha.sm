@@ -66,9 +66,6 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
 
     // Controls cache clusivity for different request types.
     // set all alloc_on* to false to completelly disable caching
-    bool alloc_on_readshared := "False"; //false; //will set all the variables to false
-    bool alloc_on_readunique := "False";
-    bool alloc_on_readonce := "False";
     bool alloc_on_writeback := "False";
     bool alloc_on_seq_acc := "False";
     bool alloc_on_seq_line_write := "False";
@@ -81,11 +78,7 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
     // If the responder has the line in UC or UD state, propagate this state
     // on a ReadShared. Notice data won't be deallocated if dealloc_on_unique is
     // set
-    bool fwd_unique_on_readshared := "False"; //false; //"False";
-
- 
-    // Why die is this controller a part of?
-    int dieId := 0;
+    bool fwd_unique_on_readshared := "False";
 
 {
     ////////////////////////////////////////////////////////////////////////////
@@ -121,16 +114,7 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
     enumeration(Event) {
         AllocRequest,           desc="Allocates a TBE for a request. Triggers a retry if table is full";
         AllocRequestWithCredit, desc="Allocates a TBE for a request. Always succeeds.";
-
-
         AllocSnoop,             desc="Allocates a TBE for a snoop. Stalls snoop if table is full";
-
-        // SnoopFilter miss related events
-        SF_Eviction,            desc="Snoop Filter Eviction";
-        AllocSFEntry,           desc="Allocate a Dir Entry";
-        RestartOriginalReq,     desc="Restart the original request after the conflicting SF entry has been handled";
-        InitiateSFReplWB,       desc="Initiate WB for the dirty cache line upon SF repl";
-
 
         SendCompAck,          desc="Send CompAck";
 
@@ -139,8 +123,7 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
         WaitCompAck,   desc="Wait for CompAck";
         SendCompData,  desc="Send CompData upstream";
 
-
-       // Events triggered by snoops in the rdy queue
+        // Events triggered by snoops in the rdy queue
         // See CHIRequestType in CHi-msg.sm for descriptions
         ReadShared,                  desc="";
         ReadNotSharedDirty,          desc="";
@@ -177,9 +160,21 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
         // SnpNotSharedDirty are sent instead of SnpShared for ReadNotSharedDirty
         SendSnpShared,            desc="Send a SnpShared/SnpNotSharedDirty to sharer in UC,UD, or SD state";
         SendSnpOnce,              desc="Send a SnpOnce to a sharer";
+        SendSnpCleanInvalidNoReq, desc="Send a SnpCleanInvalid to all sharers except requestor";
+
+        // Misc triggers
+        FinishCleanUnique, desc="Sends acks and perform any writeback after a CleanUnique";
+        MaintainCoherence, desc="Queues a WriteBack or Evict before droping the only valid copy of the block";
+
+        SendCompUCRespStale, desc="Ack stale CleanUnique with Comp_UC";
+        SendCompUCResp, desc="Ack CleanUnique with Comp_UC";
 
         // Dataless requests
         SendCompIResp,  desc="Ack Evict with Comp_I";
+
+        // Send a write request downstream.
+        SendWriteNoSnp,            desc="Send a WriteNoSnp for a full line";
+        SendWBData,                desc="Send writeback data";
 
         // Events triggered by incoming response messages
         // See CHIResponseType in CHi-msg.sm for descriptions
@@ -597,7 +592,7 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
     }
   }
 
-bool rspInPort_rsc_stall_handler() {
+  bool rspInPort_rsc_stall_handler() {
    error("rspInPort must never stall\n");
    return false;
  }
@@ -612,13 +607,13 @@ bool rspInPort_rsc_stall_handler() {
     }
   }
 
- void wakeupPendingReqs(TBE tbe) {
-   if (tbe.wakeup_pending_req) {
-     Addr addr := tbe.addr;
-     wakeup_port(reqRdyPort, addr);
-     tbe.wakeup_pending_req := false;
-   }
- }
+  void wakeupPendingReqs(TBE tbe) {
+    if (tbe.wakeup_pending_req) {
+      Addr addr := tbe.addr;
+      wakeup_port(reqRdyPort, addr);
+      tbe.wakeup_pending_req := false;
+    }
+  }
 
 
   // Data
