@@ -257,7 +257,6 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         assert(storRxReqMapTable.areNSlotsAvailable(1));
 
         Addr addr          := in_msg.addr;
-        int tbeStorSlot    := storRxReqMapTable.addEntryToNewSlot();
         
         RxReqMapTable.allocate(addr);
         TBE tbe           := RxReqMapTable[addr];
