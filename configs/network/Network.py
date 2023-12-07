@@ -236,6 +236,7 @@ def create_d2d_p2p(options, d2dbridgemap) :
             d2d_cr_link = MessageBuffer(buffer_size=0,
                                      max_dequeue_rate=1,
                                      ordered=True,
+                                     allow_zero_latency=True,
                                      randomization='ruby_system')
             d2dbridgemap[(src,dst)].d2d_outgoing_link = d2d_link
             d2dbridgemap[(dst,src)].d2d_incoming_link = d2d_link

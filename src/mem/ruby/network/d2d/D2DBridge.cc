@@ -25,7 +25,7 @@
 #include "mem/ruby/common/TypeDefines.hh"
 #include "mem/ruby/network/d2d/D2DBridge.hh"
 #include "mem/ruby/network/d2d/D2DMsg.hh"
-#include "mem/ruby/network/d2d/D2DCrMsg.hh"
+#include "mem/ruby/protocol/D2DCrMsg.hh"
 #include "mem/ruby/protocol/D2DNode_Controller.hh"
 #include "params/D2DNode_Controller.hh"
 #include "debug/RubyD2DStr5.hh"
@@ -102,13 +102,13 @@ namespace gem5
 
 		const Message* CHIPort::scheduleMsgForD2D(Tick curTick,\
 				uint32_t& d2d_rem_bw,\
-				bool& can_send,\
+				bool& can_consume_bw,\
 				bool& can_deq) {
 			assert(curTick >= m_time_last_time_d2dbits_sent);
 			if (hasTransmissibleData(curTick, d2d_rem_bw)) {
 				uint32_t max_Transmissible_data_bits = getMaxTransmissibleDataBits(curTick, d2d_rem_bw);
 				assert(max_Transmissible_data_bits > 0);
-				can_send = true;
+				can_consume_bw = true;
 				d2d_rem_bw = d2d_rem_bw - max_Transmissible_data_bits;
 				if (curTick > m_time_last_time_d2dbits_sent) {
 					m_time_last_time_d2dbits_sent = curTick;
@@ -189,7 +189,8 @@ namespace gem5
 		void D2DPort::send(Tick curTick, const MsgPtrVec& msgptrvec, Tick delta) {
 			assert(buffer->areNSlotsAvailable(1,curTick)); // Credits based flow control so credits is assumed to avail when trying to send
 			panic_if(msgptrvec.size() <= 0, "Trying to extract chi flits from empty d2d flits\n");
-			buffer->enqueue(std::make_shared<D2DMsg>(curTick, msgptrvec),curTick,delta);
+			MsgPtr d2dmsg = std::make_shared<D2DMsg>(curTick, msgptrvec);
+			buffer->enqueue(d2dmsg,curTick,delta);
 		}
 
 		void D2DPort::extractCHIMessages(Tick curTick, std::vector<std::vector<MsgPtr>> &in_msg_d2d_chi) {
@@ -262,6 +263,7 @@ namespace gem5
 				it->setConsumer(this);
 			}
 			m_d2d_in.setConsumer(this);
+			m_nw_cr_in->setConsumer(this);
 			m_d2d_cr_in->setConsumer(this);
 		}
 
@@ -327,9 +329,9 @@ namespace gem5
 
 			uint32_t d2d_rem_bw = m_pending_current_bw;
 
-			bool can_send = false;
+			bool can_consume_bw = false;
 
-			bool can_deq = false;
+			bool can_deq        = false;
 
 			uint32_t k = 0; // [TODO] Output of Design a configurable arbitration policy
 
@@ -347,6 +349,8 @@ namespace gem5
 					continue;
 				}
 
+				panic_if(!hasCredits(clockEdge()),"Ran out of credits\n");
+
 				if(noCHIChannelTransmissible(clockEdge(), d2d_rem_bw)) {
 					scheduleEvent(Cycles(1));
 					break;
@@ -354,22 +358,27 @@ namespace gem5
 
 				auto b = m_chi_in[vnet_id].scheduleMsgForD2D(clockEdge(), 
 						d2d_rem_bw, 
-						can_send,
+						can_consume_bw,
 						can_deq);
 
-				if (can_send && can_deq) {
+				if (can_consume_bw && can_deq) {
+					// Buffer it before sending out
 					storeCHIOutTxBuffer(clockEdge(),b,vnet_id);
 				}
 				k = (k+1)%(m_chi_in.size()); // [TODO] Output of Design a configurable arbitration policy
 			}
 
-			updatePriorities(can_send, clockEdge());
+			panic_if(!can_consume_bw && can_deq, "BW not consumed but can deq from CHI message\n");
+
+			updatePriorities(can_consume_bw, clockEdge());
 
 			m_pending_current_bw = d2d_rem_bw;
 
-			sendCHIOutTxBuffer(clockEdge());
+			sendCHIOutTxBuffer(clockEdge(),can_consume_bw, can_deq);
 
 			sendCreditsOut(clockEdge());
+
+			recvCredits(clockEdge());
 
 			// Extract message from the incoming d2d links
 			recvD2DMsg(clockEdge());
@@ -405,7 +414,7 @@ namespace gem5
 			 * Ensure that
 			 * m_chi_d2d_flits_out contain all
 			 * the transmissible flits in the
-			 * current clock cycle
+			 * current clock cycle only
 			 */
 			if (curTick > m_time_last_time_d2d_out_sent) {
 				m_time_last_time_d2d_out_sent = curTick;
@@ -420,10 +429,13 @@ namespace gem5
 			m_chi_in[vnet_id].dequeue(curTick);
 		}
 
-		void D2DBridge::sendCHIOutTxBuffer(Tick curTick) {
-			if (m_chi_d2d_flits_out.size() > 0) {
-				panic_if(curTick != m_time_last_time_d2d_out_sent,"Tmp CHI flit buffer contains stale data from the previous cycles");
-				m_d2d_out.send(curTick, m_chi_d2d_flits_out, cyclesToTicks(Cycles(m_d2d_traversal_latency)));
+		void D2DBridge::sendCHIOutTxBuffer(Tick curTick,  bool can_consume_bw, bool can_deq) {
+			if (can_consume_bw) {
+				if (can_deq) {
+					panic_if(m_chi_d2d_flits_out.size() <= 0,"can_send asserted but m_chi_d2d_flits_out is empty\n");
+					panic_if(curTick != m_time_last_time_d2d_out_sent,"Tmp CHI flit buffer contains stale data from the previous cycles");
+					m_d2d_out.send(curTick, m_chi_d2d_flits_out, cyclesToTicks(Cycles(m_d2d_traversal_latency)));
+				}
 				decCredits(curTick);
 			}
 		}
@@ -437,9 +449,9 @@ namespace gem5
 			return false;
 		}
 
-		bool D2DBridge::incrementActiveCyCount(bool can_send, Tick curTick) {
+		bool D2DBridge::incrementActiveCyCount(bool can_consume_bw, Tick curTick) {
 			bool reset_chi_service_counts = false;
-			if (can_send) {
+			if (can_consume_bw) {
 				uint32_t total_weight = static_cast<uint32_t>(std::accumulate(m_wrr_weights.begin(),m_wrr_weights.end(),0));
 				assert(curTick >= m_time_last_time_active_cy_count);
 				if (curTick != m_time_last_time_active_cy_count) {
@@ -463,8 +475,8 @@ namespace gem5
 			std::sort(m_prio.begin(), m_prio.end(), [&shares](int i, int j){ return shares[i] < shares[j]; });
 		}
 
-		void D2DBridge::updatePriorities(bool can_send, Tick curTick) {
-			bool reset_chi_service_counts = incrementActiveCyCount(can_send, curTick);
+		void D2DBridge::updatePriorities(bool can_consume_bw, Tick curTick) {
+			bool reset_chi_service_counts = incrementActiveCyCount(can_consume_bw, curTick);
 			reEvaluateCHIPriorities(curTick);
 			if (reset_chi_service_counts) {
 				for (auto it = m_chi_in.begin(); it != m_chi_in.end(); it++) {
@@ -473,14 +485,15 @@ namespace gem5
 			}
 		}
 
-		void D2DBridge::incCredits(Tick curTick) {
-			assert(m_time_last_time_inc_credits <= curTick);
+		void D2DBridge::recvCredits(Tick curTick) {
+			// assert(m_time_last_time_inc_credits <= curTick);
 			if ((curTick > m_time_last_time_inc_credits) && m_d2d_cr_in->isReady(curTick)){
 				m_time_last_time_inc_credits = curTick;
 				const D2DCrMsg *msg = dynamic_cast<const D2DCrMsg*>(m_d2d_cr_in->peek());
 				panic_if(msg == nullptr,"Cannot cast to D2DCrMsg\n");
-				panic_if(m_max_num_credits <= m_num_credits,"Cannot increase beyond max credits");
-				m_num_credits++;
+				if (m_num_credits < m_max_num_credits) {
+					m_num_credits++;
+				}
 				m_d2d_cr_in->dequeue(curTick,true);
 			}
 		}
@@ -502,7 +515,6 @@ namespace gem5
 					assert(m_d2d_cr_out->areNSlotsAvailable(1,curTick));
 					m_d2d_cr_out->enqueue(credOut,curTick,0);
 					m_nw_cr_in->dequeue(curTick,true);
-					incCredits(curTick);
 				}
 			}
 		}
@@ -510,6 +522,10 @@ namespace gem5
 		bool D2DBridge::hasCredits(Tick curTick) const {
 			// [TODO]: Check if any Tick guards required
 			return (m_num_credits > 0);
+		}
+
+		uint32_t D2DBridge::getNumCredits(Tick curTick) const {
+			return m_num_credits;
 		}
 
 		D2DBridge::~D2DBridge() {}

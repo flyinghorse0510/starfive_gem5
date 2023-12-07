@@ -348,7 +348,7 @@ MessageBuffer::enqueue(MsgPtr message, Tick current_time, Tick delta)
     // Calculate the arrival time of the message, that is, the first
     // cycle the message can be dequeued.
     panic_if((delta == 0) && !m_allow_zero_latency,
-           "Delta equals zero and allow_zero_latency is false during enqueue");
+           "%s Delta equals zero and allow_zero_latency is false during enqueue",name());
     Tick arrival_time = 0;
 
     // random delays are inserted if the RubySystem level randomization flag

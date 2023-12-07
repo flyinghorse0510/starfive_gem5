@@ -268,3 +268,12 @@ structure(CHIDataMsg, desc="", interface="Message") {
     return testAndWrite(addr, dataBlk, pkt);
   }
 }
+
+structure(D2DCrMsg, desc="D2D Credit Message", interface="Message") {
+  bool cr_inc; // Just a placeholder not required
+
+  // No data for functional access
+  bool functionalRead(Packet *pkt) { return false; }
+  bool functionalRead(Packet *pkt, WriteMask &mask) { return false; }
+  bool functionalWrite(Packet *pkt) { return false; }
+}

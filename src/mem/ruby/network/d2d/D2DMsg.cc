@@ -62,7 +62,7 @@ namespace gem5
 			{
 				out << "[D2DMsg: ";
 				for (auto it = m_msgptrvec.begin(); it != m_msgptrvec.end(); it++) {
-					out << getMsgTypeStr(it->second) << ",";
+					out << *(it->second) << "\n";
 				}
 				out << "]";
 			}   

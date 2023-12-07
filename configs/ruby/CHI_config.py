@@ -887,47 +887,46 @@ class CHI_D2DNodeController(D2DNode_Controller):
                        ruby_system,
                        addr_ranges,
                        dst_die_id):
-        super(CHI_D2DNodeController, self).__init__(
-            version = Versions.getVersion(D2DNode_Controller),
-            ruby_system = ruby_system
-        )
-
-        self.src_die_id    = src_die_id
-        self.dst_die_id    = dst_die_id
-        self.addr_ranges   = addr_ranges
-        self.reqRdy        = MessageBuffer()
         
-class CHI_D2DNode(CHI_Node):
-
-    def connectD2DBridge(self, 
-                         options):
         class D2DBridgeBuffer(MessageBuffer):
             ordered = True
+            randomization = 'ruby_system'
+        
+        class D2DCreditBuffer(MessageBuffer):
+            buffer_size = 0
+            max_dequeue_rate = 1
+            ordered = True
+            allow_zero_latency = True
             randomization = 'ruby_system'
             
         d2dbridge_buff_depth    = 2
         d2dbridge_buff_deq_rate = 1
-    
-        assert(hasattr(self,'_cntrl'))
-        self._cntrl.d2dnode_reqIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
-        self._cntrl.d2dnode_snpIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
-        self._cntrl.d2dnode_rspIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
-        self._cntrl.d2dnode_datIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
-        self._cntrl.d2dnode_reqOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
-        self._cntrl.d2dnode_snpOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
-        self._cntrl.d2dnode_rspOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
-        self._cntrl.d2dnode_datOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate)
 
-        self._cntrl.d2dnode_crdOut = MessageBuffer(buffer_size=0,
-                                                   max_dequeue_rate=1,
-                                                   ordered=True,
-                                                   allow_zero_latency=True,
-                                                   randomization='ruby_system')
+        super(CHI_D2DNodeController, self).__init__(
+            version      = Versions.getVersion(D2DNode_Controller),
+            triggerQueue = TriggerMessageBuffer(),
+            reqRdy       = TriggerMessageBuffer(),
+            ruby_system  = ruby_system,
+            addr_ranges  = addr_ranges,
+            d2dnode_reqIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate),
+            d2dnode_snpIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate),
+            d2dnode_rspIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate),
+            d2dnode_datIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate),
+            d2dnode_reqOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate),
+            d2dnode_snpOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate),
+            d2dnode_rspOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate),
+            d2dnode_datOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate),
+            d2dnode_crdOut = D2DCreditBuffer()
+        )
+        
 
+class CHI_D2DNode(CHI_Node):
+
+    def connectD2DBridge(self,  options, cntrl):
         self._d2d_bridge = D2DBridge(d2d_width=options.d2d_width,
                                      src_die_id=self._srd_die_id,
                                      dst_die_id=self._dst_die_id)
-        self._d2d_bridge.chi_d2d_cntrl = self._cntrl
+        self._d2d_bridge.chi_d2d_cntrl = cntrl
 
     def __init__(self,
                  options,
@@ -950,7 +949,7 @@ class CHI_D2DNode(CHI_Node):
         
         self.connectController(options, self._cntrl)
 
-        self.connectD2DBridge(options)
+        self.connectD2DBridge(options, self._cntrl)
     
     def getD2DBridge(self):
         assert(self._d2d_bridge is not None)

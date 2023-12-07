@@ -629,9 +629,9 @@ bool rspInPort_rsc_stall_handler() {
         // We don't have any transactions that use data requests
         assert(!in_msg.usesTxnId);
         assert((in_msg.bitMask.count() <= data_channel_size) && (in_msg.bitMask.count() > 0));
-        DPRINTF(RubyCHIDebugStr5,"Incoming message=%s\n",in_msg);
+        // DPRINTF(RubyCHIDebugStr5,"Incoming message=%s\n",in_msg);
         TBE tbe := getCurrentActiveTBE(in_msg.addr);
-        printTBEStateStr5(tbe);
+        // printTBEStateStr5(tbe);
         trigger(dataToEvent(in_msg.type), in_msg.addr, tbe);
       }
     }

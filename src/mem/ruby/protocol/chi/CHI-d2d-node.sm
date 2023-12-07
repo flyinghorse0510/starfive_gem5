@@ -33,6 +33,9 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     // Accepted requests
     MessageBuffer * reqRdy;
 
+    // Trigger queue for internal events
+    MessageBuffer * triggerQueue;
+
     // Remap table allocation latency
     int allocation_latency  := 1;
 
@@ -53,6 +56,8 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     int num_rxremap_entries := 8;
 
     int data_channel_size;
+
+    int lat_crd_transfer := 1;
 
     // Src and Dst die Ids
     int src_die_id := 0;
@@ -100,14 +105,24 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         Frm_d2d_RetryAck,     desc="RetryAck from NW side";
         Frm_d2d_PCrdGrant,    desc="PCrdGrant from NW side";
 
-        FwdReqMsg,         desc="Fwd to D2DBridge";
-        null,              desc="";
-        Final,             desc="Finalize event";
+        FwdReqMsg,            desc="Fwd to D2DBridge";
+        
+        DeAllocTxReqEntry,   desc="Finalize event";
+        DeAllocRxReqEntry,   desc="Finalize event";
+
+        null,                desc="";
     }
 
     ////////////////////////////////////////////////////////////////////////////
     // Structure
     ////////////////////////////////////////////////////////////////////////////
+
+    enumeration(TrackerType) {
+        TX_req, desc="Tx REQ tracker";
+        RX_req, desc="Rx REQ tracker";
+        TX_snp, desc="Tx SNP tracker";
+        RX_snp, desc="Rx SNP tracker";
+    }
 
     structure(TriggerQueue, external ="yes") {
         Event front();
@@ -123,6 +138,16 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         void clear();
     }
 
+    structure(TriggerMsg, desc="...", interface="Message") {
+        Addr        addr;
+        Event       event;
+        TrackerType tbe_type;
+
+        bool functionalRead(Packet *pkt) { return false; }
+        bool functionalRead(Packet *pkt, WriteMask &mask) { return false; }
+        bool functionalWrite(Packet *pkt) { return false; }
+    }
+
     structure(TBE, desc="Common structure for Tx and Rx Table Entry") {
         State state,              desc="Once allocated, the state must be always busy";
         Addr addr,                desc="Address corresponding to this request";
@@ -131,7 +156,8 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         MachineID o_fwd_src_id,   desc="d2d fwd Src Id, Fwd Requestor";
         Addr o_d2d_txn_id,        desc="d2d Txn Id, Original";
         MachineID haId,           desc="HA Id, that serves as the destion for requests and CompAcks";
-
+        int storSlot,             desc="Slot in the storage tracker occupied by this entry";
+        
         // Unused fields to appease the SLICC compiler
         TriggerQueue actions,     template="<D2DNode_Event>", desc="List of actions";
         Event slicchack1,         desc="fix compiler not including headers";
@@ -152,6 +178,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         bool areNSlotsAvailable(int n);
         void incrementReserved();
         void decrementReserved();
+        void removeEntryFromSlot(int slot);
     }
 
     TBETable TxReqMapTable,       template="<D2DNode_TBE>",constructor="m_num_txremap_entries";
@@ -211,6 +238,20 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         }
     }
 
+    TBE getActiveTBE(Addr addr, TrackerType tbe_type), return_by_pointer="yes" {
+        if (tbe_type == TrackerType:TX_req) {
+            TBE tbe := getTxReqMapEntry(addr);
+            assert(is_valid(tbe));
+            return tbe;
+        } else if (tbe_type == TrackerType:RX_req) {
+            TBE tbe := getRxReqMapEntry(addr);
+            assert(is_valid(tbe));
+            return tbe;
+        } else {
+            error("Invalid/Unsupported Tracker Type");
+        }
+    }
+
     TBE allocateRxRemapEntry(CHIRequestMsg in_msg), return_by_pointer="yes" {
         storRxReqMapTable.decrementReserved();
         assert(storRxReqMapTable.areNSlotsAvailable(1));
@@ -226,6 +267,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         tbe.o_fwd_src_id  := in_msg.fwdRequestor;
         tbe.o_d2d_txn_id  := in_msg.d2d_txn_id;
         tbe.haId          := getHANodeIdOnDie(addr);
+        tbe.storSlot      := storRxReqMapTable.addEntryToNewSlot();
 
         return tbe;
     }
@@ -246,6 +288,8 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         tbe.o_src_id      := in_msg.requestor;
         tbe.o_fwd_src_id  := in_msg.fwdRequestor;
         tbe.o_d2d_txn_id  := in_msg.d2d_txn_id;
+        tbe.storSlot      := storTxReqMapTable.addEntryToNewSlot();
+
 
         return tbe;
     }
@@ -257,13 +301,13 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     out_port(network_snpOutPort, CHIRequestMsg,  snpOut);
     out_port(network_rspOutPort, CHIResponseMsg, rspOut);
     out_port(network_datOutPort, CHIDataMsg,     datOut);
-
     out_port(reqRdyOutPort, CHIRequestMsg, reqRdy);
-
     out_port(bridge_reqOutPort, CHIRequestMsg,  d2dnode_reqOut);
     out_port(bridge_snpOutPort, CHIRequestMsg,  d2dnode_snpOut);
     out_port(bridge_rspOutPort, CHIResponseMsg, d2dnode_rspOut);
     out_port(bridge_datOutPort, CHIDataMsg,     d2dnode_datOut);
+    out_port(triggerOutPort, TriggerMsg, triggerQueue);
+    out_port(d2dCrdOutPort, D2DCrMsg, d2dnode_crdOut);
 
     ////////////////////////////////////////////////////////////////////////////
     // Inbound Ports (from NW)
@@ -384,6 +428,14 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         }
     }
 
+    in_port(triggerInPort, Trigger, triggerQueue, rank=23) {
+        if(triggerInPort.isReady(clockEdge())) {
+            peek(triggerInPort, TriggerMsg) {
+                trigger(in_msg.event, in_msg.addr, getActiveTBE(in_msg.addr,in_msg.tbe_type));
+            }
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////////
     // Actions
     ////////////////////////////////////////////////////////////////////////////
@@ -449,8 +501,8 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     }
 
     action(Fwd_DataToNW, desc="") { 
+        assert(is_valid(tbe));
         peek(bwDatInPort, CHIDataMsg) {
-            assert(is_valid(tbe));
             enqueue(network_datOutPort, CHIDataMsg, lat_dat_bridge_2_nw) {
                 out_msg := in_msg;
                 out_msg.responder := machineID;
@@ -460,13 +512,18 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         bwDatInPort.dequeue(clockEdge());
     }
 
-    action(Fwd_CompAckToBridge, desc="") {
+    action(Fwd_CompAckRspToBridge, desc="") {
+        assert(is_valid(tbe));
         peek(rspInPort, CHIResponseMsg) {
-            assert(is_valid(tbe));
             enqueue(bridge_rspOutPort, CHIResponseMsg, lat_rsp_nw_2_bridge) {
                 out_msg := in_msg;
                 out_msg.Destination.remove(machineID);
             }
+        }
+        enqueue(triggerOutPort, TriggerMsg, 0) {
+            out_msg.addr     := tbe.addr;
+            out_msg.event    := Event:DeAllocTxReqEntry;
+            out_msg.tbe_type := TrackerType:TX_req;
         }
         rspInPort.dequeue(clockEdge());
     }
@@ -484,7 +541,35 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
                 out_msg.Destination.add(tbe.haId);
             }
         }
+        enqueue(triggerOutPort, TriggerMsg, 0) {
+            out_msg.addr     := tbe.addr;
+            out_msg.event    := Event:DeAllocRxReqEntry;
+            out_msg.tbe_type := TrackerType:RX_req;
+        }
         bwRspInPort.dequeue(clockEdge());
+    }
+
+    action(Send_D2DCredit, desc="Send credits to the D2DBridge") {
+        enqueue(d2dCrdOutPort, D2DCrMsg, lat_crd_transfer) {
+            out_msg.cr_inc := true;
+        }
+    }
+
+    action(De_AllocTxReqEntry, desc="Deallocate Tx Remap entries") {
+        assert(is_valid(tbe));
+        storTxReqMapTable.removeEntryFromSlot(tbe.storSlot);
+        TxReqMapTable.deallocate(address);
+        // TODO: Process retry when implemented.
+    }
+
+    action(De_AllocRxReqEntry, desc="") {
+        assert(is_valid(tbe));
+        storRxReqMapTable.removeEntryFromSlot(tbe.storSlot);
+        RxReqMapTable.deallocate(address);
+    }
+
+    action(popTriggerQueue, desc="Pop trigger queue.") {
+        triggerInPort.dequeue(clockEdge());
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -504,6 +589,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
 
     transition(busy, Frm_d2d_ReadData) {
         Fwd_DataToNW;
+        Send_D2DCredit;
     }
 
     transition(busy, FwdReqMsg) {
@@ -511,7 +597,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     }
 
     transition(busy, Frm_NW_CompAck) {
-        Fwd_CompAckToBridge;
+        Fwd_CompAckRspToBridge;
     }
 
     transition(busy, Frm_d2d_Comp) {
@@ -520,5 +606,17 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
 
     transition(busy, Frm_d2d_CompAck) {
         Fwd_CompAckRspToNW;
+        // Send_D2DCredit;
+    }
+
+    transition(busy, DeAllocTxReqEntry, stable) {
+        De_AllocTxReqEntry;
+        popTriggerQueue;
+    }
+
+    transition(busy, DeAllocRxReqEntry, stable) {
+        De_AllocRxReqEntry;
+        Send_D2DCredit;
+        popTriggerQueue;
     }
 }

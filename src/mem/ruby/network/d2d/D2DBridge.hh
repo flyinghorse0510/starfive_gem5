@@ -8,7 +8,6 @@
 #include "mem/ruby/protocol/D2DNode_Controller.hh"
 #include "params/D2DBridge.hh"
 
-
 namespace gem5
 {
 
@@ -139,6 +138,8 @@ class D2DBridge : public ClockedObject, public Consumer {
 
         void wakeup();
 
+        uint32_t getNumCredits(Tick curTick) const;
+
         void print(std::ostream& out) const {
             out << "[D2DBridge("
                 << m_src_die_id << ","
@@ -215,7 +216,7 @@ class D2DBridge : public ClockedObject, public Consumer {
 
         Tick m_time_last_time_rcvd_credits_from_nw; // Last time I recvd a credit from the NW side. TODO is this guard reqd
 
-        void incCredits(Tick curTick);
+        void recvCredits(Tick curTick);
 
         void decCredits(Tick curTick);
 
@@ -235,7 +236,7 @@ class D2DBridge : public ClockedObject, public Consumer {
 
         void sendCHIToNetwork(Tick curTick);
 
-        void sendCHIOutTxBuffer(Tick curTick);
+        void sendCHIOutTxBuffer(Tick curTick, bool can_consume_bw, bool can_deq);
 
         void sendCreditsOut(Tick curTick);
 
