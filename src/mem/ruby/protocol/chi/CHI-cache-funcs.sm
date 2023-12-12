@@ -660,7 +660,6 @@ void prepareRequest(TBE tbe, CHIRequestType type, CHIRequestMsg &out_msg) {
   out_msg.fwdRequestor := tbe.requestor;
   out_msg.type := type;
   out_msg.allowRetry := false;
-  out_msg.d2d_txn_id := getD2DTxnId(tbe.storSlot);
   tbe.pendReqAllowRetry := false;
   tbe.rcvdRetryAck := false;
   tbe.rcvdRetryCredit := false;
