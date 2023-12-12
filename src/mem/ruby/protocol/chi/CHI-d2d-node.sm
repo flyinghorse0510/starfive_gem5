@@ -600,6 +600,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
 
     transition(stable, AllocRxReqEntry, busy) {
         Alloc_RxReqEntry;
+        Send_D2DCredit;
     }
 
     transition(busy, Frm_NW_ReadData) {
@@ -640,7 +641,6 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
 
     transition(busy, DeAllocRxReqEntry, stable) {
         De_AllocRxReqEntry;
-        // Send_D2DCredit;
         popTriggerQueue;
     }
 }

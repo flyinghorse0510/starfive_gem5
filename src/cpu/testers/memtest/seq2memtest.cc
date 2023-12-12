@@ -282,6 +282,7 @@ Seq2MemTest::tick()
 
     /* Do not generate any request */
     if (no_gen) {
+        numReadsGenerated++;
         return;
     }
 

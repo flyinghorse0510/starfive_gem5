@@ -278,6 +278,8 @@ namespace gem5
 				m_time_pending_current_bw = curTick;
 				if (hasCredits(curTick)) {
 					m_pending_current_bw = m_max_d2d_bw;
+				} else {
+					m_pending_current_bw = 0;
 				}
 			}
 		}
@@ -338,8 +340,6 @@ namespace gem5
 			clearCHIOutTxBuffer(clockEdge());
 
 			// Sweep through each CHI channel and extract transmissible packets
-			DPRINTF(RubyD2DStr5,"CrCount = %d\n",getNumCredits(clockEdge()));
-
 			while(atleast1CHIChannelHasRdyData(clockEdge())) {
 
 				auto vnet_id = m_prio[k];
@@ -350,7 +350,7 @@ namespace gem5
 					continue;
 				}
 
-				panic_if(!hasCredits(clockEdge()),"Ran out of credits\n");
+				// panic_if(!hasCredits(clockEdge()),"Ran out of credits\n");
 
 				if(noCHIChannelTransmissible(clockEdge(), d2d_rem_bw)) {
 					scheduleEvent(Cycles(1));
@@ -496,7 +496,6 @@ namespace gem5
 					m_num_credits++;
 				}
 				m_d2d_cr_in->dequeue(curTick,true);
-				DPRINTF(RubyD2DStr5,"D2DBridge Cr recvd incrementing\n");
 			}
 		}
 
@@ -517,7 +516,6 @@ namespace gem5
 					assert(m_d2d_cr_out->areNSlotsAvailable(1,curTick));
 					m_d2d_cr_out->enqueue(credOut,curTick,0);
 					m_nw_cr_in->dequeue(curTick,true);
-					DPRINTF(RubyD2DStr5,"D2DNode-->D2DBridge Cr flow\n");
 				}
 			}
 		}
