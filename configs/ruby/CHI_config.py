@@ -906,6 +906,7 @@ class CHI_D2DNodeController(D2DNode_Controller):
             version      = Versions.getVersion(D2DNode_Controller),
             triggerQueue = TriggerMessageBuffer(),
             reqRdy       = TriggerMessageBuffer(),
+            retryTriggerQueue = OrderedTriggerMessageBuffer(),
             ruby_system  = ruby_system,
             addr_ranges  = addr_ranges,
             d2dnode_reqIn  = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate),

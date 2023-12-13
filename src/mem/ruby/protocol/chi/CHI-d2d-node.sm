@@ -36,8 +36,18 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     // Trigger queue for internal events
     MessageBuffer * triggerQueue;
 
+    // Internal queue for retry trigger events
+    MessageBuffer * retryTriggerQueue;
+
     // Remap table allocation latency
     int allocation_latency  := 1;
+
+    // Enqueue latencies for outgoing messages
+    // NOTE: should remove this and only use parameters above?
+    Cycles request_latency := 1;
+    Cycles response_latency := 1;
+    Cycles snoop_latency := 1;
+    Cycles data_latency := 1;
 
     // Bridge --> NW latencies
     int lat_req_bridge_2_nw := 1;
@@ -110,6 +120,10 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         DeAllocTxReqEntry,   desc="Finalize event";
         DeAllocRxReqEntry,   desc="Finalize event";
 
+        // Retry handling
+        SendRetryAck,        desc="Send RetryAck";
+        SendPCrdGrant,       desc="Send PCrdGrant";
+
         null,                desc="";
     }
 
@@ -124,6 +138,22 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         RX_snp, desc="Rx SNP tracker";
     }
 
+    structure(TriggerMsg, desc="...", interface="Message") {
+        Addr        addr;
+        Event       event;
+        TrackerType tbe_type;
+
+        bool functionalRead(Packet *pkt) { return false; }
+        bool functionalRead(Packet *pkt, WriteMask &mask) { return false; }
+        bool functionalWrite(Packet *pkt) { return false; }
+    }
+
+    // Tracks a pending retry
+    structure(RetryQueueEntry) {
+      Addr addr,           desc="Line address";
+      MachineID retryDest, desc="Retry destination";
+    }
+
     structure(TriggerQueue, external ="yes") {
         Event front();
         Event back();
@@ -136,16 +166,10 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         void pushFrontNB(Event);
         void pop();
         void clear();
-    }
 
-    structure(TriggerMsg, desc="...", interface="Message") {
-        Addr        addr;
-        Event       event;
-        TrackerType tbe_type;
-
-        bool functionalRead(Packet *pkt) { return false; }
-        bool functionalRead(Packet *pkt, WriteMask &mask) { return false; }
-        bool functionalWrite(Packet *pkt) { return false; }
+        // SLICC does not allow re-using the functions with different template arguments
+        void emplace_retry(Addr,MachineID);
+        RetryQueueEntry front_retry();
     }
 
     structure(TBE, desc="Common structure for Tx and Rx Table Entry") {
@@ -187,11 +211,26 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         void removeEntryFromSlot(int slot);
     }
 
+    // Pending RetryAck/PCrdGrant
+    structure(RetryTriggerMsg, interface="Message") {
+      Addr addr;
+      Event event;
+      MachineID retryDest;
+
+      bool functionalRead(Packet *pkt) { return false; }
+      bool functionalRead(Packet *pkt, WriteMask &mask) { return false; }
+      bool functionalWrite(Packet *pkt) { return false; }
+    }
+
     TBETable TxReqMapTable,       template="<D2DNode_TBE>",constructor="m_num_txremap_entries";
     TBEStorage storTxReqMapTable, constructor="this, TBEType_to_string(TBEType_D2DRemap), m_num_txremap_entries";
     
     TBETable RxReqMapTable,       template="<D2DNode_TBE>",constructor="m_num_rxremap_entries";
     TBEStorage storRxReqMapTable, constructor="this, TBEType_to_string(TBEType_D2DRemap), m_num_rxremap_entries";
+
+    // Retry handling
+    // Destinations that will be sent PCrdGrant when a TBE becomes available
+    TriggerQueue retryQueue, template="<D2DNode_RetryQueueEntry>";
 
     ////////////////////////////////////////////////////////////////////////////
     // Interface functions required by SLICC
@@ -223,6 +262,22 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     // Commonly defined functions
     ////////////////////////////////////////////////////////////////////////////
     include "CHI-d2d-funcs.sm";
+
+    ////////////////////////////////////////////////////////////////////////////
+    // Outbound Ports
+    ////////////////////////////////////////////////////////////////////////////
+    out_port(network_reqOutPort, CHIRequestMsg,  reqOut);
+    out_port(network_snpOutPort, CHIRequestMsg,  snpOut);
+    out_port(network_rspOutPort, CHIResponseMsg, rspOut);
+    out_port(network_datOutPort, CHIDataMsg,     datOut);
+    out_port(reqRdyOutPort, CHIRequestMsg, reqRdy);
+    out_port(bridge_reqOutPort, CHIRequestMsg,  d2dnode_reqOut);
+    out_port(bridge_snpOutPort, CHIRequestMsg,  d2dnode_snpOut);
+    out_port(bridge_rspOutPort, CHIResponseMsg, d2dnode_rspOut);
+    out_port(bridge_datOutPort, CHIDataMsg,     d2dnode_datOut);
+    out_port(triggerOutPort, TriggerMsg, triggerQueue);
+    out_port(d2dCrdOutPort, D2DCrMsg, d2dnode_crdOut);
+    out_port(retryTriggerOutPort, RetryTriggerMsg, retryTriggerQueue);
 
     ////////////////////////////////////////////////////////////////////////////
     // Used by this module
@@ -297,20 +352,22 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         return tbe;
     }
 
-    ////////////////////////////////////////////////////////////////////////////
-    // Outbound Ports
-    ////////////////////////////////////////////////////////////////////////////
-    out_port(network_reqOutPort, CHIRequestMsg,  reqOut);
-    out_port(network_snpOutPort, CHIRequestMsg,  snpOut);
-    out_port(network_rspOutPort, CHIResponseMsg, rspOut);
-    out_port(network_datOutPort, CHIDataMsg,     datOut);
-    out_port(reqRdyOutPort, CHIRequestMsg, reqRdy);
-    out_port(bridge_reqOutPort, CHIRequestMsg,  d2dnode_reqOut);
-    out_port(bridge_snpOutPort, CHIRequestMsg,  d2dnode_snpOut);
-    out_port(bridge_rspOutPort, CHIResponseMsg, d2dnode_rspOut);
-    out_port(bridge_datOutPort, CHIDataMsg,     d2dnode_datOut);
-    out_port(triggerOutPort, TriggerMsg, triggerQueue);
-    out_port(d2dCrdOutPort, D2DCrMsg, d2dnode_crdOut);
+    void processRetryQueue(Addr addr) {
+      // send credit if requestor waiting for it and we have resources
+      if (retryQueue.empty() == false) {
+        RetryQueueEntry e := retryQueue.front_retry();
+        bool has_avail := storTxReqMapTable.areNSlotsAvailable(1);
+        if (has_avail) {
+          storTxReqMapTable.incrementReserved();
+          enqueue(retryTriggerOutPort, RetryTriggerMsg, 0) {
+            out_msg.addr := e.addr;
+            out_msg.retryDest := e.retryDest;
+            out_msg.event := Event:SendPCrdGrant;
+          }
+          retryQueue.pop();
+        }
+      }
+    }
 
     ////////////////////////////////////////////////////////////////////////////
     // Inbound Ports (from NW)
@@ -375,6 +432,17 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
                     DPRINTF(RubyCHIDebugStr5, "RetryAck and PCRdGrant to do\n");
                     assert(false);
                 }
+            }
+        }
+    }
+
+    in_port(retryTriggerInPort, RetryTriggerMsg, retryTriggerQueue, rank=5) {
+        if (retryTriggerInPort.isReady(clockEdge())) {
+            peek(retryTriggerInPort, RetryTriggerMsg) {
+                Event ev := in_msg.event;
+                assert((ev == Event:SendRetryAck) || (ev == Event:SendPCrdGrant));
+                TBE tbe := getTxReqMapEntry(in_msg.addr);
+                trigger(ev, in_msg.addr, tbe);
             }
         }
     }
@@ -452,8 +520,15 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
             }
         } 
         else {
-            DPRINTF(RubyCHIDebugStr5, "Retry not implement");
-            assert(false);
+            peek(reqInPort, CHIRequestMsg) {
+                assert(in_msg.allowRetry);
+                enqueue(retryTriggerOutPort, RetryTriggerMsg, 0) {
+                    out_msg.addr := in_msg.addr;
+                    out_msg.event := Event:SendRetryAck;
+                    out_msg.retryDest := in_msg.requestor;
+                    retryQueue.emplace_retry(in_msg.addr,in_msg.requestor);
+                }
+            }
         }
         reqInPort.dequeue(clockEdge());
     }
@@ -568,7 +643,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         assert(is_valid(tbe));
         storTxReqMapTable.removeEntryFromSlot(tbe.storSlot);
         TxReqMapTable.deallocate(address);
-        // TODO: Process retry when implemented.
+        processRetryQueue(address);
     }
 
     action(De_AllocRxReqEntry, desc="") {
@@ -589,6 +664,32 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
             }
         }
         rspInPort.dequeue(clockEdge());
+    }
+
+    action(Send_RetryAck, desc="Send RetryAck to reqtor") {
+        peek(retryTriggerInPort, RetryTriggerMsg) {
+            enqueue(network_rspOutPort, CHIResponseMsg, response_latency) {
+                out_msg.addr := in_msg.addr;
+                out_msg.type := CHIResponseType:RetryAck;
+                out_msg.responder := machineID;
+                out_msg.Destination.add(in_msg.retryDest);
+            }
+        }
+    }
+
+    action(Send_PCrdGrant, desc="") {
+      peek(retryTriggerInPort, RetryTriggerMsg) {
+        enqueue(network_rspOutPort, CHIResponseMsg, response_latency) {
+          out_msg.addr := in_msg.addr;
+          out_msg.type := CHIResponseType:PCrdGrant;
+          out_msg.responder := machineID;
+          out_msg.Destination.add(in_msg.retryDest);
+        }
+      }
+    }
+
+    action(Pop_RetryTriggerQueue, desc="Pop Retry") {
+        retryTriggerInPort.dequeue(clockEdge());
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -643,4 +744,16 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         De_AllocRxReqEntry;
         popTriggerQueue;
     }
+
+    transition({busy,stable}, SendRetryAck) {
+        Send_RetryAck;
+        Pop_RetryTriggerQueue;
+    }
+
+    transition({busy,stable}, SendPCrdGrant) {
+        Send_PCrdGrant;
+        Pop_RetryTriggerQueue;
+    }
+
+
 }
