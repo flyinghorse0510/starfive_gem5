@@ -260,76 +260,24 @@ MessageBuffer::txntrace_print(MsgPtr message, \
     uint64_t txSeqNum = 0; 
     if (msg_type == typeid(RubyRequest)){
         const RubyRequest* msg = dynamic_cast<RubyRequest*>(message.get());
-        txSeqNum = msg->getRequestPtr()->getReqInstSeqNum();
-        std::string reqtor = "Seq";
-        RubyRequestType const &typ = msg->getType();
-        DPRINTF(TxnTrace, "%s: %#018x, type: %s, addr: %#x, reqtor: %s, dest: %s\n",
-            enqOrDeq,
-            txSeqNum,
-            typ,
-            msg->getPhysicalAddress(),
-            reqtor,
-            std::string("---"));
-        assert(txSeqNum != 0);
+        DPRINTF(TxnTrace, "%s: %s\n", enqOrDeq, *msg);
         assert(msg->getRequestPtr() != nullptr); // requestPtr should not be nullptr
     }
     else if(msg_type == typeid(CHIRequestMsg)){
         const CHIRequestMsg* msg = dynamic_cast<CHIRequestMsg*>(message.get());
-        txSeqNum = msg->gettxSeqNum();
-        NetDest dst = msg->getDestination();
-        MachineID const & reqtor = msg->getrequestor();
-        CHIRequestType const & typ = msg->gettype();
-        DPRINTF(TxnTrace, "%s: %#018x, type: %s, addr: %#x, reqtor: %s, bufferSize: %d, dest: %s\n", 
-            enqOrDeq,
-            txSeqNum,
-            typ,
-            msg->getaddr(),
-            reqtor,
-            getSize(curTick()),
-            denseDst(dst));
+        DPRINTF(TxnTrace, "%s: %s\n", enqOrDeq, *msg);
     }
     else if (msg_type == typeid(CHIResponseMsg)){
         const CHIResponseMsg* msg = dynamic_cast<CHIResponseMsg*>(message.get());
-        txSeqNum = msg->gettxSeqNum();
-        MachineID const & reqtor = msg->getresponder();
-        NetDest dst = msg->getDestination();
-        CHIResponseType const & typ = msg->gettype();
-        DPRINTF(TxnTrace, "%s: %#018x, type: %s, addr: %#x, reqtor: %s, bufferSize: %d, dest: %s\n", 
-            enqOrDeq,
-            txSeqNum,
-            typ,
-            msg->getaddr(),
-            reqtor,
-            getSize(curTick()),
-            denseDst(dst));
+        DPRINTF(TxnTrace, "%s: %s\n", enqOrDeq, *msg);
     }
     else if (msg_type == typeid(CHIDataMsg)){
         const CHIDataMsg* msg = dynamic_cast<CHIDataMsg*>(message.get());
-        NetDest dst = msg->getDestination();
-        MachineID const & reqtor = msg->getresponder();
-        txSeqNum = msg->gettxSeqNum();
-        CHIDataType const & typ = msg->gettype();
-        DPRINTF(TxnTrace, "%s: %#018x, type: %s, addr: %#x, reqtor: %s, bufferSize: %d, dest: %s\n", 
-            enqOrDeq,
-            txSeqNum,
-            typ,
-            msg->getaddr(),
-            reqtor,
-            getSize(curTick()),
-            denseDst(dst));
+        DPRINTF(TxnTrace, "%s: %s\n", enqOrDeq, *msg);
     }
     else if (msg_type == typeid(MemoryMsg)){
         const MemoryMsg* msg = dynamic_cast<MemoryMsg*>(message.get());
-        std::string reqtor = "Memory";
-        txSeqNum = msg->gettxSeqNum();
-        MemoryRequestType const & typ = msg->getType();
-        DPRINTF(TxnTrace, "%s: %#018x, type: %s, addr: %#x, bufferSize: %d, dest: %s\n", 
-            enqOrDeq,
-            txSeqNum,
-            typ,
-            msg->getaddr(),
-            getSize(curTick()),
-            reqtor);
+        DPRINTF(TxnTrace, "%s: %s\n", enqOrDeq, *msg);
     }
 }
 
@@ -413,7 +361,6 @@ MessageBuffer::enqueue(MsgPtr message, Tick current_time, Tick delta)
 
     // zhiang: print the txntrace message
     txntrace_print(message, current_time, true);
-    DPRINTF(TxnTrace,"%s\n",getMsgBufferContents());
     // Schedule the wakeup
     assert(m_consumer != NULL);
     m_consumer->scheduleEventAbsolute(arrival_time);

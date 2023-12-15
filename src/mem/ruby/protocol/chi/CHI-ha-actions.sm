@@ -85,13 +85,9 @@ action(Initiate_Request, desc="") {
     copyDir(dir_entry, tbe, initial);
     tbe.use_DMT := is_HN && enable_DMT;
     tbe.use_DCT := enable_DCT;
-    bool alloc_entry := false;
-    bool dealloc_entry := false;
-    assert((alloc_entry && dealloc_entry) == false);
 
-    // always drops any data when not caching it or when this transaction
-    // requires deallocation
-    tbe.dataToBeInvalid := false;
+    // For HA there is no LLC, always drop the data
+    tbe.dataToBeInvalid := true;
     tbe.doCacheFill := false;
     incomingTransactionStart(address, curTransitionEvent(), initial, was_retried);
 }
@@ -117,6 +113,20 @@ action(Send_ReadNoSnp, desc="") {
     out_msg.dataToFwdRequestor := false;
     allowRequestRetry(tbe, out_msg);
   }
+}
+
+action(Send_WriteNoSnp, desc="") {
+  assert(is_valid(tbe));
+
+  enqueue(reqOutPort, CHIRequestMsg, request_latency) {
+    prepareRequest(tbe, CHIRequestType:WriteNoSnp, out_msg);
+    out_msg.Destination.add(mapAddressToDownstreamMachine(tbe.addr));
+    allowRequestRetry(tbe, out_msg);
+  }
+  // allow to expect this on top of data coming from upstream;
+  // so addExpectedCount
+  tbe.expected_req_resp.addExpectedRespType(CHIResponseType:CompDBIDResp);
+  tbe.expected_req_resp.addExpectedCount(1);
 }
 
 action(ExpectCompAck, desc="") {
@@ -475,9 +485,18 @@ action(Initiate_CopyBack, desc="") {
   if (tbe.reqType == CHIRequestType:WriteBackFull) {
     tbe.expected_req_resp.addExpectedDataType(CHIDataType:CBWrData_UD_PD);
     tbe.expected_req_resp.addExpectedDataType(CHIDataType:CBWrData_SD_PD);
+  } else if (tbe.reqType == CHIRequestType:WriteEvictFull) {
+    assert(tbe.reqType == CHIRequestType:WriteEvictFull);
+    tbe.expected_req_resp.addExpectedDataType(CHIDataType:CBWrData_UC);
+    tbe.expected_req_resp.addExpectedDataType(CHIDataType:CBWrData_SC);
+  } else {
+    assert(tbe.reqType == CHIRequestType:WriteCleanFull);
+    tbe.expected_req_resp.addExpectedDataType(CHIDataType:CBWrData_UD_PD);
+    tbe.expected_req_resp.addExpectedDataType(CHIDataType:CBWrData_SD_PD);
   }
   tbe.expected_req_resp.setExpectedCount(1);
   tbe.actions.pushNB(Event:SendCompDBIDResp);
+  tbe.actions.push(Event:MaintainCoherence);
 }
 
 action(Send_CompDBIDResp, desc="") {
@@ -513,6 +532,7 @@ action(Finalize_UpdateDirectoryFromTBE, desc="") {
 
 action(Finalize_DeallocateRequest, desc="") {
   assert(is_valid(tbe));
+  printTBEStateStr5(tbe);
   assert(tbe.actions.empty());
   wakeupPendingReqs(tbe);
   //wakeupPendingSnps(tbe); //TBD

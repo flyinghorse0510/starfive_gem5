@@ -33,7 +33,8 @@ transition({RU,RSD,RUSD}, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
   ProcessNextState;
 }
 
-transition({BUSY_BLKD,BUSY_INTR}, {ReadShared, ReadNotSharedDirty, ReadUnique_PoC, WriteBackFull}) {
+transition({BUSY_BLKD,BUSY_INTR}, {ReadShared, ReadNotSharedDirty, ReadUnique_PoC, 
+                                   WriteBackFull, WriteEvictFull}) {
   StallRequest;
 }
 
@@ -64,9 +65,16 @@ transition(RU, WriteBackFull, BUSY_BLKD) {
   ProcessNextState;
 }
 
+transition(RU, WriteEvictFull, BUSY_BLKD) {
+  Initiate_Request;
+  Initiate_CopyBack;
+  Pop_ReqRdyQueue;
+  ProcessNextState;
+}
+
 // waiting for data
 transition(BUSY_BLKD,
-           {CBWrData_SD_PD,CBWrData_UD_PD}) {
+           {CBWrData_SD_PD,CBWrData_UD_PD, CBWrData_I, CBWrData_SC, CBWrData_UC}) {
   Receive_ReqDataResp;
   UpdateDirState_FromReqDataResp;
   UpdateDataState_FromReqDataResp;
@@ -99,6 +107,21 @@ transition(BUSY_BLKD, SendCompIResp) {
   Pop_TriggerQueue;
   Send_CompI;
   ProcessNextState_ClearPending;
+}
+
+transition(BUSY_BLKD, SendWriteNoSnp, BUSY_INTR) {
+  Pop_TriggerQueue;
+  Send_WriteNoSnp;
+  ProcessNextState_ClearPending;
+}
+
+// waiting for WB or evict ack
+transition(BUSY_INTR,
+           {CompDBIDResp, Comp_I}, BUSY_BLKD) {
+  Receive_ReqResp;
+  // Profile_OutgoingEnd_DatalessResp;
+  Pop_RespInQueue;
+  ProcessNextState;
 }
 
 transition({BUSY_BLKD,BUSY_INTR}, {CompData_UC},
