@@ -91,7 +91,7 @@ Event frm_d2d_rspToEvent(CHIResponseType type) {
     if (evt == Event:Frm_NW_Comp) {
         return Event:Frm_d2d_Comp;
     } else if (evt == Event:Frm_NW_CompDBIDResp) {
-        return Event:Frm_NW_CompDBIDResp;
+        return Event:Frm_d2d_CompDBIDResp;
     } else if (evt == Event:Frm_NW_DBIDResp) {
         return Event:Frm_d2d_DBIDResp;
     } else if (evt == Event:Frm_NW_CompAck) {

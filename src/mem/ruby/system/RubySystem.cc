@@ -125,8 +125,6 @@ RubySystem::registerMachineID(const MachineID& mach_id, Network* network)
     fatal_if(network_id < 0, "Could not add MachineID %s. Network not found",
              MachineIDToString(mach_id).c_str());
 
-    inform("Connecting MachineID: %s, NetworkID: %d\n",MachineIDToString(mach_id).c_str(),network_id);
-
     machineToNetwork.insert(std::make_pair(mach_id, network_id));
 }
 

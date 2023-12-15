@@ -5,7 +5,7 @@
  * Starlink-2.0 each die uses a CHI protocol to 
  * communicate amongst on-chip agents (HNF, RNFs)
  * etc. And a special node, the D2D node is connected
- * to the mesh, which fwds traffic to a different node
+ * to the mesh, which fwds traffic to a different die
  * The D2D node uses a protocol like CXS to communicate
  * amongst multiple dies.
  */

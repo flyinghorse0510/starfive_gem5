@@ -203,7 +203,6 @@ MessageBuffer::areNSlotsAvailable(unsigned int n, Tick current_time)
                 n, current_size + current_stall_size,
                 m_prio_heap.size(), m_max_size);
 
-        // DPRINTF(TxnTrace, "MessageBufferContents: %s\n",getMsgBufferContents());
         m_not_avail_count++;
         return false;
     }
@@ -246,7 +245,6 @@ MessageBuffer::txntrace_print(MsgPtr message, \
 
     // use regex to choose the port_name we want to print
     std::string port_name = name();
-    // char link_info[50] = "\0";
 
     // if this line is reqRdy, skip this line
     if(port_name.find("reqRdy") != std::string::npos){
@@ -254,6 +252,8 @@ MessageBuffer::txntrace_print(MsgPtr message, \
     } else if (port_name.find("snpRdy") != std::string::npos) {
         return;
     }
+
+    std::string enqOrDeq = arrivalOrDep ? "enq" : "deq";
  
     // else we always print this line
     // zhiang: we added txSeqNum to CHI protocol msgs so that can print txSeqNum
@@ -263,14 +263,14 @@ MessageBuffer::txntrace_print(MsgPtr message, \
         txSeqNum = msg->getRequestPtr()->getReqInstSeqNum();
         std::string reqtor = "Seq";
         RubyRequestType const &typ = msg->getType();
-        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, reqtor: %s, dest: %s\n", 
+        DPRINTF(TxnTrace, "%s: %#018x, type: %s, addr: %#x, reqtor: %s, dest: %s\n",
+            enqOrDeq,
             txSeqNum,
             typ,
-            arrivalOrDep,
             msg->getPhysicalAddress(),
             reqtor,
             std::string("---"));
-        assert(txSeqNum != 0); // txsn should not be 0
+        assert(txSeqNum != 0);
         assert(msg->getRequestPtr() != nullptr); // requestPtr should not be nullptr
     }
     else if(msg_type == typeid(CHIRequestMsg)){
@@ -279,10 +279,10 @@ MessageBuffer::txntrace_print(MsgPtr message, \
         NetDest dst = msg->getDestination();
         MachineID const & reqtor = msg->getrequestor();
         CHIRequestType const & typ = msg->gettype();
-        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, reqtor: %s, bufferSize: %d, dest: %s\n", 
+        DPRINTF(TxnTrace, "%s: %#018x, type: %s, addr: %#x, reqtor: %s, bufferSize: %d, dest: %s\n", 
+            enqOrDeq,
             txSeqNum,
             typ,
-            arrivalOrDep,
             msg->getaddr(),
             reqtor,
             getSize(curTick()),
@@ -294,10 +294,10 @@ MessageBuffer::txntrace_print(MsgPtr message, \
         MachineID const & reqtor = msg->getresponder();
         NetDest dst = msg->getDestination();
         CHIResponseType const & typ = msg->gettype();
-        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, reqtor: %s, bufferSize: %d, dest: %s\n", 
+        DPRINTF(TxnTrace, "%s: %#018x, type: %s, addr: %#x, reqtor: %s, bufferSize: %d, dest: %s\n", 
+            enqOrDeq,
             txSeqNum,
             typ,
-            arrivalOrDep,
             msg->getaddr(),
             reqtor,
             getSize(curTick()),
@@ -309,10 +309,10 @@ MessageBuffer::txntrace_print(MsgPtr message, \
         MachineID const & reqtor = msg->getresponder();
         txSeqNum = msg->gettxSeqNum();
         CHIDataType const & typ = msg->gettype();
-        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, reqtor: %s, bufferSize: %d, dest: %s\n", 
+        DPRINTF(TxnTrace, "%s: %#018x, type: %s, addr: %#x, reqtor: %s, bufferSize: %d, dest: %s\n", 
+            enqOrDeq,
             txSeqNum,
             typ,
-            arrivalOrDep,
             msg->getaddr(),
             reqtor,
             getSize(curTick()),
@@ -323,10 +323,10 @@ MessageBuffer::txntrace_print(MsgPtr message, \
         std::string reqtor = "Memory";
         txSeqNum = msg->gettxSeqNum();
         MemoryRequestType const & typ = msg->getType();
-        DPRINTF(TxnTrace, "txsn: %#018x, type: %s, isArrival: %d, addr: %#x, bufferSize: %d, dest: %s\n", 
+        DPRINTF(TxnTrace, "%s: %#018x, type: %s, addr: %#x, bufferSize: %d, dest: %s\n", 
+            enqOrDeq,
             txSeqNum,
             typ,
-            arrivalOrDep,
             msg->getaddr(),
             getSize(curTick()),
             reqtor);
@@ -412,7 +412,8 @@ MessageBuffer::enqueue(MsgPtr message, Tick current_time, Tick delta)
     profileRetry(message);
 
     // zhiang: print the txntrace message
-    txntrace_print(message, arrival_time, true);
+    txntrace_print(message, current_time, true);
+    DPRINTF(TxnTrace,"%s\n",getMsgBufferContents());
     // Schedule the wakeup
     assert(m_consumer != NULL);
     m_consumer->scheduleEventAbsolute(arrival_time);
@@ -452,7 +453,7 @@ MessageBuffer::dequeue(Tick current_time, bool decrement_messages)
         // If the message will be removed from the queue, decrement the
         // number of message in the queue.
         m_buf_msgs--;
-        txntrace_print(message, curTick(), false);
+        txntrace_print(message, current_time, false);
     }
 
     // if a dequeue callback was requested, call it now
@@ -653,14 +654,14 @@ void
 MessageBuffer::print(std::ostream& out) const
 {
     ccprintf(out, "[MessageBuffer: ");
-    if (m_consumer != NULL) {
-        ccprintf(out, " consumer-yes ");
-    }
+    // if (m_consumer != NULL) {
+    //     ccprintf(out, " consumer-yes ");
+    // }
 
-    // std::vector<MsgPtr> copy(m_prio_heap);
-    // std::sort_heap(copy.begin(), copy.end(), std::greater<MsgPtr>());
-    // ccprintf(out, "%s] %s", copy, name());
-    ccprintf(out, "%s", name());
+    std::vector<MsgPtr> copy(m_prio_heap);
+    std::sort_heap(copy.begin(), copy.end(), std::greater<MsgPtr>());
+    ccprintf(out, "%s] %s", copy, name());
+    // ccprintf(out, "%s", name());
 }
 
 std::string MessageBuffer::getMsgBufferContents() const {
@@ -671,7 +672,7 @@ std::string MessageBuffer::getMsgBufferContents() const {
     std::sort_heap(copy.begin(), copy.end(), std::greater<MsgPtr>());
     std::stringstream ss;
     unsigned count = 0;
-    unsigned buf_size = 1; // copy.size();
+    unsigned buf_size = copy.size();
     ss << "[";
     for (auto &msgptr : copy) {
         const std::type_info& msg_type = typeid(*(msgptr.get()));
@@ -716,7 +717,6 @@ std::string MessageBuffer::getMsgBufferContents() const {
             }
         }
         count++;
-        break;
     }
     ss << "]";
     return ss.str();

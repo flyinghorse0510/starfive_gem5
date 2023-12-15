@@ -383,6 +383,7 @@ action(Send_CompI, desc="") {
     out_msg.type := CHIResponseType:Comp_I;
     out_msg.responder := machineID;
     out_msg.Destination.add(tbe.requestor);
+    DPRINTF(RubyCHIDebugStr5,"Sending Rsp = %s\n",out_msg);
   }
 }
 
