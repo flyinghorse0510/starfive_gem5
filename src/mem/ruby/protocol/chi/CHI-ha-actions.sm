@@ -462,6 +462,7 @@ action(Send_Data, desc="") {
     out_msg.responder := machineID;
 
     out_msg.Destination.add(tbe.snd_destination);
+    DPRINTF(RubyCHIDebugStr5,"out_msg = %s\n",out_msg);
   }
 
   // send next chunk (if any) next cycle

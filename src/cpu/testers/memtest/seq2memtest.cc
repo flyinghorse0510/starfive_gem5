@@ -167,9 +167,16 @@ Seq2MemTest::Seq2MemTest(const Params &p)
         maxOutstandingReq = perCPUWorkingBlocks.size();
     }
 
-    // kick things into action
-    schedule(tickEvent, curTick());
-    schedule(noRequestEvent, clockEdge(progressCheck));
+    if (no_gen) {
+        // This is an Idle CPU
+        NUM_CPUS_COMPLETED++;
+    } else {
+        // kick things into action
+        schedule(tickEvent, curTick());
+        schedule(noRequestEvent, clockEdge(progressCheck));
+    }
+
+   
 }
 
 Port &
@@ -225,9 +232,10 @@ Seq2MemTest::completeRequest(PacketPtr pkt, bool functional)
             }
         } else {
             assert(pkt->isWrite());
-            DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,Complete:W\n",\
+            DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,ExpData:%#x,Complete:W\n",\
                 remove_paddr,\
                 addrIterMap[remove_paddr],\
+                pkt_data[0],\
                 id);
             // update the reference data
             referenceData[req->getPaddr()] = pkt_data[0];
@@ -273,16 +281,11 @@ Seq2MemTest::tick()
     // we should never tick if we are waiting for a retry
     assert(!retryPkt);
     assert(!waitResponse);
+    assert(!no_gen);
 
     // create a new request
     Request::Flags flags;
     Addr paddr = 0;
-
-    /* Do not generate any request */
-    if (no_gen) {
-        numReadsGenerated++;
-        return;
-    }
 
     /* Simulation Exit if all transactions complete */
     if (NUM_CPUS_COMPLETED >= num_peers) {
