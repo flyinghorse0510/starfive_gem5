@@ -390,7 +390,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
                     trigger(evt, in_msg.addr, tbe);
                 } else if (evt == Event:Frm_NW_WriteData) {
                     TBE tbe := getTxReqMapEntry(in_msg.addr);
-                    assert(is_valid(tbe));
+                    // assert(is_valid(tbe));
                     trigger(evt, in_msg.addr, tbe);
                 } else if (evt == Event:Frm_NW_SnpData) {
                     DPRINTF(RubyCHIDebugStr5, "SNP tracker entries to do\n");
@@ -570,7 +570,6 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
                 out_msg := in_msg;
                 out_msg.Destination.remove(machineID);
             }
-            // tbe.actions.pushNB?(clearTxTBE);
         }
         datInPort.dequeue(clockEdge());
     }
@@ -775,11 +774,22 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         Send_D2DCredit;
     }
 
+    transition(busy, Frm_d2d_CompDBIDResp) {
+        Fwd_CompDBIDToNW;
+        Send_D2DCredit;
+    }
+
+    transition(busy, Frm_d2d_DBIDResp) {
+        Fwd_DBIDToNW;
+        Send_D2DCredit;
+    }
+
+
     transition(stable, Frm_NW_ReadData) {
         Fwd_DataToBridge;
     }
 
-    transition(busy, Frm_NW_WriteData) {
+    transition({stable, busy}, Frm_NW_WriteData) {
         Fwd_DataToBridge;
     }
 
@@ -816,14 +826,6 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
 
     transition(stable, Frm_NW_DBIDResp) {
         Fwd_DBIDToBridge;
-    }
-
-    transition(busy, Frm_d2d_CompDBIDResp) {
-        Fwd_CompDBIDToNW;
-    }
-
-    transition(busy, Frm_d2d_DBIDResp) {
-        Fwd_DBIDToNW;
     }
 
 }
