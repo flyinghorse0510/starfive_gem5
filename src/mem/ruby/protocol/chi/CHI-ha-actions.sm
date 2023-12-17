@@ -33,7 +33,6 @@ action(ProcessNextState, desc="") {
 action(ProcessNextState_ClearPending, desc="") {
   assert(is_valid(tbe));
   clearPendingAction(tbe); //ADD-FUNC: clearPendingAction
-  DPRINTF(RubySlicc, "Debug ProcessNextState_ClearPending tbe:%#x expected:%d \n", tbe, tbe.expected_req_resp.expected());
   processNextState(address, tbe);
 }
 
@@ -42,20 +41,32 @@ action(Pop_TriggerQueue, desc="") {
 }
 
 action(AllocateTBE_Request, desc="") {
-  check_allocate(storTBEs);
-  
-  // reserve a slot for this request
-  storTBEs.incrementReserved();
+  if (storTBEs.areNSlotsAvailable(1)) {  
+    // reserve a slot for this request
+    storTBEs.incrementReserved();
 
-  // Move request to rdy queue
-  peek(reqInPort, CHIRequestMsg) {
-    enqueue(reqRdyOutPort, CHIRequestMsg, allocation_latency) {
-      assert(in_msg.addr == address);
-      assert(in_msg.is_local_pf == false);
-      out_msg := in_msg;
+    // Move request to rdy queue
+    peek(reqInPort, CHIRequestMsg) {
+      enqueue(reqRdyOutPort, CHIRequestMsg, allocation_latency) {
+        assert(in_msg.addr == address);
+        assert(in_msg.is_local_pf == false);
+        out_msg := in_msg;
+      }
+    }
+  } else {
+    // we don't have resources to track this request; enqueue a retry
+    peek(reqInPort, CHIRequestMsg) {
+      assert(in_msg.allowRetry);
+      enqueue(retryTriggerOutPort, RetryTriggerMsg, 0) {
+        out_msg.addr := in_msg.addr;
+        out_msg.usesTxnId := false;
+        out_msg.event := Event:SendRetryAck;
+        out_msg.retryDest := in_msg.requestor;
+        retryQueue.emplace_retry(in_msg.addr,false,in_msg.requestor);
+        DPRINTF(RubyCHIDebugStr5,"Sending a RetryAck = %s\n",out_msg);
+      }
     }
   }
-
   reqInPort.dequeue(clockEdge());
 }
 
@@ -104,12 +115,9 @@ action(Send_ReadNoSnp, desc="") {
   tbe.dataBlkValid.clear();
   outgoingTransactionStart(address, curTransitionEvent());
 
-  DPRINTF(RubySlicc, "Debug Send_ReadNoSnp %#x tbe: %#x expected_req_resp expected: %d \n", address, tbe, tbe.expected_req_resp.expected());
-
   enqueue(reqOutPort, CHIRequestMsg, request_latency) {
     prepareRequest(tbe, CHIRequestType:ReadNoSnp, out_msg);
     out_msg.Destination.add(mapAddressToDownstreamMachine(tbe.addr));
-    DPRINTF(RubySlicc, "Send_ReadNoSnp, dest downstream Machine: %s \n", mapAddressToDownstreamMachine(tbe.addr));
     out_msg.dataToFwdRequestor := false;
     allowRequestRetry(tbe, out_msg);
   }
@@ -131,12 +139,8 @@ action(Send_WriteNoSnp, desc="") {
 
 action(ExpectCompAck, desc="") {
   assert(is_valid(tbe));
-  //DPRINTF(RubySlicc, "Debug ExpectCompAck, tbe:%#x \n", tbe);
-
   tbe.expected_req_resp.addExpectedRespType(CHIResponseType:CompAck);
   tbe.expected_req_resp.addExpectedCount(1);
-
-  DPRINTF(RubySlicc, "Debug ExpectCompAck, tbe:%#x expected:%d \n", tbe, tbe.expected_req_resp.expected()); 
 }
 
 action(Receive_ReqDataResp, desc="") {
@@ -326,8 +330,6 @@ action(UpdateDirState_FromReqDataResp, desc="") {
         tbe.dir_sharers.remove(in_msg.responder);
 
       } else if (in_msg.type == CHIDataType:CBWrData_UD_PD) {
-        DPRINTF(RubyCHIDebugStr5, "Modifiying the TBE data state\n");
-        // printTBEStateStr5(tbe);
         assert(tbe.dir_ownerExists && tbe.dir_ownerIsExcl && (tbe.dir_owner == in_msg.responder));
         assert(tbe.dir_sharers.isElement(in_msg.responder));
         if (tbe.reqType != CHIRequestType:WriteCleanFull) {
@@ -393,7 +395,6 @@ action(Send_CompI, desc="") {
     out_msg.type := CHIResponseType:Comp_I;
     out_msg.responder := machineID;
     out_msg.Destination.add(tbe.requestor);
-    DPRINTF(RubyCHIDebugStr5,"Sending Rsp = %s\n",out_msg);
   }
 }
 
@@ -472,7 +473,6 @@ action(Send_Data, desc="") {
     out_msg.responder := machineID;
 
     out_msg.Destination.add(tbe.snd_destination);
-    DPRINTF(RubyCHIDebugStr5,"out_msg = %s\n",out_msg);
   }
 
   // send next chunk (if any) next cycle
@@ -481,7 +481,6 @@ action(Send_Data, desc="") {
 
 action(Initiate_CopyBack, desc="") {
   // expect to receive this data after Send_CompDBIDResp
-  // printTBEStateStr5(tbe);
   if (tbe.reqType == CHIRequestType:WriteBackFull) {
     tbe.expected_req_resp.addExpectedDataType(CHIDataType:CBWrData_UD_PD);
     tbe.expected_req_resp.addExpectedDataType(CHIDataType:CBWrData_SD_PD);
@@ -532,10 +531,8 @@ action(Finalize_UpdateDirectoryFromTBE, desc="") {
 
 action(Finalize_DeallocateRequest, desc="") {
   assert(is_valid(tbe));
-  printTBEStateStr5(tbe);
   assert(tbe.actions.empty());
   wakeupPendingReqs(tbe);
-  //wakeupPendingSnps(tbe); //TBD
   wakeupPendingTgrs(tbe);
 
   if (tbe.is_req_tbe) {
@@ -683,4 +680,35 @@ action(Send_WBData, desc="") {
   }
   tbe.snd_destination := mapAddressToDownstreamMachine(tbe.addr);
   setupPendingSend(tbe);
+}
+
+// Retry related
+action(Send_RetryAck, desc="") {
+  peek(retryTriggerInPort, RetryTriggerMsg) {
+    enqueue(rspOutPort, CHIResponseMsg, response_latency) {
+      out_msg.addr := in_msg.addr;
+      out_msg.usesTxnId := in_msg.usesTxnId;
+      out_msg.type := CHIResponseType:RetryAck;
+      out_msg.responder := machineID;
+      out_msg.Destination.add(in_msg.retryDest);
+      DPRINTF(RubyCHIDebugStr5,"RetryAck out_msg = %s\n",out_msg);
+    }
+  }
+}
+
+action(Send_PCrdGrant, desc="") {
+  peek(retryTriggerInPort, RetryTriggerMsg) {
+    enqueue(rspOutPort, CHIResponseMsg, response_latency) {
+      out_msg.addr := in_msg.addr;
+      out_msg.usesTxnId := in_msg.usesTxnId;
+      out_msg.type := CHIResponseType:PCrdGrant;
+      out_msg.responder := machineID;
+      out_msg.Destination.add(in_msg.retryDest);
+      DPRINTF(RubyCHIDebugStr5,"PCrdGrant out_msg = %s\n",out_msg);
+    }
+  }
+}
+
+action(Pop_RetryTriggerQueue, desc="") {
+  retryTriggerInPort.dequeue(clockEdge());
 }

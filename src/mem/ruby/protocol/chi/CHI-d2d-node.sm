@@ -392,8 +392,8 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
                     TBE tbe := getTxReqMapEntry(in_msg.addr);
                     // assert(is_valid(tbe));
                     trigger(evt, in_msg.addr, tbe);
-                } else if (evt == Event:Frm_NW_SnpData) {
-                    DPRINTF(RubyCHIDebugStr5, "SNP tracker entries to do\n");
+                } else {
+                    DPRINTF(RubyCHIDebugStr5, "Unsupported dat = %s\n",in_msg);
                     assert(false);
                 }
             }
@@ -403,6 +403,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     in_port(rspInPort, CHIResponseMsg, rspIn, rank=4) {
         if (rspInPort.isReady(clockEdge())) {
             peek(rspInPort, CHIResponseMsg) {
+                DPRINTF(RubyCHIDebugStr5,"in_msg_rsp = %s\n",in_msg);
                 Event evt := frm_nw_rspToEvent(in_msg.type);
                 if (evt == Event:Frm_NW_Comp) {
                     TBE tbe := getRxReqMapEntry(in_msg.addr);
@@ -418,12 +419,8 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
                     TBE tbe := getTxReqMapEntry(in_msg.addr);
                     assert(is_valid(tbe));
                     trigger(evt, in_msg.addr, tbe);
-                } else if (evt == Event:Frm_NW_SnpResp) {
-                    DPRINTF(RubyCHIDebugStr5, "SNP tracker entries to do\n");
-                    assert(false);
-                } else if ((evt == Event:Frm_NW_RetryAck) ||
-                           (evt == Event:Frm_NW_PCrdGrant)) {
-                    DPRINTF(RubyCHIDebugStr5, "RetryAck and PCRdGrant to do\n");
+                } else {
+                    DPRINTF(RubyCHIDebugStr5, "Unsupported rsp = %s\n",in_msg);
                     assert(false);
                 }
             }
@@ -463,8 +460,8 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
                 } else if (evt == Event:Frm_d2d_WriteData) {
                     TBE tbe := getRxReqMapEntry(in_msg.addr);
                     trigger(evt, in_msg.addr, tbe);
-                } else if (evt == Event:Frm_d2d_SnpData) {
-                    DPRINTF(RubyCHIDebugStr5, "SNP tracker entries to do\n");
+                } else {
+                    DPRINTF(RubyCHIDebugStr5, "Unsupported dat = %s\n");
                     assert(false);
                 }
             }
@@ -487,7 +484,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
                     TBE tbe := getTxReqMapEntry(in_msg.addr);
                     trigger(evt, in_msg.addr, tbe);
                 } else {
-                    DPRINTF(RubyCHIDebugStr5, "evt = %s, D2D Rsp type TODO = %s\n",evt,in_msg);
+                     DPRINTF(RubyCHIDebugStr5, "Unsupported rsp = %s\n");
                     assert(false);
                 }
             }
@@ -569,8 +566,6 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
             enqueue(bridge_datOutPort, CHIDataMsg, lat_dat_nw_2_bridge) {
                 out_msg := in_msg;
                 out_msg.Destination.remove(machineID);
-                DPRINTF(RubyCHIDebugStr5,"NW-->D2D in = %s\n",in_msg);
-                DPRINTF(RubyCHIDebugStr5,"NW-->D2D out = %s\n",out_msg);
             }
         }
         datInPort.dequeue(clockEdge());
@@ -583,8 +578,6 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
                 out_msg := in_msg;
                 out_msg.responder := machineID;
                 out_msg.Destination.add(tbe.o_src_id);
-                DPRINTF(RubyCHIDebugStr5,"D2D-->NW in = %s\n",in_msg);
-                DPRINTF(RubyCHIDebugStr5,"D2D-->NW out = %s\n",out_msg);
             }
         }
         bwDatInPort.dequeue(clockEdge());
@@ -596,8 +589,6 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
                 out_msg := in_msg;
                 out_msg.responder := machineID;
                 out_msg.Destination.add(getHANodeIdOnDie(in_msg.addr));
-                DPRINTF(RubyCHIDebugStr5,"D2D-->NW_HA in = %s\n",in_msg);
-                DPRINTF(RubyCHIDebugStr5,"D2D-->NW_HA out = %s\n",out_msg);
             }
         }
         bwDatInPort.dequeue(clockEdge());

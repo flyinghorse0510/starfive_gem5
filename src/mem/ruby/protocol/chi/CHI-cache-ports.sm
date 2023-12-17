@@ -227,7 +227,7 @@ in_port(retryTriggerInPort, RetryTriggerMsg, retryTriggerQueue, rank=6,
 bool retryTriggerInPort_rsc_stall_handler() {
   DPRINTF(RubySlicc, "Retry trigger queue resource stall\n");
   retryTriggerInPort.recycle(clockEdge(), cyclesToTicks(stall_recycle_lat));
-  return false; // Setting it to true might block the REQ channel
+  return false; // Setting it to true might block the REQ channel. Likely due to a bug In the simulator
 }
 
 

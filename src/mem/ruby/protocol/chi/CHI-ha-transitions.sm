@@ -198,3 +198,16 @@ transition(BUSY_BLKD, SendWBData) {
   Send_WBData;
   ProcessNextState_ClearPending;
 }
+
+// Retry related
+transition({I,RSC,RSD,RUSD,RUSC,RU
+            BUSY_INTR,BUSY_BLKD}, SendRetryAck) {
+  Send_RetryAck;
+  Pop_RetryTriggerQueue;
+}
+
+transition({I,RSC,RSD,RUSD,RUSC,RU
+            BUSY_INTR,BUSY_BLKD}, SendPCrdGrant) {
+  Send_PCrdGrant;
+  Pop_RetryTriggerQueue;
+}
