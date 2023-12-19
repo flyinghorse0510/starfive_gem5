@@ -63,7 +63,6 @@ action(AllocateTBE_Request, desc="") {
         out_msg.event := Event:SendRetryAck;
         out_msg.retryDest := in_msg.requestor;
         retryQueue.emplace_retry(in_msg.addr,false,in_msg.requestor);
-        DPRINTF(RubyCHIDebugStr5,"Sending a RetryAck = %s\n",out_msg);
       }
     }
   }
@@ -691,7 +690,6 @@ action(Send_RetryAck, desc="") {
       out_msg.type := CHIResponseType:RetryAck;
       out_msg.responder := machineID;
       out_msg.Destination.add(in_msg.retryDest);
-      DPRINTF(RubyCHIDebugStr5,"RetryAck out_msg = %s\n",out_msg);
     }
   }
 }
@@ -704,7 +702,6 @@ action(Send_PCrdGrant, desc="") {
       out_msg.type := CHIResponseType:PCrdGrant;
       out_msg.responder := machineID;
       out_msg.Destination.add(in_msg.retryDest);
-      DPRINTF(RubyCHIDebugStr5,"PCrdGrant out_msg = %s\n",out_msg);
     }
   }
 }

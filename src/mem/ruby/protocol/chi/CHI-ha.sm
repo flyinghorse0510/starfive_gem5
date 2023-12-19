@@ -662,8 +662,8 @@ in_port(retryTriggerInPort, RetryTriggerMsg, retryTriggerQueue, rank=6,
         if (tbe.is_req_hazard || tbe.is_repl_hazard) {
           ev := Event:DoRetry_Hazard;
         }
-        trigger(ev, in_msg.addr, tbe);
       }
+      trigger(ev, in_msg.addr, tbe);
     }
   }
 }

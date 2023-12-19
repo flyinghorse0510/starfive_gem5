@@ -917,7 +917,8 @@ class CHI_D2DNodeController(D2DNode_Controller):
             d2dnode_snpOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate),
             d2dnode_rspOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate),
             d2dnode_datOut = D2DBridgeBuffer(buffer_size=d2dbridge_buff_depth,max_dequeue_rate=d2dbridge_buff_deq_rate),
-            d2dnode_crdOut = D2DCreditBuffer()
+            d2dnode_crdOut = D2DCreditBuffer(),
+            transmit_retry_from_nw = True
         )
         
 
