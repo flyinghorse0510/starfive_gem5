@@ -235,8 +235,8 @@ Seq2MemTest::completeRequest(PacketPtr pkt, bool functional)
             DPRINTF(SeqMemLatTest,"SFReplMemTest|Addr:%#x,Iter:%d,Reqtor:%d,ExpData:%#x,Complete:W\n",\
                 remove_paddr,\
                 addrIterMap[remove_paddr],\
-                pkt_data[0],\
-                id);
+                id,\
+                pkt_data[0]);
             // update the reference data
             referenceData[req->getPaddr()] = pkt_data[0];
             numWritesCompleted++;
@@ -371,8 +371,6 @@ Seq2MemTest::tick()
         // finally shift the timeout for sending of requests forwards
         // as we have successfully sent a packet
         reschedule(noRequestEvent, clockEdge(progressCheck), true);
-    } else {
-        DPRINTF(SeqMemLatTest, "Waiting for retry\n");
     }
 
     // Schedule noResponseEvent now if we are not expecting a response

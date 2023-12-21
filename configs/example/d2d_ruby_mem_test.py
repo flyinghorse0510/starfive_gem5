@@ -228,7 +228,7 @@ if num_cpus > 0 :
                      percent_reads = percent_read,
                      base_addr_1=args.base_addr_1,
                      base_addr_2=args.base_addr_2,
-                     no_gen=False if i == (num_cpus-1) else True,
+                     no_gen=False if (i % args.num_dies == 1) else True,
                      suppress_func_errors = args.suppress_func_errors) \
              for i in range(num_cpus) ]
 
@@ -252,7 +252,7 @@ if num_dmas > 0:
                      block_stride_bits = args.block_stride_bits,
                      randomize_acc = args.randomize_acc,
                      percent_reads = percent_read,
-                     no_gen=False if i == (num_cpus-1) else True,
+                     no_gen=False if (i % args.num_dies == 1) else True,
                      suppress_func_errors = not args.suppress_func_errors) \
              for i in range(args.num_dmas) ]
     system.dma_devices = dmas
