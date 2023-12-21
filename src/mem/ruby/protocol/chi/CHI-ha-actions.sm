@@ -536,17 +536,8 @@ action(Finalize_DeallocateRequest, desc="") {
 
   if (tbe.is_req_tbe) {
     deallocateReqTBE(tbe);
-    ///processRetryQueue(); //TBD retry
-
-  } else if (tbe.is_snp_tbe) {
-    deallocateSnpTBE(tbe);
-
-  } //else {  
-    //deallocateReplacementTBE(tbe);
-    //if (unify_repl_TBEs) {
-    //  processRetryQueue();
-    //}
-  //}
+    processRetryQueue();
+  }
   unset_tbe();
 
   incomingTransactionEnd(address, curTransitionNextState());

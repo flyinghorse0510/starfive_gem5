@@ -253,7 +253,6 @@ TBE allocateRequestTBE(Addr addr, CHIRequestMsg in_msg), return_by_pointer="yes"
 
   initializeTBE(tbe, addr, storTBEs.addEntryToNewSlot());
 
-  assert(tbe.is_snp_tbe == false);
   tbe.is_req_tbe := true;
 
   tbe.accAddr := in_msg.accAddr;
@@ -282,7 +281,6 @@ TBE allocateSnoopTBE(Addr addr, CHIRequestMsg in_msg), return_by_pointer="yes" {
   initializeTBE(tbe, addr, storSnpTBEs.addEntryToNewSlot());
 
   assert(tbe.is_req_tbe == false);
-  tbe.is_snp_tbe := true;
 
   tbe.accAddr := addr;
   tbe.accSize := blockSize;
@@ -300,7 +298,6 @@ TBE allocateSnoopTBE(Addr addr, CHIRequestMsg in_msg), return_by_pointer="yes" {
 
 TBE getHazardTBE(TBE tbe), return_by_pointer="yes" {
   assert(is_valid(tbe));
-  assert(tbe.is_snp_tbe);
   TBE hazard_tbe := TBEs[tbe.addr];
   assert(is_valid(hazard_tbe));
   return hazard_tbe;
@@ -470,9 +467,9 @@ State getState(TBE tbe, Addr txnId) {
 void setAccessPermission(Addr txnId, State state) {}
 
 void printDvmTBEState(TBE tbe) {
-  DPRINTF(RubySlicc, "STATE: addr=%#x reqType=%d state=%d pendAction=%s isReqTBE=%d isSnpTBE=%d\n",
+  DPRINTF(RubySlicc, "STATE: addr=%#x reqType=%d state=%d pendAction=%s isReqTBE=%d\n",
                       tbe.addr, tbe.reqType, tbe.state, tbe.pendAction,
-                      tbe.is_req_tbe, tbe.is_snp_tbe);
+                      tbe.is_req_tbe);
 }
 
 MachineID getMiscNodeMachine() {
@@ -522,7 +519,6 @@ void deallocateReqTBE(TBE tbe) {
 
 void deallocateSnpTBE(TBE tbe) {
   assert(is_valid(tbe));
-  assert(tbe.is_snp_tbe);
   storSnpTBEs.removeEntryFromSlot(tbe.storSlot);
   snpTBEs.deallocate(tbe.addr);
 }
@@ -860,79 +856,7 @@ Event snpToEvent (CHIRequestType type) {
     return Event:SnpOnceFwd;
   } 
 
-//   else if (type == CHIRequestType:SnpDvmOpSync_P1) {
-//    return Event:SnpDvmOpSync_P1;
-//  } else if (type == CHIRequestType:SnpDvmOpSync_P2) {
-//    return Event:SnpDvmOpSync_P2;
-//  } else if (type == CHIRequestType:SnpDvmOpNonSync_P1) {
-//    return Event:SnpDvmOpNonSync_P1;
-//  } else if (type == CHIRequestType:SnpDvmOpNonSync_P2) {
-//    return Event:SnpDvmOpNonSync_P2;
-//  } 
-
   else {
     error("Invalid CHIRequestType");
   }
 }
-
-//////////////////////////////////////////
-// Cache bank utilization tracking
-/*
-enumeration(RequestType, desc="To communicate stats from transitions to recordStats") {
-  TagArrayRead,    desc="Read or write the dir/cache tag/data array";
-  TagArrayWrite,    desc="Read or write the dir/cache tag/data array";
-  DataArrayRead,    desc="Read or write the dir/cache tag/data array";
-  DataArrayWrite,    desc="Read or write the dir/cache tag/data array";
-
-  DestinationAvailable, desc="Check if there is a pending retry from the destination";
-
-  ReplTBEAvailable, desc="Check if a replacement TBE is available";
-}
-
-void recordRequestType(RequestType request_type, Addr addr) {
-  if (request_type == RequestType:DataArrayRead) {
-    cache.recordRequestType(CacheRequestType:DataArrayRead, addr);
-  } else if (request_type == RequestType:DataArrayWrite) {
-    cache.recordRequestType(CacheRequestType:DataArrayWrite, addr);
-  } else if (request_type == RequestType:TagArrayRead) {
-    cache.recordRequestType(CacheRequestType:TagArrayRead, addr);
-  } else if (request_type == RequestType:TagArrayWrite) {
-    cache.recordRequestType(CacheRequestType:TagArrayWrite, addr);
-  }
-}
-
-bool _checkResourceAvailable(RequestType request_type, Addr addr) {
-  if (request_type == RequestType:DataArrayRead) {
-    return cache.checkResourceAvailable(CacheResourceType:DataArray, addr);
-  } else if (request_type == RequestType:DataArrayWrite) {
-    return cache.checkResourceAvailable(CacheResourceType:DataArray, addr);
-  } else if (request_type == RequestType:TagArrayRead) {
-    return cache.checkResourceAvailable(CacheResourceType:TagArray, addr);
-  } else if (request_type == RequestType:TagArrayWrite) {
-    return cache.checkResourceAvailable(CacheResourceType:TagArray, addr);
-  } else if (request_type == RequestType:DestinationAvailable) {
-    if (throttle_req_on_retry) {
-      MachineID dest := mapAddressToDownstreamMachine(addr);
-      DPRINTF(RubySlicc, "Checking %s for addr %#x dest %s\n", request_type, addr, dest);
-      return destsWaitingRetry.isElement(dest) == false;
-    } else {
-      return true;
-    }
-  } else if (request_type == RequestType:ReplTBEAvailable) {
-    // if unify_repl_TBEs the replacement uses the same slot as the request
-    // that initiated it, so the resource is always available
-    return unify_repl_TBEs || storReplTBEs.areNSlotsAvailable(1);
-  } else {
-    error("Invalid RequestType type in checkResourceAvailable");
-    return true;
-  }
-}
-
-bool checkResourceAvailable(RequestType request_type, Addr addr) {
-  bool avail := _checkResourceAvailable(request_type, addr);
-  if (avail == false) {
-    DPRINTF(RubySlicc, "Resource %s not available for addr: %#x\n", request_type, addr);
-  }
-  return avail;
-}
-*/

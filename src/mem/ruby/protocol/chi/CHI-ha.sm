@@ -305,7 +305,6 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
     structure(TBE, desc="Transaction buffer entry definition") {
       // in which table was this allocated
       bool is_req_tbe, desc="Allocated in the request table";
-      bool is_snp_tbe, desc="Allocated in the snoop table";
 
       int storSlot, desc="Slot in the storage tracker occupied by this entry";
 
@@ -728,7 +727,7 @@ void processNextState(Addr address, TBE tbe) {
     }
   }
 
-  void processRetryQueue(Addr addr) {
+  void processRetryQueue() {
     // send credit if requestor waiting for it and we have resources
     // assert(unify_repl_TBEs || has_avail);
     // the slot might still be used by a replacement if unify_repl_TBEs is set
