@@ -214,7 +214,6 @@ void initializeTBE(TBE tbe, Addr addr, int storSlot) {
   assert(is_valid(tbe));
 
   tbe.wakeup_pending_req := false;
-  tbe.wakeup_pending_snp := false;
   tbe.wakeup_pending_tgr := false;
 
   tbe.addr := addr;

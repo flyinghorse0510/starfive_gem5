@@ -405,9 +405,7 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
       // This TBE stalled a message and thus we need to call wakeUpBuffers
       // at some point
       bool wakeup_pending_req;
-      bool wakeup_pending_snp;
       bool wakeup_pending_tgr;
-
     }
 
     // TBE table definition
