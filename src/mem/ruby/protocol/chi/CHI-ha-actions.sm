@@ -7,11 +7,6 @@
 // CHI-ha actions definitions
 ////////////////////////////////////////////////////////////////////////////
 
-action(Allocate_DirEntry, desc="") {
-  assert(directory.isTagPresent(address) == false);
-  directory.allocate(address);
-}
-
 action(Initiate_ReadNoSnp, desc="") {
   tbe.actions.push(Event:SendReadNoSnp);
   tbe.actions.push(Event:WaitCompAck);
@@ -90,7 +85,6 @@ action(Initiate_Request, desc="") {
       // only a msg that was already retried doesn't allow a retry
       was_retried := in_msg.allowRetry == false;
     }
-
     DirEntry dir_entry := getDirEntry(address);
     copyDir(dir_entry, tbe, initial);
     tbe.use_DMT := is_HN && enable_DMT;
@@ -99,6 +93,20 @@ action(Initiate_Request, desc="") {
     // For HA there is no LLC, always drop the data
     tbe.dataToBeInvalid := true;
     tbe.doCacheFill := false;
+
+    // Requires a DirEntry allocation
+    tbe.requiresDirEntryAlloc := (is_invalid(dir_entry)) && requiresDirEntry(tbe.reqType);
+    bool avail_direntry := directory.cacheAvail(address);
+    bool doSnoopFilterFill := !directory.allowInfiniteEntries() && requiresDirEntry(tbe.reqType);
+    assert(avail_direntry || (!doSnoopFilterFill));
+    if (tbe.requiresDirEntryAlloc) {
+      directory.allocate(address, new DirEntry);
+      directory.profileAlloc();
+    }
+    if ((is_valid(dir_entry)) && requiresDirEntry(tbe.reqType)) {
+      directory.profileHit();
+    }
+
     incomingTransactionStart(address, curTransitionEvent(), initial, was_retried);
 }
 
@@ -510,7 +518,7 @@ action(Send_CompDBIDResp, desc="") {
 action(Finalize_UpdateDirectoryFromTBE, desc="") {
   assert(is_valid(tbe));
   State final := tbe.finalState;
-
+  bool deallocDirEntry := false;
   if ((final == State:RSC) || (final == State:RSD) || (final == State:RUSC) || 
       (final == State:RUSD) || (final == State:RU)) {
     DirEntry dir_entry := getDirEntry(address);
@@ -523,8 +531,18 @@ action(Finalize_UpdateDirectoryFromTBE, desc="") {
   } else {
     assert((tbe.dir_ownerExists == false) && tbe.dir_sharers.isEmpty());
     if(directory.isTagPresent(address)) {
-      directory.deallocate(address);
+      deallocDirEntry := true;
     }
+  }
+  
+  /** 
+   * If you de-allocating the dirEntry, make
+   * sure to reset the SnoopFilter way and 
+   * wakeup any pending SnoopFilter repl.
+   */
+  if (deallocDirEntry) {
+    resetDirEntryAndWakeupPendingSFRepl(address);
+    directory.deallocate(address);
   }
 }
 
@@ -533,10 +551,12 @@ action(Finalize_DeallocateRequest, desc="") {
   assert(tbe.actions.empty());
   wakeupPendingReqs(tbe);
   wakeupPendingTgrs(tbe);
-
+  wakeupPendingSFRepl(tbe);
   if (tbe.is_req_tbe) {
     deallocateReqTBE(tbe);
     processRetryQueue();
+  } else if (tbe.is_sfrepl_tbe) {
+    deallocateSnoopFilterTBE(tbe);
   }
   unset_tbe();
 
@@ -699,4 +719,90 @@ action(Send_PCrdGrant, desc="") {
 
 action(Pop_RetryTriggerQueue, desc="") {
   retryTriggerInPort.dequeue(clockEdge());
+}
+
+// SnoopFilter related actions 
+action(StallRequest_OnSnoopFilterRepl, desc="") {
+  // A valid tbe is not yet allocated. But must stall
+  stall_and_wait(reqRdyPort, address);
+}
+
+action(Initiate_SnoopFilterReplacement, desc="") {
+  assert(is_invalid(tbe));
+  DirEntry dir_entry := getDirEntry(address);
+  assert(is_valid(dir_entry));
+  State initial := getState(tbe, address);
+  peek(sfReplInPort, SFReplMessage) {
+    set_tbe(allocateSnoopFilterTBE(address, machineID, machineID));
+    tbe.evicting_sf_addr := in_msg.toAddr;
+  }
+  copyDir(dir_entry, tbe, initial);
+
+  // Is this correct?
+  incomingTransactionStart(address, curTransitionEvent(), initial, false);
+}
+
+action(Initiate_SnoopFilterReplacement_WB_BackInv, desc="") {
+  assert(is_HN);
+  assert(is_valid(tbe));
+  assert(tbe.dataDirty || tbe.dataMaybeDirtyUpstream);
+  tbe.doCacheFill := false;
+  tbe.actions.push(Event:SendSnpCleanInvalid);
+  tbe.actions.push(Event:SnoopFilterHAWB);
+}
+
+action(Initiate_SnoopFilterReplacement_Evict_BackInv, desc="") {
+  assert(is_HN);
+  assert(is_valid(tbe));
+  tbe.actions.push(Event:SendSnpCleanInvalid);
+  tbe.dataToBeInvalid := true;
+  tbe.actions.push(Event:ResetAndDeallocDirEntry); // pushNB?
+  tbe.actions.push(Event:WakeUpEvictingSnoopFilterAddr); // pushNB?
+}
+
+action(StallSnoopFilterEviction, desc="") {
+  // was stalled because of an existing request
+  assert(is_valid(tbe));
+  assert(tbe.addr == address);
+  tbe.wakeup_pending_sfRepl := true;
+  stall_and_wait(sfReplInPort, address);
+}
+
+action(Profile_SnoopFilterMiss, desc="") {
+  assert(is_valid(tbe)); // Why is this necessary?
+  directory.profileMiss();
+}
+
+action(Pop_SFReplTriggerQueue, desc="") {
+  sfReplInPort.dequeue(clockEdge());
+}
+
+action(Send_SnpCleanInvalid, desc="") {
+  assert(is_valid(tbe));
+  assert(tbe.expected_snp_resp.hasExpected() == false);
+  // at least one sharer or owner othrwise should not execute this
+  assert(tbe.dir_sharers.count() > 0);
+  enqueue(snpOutPort, CHIRequestMsg, snoop_latency) {
+    prepareRequest(tbe, CHIRequestType:SnpCleanInvalid, out_msg);
+    out_msg.Destination.addNetDest(tbe.dir_sharers);
+    out_msg.retToSrc := false;
+  }
+  setExpectedForInvSnoop(tbe, false);
+}
+
+action(StallRequest_OnSnoopFilterRepl_Pend, desc="") {
+  // Directory(set,way) is busy servicing other SFRepl requests. Create a Stall for this request
+  stall_and_wait(reqRdyPort, address);
+  snoopFilterPendQ.emplace_sfrepl(address);
+}
+
+action(Reset_DirEntry, desc="") {
+  assert(is_valid(tbe));
+  assert(tbe.addr == address);
+  resetDirEntryAndWakeupPendingSFRepl(address);
+}
+
+action(Deallocate_DirEntry, desc="") {
+  assert(directory.isTagPresent(address));
+  directory.deallocate(address);
 }

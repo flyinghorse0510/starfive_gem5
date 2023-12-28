@@ -176,9 +176,15 @@ def create_system(options,
         assoc = options.l3_assoc
         replacement_policy = ObjectList.rp_list.get(options.l3repl)()
     
-    class HNFRealSnoopFilter(RubySnoopFilter):
+    class HNFSnoopFilter(RubySnoopFilter):
         size = options.num_snoopfilter_entries
         assoc = options.num_snoopfilter_assoc
+        start_index_bit = 6
+        allow_infinite_entries = True
+    
+    class HASnoopFilter(RubySnoopFilter):
+        size = 2
+        assoc = 1
         start_index_bit = 6
         allow_infinite_entries = options.allow_infinite_SF_entries
     
@@ -191,15 +197,12 @@ def create_system(options,
     all_cntrls     = []
     rnfs           = [] 
     hnfs           = []
-    haMap          = []
     snfs           = []
     mns            = []
     d2dnodes       = []
     dma_rni        = []
     io_rni         = None
     die_list       = list(dieAddrRangeMap.keys())
-
-    dieDownstreamMap = dict([(dieId,[]) for dieId in die_list]) # Downstream map of HNFs within a die
 
     # Instantiate HNF (add priv L2 cache)
     assert(len(cpus) == options.num_cpus)
@@ -233,7 +236,7 @@ def create_system(options,
                      hnf_idx, 
                      ruby_system, 
                      HNFCache, 
-                     HNFRealSnoopFilter, 
+                     HNFSnoopFilter, 
                      None) for _, hnf_idx in enumerate(hnf_list) ]
     for hnf in hnfs:
         network_nodes.append(hnf)
@@ -275,7 +278,7 @@ def create_system(options,
                               system.cache_line_size.value,
                               src_die_id,
                               hAList)
-    hAs = [CHI_HA(options,src_die_id,haId,ruby_system) for haId in hAList]
+    hAs = [CHI_HA(options,src_die_id,haId,HASnoopFilter,ruby_system) for haId in hAList]
     ha_dests = []
     hAaddrRangeMap = dict()
     for ha in hAs:

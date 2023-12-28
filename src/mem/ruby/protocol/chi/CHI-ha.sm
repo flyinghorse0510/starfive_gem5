@@ -3,17 +3,19 @@
  * All rights reserved
  */
 machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket coherence") :
-
     // CHI channels to the NW side
     MessageBuffer * reqIn,   network="From", virtual_network="0", vnet_type="none";
     MessageBuffer * snpIn,   network="From", virtual_network="1", vnet_type="none";
     MessageBuffer * rspIn,   network="From", virtual_network="2", vnet_type="none";
     MessageBuffer * datIn,   network="From", virtual_network="3", vnet_type="response";
-
+    
     MessageBuffer * reqOut,   network="To", virtual_network="0", vnet_type="none";
     MessageBuffer * snpOut,   network="To", virtual_network="1", vnet_type="none";
     MessageBuffer * rspOut,   network="To", virtual_network="2", vnet_type="none";
     MessageBuffer * datOut,   network="To", virtual_network="3", vnet_type="response";
+
+    // Directory
+    SnoopFilter * directory;
 
     // Internal queue for accepted requests
     MessageBuffer * reqRdy;
@@ -24,6 +26,9 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
     // Internal queue for retry trigger events
     MessageBuffer * retryTriggerQueue;
 
+    // Internal queue for SFEviction requests
+    MessageBuffer * sfReplTriggerQueue;
+
     // Enqueue latencies for outgoing messages
     // NOTE: should remove this and only use parameters above?
     Cycles request_latency := 1;
@@ -32,7 +37,7 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
     Cycles snoop_latency := 1;
     Cycles data_latency := 1;
 
-   // Request TBE allocation latency
+    // Request TBE allocation latency
     Cycles allocation_latency := 0;
 
     // When an SC fails, unique lines are locked to this controller for a period
@@ -49,9 +54,11 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
 
     // Number of entries in the snoop, replacement, and DVM TBE tables
     // notice the "number_of_TBEs" parameter is defined by AbstractController
-    int number_of_snoop_TBEs := 32;
+    // int number_of_snoop_TBEs := 32;
 
     int number_of_TBEs := 64;
+
+    int number_of_SFReplTBEs := 4;
 
     // Width of the data channel. Data transfer are split in multiple messages
     // at the protocol level when this is less than the cache line size.
@@ -89,14 +96,12 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
     ////////////////////////////////////////////////////////////////////////////
     state_declaration(State, default="HA_State_null") {
       I, AccessPermission:Invalid,    desc="Invalid / not present locally or upstream";
-
       // HA effectively contains only a (possibly infinite for now)  directory
       RU, AccessPermission:Invalid,  desc="Upstream in UD/UC";
       RSC, AccessPermission:Invalid,  desc="Upstream in SC";
       RSD, AccessPermission:Invalid,  desc="Upstream in SD and maybe SC";
       RUSC, AccessPermission:Invalid, desc="RSC + this die stills has exclusive access";
       RUSD, AccessPermission:Invalid, desc="RSD + this die stills has exclusive access";
-
       // Generic transient state
       // There is only a transient "BUSY" state. The actions taken at this state
       // and the final stable state are defined by information in the TBE.
@@ -105,8 +110,6 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
       // are blocked
       BUSY_INTR, AccessPermission:Busy, desc="Waiting for data and/or ack";
       BUSY_BLKD, AccessPermission:Busy, desc="Waiting for data and/or ack; blocks snoops";
-
-
       // Null state for debugging
       null, AccessPermission:Invalid, desc="Null state";
     }
@@ -115,174 +118,183 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
     // Events
     ////////////////////////////////////////////////////////////////////////////
     enumeration(Event) {
-        AllocRequest,           desc="Allocates a TBE for a request. Triggers a retry if table is full";
-        AllocRequestWithCredit, desc="Allocates a TBE for a request. Always succeeds.";
-        AllocSnoop,             desc="Allocates a TBE for a snoop. Stalls snoop if table is full";
-
-        SendCompAck,          desc="Send CompAck";
-
-        // Internal events
-        SendReadNoSnp, desc="Send ReadNoSnp downstream";
-        WaitCompAck,   desc="Wait for CompAck";
-        SendCompData,  desc="Send CompData upstream";
-
-        // Events triggered by snoops in the rdy queue
-        // See CHIRequestType in CHi-msg.sm for descriptions
-        ReadShared,                  desc="";
-        ReadNotSharedDirty,          desc="";
-        ReadUnique,                  desc="";
-        ReadUnique_PoC,              desc="";
-        ReadOnce,                    desc="";
-        CleanUnique,                 desc="";
-        Evict,                       desc="";
-        WriteBackFull,               desc="";
-        WriteEvictFull,              desc="";
-        WriteCleanFull,              desc="";
-        WriteUnique,                 desc="";
-        WriteUniquePtl_PoC,          desc="";
-        WriteUniqueFull_PoC,         desc="";
-        WriteUniqueFull_PoC_Alloc,   desc="";
-        SnpCleanInvalid,             desc="";
-        SnpShared,                   desc="";
-        SnpSharedFwd,                desc="";
-        SnpNotSharedDirtyFwd,        desc="";
-        SnpUnique,                   desc="";
-        SnpUniqueFwd,                desc="";
-        SnpOnce,                     desc="";
-        SnpOnceFwd,                  desc="";
-        SnpStalled, desc=""; // A snoop stall triggered from the inport
-
-        // Write handling at the completer
-        SendCompDBIDResp,      desc="Ack WB with CompDBIDResp";
-        SendCompDBIDRespStale, desc="Ack stale WB with CompDBIDResp";
-        SendCompDBIDResp_WU,   desc="Ack WU with CompDBIDResp and set expected data";
-        SendDBIDResp_WU,       desc="Ack WU with DBIDResp and set expected data";
-        SendComp_WU,           desc="Ack WU completion";
-
-        // Snoop requests
-        // SnpNotSharedDirty are sent instead of SnpShared for ReadNotSharedDirty
-        SendSnpShared,            desc="Send a SnpShared/SnpNotSharedDirty to sharer in UC,UD, or SD state";
-        SendSnpOnce,              desc="Send a SnpOnce to a sharer";
-        SendSnpCleanInvalidNoReq, desc="Send a SnpCleanInvalid to all sharers except requestor";
-
-        // Misc triggers
-        FinishCleanUnique, desc="Sends acks and perform any writeback after a CleanUnique";
-        MaintainCoherence, desc="Queues a WriteBack or Evict before droping the only valid copy of the block";
-
-        SendCompUCRespStale, desc="Ack stale CleanUnique with Comp_UC";
-        SendCompUCResp, desc="Ack CleanUnique with Comp_UC";
-
-        // Dataless requests
-        SendCompIResp,  desc="Ack Evict with Comp_I";
-
-        // Send a write request downstream.
-        SendWriteNoSnp,            desc="Send a WriteNoSnp for a full line";
-        SendWBData,                desc="Send writeback data";
-
-        // Events triggered by incoming response messages
-        // See CHIResponseType in CHi-msg.sm for descriptions
-        CompAck,                 desc="";
-        Comp_I,                  desc="";
-        Comp_UC,                 desc="";
-        Comp_SC,                 desc="";
-        CompDBIDResp,            desc="";
-        DBIDResp,                desc="";
-        Comp,                    desc="";
-        ReadReceipt,             desc="";
-        RespSepData,             desc="";
-        SnpResp_I,               desc="";
-        SnpResp_I_Fwded_UC,      desc="";
-        SnpResp_I_Fwded_UD_PD,   desc="";
-        SnpResp_SC,              desc="";
-        SnpResp_SC_Fwded_SC,     desc="";
-        SnpResp_SC_Fwded_SD_PD,  desc="";
-        SnpResp_UC_Fwded_I,      desc="";
-        SnpResp_UD_Fwded_I,      desc="";
-        SnpResp_SC_Fwded_I,      desc="";
-        SnpResp_SD_Fwded_I,      desc="";
-        RetryAck,                desc="";
-        RetryAck_PoC,            desc="";
-        PCrdGrant,               desc="";
-        PCrdGrant_PoC,           desc="";
-        RetryAck_Hazard,         desc="";
-        RetryAck_PoC_Hazard,     desc="";
-        PCrdGrant_Hazard,        desc="";
-        PCrdGrant_PoC_Hazard,    desc="";
-
-        // Events triggered by incoming data response messages
-        // See CHIDataType in CHi-msg.sm for descriptions
-        CompData_I,                    desc="";
-        CompData_UC,                   desc="";
-        CompData_SC,                   desc="";
-        CompData_UD_PD,                desc="";
-        CompData_SD_PD,                desc="";
-        DataSepResp_UC,                desc="";
-        CBWrData_I,                    desc="";
-        CBWrData_UC,                   desc="";
-        CBWrData_SC,                   desc="";
-        CBWrData_UD_PD,                desc="";
-        CBWrData_SD_PD,                desc="";
-        NCBWrData,                     desc="";
-        SnpRespData_I,                 desc="";
-        SnpRespData_I_PD,              desc="";
-        SnpRespData_SC,                desc="";
-        SnpRespData_SC_PD,             desc="";
-        SnpRespData_SD,                desc="";
-        SnpRespData_UC,                desc="";
-        SnpRespData_UD,                desc="";
-        SnpRespData_SC_Fwded_SC,       desc="";
-        SnpRespData_SC_Fwded_SD_PD,    desc="";
-        SnpRespData_SC_PD_Fwded_SC,    desc="";
-        SnpRespData_I_Fwded_SD_PD,     desc="";
-        SnpRespData_I_PD_Fwded_SC,     desc="";
-        SnpRespData_I_Fwded_SC,        desc="";
-
-
-        TX_Data,       desc="Transmit pending data messages";
-
-        // Final
-        Final, desc="Final event";
-
-        // Retry handling
-        SendRetryAck,   desc="Send RetryAck";
-        SendPCrdGrant,  desc="Send PCrdGrant";
-        DoRetry,        desc="Resend the current pending request";
-        DoRetry_Hazard,        desc="DoRetry during a hazard";
-
-        // Invalid event
-        null, desc="";
+      AllocRequest,           desc="Allocates a TBE for a request. Triggers a retry if table is full";
+      AllocRequestWithCredit, desc="Allocates a TBE for a request. Always succeeds.";
+      AllocSnoop,             desc="Allocates a TBE for a snoop. Stalls snoop if table is full";
+      SendCompAck,          desc="Send CompAck";
+      
+      // Internal events
+      SendReadNoSnp, desc="Send ReadNoSnp downstream";
+      WaitCompAck,   desc="Wait for CompAck";
+      SendCompData,  desc="Send CompData upstream";
+      
+      // Events triggered by snoops in the rdy queue
+      // See CHIRequestType in CHi-msg.sm for descriptions
+      ReadShared,                  desc="";
+      ReadNotSharedDirty,          desc="";
+      ReadUnique,                  desc="";
+      ReadUnique_PoC,              desc="";
+      ReadOnce,                    desc="";
+      CleanUnique,                 desc="";
+      Evict,                       desc="";
+      WriteBackFull,               desc="";
+      WriteEvictFull,              desc="";
+      WriteCleanFull,              desc="";
+      WriteUnique,                 desc="";
+      WriteUniquePtl_PoC,          desc="";
+      WriteUniqueFull_PoC,         desc="";
+      WriteUniqueFull_PoC_Alloc,   desc="";
+      SnpCleanInvalid,             desc="";
+      SnpShared,                   desc="";
+      SnpSharedFwd,                desc="";
+      SnpNotSharedDirtyFwd,        desc="";
+      SnpUnique,                   desc="";
+      SnpUniqueFwd,                desc="";
+      SnpOnce,                     desc="";
+      SnpOnceFwd,                  desc="";
+      SnpStalled, desc=""; // A snoop stall triggered from the inport
+      
+      // Write handling at the completer
+      SendCompDBIDResp,      desc="Ack WB with CompDBIDResp";
+      SendCompDBIDRespStale, desc="Ack stale WB with CompDBIDResp";
+      SendCompDBIDResp_WU,   desc="Ack WU with CompDBIDResp and set expected data";
+      SendDBIDResp_WU,       desc="Ack WU with DBIDResp and set expected data";
+      SendComp_WU,           desc="Ack WU completion";
+      
+      // Snoop requests
+      // SnpNotSharedDirty are sent instead of SnpShared for ReadNotSharedDirty
+      SendSnpShared,            desc="Send a SnpShared/SnpNotSharedDirty to sharer in UC,UD, or SD state";
+      SendSnpOnce,              desc="Send a SnpOnce to a sharer";
+      SendSnpCleanInvalidNoReq, desc="Send a SnpCleanInvalid to all sharers except requestor";
+      SendSnpCleanInvalid,      desc="SnpCleanInvalid to everyone";
+      
+      // Misc triggers
+      FinishCleanUnique, desc="Sends acks and perform any writeback after a CleanUnique";
+      MaintainCoherence, desc="Queues a WriteBack or Evict before droping the only valid copy of the block";
+      SendCompUCRespStale, desc="Ack stale CleanUnique with Comp_UC";
+      SendCompUCResp, desc="Ack CleanUnique with Comp_UC";
+      
+      // Dataless requests
+      SendCompIResp,  desc="Ack Evict with Comp_I";
+      
+      // Send a write request downstream.
+      SendWriteNoSnp,            desc="Send a WriteNoSnp for a full line";
+      SendWBData,                desc="Send writeback data";
+      
+      // Events triggered by incoming response messages
+      // See CHIResponseType in CHi-msg.sm for descriptions
+      CompAck,                 desc="";
+      Comp_I,                  desc="";
+      Comp_UC,                 desc="";
+      Comp_SC,                 desc="";
+      CompDBIDResp,            desc="";
+      DBIDResp,                desc="";
+      Comp,                    desc="";
+      ReadReceipt,             desc="";
+      RespSepData,             desc="";
+      SnpResp_I,               desc="";
+      SnpResp_I_Fwded_UC,      desc="";
+      SnpResp_I_Fwded_UD_PD,   desc="";
+      SnpResp_SC,              desc="";
+      SnpResp_SC_Fwded_SC,     desc="";
+      SnpResp_SC_Fwded_SD_PD,  desc="";
+      SnpResp_UC_Fwded_I,      desc="";
+      SnpResp_UD_Fwded_I,      desc="";
+      SnpResp_SC_Fwded_I,      desc="";
+      SnpResp_SD_Fwded_I,      desc="";
+      RetryAck,                desc="";
+      RetryAck_PoC,            desc="";
+      PCrdGrant,               desc="";
+      PCrdGrant_PoC,           desc="";
+      RetryAck_Hazard,         desc="";
+      RetryAck_PoC_Hazard,     desc="";
+      PCrdGrant_Hazard,        desc="";
+      PCrdGrant_PoC_Hazard,    desc="";
+      
+      // Events triggered by incoming data response messages
+      // See CHIDataType in CHi-msg.sm for descriptions
+      CompData_I,                    desc="";
+      CompData_UC,                   desc="";
+      CompData_SC,                   desc="";
+      CompData_UD_PD,                desc="";
+      CompData_SD_PD,                desc="";
+      DataSepResp_UC,                desc="";
+      CBWrData_I,                    desc="";
+      CBWrData_UC,                   desc="";
+      CBWrData_SC,                   desc="";
+      CBWrData_UD_PD,                desc="";
+      CBWrData_SD_PD,                desc="";
+      NCBWrData,                     desc="";
+      SnpRespData_I,                 desc="";
+      SnpRespData_I_PD,              desc="";
+      SnpRespData_SC,                desc="";
+      SnpRespData_SC_PD,             desc="";
+      SnpRespData_SD,                desc="";
+      SnpRespData_UC,                desc="";
+      SnpRespData_UD,                desc="";
+      SnpRespData_SC_Fwded_SC,       desc="";
+      SnpRespData_SC_Fwded_SD_PD,    desc="";
+      SnpRespData_SC_PD_Fwded_SC,    desc="";
+      SnpRespData_I_Fwded_SD_PD,     desc="";
+      SnpRespData_I_PD_Fwded_SC,     desc="";
+      SnpRespData_I_Fwded_SC,        desc="";
+      
+      // Snoop Filter fill
+      WaitForSnoopFilterRepl,        desc="Wait for Snoop filter replacement";
+      WaitForSnoopFilterRepl_Pend,   desc="SnoopFilter repl is not possible";
+      SnoopFilterEviction,           desc="Initiate SnoopFilter eviction";
+      CheckCacheFill_SFRepl,         desc="Update HNF cache upon receiving SnpCleanInvalid responses from sharers";
+      SnoopFilterHAWB,               desc="SnoopFilter Cache fill";
+      WakeUpEvictingSnoopFilterAddr, desc="Wakeup the reqRdyPort for the SnoopFilter evicting address";
+      ResetAndDeallocDirEntry,       desc="Reset the directory way";
+      TX_Data,                       desc="Transmit pending data messages";
+      
+      // Final
+      Final, desc="Final event";
+      
+      // Retry handling
+      SendRetryAck,   desc="Send RetryAck";
+      SendPCrdGrant,  desc="Send PCrdGrant";
+      DoRetry,        desc="Resend the current pending request";
+      DoRetry_Hazard,        desc="DoRetry during a hazard";
+      
+      // Invalid event
+      null, desc="";
     }
 
     ////////////////////////////////////////////////////////////////////////////
     // Data structures
     ////////////////////////////////////////////////////////////////////////////
     
-      // Helper class for tracking expected response and data messages
-   structure(ExpectedMap, external ="yes") {
-     void clear(int dataChunks);
-     void addExpectedRespType(CHIResponseType);
-     void addExpectedDataType(CHIDataType);
-     void setExpectedCount(int val);
-     void addExpectedCount(int val);
-     bool hasExpected();
-     bool hasReceivedResp();
-     bool hasReceivedData();
-     int expected();
-     int received();
-     bool receiveResp(CHIResponseType);
-     bool receiveData(CHIDataType);
-     bool receivedDataType(CHIDataType);
-     bool receivedRespType(CHIResponseType);
-   }
+    // Helper class for tracking expected response and data messages
+    structure(ExpectedMap, external ="yes") {
+      void clear(int dataChunks);
+      void addExpectedRespType(CHIResponseType);
+      void addExpectedDataType(CHIDataType);
+      void setExpectedCount(int val);
+      void addExpectedCount(int val);
+      bool hasExpected();
+      bool hasReceivedResp();
+      bool hasReceivedData();
+      int expected();
+      int received();
+      bool receiveResp(CHIResponseType);
+      bool receiveData(CHIDataType);
+      bool receivedDataType(CHIDataType);
+      bool receivedRespType(CHIResponseType);
+    }
 
-   // Tracks a pending retry
-   structure(RetryQueueEntry) {
-     Addr addr,           desc="Line address";
-     bool usesTxnId,      desc="Uses a transaction ID instead of a memory address";
-     MachineID retryDest, desc="Retry destination";
-   }
+    // Tracks a pending retry
+    structure(RetryQueueEntry) {
+      Addr addr,           desc="Line address";
+      bool usesTxnId,      desc="Uses a transaction ID instead of a memory address";
+      MachineID retryDest, desc="Retry destination";
+    }
 
- 
+    structure(SnoopFilterReplPendEntry) {
+      Addr replAddr,       desc="Address that is attempting to replace an entry in SnoopFilter";
+    }
+
     // Queue for event triggers. Used to specify a list of actions that need
     // to be performed across multiple transitions.
     // This class is also used to track pending retries
@@ -298,6 +310,8 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
       void pushFrontNB(Event);
       void pop();
       void emplace_retry(Addr,bool,MachineID);
+      void emplace_sfrepl(Addr);
+      SnoopFilterReplPendEntry front_sfrepl();
       RetryQueueEntry front_retry(); //SLICC won't allow to reuse front()
     }
 
@@ -309,10 +323,9 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
       int storSlot, desc="Slot in the storage tracker occupied by this entry";
 
       // Attributes to save the address that replaces a victim address
-      Addr evicting_addr, desc="Store the address that triggers the SF eviction";
-      bool evicting_addr_valid, desc="Just for some assertion checks";
-      bool sf_eviction_started, desc="SF evictiction started";
-      bool sf_eviction_complete, desc="SF eviction is complete";
+      bool requiresDirEntryAlloc, desc="TBE requires a dir entry";
+      Addr evicting_sf_addr,      desc="Address that trigger SnoopFilter repl";
+      bool is_sfrepl_tbe,         desc="Allocated TBE for Snoop Filter repl";
 
       // Transaction info mostly extracted from the request message
       Addr addr,              desc="Line address for this TBE";
@@ -325,8 +338,6 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
       bool use_DMT,           desc="Use DMT for this transaction";
       bool use_DCT,           desc="Use DCT for this transaction";
 
-      // DieId information
-      
       // if either is set prefetchers are not notified on miss/hit/fill and
       // demand hit/miss stats are not incremented
       bool is_local_pf,       desc="Request generated by a local prefetcher";
@@ -406,6 +417,7 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
       // at some point
       bool wakeup_pending_req;
       bool wakeup_pending_tgr;
+      bool wakeup_pending_sfRepl;
     }
 
     // TBE table definition
@@ -429,7 +441,6 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
       void removeEntryFromSlot(int slot);
     }
 
-
     // Directory entry
     structure(DirEntry, interface="AbstractCacheEntry", main="false") {
       NetDest sharers,  desc="Which HNFs share this block"; //is the die
@@ -447,19 +458,28 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
       bool isTagPresent(Addr);
     }
 
-  // Pending RetryAck/PCrdGrant/DoRetry, TBD, may not need this
-   structure(RetryTriggerMsg, interface="Message") {
-     Addr addr;
-     Event event;
-     MachineID retryDest;
-     bool usesTxnId;
-     bool functionalRead(Packet *pkt) { return false; }
-     bool functionalRead(Packet *pkt, WriteMask &mask) { return false; }
-     bool functionalWrite(Packet *pkt) { return false; }
-   }
+    // Pending RetryAck/PCrdGrant/DoRetry, TBD, may not need this
+    structure(RetryTriggerMsg, interface="Message") {
+      Addr addr;
+      Event event;
+      MachineID retryDest;
+      bool usesTxnId;
+      bool functionalRead(Packet *pkt) { return false; }
+      bool functionalRead(Packet *pkt, WriteMask &mask) { return false; }
+      bool functionalWrite(Packet *pkt) { return false; }
+    }
 
+    structure(SFReplMessage, interface="Message") {
+     Addr fromAddr; // Victim Addr
+     Addr toAddr;   // Evicting
+    }
+
+ 
     // Destinations that will be sent PCrdGrant when a TBE becomes available
     TriggerQueue retryQueue, template="<HA_RetryQueueEntry>";
+
+    // For Handling SnoopFilter repls
+    TriggerQueue snoopFilterPendQ, template="<HA_SnoopFilterReplPendEntry>";
 
     // Pending transaction actions (generated by TBE:actions)
     // This structure serializes tbe.actions across all address
@@ -474,9 +494,6 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
     // Cache block size
     int blockSize, default="RubySystem::getBlockSizeBytes()";
 
-    // Home Agent Directory
-    PerfectCacheMemory directory, template="<HA_DirEntry>";
-
     // Multiplies sc_lock_base_latency to obtain the lock timeout.
     // This is incremented at Profile_Eviction and decays on
     // store miss completion
@@ -487,9 +504,10 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
     TBETable TBEs,       template="<HA_TBE>", constructor="m_number_of_TBEs";
     TBEStorage storTBEs, constructor="this, m_number_of_TBEs";
 
-     // TBE table for incoming snoops
-    TBETable snpTBEs,       template="<HA_TBE>", constructor="m_number_of_snoop_TBEs";
-    TBEStorage storSnpTBEs, constructor="this, m_number_of_snoop_TBEs";
+    // TBEs to keep track of SnoopFilter replacement
+    TBETable sfReplTBEs, template="<HA_TBE>",constructor="m_number_of_SFReplTBEs";
+    TBEStorage storSFReplTBEs, constructor="this, TBEType_to_string(TBEType_SFRepl), m_number_of_SFReplTBEs";
+  
 
     // Pending actions
     TriggerQueue actions,     template="<HA_Event>", desc="List of actions";
@@ -512,177 +530,213 @@ machine(MachineType:HA, "CHI Home agent to maintain cross die and cross socket c
     out_port(reqRdyOutPort, CHIRequestMsg, reqRdy);
     out_port(triggerOutPort, TriggerMsg, triggerQueue);
     out_port(retryTriggerOutPort, RetryTriggerMsg, retryTriggerQueue);
+    out_port(sfReplOutPort, SFReplMessage, sfReplTriggerQueue);
+
+    // Include helper functions here. Some of them require the outports to be
+    // already defined
+    // Notice 'processNextState' and 'wakeupPending*' functions are defined after
+    // the required input ports. Currently the SLICC compiler does not support
+    // separate declaration and definition of functions in the .sm files.
+    include "CHI-ha-funcs.sm";
 
 
-  // Include helper functions here. Some of them require the outports to be
-  // already defined
-  // Notice 'processNextState' and 'wakeupPending*' functions are defined after
-  // the required input ports. Currently the SLICC compiler does not support
-  // separate declaration and definition of functions in the .sm files.
-  include "CHI-ha-funcs.sm";
+    ////////////////////////////////////////////////////////////////////////////
+    // Inbound Ports
+    ////////////////////////////////////////////////////////////////////////////
 
-
-  ////////////////////////////////////////////////////////////////////////////
-  // Inbound Ports
-  ////////////////////////////////////////////////////////////////////////////
-
-
-  // Incoming new requests
-  in_port(reqInPort, CHIRequestMsg, reqIn, rank=2,
-         rsc_stall_handler=reqInPort_rsc_stall_handler) {
-    if (reqInPort.isReady(clockEdge())) {
-      printResources();
-      peek(reqInPort, CHIRequestMsg) {
-        // DVM Sync and TLBIs from external sources will use txnId requests,
-        // but they aren't implemented yet.
-        assert(!in_msg.usesTxnId);
-        if (in_msg.allowRetry) {
-          trigger(Event:AllocRequest, in_msg.addr,
-                   getCurrentActiveTBE(in_msg.addr));
-        } else {
-          trigger(Event:AllocRequestWithCredit, in_msg.addr,
-                  getCurrentActiveTBE(in_msg.addr));
+    in_port(sfReplInPort, SFReplMessage, sfReplTriggerQueue, rank=7) {
+      if (sfReplInPort.isReady(clockEdge())) {
+        printResources();
+        peek(sfReplInPort, SFReplMessage) {
+          TBE tbe := getCurrentActiveTBE(in_msg.fromAddr);
+          trigger(Event:SnoopFilterEviction, in_msg.fromAddr, tbe);
         }
       }
     }
-  }
 
-  bool reqInPort_rsc_stall_handler() {
-    error("reqInPort must never stall\n");
-    return false;
-  }
-
-  // Incoming snoops ; to remove TBD
-  // Not snoops are not retried, so the snoop channel is stalled if no
-  // Snp TBEs available
-  in_port(snpInPort, CHIRequestMsg, snpIn, rank=7) {
-    if (snpInPort.isReady(clockEdge())) {
-      assert(is_HN == false);
-      printResources();
-      peek(snpInPort, CHIRequestMsg) {
-        assert(in_msg.allowRetry == false);
-        if (in_msg.usesTxnId) {
-            error("Cannot support snpIn with usesTxnId"); //TBD
-        } else {
-          trigger(Event:AllocSnoop, in_msg.addr,
-                  getCurrentActiveTBE(in_msg.addr));
-        }
-      }
-    }
-  }
-
-   // Response
-  in_port(rspInPort, CHIResponseMsg, rspIn, rank=10,
-          rsc_stall_handler=rspInPort_rsc_stall_handler) {
-    if (rspInPort.isReady(clockEdge())) {
-      printResources();
-      peek(rspInPort, CHIResponseMsg) {
-        if (in_msg.usesTxnId) {
-          error("Cannot support rspIn with usesTxnId"); //TBD
-        } else {
+    // Retry action triggers
+    // These are handled before other triggers since a retried request should
+    // be enqueued ahead of a new request
+    // TODO: consider moving DoRetry to the triggerQueue
+    in_port(retryTriggerInPort, RetryTriggerMsg, retryTriggerQueue, rank=6,
+            rsc_stall_handler=retryTriggerInPort_rsc_stall_handler) {
+      if (retryTriggerInPort.isReady(clockEdge())) {
+        printResources();
+        peek(retryTriggerInPort, RetryTriggerMsg) {
+          Event ev := in_msg.event;
+          assert((ev == Event:SendRetryAck) || (ev == Event:SendPCrdGrant) ||
+                  (ev == Event:DoRetry));
           TBE tbe := getCurrentActiveTBE(in_msg.addr);
-          trigger(respToEvent(in_msg.type, tbe), in_msg.addr, tbe);
+          if (ev == Event:DoRetry) {
+            assert(is_valid(tbe));
+            if (tbe.is_req_hazard || tbe.is_repl_hazard) {
+              ev := Event:DoRetry_Hazard;
+            }
+          }
+          trigger(ev, in_msg.addr, tbe);
         }
       }
     }
-  }
+    bool retryTriggerInPort_rsc_stall_handler() {
+      DPRINTF(RubySlicc, "Retry trigger queue resource stall\n");
+      retryTriggerInPort.recycle(clockEdge(), cyclesToTicks(stall_recycle_lat));
+      return false; // Setting it to true might block the REQ channel
+    }
 
-  bool rspInPort_rsc_stall_handler() {
-   error("rspInPort must never stall\n");
-   return false;
- }
+    in_port(triggerInPort, TriggerMsg, triggerQueue, rank=5) {
+      if (triggerInPort.isReady(clockEdge())) {
+        peek(triggerInPort, TriggerMsg) {
+            TBE tbe := getCurrentActiveTBE(in_msg.addr);
+            assert(is_valid(tbe));
+            trigger(tbe.pendAction, in_msg.addr, tbe);
+        }
+      }
+    }
 
+    // Data
+    in_port(datInPort, CHIDataMsg, datIn, rank=4,
+            rsc_stall_handler=datInPort_rsc_stall_handler) {
+      if (datInPort.isReady(clockEdge())) {
+        peek(datInPort, CHIDataMsg) {
+          // We don't have any transactions that use data requests
+          assert(!in_msg.usesTxnId);
+          assert((in_msg.bitMask.count() <= data_channel_size) && (in_msg.bitMask.count() > 0));
+          // DPRINTF(RubyCHIDebugStr5,"Incoming message=%s\n",in_msg);
+          TBE tbe := getCurrentActiveTBE(in_msg.addr);
+          // printTBEStateStr5(tbe);
+          trigger(dataToEvent(in_msg.type), in_msg.addr, tbe);
+        }
+      }
+    }
+    bool datInPort_rsc_stall_handler() {
+      error("datInPort must never stall\n");
+      return false;
+    }
 
-  in_port(reqRdyPort, CHIRequestMsg, reqRdy, rank=1) {
-    if (reqRdyPort.isReady(clockEdge())) {
+    // Response
+    in_port(rspInPort, CHIResponseMsg, rspIn, rank=3,
+            rsc_stall_handler=rspInPort_rsc_stall_handler) {
+      if (rspInPort.isReady(clockEdge())) {
+        printResources();
+        peek(rspInPort, CHIResponseMsg) {
+          if (in_msg.usesTxnId) {
+            error("Cannot support rspIn with usesTxnId"); //TBD
+          } else {
+            TBE tbe := getCurrentActiveTBE(in_msg.addr);
+            trigger(respToEvent(in_msg.type, tbe), in_msg.addr, tbe);
+          }
+        }
+      }
+    }
+    bool rspInPort_rsc_stall_handler() {
+     error("rspInPort must never stall\n");
+     return false;
+    }
+
+    in_port(reqRdyPort, CHIRequestMsg, reqRdy, rank=2) {
+      if (reqRdyPort.isReady(clockEdge())) {
         peek(reqRdyPort, CHIRequestMsg) {
-          bool is_prefetch := false;
-          trigger(reqToEvent(in_msg.type, is_prefetch), in_msg.addr, getCurrentActiveTBE(in_msg.addr));
-        }
-    }
-  }
-
-  void wakeupPendingReqs(TBE tbe) {
-    if (tbe.wakeup_pending_req) {
-      Addr addr := tbe.addr;
-      wakeup_port(reqRdyPort, addr);
-      tbe.wakeup_pending_req := false;
-    }
-  }
-
-  // Data
-  in_port(datInPort, CHIDataMsg, datIn, rank=9,
-          rsc_stall_handler=datInPort_rsc_stall_handler) {
-    if (datInPort.isReady(clockEdge())) {
-      peek(datInPort, CHIDataMsg) {
-        // We don't have any transactions that use data requests
-        assert(!in_msg.usesTxnId);
-        assert((in_msg.bitMask.count() <= data_channel_size) && (in_msg.bitMask.count() > 0));
-        // DPRINTF(RubyCHIDebugStr5,"Incoming message=%s\n",in_msg);
-        TBE tbe := getCurrentActiveTBE(in_msg.addr);
-        // printTBEStateStr5(tbe);
-        trigger(dataToEvent(in_msg.type), in_msg.addr, tbe);
-      }
-    }
-  }
-  bool datInPort_rsc_stall_handler() {
-    error("datInPort must never stall\n");
-    return false;
-  }
-
-  
- in_port(triggerInPort, TriggerMsg, triggerQueue, rank=5) {
-   if (triggerInPort.isReady(clockEdge())) {
-     peek(triggerInPort, TriggerMsg) {
-         TBE tbe := getCurrentActiveTBE(in_msg.addr);
-         assert(is_valid(tbe));
-         trigger(tbe.pendAction, in_msg.addr, tbe);
-     }
-   }
- }
-
-// Retry action triggers
-// These are handled before other triggers since a retried request should
-// be enqueued ahead of a new request
-// TODO: consider moving DoRetry to the triggerQueue
-in_port(retryTriggerInPort, RetryTriggerMsg, retryTriggerQueue, rank=6,
-        rsc_stall_handler=retryTriggerInPort_rsc_stall_handler) {
-  if (retryTriggerInPort.isReady(clockEdge())) {
-    printResources();
-    peek(retryTriggerInPort, RetryTriggerMsg) {
-      Event ev := in_msg.event;
-      assert((ev == Event:SendRetryAck) || (ev == Event:SendPCrdGrant) ||
-              (ev == Event:DoRetry));
-      TBE tbe := getCurrentActiveTBE(in_msg.addr);
-      if (ev == Event:DoRetry) {
-        assert(is_valid(tbe));
-        if (tbe.is_req_hazard || tbe.is_repl_hazard) {
-          ev := Event:DoRetry_Hazard;
+          TBE tbe := getCurrentActiveTBE(in_msg.addr);
+          DirEntry dir_entry := getDirEntry(in_msg.addr);
+          bool stallForSnoopFilterAlloc := stallForSnoopFilterFill(in_msg);
+          if (stallForSnoopFilterAlloc) {
+            bool allWaysBusy := directory.allWaysBusy(in_msg.addr);
+            if (allWaysBusy) {
+              trigger(Event:WaitForSnoopFilterRepl_Pend, in_msg.addr, tbe);
+            } else {
+              enqSnoopFilterFill(in_msg.addr);
+              trigger(Event:WaitForSnoopFilterRepl, in_msg.addr, tbe);
+            }
+          }
+          trigger(reqToEvent(in_msg.type), in_msg.addr, getCurrentActiveTBE(in_msg.addr));
         }
       }
-      trigger(ev, in_msg.addr, tbe);
     }
-  }
-}
-bool retryTriggerInPort_rsc_stall_handler() {
-  DPRINTF(RubySlicc, "Retry trigger queue resource stall\n");
-  retryTriggerInPort.recycle(clockEdge(), cyclesToTicks(stall_recycle_lat));
-  return false; // Setting it to true might block the REQ channel
-}
 
- void wakeupPendingTgrs(TBE tbe) {
-   if (tbe.wakeup_pending_tgr) {
-     Addr addr := tbe.addr;
-     wakeup_port(triggerInPort, addr);
-     tbe.wakeup_pending_tgr := false;
-   }
- }
+    in_port(snpInPort, CHIRequestMsg, snpIn, rank=1) {
+      if (snpInPort.isReady(clockEdge())) {
+        assert(is_HN == false);
+        printResources();
+        peek(snpInPort, CHIRequestMsg) {
+          assert(in_msg.allowRetry == false);
+          if (in_msg.usesTxnId) {
+              error("Cannot support snpIn with usesTxnId"); //TBD
+          } else {
+            trigger(Event:AllocSnoop, in_msg.addr,
+                    getCurrentActiveTBE(in_msg.addr));
+          }
+        }
+      }
+    }
+
+    // Incoming new requests
+    in_port(reqInPort, CHIRequestMsg, reqIn, rank=0,
+           rsc_stall_handler=reqInPort_rsc_stall_handler) {
+      if (reqInPort.isReady(clockEdge())) {
+        printResources();
+        peek(reqInPort, CHIRequestMsg) {
+          // DVM Sync and TLBIs from external sources will use txnId requests,
+          // but they aren't implemented yet.
+          assert(!in_msg.usesTxnId);
+          if (in_msg.allowRetry) {
+            trigger(Event:AllocRequest, in_msg.addr,
+                     getCurrentActiveTBE(in_msg.addr));
+          } else {
+            trigger(Event:AllocRequestWithCredit, in_msg.addr,
+                    getCurrentActiveTBE(in_msg.addr));
+          }
+        }
+      }
+    }
+
+    bool reqInPort_rsc_stall_handler() {
+      error("reqInPort must never stall\n");
+      return false;
+    }
+
+    void wakeupPendingTgrs(TBE tbe) {
+      if (tbe.wakeup_pending_tgr) {
+        Addr addr := tbe.addr;
+        wakeup_port(triggerInPort, addr);
+        tbe.wakeup_pending_tgr := false;
+      }
+    }
+    
+    void wakeupPendingReqs(TBE tbe) {
+      if (tbe.wakeup_pending_req) {
+        Addr addr := tbe.addr;
+        wakeup_port(reqRdyPort, addr);
+        tbe.wakeup_pending_req := false;
+      }
+    }
+    
+    void wakeupPendingSFRepl(TBE tbe) {
+      if (tbe.wakeup_pending_sfRepl) {
+        Addr addr := tbe.addr;
+        wakeup_port(sfReplInPort, addr);
+        tbe.wakeup_pending_sfRepl := false;
+      }
+    }
+
+    void resetDirEntryAndWakeupPendingSFRepl(Addr address) {
+      directory.resetWayBusy(address);
+      // Wakeup any pending SnoopFilter Repls, that can now occur
+      if (snoopFilterPendQ.empty() == false) {
+        SnoopFilterReplPendEntry e := snoopFilterPendQ.front_sfrepl();
+        if (!directory.allWaysBusy(e.replAddr)) {
+          // SnoopFilter repl is now possible
+          Addr replAddr := e.replAddr;
+          wakeup_port(reqRdyPort, replAddr);
+          snoopFilterPendQ.pop();
+        }
+      }
+    }
 
 
-////////////////////////////////////////////////////////////////////////////
-// Additional functions that require the decl of port
-////////////////////////////////////////////////////////////////////////////
-void processNextState(Addr address, TBE tbe) {
+  ////////////////////////////////////////////////////////////////////////////
+  // Additional functions that require the decl of port
+  ////////////////////////////////////////////////////////////////////////////
+  void processNextState(Addr address, TBE tbe) {
     assert(is_valid(tbe));
     DPRINTF(RubySlicc, "GoToNextState expected_req_resp=%d expected_snp_resp=%d snd_pendEv=%d snd_pendBytes=%d\n",
                        tbe.expected_req_resp.expected(),

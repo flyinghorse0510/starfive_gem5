@@ -13,7 +13,6 @@ transition({I,RU,RSC,RSD,RUSC,RUSD,
 
 transition(I, {ReadShared,ReadNotSharedDirty}, BUSY_BLKD) {
   Initiate_Request;
-  Allocate_DirEntry;
   Initiate_ReadNoSnp;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -40,7 +39,6 @@ transition({BUSY_BLKD,BUSY_INTR}, {ReadShared, ReadNotSharedDirty, ReadUnique_Po
 
 transition(I, ReadUnique_PoC, BUSY_BLKD) {
   Initiate_Request;
-  Allocate_DirEntry;
   Initiate_ReadUnique_Miss;
   Pop_ReqRdyQueue;
   ProcessNextState;
@@ -210,4 +208,48 @@ transition({I,RSC,RSD,RUSD,RUSC,RU
             BUSY_INTR,BUSY_BLKD}, SendPCrdGrant) {
   Send_PCrdGrant;
   Pop_RetryTriggerQueue;
+}
+
+// SnoopFilter Repl
+transition({I,RU,RSC,RSD,RUSD,RUSC,
+            BUSY_INTR,BUSY_BLKD}, WaitForSnoopFilterRepl) {
+  StallRequest_OnSnoopFilterRepl;
+}
+
+transition({I,RU,RSC,RSD,RUSD,RUSC,
+            BUSY_INTR,BUSY_BLKD}, WaitForSnoopFilterRepl_Pend) {
+  StallRequest_OnSnoopFilterRepl_Pend;
+}
+
+transition({RSD,RUSD,RU}, SnoopFilterEviction, BUSY_BLKD) {SfReplTBEAvailable} {
+  Initiate_SnoopFilterReplacement;
+  Initiate_SnoopFilterReplacement_WB_BackInv;
+  Profile_SnoopFilterMiss;
+  Pop_SFReplTriggerQueue;
+  ProcessNextState;
+}
+
+transition({RUSC, RSC}, SnoopFilterEviction, BUSY_BLKD) {SfReplTBEAvailable} {
+  Initiate_SnoopFilterReplacement;
+  Initiate_SnoopFilterReplacement_Evict_BackInv;
+  Profile_SnoopFilterMiss;
+  Pop_SFReplTriggerQueue;
+  ProcessNextState;
+}
+
+transition({BUSY_BLKD,BUSY_INTR}, SnoopFilterEviction) {
+  StallSnoopFilterEviction;
+}
+
+transition(BUSY_BLKD, SendSnpCleanInvalid) {
+  Pop_TriggerQueue;
+  Send_SnpCleanInvalid;
+  ProcessNextState_ClearPending;
+}
+
+transition(BUSY_BLKD, ResetAndDeallocDirEntry) {
+  Pop_TriggerQueue;
+  Reset_DirEntry;
+  Deallocate_DirEntry;
+  ProcessNextState_ClearPending;
 }

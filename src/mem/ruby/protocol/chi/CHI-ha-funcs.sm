@@ -47,13 +47,8 @@ void notifyPfComplete(Addr addr) { }
 // Interface functions required by SLICC
 
 DirEntry getDirEntry(Addr addr), return_by_pointer = "yes" {
-  if (directory.isTagPresent(addr)) {
-    return directory.lookup(addr);
-  } else {
-    return OOD;
-  }
+  return static_cast(DirEntry, "pointer", directory.lookup(addr));
 }
-
 
 void setState(TBE tbe, Addr addr, State state) {
   if (is_valid(tbe)) {
@@ -70,23 +65,16 @@ TBE nullTBE(), return_by_pointer="yes" {
 }
 
 TBE getCurrentActiveTBE(Addr addr), return_by_pointer="yes" {
-  // snoops take precedence over wbs and reqs
-  // it's invalid to have a replacement and a req active at the same time
-  // for the same line
-  TBE snp_tbe := snpTBEs[addr];
-  if (is_valid(snp_tbe)) {
-    return snp_tbe;
-  }
+  TBE sfRepl_tbe := sfReplTBEs[addr];
   TBE req_tbe := TBEs[addr];
-//TBE repl_tbe := replTBEs[addr]; //HA current not support Cache
   if (is_valid(req_tbe)) {
-//assert(is_invalid(repl_tbe));
+    assert((is_invalid(sfRepl_tbe)));
     return req_tbe;
   }
-//  if (is_valid(repl_tbe)) {
-//    assert(is_invalid(req_tbe));
-//    return repl_tbe;
-//  }
+  if (is_valid(sfRepl_tbe)) {
+    assert(is_invalid(req_tbe));
+    return sfRepl_tbe;
+  }
   return OOD;
 }
 
@@ -270,31 +258,6 @@ TBE allocateRequestTBE(Addr addr, CHIRequestMsg in_msg), return_by_pointer="yes"
   return tbe;
 }
 
-TBE allocateSnoopTBE(Addr addr, CHIRequestMsg in_msg), return_by_pointer="yes" {
-  // We must have reserved resources for this allocation
-  storSnpTBEs.decrementReserved();
-  assert(storSnpTBEs.areNSlotsAvailable(1));
-
-  snpTBEs.allocate(addr);
-  TBE tbe := snpTBEs[addr];
-  initializeTBE(tbe, addr, storSnpTBEs.addEntryToNewSlot());
-
-  assert(tbe.is_req_tbe == false);
-
-  tbe.accAddr := addr;
-  tbe.accSize := blockSize;
-  tbe.requestor := in_msg.requestor;
-  tbe.fwdRequestor := in_msg.fwdRequestor;
-  tbe.reqType := in_msg.type;
-
-  tbe.snpNeedsData := in_msg.retToSrc;
-
-  tbe.use_DMT := false;
-  tbe.use_DCT := false;
-
-  return tbe;
-}
-
 TBE getHazardTBE(TBE tbe), return_by_pointer="yes" {
   assert(is_valid(tbe));
   TBE hazard_tbe := TBEs[tbe.addr];
@@ -394,9 +357,8 @@ void prepareRequestRetryDVM(TBE tbe, CHIRequestMsg & out_msg) {
 }
 
 void printResources() {
-  DPRINTF(RubySlicc, "Resources(used/rsvd/max): TBEs=%d/%d/%d snpTBEs=%d/%d/%d \n",
-                  storTBEs.size(), storTBEs.reserved(), storTBEs.capacity(),
-                  storSnpTBEs.size(), storSnpTBEs.reserved(), storSnpTBEs.capacity());
+  DPRINTF(RubySlicc, "Resources(used/rsvd/max): TBEs=%d/%d/%d\n",
+                  storTBEs.size(), storTBEs.reserved(), storTBEs.capacity());
   DPRINTF(RubySlicc, "Resources(in/out size): req=%d/%d rsp=%d/%d dat=%d/%d snp=%d/%d trigger=%d\n",
                 reqIn.getSize(curTick()), reqOut.getSize(curTick()),
                 rspIn.getSize(curTick()), rspOut.getSize(curTick()),
@@ -516,12 +478,6 @@ void deallocateReqTBE(TBE tbe) {
   TBEs.deallocate(tbe.addr);
 }
 
-void deallocateSnpTBE(TBE tbe) {
-  assert(is_valid(tbe));
-  storSnpTBEs.removeEntryFromSlot(tbe.storSlot);
-  snpTBEs.deallocate(tbe.addr);
-}
-
 void setDataToBeStates(TBE tbe) {
   assert(is_valid(tbe));
   if (tbe.dataToBeInvalid) {
@@ -598,8 +554,7 @@ State makeFinalState(TBE tbe, DirEntry dir_entry) {
 State getNextState(Addr address) {
   TBE tbe := getCurrentActiveTBE(address);
   assert(is_valid(tbe));
-  bool isFinal := !tbe.evicting_addr_valid && (tbe.pendAction == Event:Final);
-  assert(isFinal);
+  assert(tbe.pendAction == Event:Final);
   tbe.finalState := makeFinalState(tbe, getDirEntry(address));
   assert(tbe.finalState != State:null);
   return tbe.finalState;
@@ -661,7 +616,7 @@ bool isWriteReqType(CHIRequestType type) {
 ////////////////////////////////////////////////////////////////////////////
 // State->Event converters
 
-Event reqToEvent(CHIRequestType type, bool is_prefetch) {
+Event reqToEvent(CHIRequestType type) {
   if (type == CHIRequestType:ReadShared) {
     return Event:ReadShared;
   } else if (type == CHIRequestType:ReadNotSharedDirty) {
@@ -778,7 +733,6 @@ Event respToEvent (CHIResponseType type, TBE tbe) {
   }
 }
 
-
 Event dataToEvent (CHIDataType type) {
   if (type == CHIDataType:CompData_I) {
     return Event:CompData_I;
@@ -835,7 +789,6 @@ Event dataToEvent (CHIDataType type) {
   }
 }
 
-
 Event snpToEvent (CHIRequestType type) {
   if (type == CHIRequestType:SnpCleanInvalid) {
     return Event:SnpCleanInvalid;
@@ -858,4 +811,89 @@ Event snpToEvent (CHIRequestType type) {
   else {
     error("Invalid CHIRequestType");
   }
+}
+
+bool requiresDirEntry(CHIRequestType reqType) {
+  /**
+   * Arka [23/02/2023]: I am not completely sure
+   * which all transactions might require a directory
+   */
+  return ((reqType == CHIRequestType:ReadShared) ||
+          (reqType == CHIRequestType:ReadNotSharedDirty) ||
+          (reqType == CHIRequestType:ReadUnique) ||
+          (reqType == CHIRequestType:ReadOnce) ||
+          (reqType == CHIRequestType:CleanUnique));
+}
+
+// SnoopFilter related functions
+void enqSnoopFilterFill(Addr address) {
+  assert(!directory.allWaysBusy(address));
+  Addr victim_addr := directory.cacheProbe(address);
+  directory.setWayBusy(victim_addr); // Block this set-way combination to prevent subsequent SFRepl triggers
+  enqueue(sfReplOutPort, SFReplMessage, 0) {
+    out_msg.fromAddr := victim_addr;
+    out_msg.toAddr := address;
+  }
+}
+
+bool stallForSnoopFilterFill(CHIRequestMsg in_msg) {
+  Addr address:= in_msg.addr;
+  DirEntry dir_entry := getDirEntry(address);
+  bool avail_direntry := directory.cacheAvail(address);
+  bool doSnoopFilterFill := is_HN && (!directory.allowInfiniteEntries());
+  bool requiresDirEntryAlloc :=  (is_invalid(dir_entry)) && requiresDirEntry(in_msg.type);
+  bool stallForSnoopFilterAlloc := (requiresDirEntryAlloc && !avail_direntry && doSnoopFilterFill) ;
+  return stallForSnoopFilterAlloc;
+}
+
+// Resource constraints on transitions
+enumeration(RequestType, desc="To communicate stats from transitions to recordStats") {
+  SfReplTBEAvailable, desc="Check if TBE for SnoopFilter eviction is available";
+}
+
+bool _checkResourceAvailable(RequestType request_type, Addr addr) {
+  if (request_type == RequestType:SfReplTBEAvailable) {
+    return storSFReplTBEs.areNSlotsAvailable(1);
+  } else {
+    error("Invalid RequestType type in checkResourceAvailable");
+    return true;
+  }
+}
+
+bool checkResourceAvailable(RequestType request_type, Addr addr) {
+  bool avail := _checkResourceAvailable(request_type, addr);
+  if (avail == false) {
+    DPRINTF(RubyResourceStalls, "Resource %s not available for addr: %#x\n", request_type, addr);
+  }
+  return avail;
+}
+
+void recordRequestType(RequestType request_type, Addr addr) {}
+
+TBE allocateSnoopFilterTBE(Addr victim_addr, MachineID requestor, MachineID fwdRequestor), return_by_pointer="yes" {
+  assert(storSFReplTBEs.areNSlotsAvailable(1));
+
+  sfReplTBEs.allocate(victim_addr);
+  TBE tbe := sfReplTBEs[victim_addr];
+  initializeTBE(tbe, victim_addr, storSFReplTBEs.addEntryToNewSlot());
+
+  tbe.accAddr := victim_addr;
+  tbe.accSize := blockSize;
+  tbe.requestor := requestor;
+  tbe.fwdRequestor := fwdRequestor;
+  tbe.snpNeedsData := false;
+  tbe.reqType := CHIRequestType:null;
+  tbe.is_sfrepl_tbe := true;
+
+  tbe.use_DMT := false;
+  tbe.use_DCT := false;
+
+  return tbe;
+}
+
+void deallocateSnoopFilterTBE(TBE tbe) {
+  assert(is_valid(tbe));
+  assert(tbe.is_sfrepl_tbe);
+  storSFReplTBEs.removeEntryFromSlot(tbe.storSlot);
+  sfReplTBEs.deallocate(tbe.addr);
 }

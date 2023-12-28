@@ -116,15 +116,6 @@ class CHI_SNF_MainMem(CHI_config.CHI_SNF_MainMem):
             3: [3]
         })
 
-class CHI_SNF_xDie(CHI_config.CHI_SNF_xDie):
-    class NoC_Params(CHI_config.CHI_SNF_xDie.NoC_Params):
-        die_plcmnt_map = dict({
-            0: [3],
-            1: [3],
-            2: [3],
-            3: [3]
-        })
-
 class CHI_SNF_BootMem(CHI_config.CHI_SNF_BootMem):
     class NoC_Params(CHI_config.CHI_SNF_BootMem.NoC_Params):
         die_plcmnt_map = dict({

@@ -1567,7 +1567,7 @@ bool stallForSnoopFilterFill(CHIRequestMsg in_msg) {
   Addr address:= in_msg.addr;
   DirEntry dir_entry := getDirEntry(address);
   bool avail_direntry := directory.cacheAvail(address);
-  bool doSnoopFilterFill := is_HN && (!directory.allowInfiniteEntries());
+  bool doSnoopFilterFill := !directory.allowInfiniteEntries();
   bool requiresDirEntryAlloc :=  (is_invalid(dir_entry)) && requiresDirEntry(in_msg.type);
   bool stallForSnoopFilterAlloc := (requiresDirEntryAlloc && !avail_direntry && doSnoopFilterFill) ;
   return stallForSnoopFilterAlloc;

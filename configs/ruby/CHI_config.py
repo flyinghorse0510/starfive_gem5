@@ -74,15 +74,9 @@ class Versions:
         cls._version[tp] = val + 1
         return val
 
-class HAToSNFBuffer(MessageBuffer) :
+class CHIHABuffer(MessageBuffer) :
     """
-        HA <--> SNF traffic follows CHI
-        protocol, but does not travel
-        via the main on-die Ruby CHI network.
-        This to prevent deadlocks when
-        HA <--> SNF traffic contends for the
-        same NoC resources as the dependent
-        HNF <--> HA traffic
+        Message buffer for HA<--
     """
     buffer_size        = 0
     allow_zero_latency = True
@@ -773,63 +767,6 @@ class CHI_SNF_MainMem(CHI_SNF_Base):
             self._cntrl.addr_ranges = self.getMemRange(mem_ctrl)
         # else bind ports and range later
     
-
-class CHI_SNF_xDie(CHI_Node):
-
-    def __init__(self,
-                options,
-                src_die_id,
-                ruby_system,
-                haId,
-                addr_ranges,
-                parent = None):
-        super(CHI_SNF_xDie, self).__init__(ruby_system, src_die_id)
-
-        self._cntrl = MemoryXDie_Controller(
-                        version = Versions.getVersion(MemoryXDie_Controller),
-                        ruby_system = ruby_system,
-                        triggerQueue = TriggerMessageBuffer(),
-                        responseFromMemory = MessageBuffer(),
-                        requestToMemory = MessageBuffer(ordered = True),
-                        reqRdy = TriggerMessageBuffer(),
-                        ha_reqIn  = HAToSNFBuffer(),
-                        ha_snpIn  = HAToSNFBuffer(),
-                        ha_rspIn  = HAToSNFBuffer(),
-                        ha_datIn  = HAToSNFBuffer(),
-                        ha_reqOut = HAToSNFBuffer(),
-                        ha_snpOut = HAToSNFBuffer(),
-                        ha_rspOut = HAToSNFBuffer(),
-                        ha_datOut = HAToSNFBuffer(),
-                        number_of_TBEs=options.num_SNF_TBE,
-                        addr_ranges = addr_ranges,
-                        snf_allow_retry=options.snf_allow_retry)
-        self._haId = haId
-        
-        self.connectController(options,self._cntrl)
-
-        if parent:
-            parent.cntrl = self._cntrl
-        else:
-            self.cntrl = self._cntrl
-    
-    def getHaId(self):
-        return self._haId
-    
-    def getAllControllers(self):
-        return [self._cntrl]
-
-    def getNetworkSideControllers(self):
-        return [self._cntrl]
-
-    def getMemRange(self, mem_ctrl):
-        # TODO need some kind of transparent API for
-        # MemCtrl+DRAM vs SimpleMemory
-        if hasattr(mem_ctrl, 'range'):
-            return mem_ctrl.range
-        else:
-            return mem_ctrl.dram.range
-
-
 class CHI_RNI_Base(CHI_Node):
     '''
     Request node without cache / DMA
@@ -874,7 +811,6 @@ class CHI_RNI_IO(CHI_RNI_Base):
     def __init__(self, options, src_die_id, ruby_system, parent):
         super(CHI_RNI_IO, self).__init__(options, ruby_system, src_die_id, parent)
         ruby_system._io_port = self._sequencer
-
 
 
 ##################################################################################
@@ -973,9 +909,7 @@ class CHI_D2DNode(CHI_Node):
 class CHI_HA(CHI_Node):
     """
         Required for maintaining 
-        cross die coherence. Also
-        inherits from the common
-        Cache controller.
+        cross die coherence.
     """
     class NoC_Params(CHI_Node.NoC_Params):
         pairing = None
@@ -1033,6 +967,7 @@ class CHI_HA(CHI_Node):
                  options,
                  srd_die_id,
                  haId,
+                 ha_snoopfilter,
                  ruby_system):
         super(CHI_HA, self).__init__(ruby_system, srd_die_id)
         self._haId = haId
@@ -1043,27 +978,14 @@ class CHI_HA(CHI_Node):
             addr_ranges = addr_ranges,
             data_channel_size = 128,
             number_of_TBEs = 2,
-            number_of_snoop_TBEs = 1,
+            number_of_SFReplTBEs = 2,
             triggerQueue = TriggerMessageBuffer(),
             reqRdy = TriggerMessageBuffer(),
             retryTriggerQueue = OrderedTriggerMessageBuffer(),
-            snf_reqIn  = HAToSNFBuffer(),
-            snf_snpIn  = HAToSNFBuffer(),
-            snf_rspIn  = HAToSNFBuffer(),
-            snf_datIn  = HAToSNFBuffer(),
-            snf_reqOut = HAToSNFBuffer(),
-            snf_snpOut = HAToSNFBuffer(),
-            snf_rspOut = HAToSNFBuffer(),
-            snf_datOut = HAToSNFBuffer()
+            sfReplTriggerQueue = OrderedTriggerMessageBuffer(),
+            directory  = ha_snoopfilter()
         )
 
-        """
-            [04 Dec 2023]: Connection with
-            the NoC. Not really required if all
-            the communication happens via
-            HA <--> SNF pathway. But removing
-            might require some other changes.
-        """
         self.connectController(options, self._cntrl)
 
         # Set the SimObject parents
