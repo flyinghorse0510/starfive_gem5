@@ -81,3 +81,5 @@ class RubyController(ClockedObject):
                     "Possible destinations for requests sent towards memory")
     
     ha_destinations = VectorParam.RubyController([],"The node that handles incoming d2d requests")
+
+    d2dsnp_destinations = VectorParam.RubyController([],"The dests that will recv snps from the d2d nodes")

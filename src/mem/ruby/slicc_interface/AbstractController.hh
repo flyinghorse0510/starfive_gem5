@@ -215,6 +215,8 @@ class AbstractController : public ClockedObject, public Consumer
     MachineID mapAddressToDownstreamMachine(Addr addr,
                                     MachineType mtype = MachineType_NUM) const;
     
+    MachineID mapAddressToSnpDest(Addr addr) const;
+    
     MachineID getHANodeIdOnDie(Addr addr) const;
 
     /** List of downstream destinations (towards memory) */
@@ -268,15 +270,6 @@ class AbstractController : public ClockedObject, public Consumer
     uint64_t getTxSeqNum(RequestPtr req)
     {
       return req->getReqInstSeqNum();
-    }
-
-    /**
-     * This is a more generic txnId, and
-     * should mimic the txn_id attribute
-     * by the CHI messages.
-     */
-    Addr getD2DTxnId(int tbeStorSlot) const {
-      return ((getVersion() << 8) + tbeStorSlot);
     }
 
     /**
@@ -430,8 +423,11 @@ class AbstractController : public ClockedObject, public Consumer
     NetDest downstreamDestinations;
     NetDest upstreamDestinations; // Not used in CHI. But other protocols use it
     NetDest haDestinations; // HA dests for d2d nodes
+    NetDest d2dSnpDestinations; // Dests which can recv snoop requests from the D2D node
 
     AddrRangeMap<AddrMapEntry, 3> haAddrMap;
+
+    AddrRangeMap<AddrMapEntry, 3> d2dSnpAddrMap; // Addr-->HNF mapping as seen by d2d controller, which will recv the snps
 
   public:
     struct ControllerStats : public statistics::Group

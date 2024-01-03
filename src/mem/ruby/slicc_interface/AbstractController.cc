@@ -139,6 +139,25 @@ AbstractController::init()
         haDestinations.add(mid);
         // inform("Machine:%s, ha:%s, addr_ranges: %s\n",name(),abs_cntrl->name(),abs_cntrl->getAddrRangeStr());
     }
+
+    // Initialize the D2D Snp Destinations
+    d2dSnpDestinations.resize();
+    for (auto abs_cntrl : params().d2dsnp_destinations) {
+        MachineID mid = abs_cntrl->getMachineID();
+        const AddrRangeList &ranges = abs_cntrl->getAddrRanges();
+        for (const auto &addr_range : ranges) {
+            auto it = d2dSnpAddrMap.intersects(addr_range);
+            if (it == d2dSnpAddrMap.end()) {
+                it = d2dSnpAddrMap.insert(addr_range, AddrMapEntry());
+            }
+            AddrMapEntry &entry = it->second;
+            fatal_if(entry.count(mid.getType()) > 0,
+                     "%s: %s mapped to multiple machines of the same type\n",
+                     name(), addr_range.to_string());
+            entry[mid.getType()] = mid;
+        }
+        d2dSnpDestinations.add(mid);
+    }
 }
 
 std::string AbstractController::getAddrRangeStr() const {
@@ -477,6 +496,22 @@ const
           "%s: couldn't find mapping for address %x\n", name(), addr);
         return j->second;
     }
+}
+
+MachineID 
+AbstractController::mapAddressToSnpDest(Addr addr) 
+const
+{
+    const auto i = d2dSnpAddrMap.contains(addr);
+    fatal_if(i == d2dSnpAddrMap.end(),
+      "%s: couldn't find mapping for address %x\n", name(), addr);
+
+    const AddrMapEntry &entry = i->second;
+    assert(!entry.empty());
+
+    fatal_if(entry.size() > 1,
+      "%s: address %x mapped to multiple machine types.\n", name(), addr);
+    return entry.begin()->second;
 }
 
 MachineID

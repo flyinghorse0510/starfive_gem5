@@ -33,6 +33,9 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     // Accepted requests
     MessageBuffer * reqRdy;
 
+    // Accepted snp requests
+    MessageBuffer * snpRdy;
+
     // Trigger queue for internal events
     MessageBuffer * triggerQueue;
 
@@ -64,6 +67,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     // Number of REMAP entries
     int num_txremap_entries := 8;
     int num_rxremap_entries := 8;
+    int num_txsnp_entries   := 2;
 
     int data_channel_size;
 
@@ -83,7 +87,8 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     state_declaration(State, default="D2DNode_State_null") {
         // Null state for debugging
         null,         AccessPermission:Invalid,     desc="Null state";
-        busy,         AccessPermission:Invalid,     desc="A tracker entry has been allocated, so the transaction is progress";
+        busy_blkd,    AccessPermission:Invalid,     desc="A tracker entry has been allocated, so the transaction is progress, Cannot accept snps";
+        busy_intr,    AccessPermission:Invalid,     desc="A tracker entry has been allocated, so the transaction is progress, Can accept snps";
         stable,       AccessPermission:Invalid,     desc="Stable but invalid, no ongoing transactions";
     }
     
@@ -93,6 +98,8 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     enumeration(Event) {
         AllocTxReqEntry,            desc="Allocate a Tx Remap entry";
         AllocTxReqEntry_WithCredit, desc="Allocate a Tx Remap entry with credit";
+
+        AllocTxSnpEntry,            desc="Allocate a Tx Snp entry";
 
         Frm_NW_ReadData,     desc="Dat Rsp to a Read Data from NW";
         Frm_NW_WriteData,    desc="Dat Rsp to a Write Data from NW";
@@ -111,6 +118,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         Frm_NW_PCrdGrant,    desc="PCrdGrant from NW side";
 
         Frm_d2d_Request,      desc="Received a request from D2D Side, Fwd to HA";
+        Frm_d2d_Snp,          desc="Received a snp request from D2D Side, Fwd to HNF, check the upstream addr";
         Frm_d2d_Comp,         desc="Comp Rsp from NW side";
         Frm_d2d_CompDBIDResp, desc="CompDBID Rsp from NW side";
         Frm_d2d_DBIDResp,     desc="DBID Rsp from NW side";
@@ -119,7 +127,8 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         Frm_d2d_RetryAck,     desc="RetryAck from NW side";
         Frm_d2d_PCrdGrant,    desc="PCrdGrant from NW side";
 
-        Frm_NW_Req,           desc="Fwd to D2DBridge";
+        Frm_NW_Req,           desc="Req from NW";
+        Frm_NW_Snp,           desc="Snp req from NW";
         
         DeAllocTxReqEntry,   desc="Finalize event";
 
@@ -135,15 +144,8 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     // Structure
     ////////////////////////////////////////////////////////////////////////////
 
-    enumeration(TrackerType) {
-        TX_req, desc="Tx REQ tracker";
-        TX_snp, desc="Tx SNP tracker";
-        RX_snp, desc="Rx SNP tracker";
-    }
-
     structure(TriggerMsg, desc="...", interface="Message") {
         Addr        addr;
-        TrackerType tbe_type;
         Event       event;
 
         bool functionalRead(Packet *pkt) { return false; }
@@ -176,7 +178,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     }
 
     structure(TBE, desc="Common structure for Tx and Rx Table Entry") {
-        State state,              desc="Once allocated, the state must be always busy";
+        State state,              desc="Once allocated, the state must be always busy_blkd";
         Addr addr,                desc="Address corresponding to this request";
         
         /* Extracted from the original REQ messages */
@@ -195,11 +197,12 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         bool expCompAck,          desc="Does the request a CompAck";
 
         bool wakeup_pending_req,  desc="This TBE is blocking another request to same addr";
+        bool wakeup_pending_snp,  desc="This TBE is blocking another snp request to same addr";
 
         /* Type of TBE */
-        // bool is_req_tx,           desc="REQ Tx entry";
+        bool is_req_tx,           desc="REQ Tx entry";
         // bool is_req_rx,           desc="REQ Rx entry";
-        // bool is_snp_tx,           desc="SNP Tx entry";
+        bool is_snp_tx,           desc="SNP Tx entry";
         // bool is_snp_rx,           desc="SNP Rx entry";
 
         /* Retry related messages from D2D */
@@ -243,6 +246,9 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     TBETable TxReqMapTable,       template="<D2DNode_TBE>",constructor="m_num_txremap_entries";
     TBEStorage storTxReqMapTable, constructor="this, TBEType_to_string(TBEType_D2DRemap), m_num_txremap_entries";
     
+    TBETable TxSnpMapTable,       template="<D2DNode_TBE>",constructor="m_num_txsnp_entries";
+    TBEStorage storTxSnpMapTable, constructor="this, TBEType_to_string(TBEType_D2DSnp), m_num_txsnp_entries";
+
     // Retry handling
     // Destinations that will be sent PCrdGrant when a TBE becomes available
     TriggerQueue retryQueue, template="<D2DNode_RetryQueueEntry>";
@@ -252,7 +258,6 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     ////////////////////////////////////////////////////////////////////////////
     State getState(TBE tbe, Addr addr) {
         if (is_valid(tbe)) {
-            assert(tbe.state == State:busy);
             return tbe.state;
         } else {
             return State:stable;
@@ -286,6 +291,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     out_port(network_rspOutPort, CHIResponseMsg, rspOut);
     out_port(network_datOutPort, CHIDataMsg,     datOut);
     out_port(reqRdyOutPort, CHIRequestMsg, reqRdy);
+    out_port(snpRdyOutPort, CHIRequestMsg, snpRdy);
     out_port(bridge_reqOutPort, CHIRequestMsg,  d2dnode_reqOut);
     out_port(bridge_snpOutPort, CHIRequestMsg,  d2dnode_snpOut);
     out_port(bridge_rspOutPort, CHIResponseMsg, d2dnode_rspOut);
@@ -306,19 +312,29 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         }
     }
 
+    TBE getTxSnpEntry(Addr addr), return_by_pointer="yes" {
+        if (TxSnpMapTable.isPresent(addr)) {
+            return TxSnpMapTable.lookup(addr);
+        } else {
+            return OOD;
+        }
+    }
+
     TBE getRxReqMapEntry(Addr addr), return_by_pointer="yes" {
         // There is no valid Rx REMAP entries required
         return OOD;
     }
 
-    TBE getActiveTBE(Addr addr, TrackerType tbe_type), return_by_pointer="yes" {
-        if (tbe_type == TrackerType:TX_req) {
-            TBE tbe := getTxReqMapEntry(addr);
-            assert(is_valid(tbe));
-            return tbe;
-        } else {
-            error("Invalid/Unsupported Tracker Type");
+    TBE getActiveTBE(Addr addr), return_by_pointer="yes" {
+        TBE snp_tbe_tx := getTxReqMapEntry(addr);
+        TBE req_tbe_tx := getTxSnpEntry(addr);
+        if (is_valid(snp_tbe_tx)) {
+            return snp_tbe_tx;
         }
+        if (is_valid(req_tbe_tx)) {
+            return req_tbe_tx;
+        }
+        return OOD;
     }
 
     bool expCompAck(CHIRequestType type) {
@@ -355,6 +371,37 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         tbe.pendReqAccSize           := in_msg.accSize;
         tbe.pendReqRetToSrc          := in_msg.retToSrc;
         tbe.pendReqType              := in_msg.type;
+        tbe.is_req_tx                := true;
+        tbe.is_snp_tx                := false;
+
+        return tbe;
+    }
+
+    TBE allocateTxSnpEntry(CHIRequestMsg in_msg), return_by_pointer="yes" {
+        storTxSnpMapTable.decrementReserved();
+        assert(storTxSnpMapTable.areNSlotsAvailable(1));
+
+        // Create a new txn_id from the src die
+        Addr addr := in_msg.addr;
+
+        // Allocate a TBE entry
+        TxSnpMapTable.allocate(addr);
+        TBE tbe := TxSnpMapTable[addr];
+
+        // Save the original/incoming src_id and txn_id
+        tbe.addr                     := addr;
+        tbe.o_src_id                 := in_msg.requestor;
+        tbe.o_fwd_src_id             := in_msg.fwdRequestor;
+        tbe.storSlot                 := storTxSnpMapTable.addEntryToNewSlot();
+        tbe.expCompAck               := expCompAck(in_msg.type);
+        tbe.wakeup_pending_snp       := false;
+        tbe.pendReqAllowRetryFromD2D := true;
+        tbe.pendReqAccAddr           := in_msg.accAddr;
+        tbe.pendReqAccSize           := in_msg.accSize;
+        tbe.pendReqRetToSrc          := in_msg.retToSrc;
+        tbe.pendReqType              := in_msg.type;
+        tbe.is_req_tx                := false;
+        tbe.is_snp_tx                := true;
 
         return tbe;
     }
@@ -424,25 +471,43 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         if (reqInPort.isReady(clockEdge())) {
             peek(reqInPort, CHIRequestMsg) {
                 if (in_msg.allowRetry) {
-                    trigger(Event:AllocTxReqEntry, in_msg.addr, getTxReqMapEntry(in_msg.addr));
+                    trigger(Event:AllocTxReqEntry, in_msg.addr, getActiveTBE(in_msg.addr));
                 } else {
-                    trigger(Event:AllocTxReqEntry_WithCredit, in_msg.addr, getTxReqMapEntry(in_msg.addr));
+                    trigger(Event:AllocTxReqEntry_WithCredit, in_msg.addr, getActiveTBE(in_msg.addr));
                 }
             }
         }
     }
 
-    in_port(reqRdyInPort, CHIRequestMsg, reqRdy, rank=2) {
+    in_port(snpInPort, CHIRequestMsg, snpIn, rank=2) {
+        if (snpInPort.isReady(clockEdge())) {
+            peek(snpInPort, CHIRequestMsg) {
+                trigger(Event:AllocTxSnpEntry, in_msg.addr, getTxSnpEntry(in_msg.addr));
+            }
+        }
+    }
+
+    in_port(reqRdyInPort, CHIRequestMsg, reqRdy, rank=3) {
         if (reqRdyInPort.isReady(clockEdge())) {
             peek(reqRdyInPort, CHIRequestMsg) {
                 Event evt := Event:Frm_NW_Req;
-                TBE tbe := getTxReqMapEntry(in_msg.addr);
+                TBE tbe := getActiveTBE(in_msg.addr);
                 trigger(evt, in_msg.addr, tbe);
             }
         }
     }
 
-    in_port(datInPort, CHIDataMsg, datIn, rank=3) {
+    in_port(snpRdyInPort, CHIRequestMsg, snpRdy, rank=4) {
+        if (snpRdyInPort.isReady(clockEdge())) {
+            peek(snpRdyInPort, CHIRequestMsg) {
+                Event evt := Event:Frm_NW_Snp;
+                TBE tbe := getTxSnpEntry(in_msg.addr);
+                trigger(evt, in_msg.addr, tbe);
+            }
+        }
+    }
+
+    in_port(datInPort, CHIDataMsg, datIn, rank=4) {
         if (datInPort.isReady(clockEdge())) {
             peek(datInPort, CHIDataMsg) {
                 // This must be in response of D2DNode generated request
@@ -454,7 +519,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
                     TBE tbe := getRxReqMapEntry(in_msg.addr);
                     trigger(evt, in_msg.addr, tbe);
                 } else if (evt == Event:Frm_NW_WriteData) {
-                    TBE tbe := getTxReqMapEntry(in_msg.addr);
+                    TBE tbe := getActiveTBE(in_msg.addr);
                     // assert(is_valid(tbe));
                     trigger(evt, in_msg.addr, tbe);
                 } else {
@@ -465,7 +530,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         }
     }
 
-    in_port(rspInPort, CHIResponseMsg, rspIn, rank=4) {
+    in_port(rspInPort, CHIResponseMsg, rspIn, rank=5) {
         if (rspInPort.isReady(clockEdge())) {
             peek(rspInPort, CHIResponseMsg) {
                 Event evt := frm_nw_rspToEvent(in_msg.type);
@@ -480,7 +545,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
                     TBE tbe := getRxReqMapEntry(in_msg.addr);
                     trigger(evt, in_msg.addr, tbe);
                 } else if (evt == Event:Frm_NW_CompAck) {
-                    TBE tbe := getTxReqMapEntry(in_msg.addr);
+                    TBE tbe := getActiveTBE(in_msg.addr);
                     assert(is_valid(tbe));
                     trigger(evt, in_msg.addr, tbe);
                 } else if (evt == Event:Frm_NW_RetryAck) {
@@ -507,12 +572,12 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         }
     }
 
-    in_port(retryTriggerInPort, RetryTriggerMsg, retryTriggerQueue, rank=5) {
+    in_port(retryTriggerInPort, RetryTriggerMsg, retryTriggerQueue, rank=6) {
         if (retryTriggerInPort.isReady(clockEdge())) {
             peek(retryTriggerInPort, RetryTriggerMsg) {
                 Event ev := in_msg.event;
                 assert((ev == Event:SendRetryAck) || (ev == Event:SendPCrdGrant) || (ev == Event:DoRetryToD2D));
-                TBE tbe := getTxReqMapEntry(in_msg.addr);
+                TBE tbe := getActiveTBE(in_msg.addr);
                 trigger(ev, in_msg.addr, tbe);
             }
         }
@@ -529,12 +594,20 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         }
     }
 
-    in_port(bwDatInPort, CHIDataMsg, d2dnode_datIn, rank=21) {
+    in_port(bwSnpInPort, CHIRequestMsg, d2dnode_snpIn, rank=21) {
+        if (snpInPort.isReady(clockEdge())) {
+            peek(snpInPort, CHIRequestMsg) {
+                trigger(Event:Frm_d2d_Snp, in_msg.addr, getActiveTBE(in_msg.addr));
+            }
+        }
+    }
+
+    in_port(bwDatInPort, CHIDataMsg, d2dnode_datIn, rank=22) {
         if (bwDatInPort.isReady(clockEdge())) {
             peek(bwDatInPort, CHIDataMsg) {
                 Event evt := frm_d2d_dataToEvent(in_msg.type);
                 if (evt == Event:Frm_d2d_ReadData) {
-                    TBE tbe := getTxReqMapEntry(in_msg.addr);
+                    TBE tbe := getActiveTBE(in_msg.addr);
                     assert(is_valid(tbe));
                     trigger(evt, in_msg.addr, tbe);
                 } else if (evt == Event:Frm_d2d_WriteData) {
@@ -548,12 +621,12 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         }
     }
 
-    in_port(bwRspInPort, CHIResponseMsg, d2dnode_rspIn, rank=22) {
+    in_port(bwRspInPort, CHIResponseMsg, d2dnode_rspIn, rank=23) {
         if (bwRspInPort.isReady(clockEdge())) {
             peek(bwRspInPort, CHIResponseMsg) {
                 Event evt := frm_d2d_rspToEvent(in_msg.type);
                 if (evt == Event:Frm_d2d_Comp) {
-                    TBE tbe := getTxReqMapEntry(in_msg.addr);
+                    TBE tbe := getActiveTBE(in_msg.addr);
                     assert(is_valid(tbe));
                     trigger(evt, in_msg.addr, tbe);
                 } else if (evt == Event:Frm_d2d_CompAck) {
@@ -561,11 +634,11 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
                     trigger(evt, in_msg.addr, tbe);
                 } else if ((evt == Event:Frm_d2d_CompDBIDResp) ||
                            (evt == Event:Frm_d2d_DBIDResp)) {
-                    TBE tbe := getTxReqMapEntry(in_msg.addr);
+                    TBE tbe := getActiveTBE(in_msg.addr);
                     trigger(evt, in_msg.addr, tbe);
                 } else if (evt == Event:Frm_d2d_RetryAck) {
                     if (transmit_retry_from_nw) {
-                        TBE tbe := getTxReqMapEntry(in_msg.addr);
+                        TBE tbe := getActiveTBE(in_msg.addr);
                         assert(is_valid(tbe));
                         trigger(evt, in_msg.addr, tbe);
                     } else {
@@ -573,7 +646,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
                     }
                 } else if (evt == Event:Frm_d2d_PCrdGrant) {
                     if (transmit_retry_from_nw) {
-                        TBE tbe := getTxReqMapEntry(in_msg.addr);
+                        TBE tbe := getActiveTBE(in_msg.addr);
                         assert(is_valid(tbe));
                         trigger(evt, in_msg.addr, tbe);
                     } else {
@@ -587,10 +660,10 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         }
     }
 
-    in_port(triggerInPort, Trigger, triggerQueue, rank=23) {
+    in_port(triggerInPort, Trigger, triggerQueue, rank=24) {
         if(triggerInPort.isReady(clockEdge())) {
             peek(triggerInPort, TriggerMsg) {
-                trigger(in_msg.event, in_msg.addr, getActiveTBE(in_msg.addr,in_msg.tbe_type));
+                trigger(in_msg.event, in_msg.addr, getActiveTBE(in_msg.addr));
             }
         }
     }
@@ -606,6 +679,18 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
     ////////////////////////////////////////////////////////////////////////////
     // Actions
     ////////////////////////////////////////////////////////////////////////////
+    action(Alloc_TxSnpEntry, desc="") {
+        check_allocate(storTxSnpMapTable);
+        storTxSnpMapTable.incrementReserved();
+        peek(snpInPort, CHIRequestMsg) {
+            enqueue(snpRdyOutPort, CHIRequestMsg, allocation_latency) {
+                assert(in_msg.addr == address);
+                out_msg := in_msg;
+            }
+        }
+        snpInPort.dequeue(clockEdge());
+    }
+
     action(Alloc_TxReqEntry, desc="") {
         if (storTxReqMapTable.areNSlotsAvailable(1)) {
             storTxReqMapTable.incrementReserved();
@@ -661,6 +746,18 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         bwReqInPort.dequeue(clockEdge());
     }
 
+    action(Fwd_SnpToNW, desc="") {
+        peek(bwSnpInPort, CHIRequestMsg) {
+            enqueue(network_snpOutPort, CHIRequestMsg, lat_snp_bridge_2_nw) {
+                out_msg               := in_msg;
+                out_msg.requestor     := machineID;
+                out_msg.fwdRequestor  := machineID;
+                out_msg.Destination.add(mapAddressToSnpDest(in_msg.addr));
+            }
+        }
+        bwSnpInPort.dequeue(clockEdge());
+    }
+
     action(Fwd_ReqToBridge, desc="") {
         peek(reqRdyInPort, CHIRequestMsg) {
             set_tbe(allocateTxRemapEntry(in_msg));
@@ -672,6 +769,19 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
             }
         }
         reqRdyInPort.dequeue(clockEdge());
+    }
+
+    action(Fwd_SnpToBridge, desc="") {
+        peek(snpRdyInPort, CHIRequestMsg) {
+            set_tbe(allocateTxSnpEntry(in_msg));
+            enqueue(bridge_snpOutPort, CHIRequestMsg, lat_snp_nw_2_bridge) {
+                assert(is_valid(tbe));
+                out_msg := in_msg;
+                out_msg.allowRetry := false;
+                out_msg.Destination.remove(machineID);
+            }
+        }
+        snpRdyInPort.dequeue(clockEdge());
     }
 
     action(Fwd_DataToBridge, desc="") {
@@ -719,7 +829,6 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
             assert(tbe.expCompAck);
             out_msg.addr     := tbe.addr;
             out_msg.event    := Event:DeAllocTxReqEntry;
-            out_msg.tbe_type := TrackerType:TX_req;
         }
         rspInPort.dequeue(clockEdge());
     }
@@ -748,7 +857,6 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
             enqueue(triggerOutPort, TriggerMsg, 0) {
                 out_msg.addr     := tbe.addr;
                 out_msg.event    := Event:DeAllocTxReqEntry;
-                out_msg.tbe_type := TrackerType:TX_req;
             }
         }
         bwRspInPort.dequeue(clockEdge());
@@ -790,7 +898,6 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         enqueue(triggerOutPort, TriggerMsg, 0) {
             out_msg.addr     := tbe.addr;
             out_msg.event    := Event:DeAllocTxReqEntry;
-            out_msg.tbe_type := TrackerType:TX_req;
         }
         bwRspInPort.dequeue(clockEdge());
     }
@@ -895,12 +1002,12 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         Alloc_TxReqEntry_WithCredit;
     }
 
-    transition(stable, Frm_d2d_Request, busy) {
+    transition(stable, Frm_d2d_Request, busy_intr) {
         Fwd_ReqToNW;
         Send_D2DCredit;
     }
 
-    transition(busy, Frm_d2d_ReadData) {
+    transition(busy_intr, Frm_d2d_ReadData) {
         Fwd_DataToNW;
         Send_D2DCredit;
     }
@@ -910,7 +1017,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         Send_D2DCredit;
     }
 
-    transition(busy, Frm_d2d_Comp) {
+    transition(busy_intr, Frm_d2d_Comp) {
         Fwd_CompRspToNW;
         Send_D2DCredit;
     }
@@ -920,27 +1027,27 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         Send_D2DCredit;
     }
 
-    transition(busy, Frm_d2d_CompDBIDResp) {
+    transition(busy_intr, Frm_d2d_CompDBIDResp) {
         Fwd_CompDBIDToNW;
         Send_D2DCredit;
     }
 
-    transition(busy, Frm_d2d_DBIDResp) {
+    transition(busy_intr, Frm_d2d_DBIDResp) {
         Fwd_DBIDToNW;
         Send_D2DCredit;
     }
 
-    transition(busy, Frm_d2d_RetryAck) {
+    transition(busy_intr, Frm_d2d_RetryAck) {
         Process_D2DRetry;
         Send_D2DCredit;
     }
 
-    transition(busy, Frm_d2d_PCrdGrant) {
+    transition(busy_intr, Frm_d2d_PCrdGrant) {
         Process_D2DPcrdGrant;
         Send_D2DCredit;
     }
 
-    transition(busy, DoRetryToD2D) {
+    transition(busy_intr, DoRetryToD2D) {
         Fwd_RetryReqToD2D;
         Pop_RetryTriggerQueue;
     }
@@ -949,15 +1056,15 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         Fwd_DataToBridge;
     }
 
-    transition({stable, busy}, Frm_NW_WriteData) {
+    transition({stable, busy_intr}, Frm_NW_WriteData) {
         Fwd_DataToBridge;
     }
 
-    transition(stable, Frm_NW_Req, busy) {
+    transition(stable, Frm_NW_Req, busy_intr) {
         Fwd_ReqToBridge;
     }
 
-    transition(busy, Frm_NW_Req) {
+    transition(busy_intr, Frm_NW_Req) {
         StallRequest
     }
    
@@ -965,29 +1072,29 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
         Fwd_CompToBridge;
     }
 
-    transition(busy, Frm_NW_CompAck) {
+    transition({busy_blkd, busy_intr}, Frm_NW_CompAck) {
         Fwd_CompAckToBridge;
     }
 
-    transition({stable, busy}, Frm_NW_RetryAck) {
+    transition({stable, busy_intr}, Frm_NW_RetryAck) {
         Fwd_RetryRspToBridge_Transmit;
     }
 
-    transition({stable, busy}, Frm_NW_PCrdGrant) {
+    transition({stable, busy_intr}, Frm_NW_PCrdGrant) {
         Fwd_RetryRspToBridge_Transmit;
     }
 
-    transition(busy, DeAllocTxReqEntry, stable) {
+    transition(busy_intr, DeAllocTxReqEntry, stable) {
         De_AllocTxReqEntry;
         popTriggerQueue;
     }
 
-    transition({busy,stable}, SendRetryAck) {
+    transition({busy_intr,stable}, SendRetryAck) {
         Send_RetryAck;
         Pop_RetryTriggerQueue;
     }
 
-    transition({busy,stable}, SendPCrdGrant) {
+    transition({busy_intr,stable}, SendPCrdGrant) {
         Send_PCrdGrant;
         Pop_RetryTriggerQueue;
     }
@@ -998,6 +1105,19 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
 
     transition(stable, Frm_NW_DBIDResp) {
         Fwd_DBIDToBridge;
+    }
+
+    transition({busy_intr, stable}, AllocTxSnpEntry) {
+        Alloc_TxSnpEntry;
+    }
+
+    transition({busy_intr, stable}, Frm_NW_Snp, busy_blkd) {
+        Fwd_SnpToBridge;
+    }
+
+    transition(stable, Frm_d2d_Snp) {
+        Fwd_SnpToNW;
+        Send_D2DCredit;
     }
 
 }

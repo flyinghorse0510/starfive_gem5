@@ -842,6 +842,7 @@ class CHI_D2DNodeController(D2DNode_Controller):
             version      = Versions.getVersion(D2DNode_Controller),
             triggerQueue = TriggerMessageBuffer(),
             reqRdy       = TriggerMessageBuffer(),
+            snpRdy       = TriggerMessageBuffer(),
             retryTriggerQueue = OrderedTriggerMessageBuffer(),
             ruby_system  = ruby_system,
             addr_ranges  = addr_ranges,
@@ -905,6 +906,10 @@ class CHI_D2DNode(CHI_Node):
     def setHADestination(self, cntrls):
         for c in self.getNetworkSideControllers():
             c.ha_destinations = cntrls
+    
+    def setD2DSnpDestinations(self, cntrls):
+        for c in self.getNetworkSideControllers():
+            c.d2dsnp_destinations = cntrls
 
 class CHI_HA(CHI_Node):
     """
