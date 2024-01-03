@@ -69,7 +69,7 @@ l2p_snpin_pat = re.compile('^system\.cpu(\d*)\.l2\.snpIn\.m_msg_count\s+(\d+)')
 
 ## snoop filter's pattern
 ## groups we need: 1) hnf's id 2) misses/hits/alloc/accesses 3)num of misses/hits/alloc/accesses
-snp_ftr_pat = re.compile('^system\.ruby\.hnf(\d*)\.cntrl\.m_snoopfilter_(misses|hits|alloc|accesses)\s+(\d+)')
+snp_ftr_pat = re.compile('^system\.ruby\.hnf(\d*)\.cntrl\.directory\.m_snoopfilter_(misses|hits|alloc|accesses)\s+(\d+)')
 
 class Printable:
     def __repr__(self):
