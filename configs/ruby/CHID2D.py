@@ -343,8 +343,6 @@ def create_system(options,
     # Fwd incoming requests from (D2D --> HA)
     for d2d in d2dnodes:
         d2d.setHADestination(ha_dests)
-        d2d.setD2DSnpDestinations(hnf_dests)
-        # d2d.setDownstream(hnf_dests)
 
     # Setup data message size for all controllers
     for cntrl in all_cntrls:

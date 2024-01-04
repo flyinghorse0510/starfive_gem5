@@ -110,7 +110,11 @@ AbstractController::init()
             entry[mid.getType()] = mid;
         }
         downstreamDestinations.add(mid);
-        // inform("Machine:%s, downstream:%s, addr_ranges: %s\n",name(),abs_cntrl->name(),abs_cntrl->getAddrRangeStr());
+
+        // Reverse D2D Mapping to route the Snp messages from D2D-->HNF
+        if (mid.getType() == MachineType_D2DNode) {
+            abs_cntrl->addD2DSnpDests(this);
+        }
     }
     // Initialize the addr->upstream machine list.
     // We do not need to map address -> upstream machine,
@@ -137,27 +141,32 @@ AbstractController::init()
             entry[mid.getType()] = mid;
         }
         haDestinations.add(mid);
-        // inform("Machine:%s, ha:%s, addr_ranges: %s\n",name(),abs_cntrl->name(),abs_cntrl->getAddrRangeStr());
     }
+}
 
-    // Initialize the D2D Snp Destinations
-    d2dSnpDestinations.resize();
-    for (auto abs_cntrl : params().d2dsnp_destinations) {
-        MachineID mid = abs_cntrl->getMachineID();
-        const AddrRangeList &ranges = abs_cntrl->getAddrRanges();
-        for (const auto &addr_range : ranges) {
-            auto it = d2dSnpAddrMap.intersects(addr_range);
-            if (it == d2dSnpAddrMap.end()) {
-                it = d2dSnpAddrMap.insert(addr_range, AddrMapEntry());
-            }
-            AddrMapEntry &entry = it->second;
-            fatal_if(entry.count(mid.getType()) > 0,
-                     "%s: %s mapped to multiple machines of the same type\n",
-                     name(), addr_range.to_string());
-            entry[mid.getType()] = mid;
-        }
-        d2dSnpDestinations.add(mid);
+void AbstractController::addD2DSnpDests(AbstractController *abs_cntrl) {
+    assert(getType() == MachineType_D2DNode);
+    static bool initD2DSnpSize = false;
+    if (!initD2DSnpSize) {
+        // Initialize the D2D Snp Destinations
+        d2dSnpDestinations.resize();
+        initD2DSnpSize = true;
     }
+    MachineID mid = abs_cntrl->getMachineID();
+    const AddrRangeList &ranges = abs_cntrl->getAddrRanges();
+    for (const auto &addr_range : ranges) {
+        auto it = d2dSnpAddrMap.intersects(addr_range);
+        if (it == d2dSnpAddrMap.end()) {
+            it = d2dSnpAddrMap.insert(addr_range, AddrMapEntry());
+        }
+        AddrMapEntry &entry = it->second;
+        fatal_if(entry.count(mid.getType()) > 0,
+                 "%s: %s mapped to multiple machines of the same type\n",
+                 name(), addr_range.to_string());
+        entry[mid.getType()] = mid;
+    }
+    inform("D2D:%s, HNF:%s, addr_ranges: %s\n",name(),abs_cntrl->name(),abs_cntrl->getAddrRangeStr());
+    d2dSnpDestinations.add(mid);
 }
 
 std::string AbstractController::getAddrRangeStr() const {

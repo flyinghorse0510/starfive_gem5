@@ -458,6 +458,8 @@ class AbstractController : public ClockedObject, public Consumer
 
     std::string getAddrRangeStr() const;
 
+    void addD2DSnpDests(AbstractController *);
+
 };
 
 } // namespace ruby

@@ -753,6 +753,7 @@ machine(MachineType:D2DNode, "CHI interface to the D2D bridge") :
                 out_msg.requestor     := machineID;
                 out_msg.fwdRequestor  := machineID;
                 out_msg.Destination.add(mapAddressToSnpDest(in_msg.addr));
+                assert(false);
             }
         }
         bwSnpInPort.dequeue(clockEdge());

@@ -906,10 +906,6 @@ class CHI_D2DNode(CHI_Node):
     def setHADestination(self, cntrls):
         for c in self.getNetworkSideControllers():
             c.ha_destinations = cntrls
-    
-    def setD2DSnpDestinations(self, cntrls):
-        for c in self.getNetworkSideControllers():
-            c.d2dsnp_destinations = cntrls
 
 class CHI_HA(CHI_Node):
     """
