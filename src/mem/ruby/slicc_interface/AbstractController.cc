@@ -166,7 +166,7 @@ void AbstractController::addD2DSnpDests(AbstractController *abs_cntrl) {
         entry[mid.getType()] = mid;
     }
     inform("D2D:%s, HNF:%s, addr_ranges: %s\n",name(),abs_cntrl->name(),abs_cntrl->getAddrRangeStr());
-    d2dSnpDestinations.add(mid);
+    // d2dSnpDestinations.add(mid);
 }
 
 std::string AbstractController::getAddrRangeStr() const {
