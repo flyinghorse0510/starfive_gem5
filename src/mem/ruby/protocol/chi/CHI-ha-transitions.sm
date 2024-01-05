@@ -253,3 +253,41 @@ transition(BUSY_BLKD, ResetAndDeallocDirEntry) {
   Deallocate_DirEntry;
   ProcessNextState_ClearPending;
 }
+
+transition(BUSY_BLKD,
+           {SnpRespData_I_PD,SnpRespData_I,SnpRespData_SC_PD,
+            SnpRespData_SC,SnpRespData_SD,SnpRespData_UC,SnpRespData_UD,
+            SnpRespData_SC_Fwded_SC,SnpRespData_SC_Fwded_SD_PD,
+            SnpRespData_SC_PD_Fwded_SC,SnpRespData_I_Fwded_SD_PD,
+            SnpRespData_I_PD_Fwded_SC,SnpRespData_I_Fwded_SC}) {
+  Receive_SnpDataResp;
+  UpdateDirState_FromSnpDataResp;
+  UpdateDataState_FromSnpDataResp;
+  Pop_DataInQueue;
+  ProcessNextState;
+}
+
+transition(BUSY_BLKD, SnoopFilterHAWB) {
+  Pop_TriggerQueue;
+  Start_SnoopFilterWriteBack;
+  ProcessNextState_ClearPending;
+}
+
+transition(BUSY_BLKD, WakeUpEvictingSnoopFilterAddr) {
+  Pop_TriggerQueue;
+  Assert_NoDirEntry;
+  WakeUp_EvictingSnoopFilterAddr;
+  ProcessNextState_ClearPending;
+}
+
+transition(BUSY_BLKD,
+           {SnpResp_I,SnpResp_SC,
+            SnpResp_I_Fwded_UC,SnpResp_I_Fwded_UD_PD,
+            SnpResp_SC_Fwded_SC,SnpResp_SC_Fwded_SD_PD,
+            SnpResp_UC_Fwded_I,SnpResp_UD_Fwded_I,
+            SnpResp_SC_Fwded_I,SnpResp_SD_Fwded_I}) {
+  Receive_SnpResp;
+  UpdateDirState_FromSnpResp;
+  Pop_RespInQueue;
+  ProcessNextState;
+}
